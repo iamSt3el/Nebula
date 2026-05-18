@@ -13,7 +13,7 @@ Rectangle {
     implicitWidth: parent?.width
     implicitHeight: 60
     radius: 15
-    color: bluetooth.state === 1 || pillArea.containsMouse? Colors.surfaceContainerHighest : "transparent"
+    color: bluetooth.state === 1 || handler.hovered ? Colors.surfaceContainerHighest : "transparent"
     property var bluetooth: null
     visible: bluetooth !== null
     signal click(var bluetooth)
@@ -22,9 +22,12 @@ Rectangle {
     MouseArea{
         id: pillArea
         anchors.fill: parent
-        hoverEnabled: true    
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.click(root.bluetooth)
+        //onClicked: root.click(root.bluetooth)
+    }
+
+    HoverHandler{
+        id: handler
     }
     RowLayout {
         anchors.fill: parent
@@ -68,24 +71,30 @@ Rectangle {
             Layout.fillWidth: true
         }
 
-        Rectangle {
-            Layout.preferredWidth: child.width + 10
-            Layout.preferredHeight: 40
-            radius: 10
-            color: area.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
-            CustomText {
-                id: child
-                anchors.centerIn: parent
-                content: bluetooth?.connected ? "Disconnect" : "Connect"
-                size: 14
-                color: area.containsMouse ? Colors.primaryText : Colors.surfaceText
-            }
-
-            MouseArea {
-                id: area
+        Loader{
+            active: handler.hovered
+            visible: active
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            sourceComponent: Rectangle {
                 anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                hoverEnabled: true
+                radius: width
+                color: area.containsMouse ? Colors.primary : "transparent"
+
+                MaterialIconSymbol{
+                    anchors.centerIn: parent
+                    content: "info"
+                    iconSize: 16
+                    color: area.containsMouse ? Colors.primaryText : Colors.surfaceText
+                }
+
+                MouseArea {
+                    id: area
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.click(root.bluetooth)
+                }
             }
         }
     }

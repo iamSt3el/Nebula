@@ -86,11 +86,10 @@ PopupWindow{
                 Item{
                     Layout.fillWidth: true
                 }
-                CustomIconImage{
-                    icon: ServiceWeather.weatherIconPath
-                    size: 50
-                    bright: 1
-                } 
+                MaterialIconSymbol{
+                    content: ServiceWeather.weatherIconPath
+                    iconSize: 50
+                }
             }
 
             // Rectangle{

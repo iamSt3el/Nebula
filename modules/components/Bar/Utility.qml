@@ -262,13 +262,8 @@ Item{
 
             Battery{
                 Layout.preferredHeight: 25
-                MouseArea{
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked:{
-                        utility.isBatteryInfoClicked = true
-                    }
-                }
+                Layout.preferredWidth: 34
+
             }
 
 
@@ -285,7 +280,7 @@ Item{
                 }
                 MaterialIconSymbol{
                     id: dashboardIcon
-                    iconSize: Appearance.size.iconSizeNormal - 3
+                    iconSize: 18
                     content: "dashboard"
                     anchors.centerIn: parent
                 }

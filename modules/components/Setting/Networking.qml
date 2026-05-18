@@ -13,6 +13,7 @@ Item{
     anchors.fill: parent
     anchors.margins: 5
     property bool infoCard: false
+    property bool qrCode: false
     property bool passwordPrompt: false
     property var network: null
 
@@ -32,6 +33,17 @@ Item{
         sourceComponent: NetworkInfoCard{
             network: root.network
             onClose: root.infoCard = false
+        }
+    }
+
+    Loader{
+        anchors.fill: parent
+        active: root.qrCode
+        visible: active
+        z: 10
+        sourceComponent: QrCode{
+            network: root.network
+            onClose: root.qrCode = false
         }
     }
 
@@ -140,6 +152,11 @@ Item{
                 onNeedsPassword: function(net) {
                     root.network = net
                     root.passwordPrompt = true
+                }
+
+                onQrCode: function(network){
+                    root.network = network
+                    root.qrCode = true
                 }
             }
 

@@ -16,6 +16,7 @@ import qs.modules.components.ToolsWidget
 import qs.modules.components.ShutdownWindow
 import qs.modules.customComponents
 import qs.modules.settings
+import qs.modules
 
 ShellRoot{
     DockPanel{}
@@ -34,6 +35,7 @@ ShellRoot{
     SettingsPanel{}
     ToolsWidget{}
     Shutdown{}
+    //Dis{}
     Loader{
         active: SettingsConfig.general.musicVisOn
         sourceComponent:Vis{
@@ -47,7 +49,7 @@ ShellRoot{
 
     //InputTest{}
 
-    //WidgetScreen{}
+    WidgetScreen{}
     
 
 

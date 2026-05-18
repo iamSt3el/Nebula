@@ -28,10 +28,14 @@ Rectangle{
         spacing: 10
         anchors.leftMargin: 10
         anchors.rightMargin: 10
-        CustomIconImage{
-            icon: ServiceWeather.weatherIconPath
-            size: 14
-            bright: 1
+        // CustomIconImage{
+        //     icon: ServiceWeather.weatherIconPath
+        //     size: 14
+        //     bright: 1
+        // }
+        MaterialIconSymbol{
+            content: ServiceWeather.weatherIconPath
+            iconSize: 16
         }
 
         CustomText{

@@ -3,11 +3,12 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.modules.utils
+import qs.modules.settings
 
 Singleton {
     id: root
 
-    property string location: "Phagwara"
+    property string location: SettingsConfig.weather.location
     property bool useMetric: true
     property int refreshInterval: 900000 // 15 minutes
     property bool isLoading: false
@@ -200,109 +201,109 @@ Singleton {
         const isNight = isNightTime()
 
         const dayIconMap = {
-            "113": "wi-day-sunny", // Sunny
-            "116": "wi-day-cloudy", // Partly cloudy
-            "119": "wi-cloudy", // Cloudy
-            "122": "wi-cloudy", // Overcast
-            "143": "wi-day-fog", // Mist
-            "176": "wi-day-showers", // Patchy rain possible
-            "179": "wi-day-snow", // Patchy snow possible
-            "182": "wi-day-sleet", // Patchy sleet possible
-            "185": "wi-day-sleet", // Patchy freezing drizzle possible
-            "200": "wi-day-thunderstorm", // Thundery outbreaks possible
-            "227": "wi-day-snow-wind", // Blizzard
-            "230": "wi-day-snow-wind", // Blizzard
-            "248": "wi-fog", // Fog
-            "260": "wi-fog", // Freezing fog
-            "263": "wi-day-sprinkle", // Patchy light drizzle
-            "266": "wi-day-sprinkle", // Light drizzle
-            "281": "wi-day-sleet", // Freezing drizzle
-            "284": "wi-day-sleet", // Heavy freezing drizzle
-            "293": "wi-day-rain", // Patchy light rain
-            "296": "wi-day-rain", // Light rain
-            "299": "wi-day-rain", // Moderate rain at times
-            "302": "wi-day-rain", // Moderate rain
-            "305": "wi-day-rain-wind", // Heavy rain at times
-            "308": "wi-day-rain-wind", // Heavy rain
-            "311": "wi-day-sleet", // Light freezing rain
-            "314": "wi-day-sleet", // Moderate or heavy freezing rain
-            "317": "wi-day-sleet", // Light sleet
-            "320": "wi-day-sleet-storm", // Moderate or heavy sleet
-            "323": "wi-day-snow", // Patchy light snow
-            "326": "wi-day-snow", // Light snow
-            "329": "wi-day-snow", // Patchy moderate snow
-            "332": "wi-day-snow", // Moderate snow
-            "335": "wi-day-snow-wind", // Patchy heavy snow
-            "338": "wi-day-snow-wind", // Heavy snow
-            "350": "wi-day-hail", // Ice pellets
-            "353": "wi-day-showers", // Light rain shower
-            "356": "wi-day-rain", // Moderate or heavy rain shower
-            "359": "wi-day-rain-wind", // Torrential rain shower
-            "362": "wi-day-sleet", // Light sleet showers
-            "365": "wi-day-sleet-storm", // Moderate or heavy sleet showers
-            "368": "wi-day-snow", // Light snow showers
-            "371": "wi-day-snow-wind", // Moderate or heavy snow showers
-            "374": "wi-day-hail", // Light showers of ice pellets
-            "377": "wi-day-hail", // Moderate or heavy showers of ice pellets
-            "386": "wi-day-storm-showers", // Patchy light rain with thunder
-            "389": "wi-day-thunderstorm", // Moderate or heavy rain with thunder
-            "392": "wi-day-snow-thunderstorm", // Patchy light snow with thunder
-            "395": "wi-day-snow-thunderstorm"  // Moderate or heavy snow with thunder
+            "113": "clear_day", // Sunny
+            "116": "partly_cloudy_day", // Partly cloudy
+            "119": "cloud", // Cloudy
+            "122": "cloud", // Overcast
+            "143": "foggy", // Mist
+            "176": "rainy_light", // Patchy rain possible
+            "179": "weather_snowy", // Patchy snow possible
+            "182": "cloudy_snowing", // Patchy sleet possible
+            "185": "cloudy_snowing", // Patchy freezing drizzle possible
+            "200": "thunderstorm", // Thundery outbreaks possible
+            "227": "weather_snowy", // Blowing snow
+            "230": "weather_snowy", // Blizzard
+            "248": "foggy", // Fog
+            "260": "foggy", // Freezing fog
+            "263": "grain", // Patchy light drizzle
+            "266": "grain", // Light drizzle
+            "281": "grain", // Freezing drizzle
+            "284": "rainy", // Heavy freezing drizzle
+            "293": "rainy_light", // Patchy light rain
+            "296": "rainy_light", // Light rain
+            "299": "rainy", // Moderate rain at times
+            "302": "rainy", // Moderate rain
+            "305": "rainy_heavy", // Heavy rain at times
+            "308": "rainy_heavy", // Heavy rain
+            "311": "cloudy_snowing", // Light freezing rain
+            "314": "cloudy_snowing", // Moderate or heavy freezing rain
+            "317": "cloudy_snowing", // Light sleet
+            "320": "cloudy_snowing", // Moderate or heavy sleet
+            "323": "weather_snowy", // Patchy light snow
+            "326": "weather_snowy", // Light snow
+            "329": "weather_snowy", // Patchy moderate snow
+            "332": "weather_snowy", // Moderate snow
+            "335": "ac_unit", // Patchy heavy snow
+            "338": "ac_unit", // Heavy snow
+            "350": "ac_unit", // Ice pellets
+            "353": "rainy_light", // Light rain shower
+            "356": "rainy", // Moderate or heavy rain shower
+            "359": "rainy_heavy", // Torrential rain shower
+            "362": "cloudy_snowing", // Light sleet showers
+            "365": "cloudy_snowing", // Moderate or heavy sleet showers
+            "368": "weather_snowy", // Light snow showers
+            "371": "ac_unit", // Moderate or heavy snow showers
+            "374": "ac_unit", // Light showers of ice pellets
+            "377": "ac_unit", // Moderate or heavy showers of ice pellets
+            "386": "thunderstorm", // Patchy light rain with thunder
+            "389": "thunderstorm", // Moderate or heavy rain with thunder
+            "392": "thunderstorm", // Patchy light snow with thunder
+            "395": "thunderstorm"  // Moderate or heavy snow with thunder
         }
 
         const nightIconMap = {
-            "113": "wi-night-clear", // Clear night
-            "116": "wi-night-alt-partly-cloudy", // Partly cloudy night
-            "119": "wi-night-alt-cloudy", // Cloudy night
-            "122": "wi-night-alt-cloudy", // Overcast night
-            "143": "wi-night-fog", // Mist
-            "176": "wi-night-alt-showers", // Patchy rain possible
-            "179": "wi-night-alt-snow", // Patchy snow possible
-            "182": "wi-night-alt-sleet", // Patchy sleet possible
-            "185": "wi-night-alt-sleet", // Patchy freezing drizzle possible
-            "200": "wi-night-alt-thunderstorm", // Thundery outbreaks possible
-            "227": "wi-night-alt-snow-wind", // Blizzard
-            "230": "wi-night-alt-snow-wind", // Blizzard
-            "248": "wi-night-fog", // Fog
-            "260": "wi-night-fog", // Freezing fog
-            "263": "wi-night-alt-sprinkle", // Patchy light drizzle
-            "266": "wi-night-alt-sprinkle", // Light drizzle
-            "281": "wi-night-alt-sleet", // Freezing drizzle
-            "284": "wi-night-alt-sleet", // Heavy freezing drizzle
-            "293": "wi-night-alt-rain", // Patchy light rain
-            "296": "wi-night-alt-rain", // Light rain
-            "299": "wi-night-alt-rain", // Moderate rain at times
-            "302": "wi-night-alt-rain", // Moderate rain
-            "305": "wi-night-alt-rain-wind", // Heavy rain at times
-            "308": "wi-night-alt-rain-wind", // Heavy rain
-            "311": "wi-night-alt-sleet", // Light freezing rain
-            "314": "wi-night-alt-sleet", // Moderate or heavy freezing rain
-            "317": "wi-night-alt-sleet", // Light sleet
-            "320": "wi-night-alt-sleet-storm", // Moderate or heavy sleet
-            "323": "wi-night-alt-snow", // Patchy light snow
-            "326": "wi-night-alt-snow", // Light snow
-            "329": "wi-night-alt-snow", // Patchy moderate snow
-            "332": "wi-night-alt-snow", // Moderate snow
-            "335": "wi-night-alt-snow-wind", // Patchy heavy snow
-            "338": "wi-night-alt-snow-wind", // Heavy snow
-            "350": "wi-night-alt-hail", // Ice pellets
-            "353": "wi-night-alt-showers", // Light rain shower
-            "356": "wi-night-alt-rain", // Moderate or heavy rain shower
-            "359": "wi-night-alt-rain-wind", // Torrential rain shower
-            "362": "wi-night-alt-sleet", // Light sleet showers
-            "365": "wi-night-alt-sleet-storm", // Moderate or heavy sleet showers
-            "368": "wi-night-alt-snow", // Light snow showers
-            "371": "wi-night-alt-snow-wind", // Moderate or heavy snow showers
-            "374": "wi-night-alt-hail", // Light showers of ice pellets
-            "377": "wi-night-alt-hail", // Moderate or heavy showers of ice pellets
-            "386": "wi-night-alt-storm-showers", // Patchy light rain with thunder
-            "389": "wi-night-alt-thunderstorm", // Moderate or heavy rain with thunder
-            "392": "wi-night-alt-snow-thunderstorm", // Patchy light snow with thunder
-            "395": "wi-night-alt-snow-thunderstorm"  // Moderate or heavy snow with thunder
+            "113": "clear_night", // Clear night
+            "116": "partly_cloudy_night", // Partly cloudy night
+            "119": "cloud", // Cloudy night
+            "122": "cloud", // Overcast night
+            "143": "foggy", // Mist
+            "176": "rainy_light", // Patchy rain possible
+            "179": "weather_snowy", // Patchy snow possible
+            "182": "cloudy_snowing", // Patchy sleet possible
+            "185": "cloudy_snowing", // Patchy freezing drizzle possible
+            "200": "thunderstorm", // Thundery outbreaks possible
+            "227": "weather_snowy", // Blowing snow
+            "230": "weather_snowy", // Blizzard
+            "248": "foggy", // Fog
+            "260": "foggy", // Freezing fog
+            "263": "grain", // Patchy light drizzle
+            "266": "grain", // Light drizzle
+            "281": "grain", // Freezing drizzle
+            "284": "rainy", // Heavy freezing drizzle
+            "293": "rainy_light", // Patchy light rain
+            "296": "rainy_light", // Light rain
+            "299": "rainy", // Moderate rain at times
+            "302": "rainy", // Moderate rain
+            "305": "rainy_heavy", // Heavy rain at times
+            "308": "rainy_heavy", // Heavy rain
+            "311": "cloudy_snowing", // Light freezing rain
+            "314": "cloudy_snowing", // Moderate or heavy freezing rain
+            "317": "cloudy_snowing", // Light sleet
+            "320": "cloudy_snowing", // Moderate or heavy sleet
+            "323": "weather_snowy", // Patchy light snow
+            "326": "weather_snowy", // Light snow
+            "329": "weather_snowy", // Patchy moderate snow
+            "332": "weather_snowy", // Moderate snow
+            "335": "ac_unit", // Patchy heavy snow
+            "338": "ac_unit", // Heavy snow
+            "350": "ac_unit", // Ice pellets
+            "353": "rainy_light", // Light rain shower
+            "356": "rainy", // Moderate or heavy rain shower
+            "359": "rainy_heavy", // Torrential rain shower
+            "362": "cloudy_snowing", // Light sleet showers
+            "365": "cloudy_snowing", // Moderate or heavy sleet showers
+            "368": "weather_snowy", // Light snow showers
+            "371": "ac_unit", // Moderate or heavy snow showers
+            "374": "ac_unit", // Light showers of ice pellets
+            "377": "ac_unit", // Moderate or heavy showers of ice pellets
+            "386": "thunderstorm", // Patchy light rain with thunder
+            "389": "thunderstorm", // Moderate or heavy rain with thunder
+            "392": "thunderstorm", // Patchy light snow with thunder
+            "395": "thunderstorm"  // Moderate or heavy snow with thunder
         }
 
         const iconMap = isNight ? nightIconMap : dayIconMap
-        return iconMap[code] || (isNight ? "wi-night-clear" : "wi-day-sunny")
+        return iconMap[code] || (isNight ? "clear_night" : "clear_day")
     }
     function calculateAQI(c) {
         var r = {

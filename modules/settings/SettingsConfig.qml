@@ -14,6 +14,7 @@ Singleton {
     property alias manga: settingsAdapter.manga
     property alias recording: settingsAdapter.recording
     property alias widgets: settingsAdapter.widgets
+    property alias weather: settingsAdapter.weather
 
     Timer {
         id: writeTimer
@@ -101,6 +102,10 @@ Singleton {
                 clockY: 100,
                 temperatureX: 600,
                 temperatureY: 100
+            })
+
+            property var weather: ({
+                location: "Phagwara"
             })
         }
     }

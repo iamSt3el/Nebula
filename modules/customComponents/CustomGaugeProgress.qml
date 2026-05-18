@@ -56,10 +56,13 @@ Item {
             // Background track (unfilled portion), offset by gap from progress tip
             const arcSpan = progressEnd - startAngle
             const effectiveGap = root.progress > 0 ? Math.min(root.gap, arcSpan * 0.5) : 0
-            ctx.beginPath()
-            ctx.arc(cx, cy, r, progressEnd + effectiveGap, trackEnd, false)
-            ctx.strokeStyle = root.baseColor
-            ctx.stroke()
+            const bgStart = progressEnd + effectiveGap
+            if (bgStart < trackEnd) {
+                ctx.beginPath()
+                ctx.arc(cx, cy, r, bgStart, trackEnd, false)
+                ctx.strokeStyle = root.baseColor
+                ctx.stroke()
+            }
 
             if (root.progress > 0) {
                 const end = progressEnd - effectiveGap

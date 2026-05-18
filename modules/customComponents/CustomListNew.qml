@@ -6,14 +6,12 @@ import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.settings
 
-Rectangle{
+Item{
     id: root
     property bool isListClicked: false
     property var currentVal: null
     property var objectVal: null
     property var list: []
-    color: Colors.surfaceContainerHighest
-    radius: 10
     z: isListClicked ? 1000 : 0
     signal listClicked
     signal listChildClicked(var child)
@@ -32,20 +30,37 @@ Rectangle{
     RowLayout{
         visible: !root.isListClicked && root.height === 30
         anchors.fill: parent
-        anchors.margins: 5
-        anchors.leftMargin: 10
-        CustomText{
+        Rectangle{
+            Layout.fillHeight: true
             Layout.fillWidth: true
-            Layout.alignment: Qt.AlignHCenter
-            content: root.currentVal ?? root.objectVal?.name ?? ""
-            size: 12
-            weight: 600
+            topLeftRadius: 15
+            bottomLeftRadius: 15
+            topRightRadius: 5
+            bottomRightRadius: 5
+            color: Colors.surfaceContainerHighest
+            CustomText{
+                anchors.left: parent.left
+                anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                content: root.currentVal ?? root.objectVal?.name ?? ""
+                size: 12
+                weight: 600
+            }
         }
-
-        MaterialIconSymbol{
-            content: "keyboard_arrow_down"
-            iconSize: 20
-        } 
+        Rectangle{
+            Layout.fillHeight: true
+            Layout.preferredWidth: 40
+            topLeftRadius: 5
+            bottomLeftRadius: 5
+            topRightRadius: 15
+            bottomRightRadius: 15
+            color: Colors.surfaceContainerHighest
+            MaterialIconSymbol{
+                anchors.centerIn: parent
+                content: "keyboard_arrow_down"
+                iconSize: 20
+            } 
+        }
 
     }
 
@@ -81,12 +96,12 @@ Rectangle{
                 implicitWidth: parent.width
                 implicitHeight: Math.min(listView.contentHeight + 10, 250)
                 radius: 10
-                color: root.color
+                color: Colors.surfaceContainerHighest
 
-                border{
-                    width: 1
-                    color: Colors.outline
-                }
+                // border{
+                //     width: 1
+                //     color: Colors.outline
+                // }
 
 
 

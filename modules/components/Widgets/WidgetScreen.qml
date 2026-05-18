@@ -20,7 +20,11 @@ PanelWindow{
     WlrLayershell.layer: WlrLayer.Bottom
     color: "transparent"
 
-    Temperature{
-    } 
+    // Temperature{
+    // } 
+     CircularMusicPlayer{
+    
+     }
+
 
 }

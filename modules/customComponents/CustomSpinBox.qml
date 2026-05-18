@@ -10,13 +10,16 @@ Item{
     property int inc: 10
     property int limit: 100
     RowLayout{
-        anchors.fill: parent
-        spacing: 10
+        anchors.centerIn: parent
+        spacing: 2
         Rectangle{
-            implicitWidth: 40
-            implicitHeight: 30
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
             color: Colors.tertiary
-            radius: 10
+            topLeftRadius: 10
+            topRightRadius: 2
+            bottomLeftRadius: 10
+            bottomRightRadius: 2
             MaterialIconSymbol{
                 anchors.centerIn: parent
                 content: "remove"
@@ -34,16 +37,28 @@ Item{
                 }
             }
         }
-
-        CustomText{
-            content:root.val 
-            size: 16
+        Rectangle{
+            Layout.preferredHeight: 30
+            Layout.preferredWidth: text.implicitWidth + 10 
+            color: Colors.tertiary
+            radius: 2
+            CustomText{
+                id: text
+                anchors.centerIn: parent
+                content:root.val 
+                color: Colors.tertiaryText
+                size: 14
+            }
         }
         Rectangle{
-            implicitWidth: 40
-            implicitHeight: 30
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
             color: Colors.tertiary
-            radius: 10
+            topLeftRadius: 2
+            topRightRadius: 10
+            bottomLeftRadius: 2
+            bottomRightRadius: 10
+
 
             MaterialIconSymbol{
                 anchors.centerIn: parent

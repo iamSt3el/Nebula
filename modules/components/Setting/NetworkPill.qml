@@ -14,20 +14,31 @@ Rectangle {
     implicitWidth: parent?.width
     implicitHeight: 60
     radius: 15
-    color: network?.connected || pillArea.containsMouse ? Colors.surfaceContainerHighest : "transparent"
+    color: network?.connected || handler.hovered ? Colors.surfaceContainerHighest : "transparent"
     property var network: null
     visible: network !== null
     signal click(var network)
     signal needsPassword(var network)
+    signal qrCode(var network)
 
     MouseArea{
         id: pillArea
         anchors.fill: parent
-        hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked:root.click(root.network)
+        onClicked:{
+            if(!network?.connected){
+                //root.wrongPassword = false
+                network.connect()
+            }
+            else{
+                //root.wrongPassword = false
+                network.disconnect()
+            }
+        }
     }
-
+    HoverHandler{
+        id: handler
+    }
     Connections {
         target: root.network
         ignoreUnknownSignals: true
@@ -49,7 +60,7 @@ Rectangle {
             color: "transparent"
             MaterialIconSymbol {
                 anchors.centerIn: parent
-                content: "android_wifi_4_bar"
+                content: "network_wifi_locked"
                 iconSize: 30
                 // color: Colors.primaryText
             }
@@ -75,34 +86,55 @@ Rectangle {
             Layout.fillWidth: true
         }
 
-        Rectangle {
-            Layout.preferredWidth: child.width + 10
-            Layout.preferredHeight: 40
-            radius: 10
-            color: area.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
-            CustomText {
-                id: child
-                anchors.centerIn: parent
-                content: network?.connected ? "Disconnect" : "Connect"
-                size: 14
-                color: area.containsMouse ? Colors.primaryText : Colors.surfaceText
-            }
-
-            MouseArea {
-                id: area
+        Loader{
+            active: handler.hovered && network?.connected
+            visible: active
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            sourceComponent: Rectangle{
                 anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                hoverEnabled: true
+                radius: width
+                color: qrArea.containsMouse ? Colors.primary: "transparent"
 
-                onClicked:{
-                    if(!network?.connected){
-                        //root.wrongPassword = false
-                        network.connect()
-                    }
-                    else{
-                        //root.wrongPassword = false
-                        network.disconnect()
-                    }
+                MaterialIconSymbol{
+                    anchors.centerIn: parent
+                    content: "qr_code"
+                    iconSize: 16
+                    color: qrArea.containsMouse ? Colors.primaryText : Colors.surfaceText
+                }
+                MouseArea {
+                    id: qrArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked:root.qrCode(root.network)
+                }
+            }
+        }
+
+        Loader{
+            active: handler.hovered
+            visible: active
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            sourceComponent: Rectangle {
+                anchors.fill: parent
+                radius: width
+                color: area.containsMouse ? Colors.primary : "transparent"
+
+                MaterialIconSymbol{
+                    anchors.centerIn: parent
+                    content: "info"
+                    iconSize: 16
+                    color: area.containsMouse ? Colors.primaryText : Colors.surfaceText
+                }
+
+                MouseArea {
+                    id: area
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked:root.click(root.network)
                 }
             }
         }

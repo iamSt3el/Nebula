@@ -8,6 +8,8 @@ import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
 import Qt.labs.platform
+import "../../MatrialShapes/" as MaterialShapes
+import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
 Item{
     id: root
@@ -70,15 +72,44 @@ Item{
                 Layout.fillWidth: true
                 Layout.preferredHeight: 90
                 spacing: 10
-                ClippingWrapperRectangle{
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: 90
-                    radius: 20
+                // ClippingWrapperRectangle{
+                //     Layout.fillHeight: true
+                //     Layout.preferredWidth: 90
+                //     radius: 20
+                //     Image{
+                //         anchors.fill: parent
+                //         sourceSize: Qt.size(width, height)
+                //         source: Settings.profile
+                //     }
+                // }
+                Item{
+                    Layout.preferredWidth: 90    
+                    Layout.preferredHeight: 90
+                    MaterialShapes.ShapeCanvas{
+                        id: artMask
+                        anchors.fill: parent
+                        roundedPolygon: MaterialShapeFn.getPill()
+                        color: Colors.primary
+                    }
+
                     Image{
+                        id: profileArt
                         anchors.fill: parent
                         sourceSize: Qt.size(width, height)
                         source: Settings.profile
+                        fillMode: Image.PreserveAspectCrop
+                        visible: false
+                        layer.enabled: true
                     }
+                    MultiEffect{
+                        source: profileArt
+                        anchors.fill: profileArt
+                        maskEnabled: true
+                        maskSource: artMask
+                        maskThresholdMin: 0.5
+                        maskSpreadAtMin: 1.0
+                    }
+
                 }
 
                 ColumnLayout{
@@ -97,31 +128,54 @@ Item{
                         color: Colors.outline
                     }
 
-                    Rectangle{
+                    RowLayout{
                         Layout.fillWidth: true
                         Layout.preferredHeight: 30
-                        radius: 10
-                        color: Colors.surfaceContainerHighest
-                        CustomText{
-                            anchors.left: parent.left
-                            anchors.leftMargin: 5
-                            anchors.verticalCenter: parent.verticalCenter
-                            content: Settings.profile
-                            size: 12
+                        spacing: 4
+                        Rectangle{
+                            Layout.fillHeight: true
+                            Layout.fillWidth: true
+                            topLeftRadius: 15
+                            bottomLeftRadius: 15
+                            topRightRadius: 5
+                            bottomRightRadius: 5
+                            color: Colors.surfaceContainerHighest
+                            CustomText{
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                content: Settings.profile
+                                size: 12
+                            }
+                        }
+
+                        CustomButton{
+                            Layout.fillHeight: true
+                            Layout.preferredWidth: 40
+                            topLeftRadius: 5
+                            bottomLeftRadius: 5
+                            topRightRadius: 15
+                            bottomRightRadius: 15
+                            icon: "image"
+                            iconSize: 18
                         }
                     }
                 }
-
-                Item{
-                    Layout.fillWidth: true
-                }
             }
-            Rectangle{
+            // Rectangle{
+            //     Layout.topMargin: 10
+            //     Layout.bottomMargin: 10
+            //     Layout.fillWidth: true
+            //     Layout.preferredHeight: 1
+            //     color: Colors.outline
+            // }
+            CustomSpermSeparator{
                 Layout.topMargin: 10
                 Layout.bottomMargin: 10
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
+                Layout.preferredHeight: 6
                 color: Colors.outline
+                frequency: 16
             }
 
             CustomText{
@@ -174,12 +228,20 @@ Item{
                 }
 
             }
-            Rectangle{
+            // Rectangle{
+            //     Layout.topMargin: 10
+            //     Layout.bottomMargin: 10
+            //     Layout.fillWidth: true
+            //     Layout.preferredHeight: 1
+            //     color: Colors.outline
+            // }
+             CustomSpermSeparator{
                 Layout.topMargin: 10
                 Layout.bottomMargin: 10
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
+                Layout.preferredHeight: 6
                 color: Colors.outline
+                frequency: 16
             }
 
             CustomText{
@@ -277,12 +339,20 @@ Item{
                 }
             }
 
-            Rectangle{
+            // Rectangle{
+            //     Layout.topMargin: 10
+            //     Layout.bottomMargin: 10
+            //     Layout.fillWidth: true
+            //     Layout.preferredHeight: 1
+            //     color: Colors.outline
+            // }
+             CustomSpermSeparator{
                 Layout.topMargin: 10
                 Layout.bottomMargin: 10
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
+                Layout.preferredHeight: 6
                 color: Colors.outline
+                frequency: 16
             }
 
             CustomText{
@@ -385,7 +455,7 @@ Item{
                 }
 
                 CustomSpinBox{
-                    Layout.preferredWidth: 120
+                    Layout.preferredWidth: 100
                     Layout.preferredHeight: 30
                     val: Settings.musicVisBars
 
@@ -396,12 +466,20 @@ Item{
 
 
             }
-            Rectangle{
+            // Rectangle{
+            //     Layout.topMargin: 10
+            //     Layout.bottomMargin: 10
+            //     Layout.fillWidth: true
+            //     Layout.preferredHeight: 1
+            //     color: Colors.outline
+            // }
+             CustomSpermSeparator{
                 Layout.topMargin: 10
                 Layout.bottomMargin: 10
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
+                Layout.preferredHeight: 6
                 color: Colors.outline
+                frequency: 16
             }
         }
     }  

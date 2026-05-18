@@ -102,12 +102,11 @@ Item{
             roundedPolygon: MaterialShapesFn.getGem()
 
 
-            CustomIconImage{
+            MaterialIconSymbol{
                 anchors.centerIn: parent
-                icon: ServiceWeather.weatherIconPath
                 color: Colors.primaryText
-                size: 100
-                bright: 1
+                content: ServiceWeather.weatherIconPath
+                iconSize: 80
             }
 
         }
