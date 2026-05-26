@@ -42,12 +42,8 @@ quickshell -p ~/.config/quickshell
 ---
 
 ## ✅ TODOs
-
-- [ ] Multi-monitor support
-- [ ] More theme/color options
-- [ ] Config file for easy customization
-- [ ] Wallpaper blur toggle
-- [ ] Weather widget improvements
+- [x] Config file for easy customization
+- [x] Weather widget and weather panel
 - [x] App launcher
 - [x] Notification system
 - [x] Music visualizer
