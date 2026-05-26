@@ -18,98 +18,133 @@ Singleton {
     property var currentCondition: null
     property var locationData: null
     property var astronomy: null
-
-    // Aqi data
-    property var currentAqi: null
+    property var hourlyForecast: []
+    property var forecastDays: []
 
     // Convenient properties
     readonly property string temperature: currentCondition ?
-    (useMetric ? currentCondition.temp_C + "°C" : currentCondition.temp_F + "°F") : "0°C"
+        (useMetric ? currentCondition.temp_C + "°" : currentCondition.temp_F + "°") : "0°"
     readonly property string feelsLike: currentCondition ?
-    (useMetric ? currentCondition.FeelsLikeC + "°C" : currentCondition.FeelsLikeF + "°F") : "N/A"
-    readonly property string humidity: currentCondition ? currentCondition.humidity + "%" : "N/A"
+        (useMetric ? currentCondition.FeelsLikeC + "°" : currentCondition.FeelsLikeF + "°") : "N/A"
+    readonly property real humidity: currentCondition ? currentCondition.humidity : 0
     readonly property string description: currentCondition ? currentCondition.weatherDesc[0].value : "No data"
     readonly property string weatherCode: currentCondition ? currentCondition.weatherCode : "113"
     readonly property string cityName: locationData ? locationData.areaName[0].value : "Unknown"
     readonly property string windSpeed: currentCondition ? currentCondition.windspeedKmph + " km/h" : "N/A"
+    readonly property real windDegree: currentCondition ? currentCondition.winddirDegree : 0
+    readonly property string windDirection: currentCondition ? currentCondition.winddir16Point : "N/A"
     readonly property string cloudcover: currentCondition ? currentCondition.cloudcover + "%" : "N/A"
-    readonly property string uvindex: currentCondition ? currentCondition.uvIndex : "N/A";
-    readonly property string visibility: currentCondition ? currentCondition.visibility + " km" : "N/A";
-    readonly property real aqi: currentAqi ? calculateAQI(currentAqi) : 0 ;
+    readonly property string uvindex: currentCondition ? currentCondition.uvIndex : "N/A"
+    readonly property string visibility: currentCondition ? currentCondition.visibility : "N/A"
+    readonly property string precipitation: currentCondition ? currentCondition.precipInches : "N/A"
+    readonly property real currentPressure: currentCondition ? currentCondition.pressure : min_pressure
+    readonly property string pressureInches: currentCondition ? currentCondition.pressureInches : "N/A"
+
+    readonly property real min_pressure: 960
+    readonly property real max_pressure: 1060
+
+    // progress 0.0 → 1.0
+    readonly property real pressure: (currentPressure - min_pressure) / (max_pressure - min_pressure)
+
+    function mapHourly(h) {
+        return {
+            time:          formatHourlyTime(h.time),
+            tempC:         h.tempC + "°",
+            tempF:         h.tempF + "°",
+            feelsLikeC:    h.FeelsLikeC + "°",
+            feelsLikeF:    h.FeelsLikeF + "°",
+            humidity:      h.humidity,
+            weatherCode:   h.weatherCode,
+            description:   h.weatherDesc[0].value.trim(),
+            chanceofrain:  h.chanceofrain,
+            windspeedKmph: h.windspeedKmph,
+            uvIndex:       h.uvIndex
+        }
+    }
+
+    function getHourlyForDay(dayIndex) {
+        if (!forecastDays || forecastDays.length <= dayIndex) return []
+        const day = forecastDays[dayIndex]
+        if (!day || !day.hourly) return []
+
+        const now = new Date()
+        const currentTotalMinutes = now.getHours() * 60 + now.getMinutes()
+
+        const filtered = day.hourly
+            .filter(h => {
+                const hours = Math.floor(parseInt(h.time) / 100)
+                return dayIndex > 0 || (hours * 60) >= currentTotalMinutes
+            })
+            .map(mapHourly)
+
+        if (dayIndex === 0 && currentCondition) {
+            const current = {
+                time:          "Now",
+                tempC:         currentCondition.temp_C + "°",
+                tempF:         currentCondition.temp_F + "°",
+                feelsLikeC:    currentCondition.FeelsLikeC + "°",
+                feelsLikeF:    currentCondition.FeelsLikeF + "°",
+                humidity:      currentCondition.humidity,
+                weatherCode:   currentCondition.weatherCode,
+                description:   currentCondition.weatherDesc[0].value.trim(),
+                chanceofrain:  currentCondition.chanceofrain ?? "0",
+                windspeedKmph: currentCondition.windspeedKmph,
+                uvIndex:       currentCondition.uvIndex
+            }
+
+            const combined = [current].concat(filtered)
+
+            if (combined.length < 8 && forecastDays.length > 1) {
+                const nextDay = forecastDays[1]
+                if (nextDay && nextDay.hourly) {
+                    const needed = 8 - combined.length
+                    const nextDaySlots = nextDay.hourly.slice(0, needed).map(mapHourly)
+                    return combined.concat(nextDaySlots)
+                }
+            }
+
+            return combined
+        }
+
+        // For dayIndex > 0, pad from next day if under 8
+        if (filtered.length < 8 && forecastDays.length > dayIndex + 1) {
+            const nextDay = forecastDays[dayIndex + 1]
+            if (nextDay && nextDay.hourly) {
+                const needed = 8 - filtered.length
+                const nextDaySlots = nextDay.hourly.slice(0, needed).map(mapHourly)
+                return filtered.concat(nextDaySlots)
+            }
+        }
+
+        return filtered
+    }
+
+    // Converts wttr "time" field (0, 300, 600 ... 2100) to readable "12 AM" format
+    function formatHourlyTime(timeVal) {
+        const t = parseInt(timeVal)
+        const hours = Math.floor(t / 100)
+        const ampm = hours >= 12 ? "PM" : "AM"
+        const h12 = hours % 12 === 0 ? 12 : hours % 12
+        return h12 + " " + ampm
+    }
+
+    readonly property var todayHourly: getHourlyForDay(0)
+    readonly property var tomorrowHourly: getHourlyForDay(1)
 
     Timer {
         id: refreshTimer
         interval: root.refreshInterval
         running: true
         repeat: true
-        onTriggered: {
-            root.fetchWeather()
-            root.fetchAqi()
-        }
-        Component.onCompleted:{
-            root.fetchWeather()
-            root.fetchAqi()
-
-        }
+        onTriggered: root.fetchWeather()
+        Component.onCompleted: root.fetchWeather()
     }
 
     function fetchWeather() {
         root.isLoading = true
         root.hasError = false
-
-        let command = `curl -s wttr.in/${location}?format=j1`
-
-        weatherProcess.command[2] = command
+        weatherProcess.command[2] = `curl -s wttr.in/${location}?format=j1`
         weatherProcess.running = true
-    }
-
-    function fetchAqi() {
-        root.isLoading = true
-        root.hasError = false
-
-        let command = `curl -s 'http://api.openweathermap.org/data/2.5/air_pollution?lat=31.2206734&lon=75.7696463&appid=30cf8519d65a1be0f9fa1ba838a4eac2'`
-
-        aqiProcess.command[2] = command
-        aqiProcess.running = true
-    }
-
-
-    Process{
-        id: aqiProcess
-        command: ["bash", "-c", ""]
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root.isLoading = false
-                if (text.length === 0) {
-                    //root.hasError = true
-                    return
-                }
-
-                try {
-                    const data = JSON.parse(text)
-
-
-                    if (data.list) {
-                        root.currentAqi = data.list[0].components
-                    }
-
-                    //root.hasError = false
-                } catch (e) {
-                    //root.hasError = true
-                    console.error("Weather data parse error:", e.message)
-                }
-            }
-        }
-
-        stderr: StdioCollector {
-            onStreamFinished: {
-                if (text.length > 0) {
-                    //root.hasError = true
-                }
-            }
-        }
-
     }
 
     Process {
@@ -133,8 +168,12 @@ Singleton {
                     if (data.nearest_area && data.nearest_area.length > 0) {
                         root.locationData = data.nearest_area[0]
                     }
-                    if (data.weather && data.weather.length > 0 && data.weather[0].astronomy) {
-                        root.astronomy = data.weather[0].astronomy[0]
+                    if (data.weather && data.weather.length > 0) {
+                        if (data.weather[0].astronomy) {
+                            root.astronomy = data.weather[0].astronomy[0]
+                        }
+                        root.forecastDays = data.weather
+                        root.hourlyForecast = data.weather[0].hourly
                     }
 
                     root.hasError = false
@@ -147,53 +186,39 @@ Singleton {
 
         stderr: StdioCollector {
             onStreamFinished: {
-                if (text.length > 0) {
-                    root.hasError = true
-                }
+                if (text.length > 0) root.hasError = true
             }
         }
     }
 
     function isNightTime() {
         if (!astronomy || !astronomy.sunrise || !astronomy.sunset) {
-            // Fallback to simple time check if no astronomy data
-            const now = new Date()
-            const hour = now.getHours()
+            const hour = new Date().getHours()
             return hour < 6 || hour >= 18
         }
 
         const now = new Date()
-        const currentHour = now.getHours()
-        const currentMinute = now.getMinutes()
-        const currentTime = currentHour * 60 + currentMinute // Convert to minutes
+        const currentTime = now.getHours() * 60 + now.getMinutes()
 
-        // Parse sunrise time (format: "06:30 AM")
-        const sunriseStr = astronomy.sunrise
-        const sunriseMatch = sunriseStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
-        if (!sunriseMatch) return currentHour < 6 || currentHour >= 18
+        function parseTime(str) {
+            const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+            if (!m) return null
+            let h = parseInt(m[1])
+            const min = parseInt(m[2])
+            const ap = m[3].toUpperCase()
+            if (ap === "PM" && h !== 12) h += 12
+            if (ap === "AM" && h === 12) h = 0
+            return h * 60 + min
+        }
 
-        let sunriseHour = parseInt(sunriseMatch[1])
-        const sunriseMinute = parseInt(sunriseMatch[2])
-        const sunriseAMPM = sunriseMatch[3].toUpperCase()
+        const sunriseTime = parseTime(astronomy.sunrise)
+        const sunsetTime  = parseTime(astronomy.sunset)
 
-        if (sunriseAMPM === "PM" && sunriseHour !== 12) sunriseHour += 12
-        if (sunriseAMPM === "AM" && sunriseHour === 12) sunriseHour = 0
-        const sunriseTime = sunriseHour * 60 + sunriseMinute
+        if (sunriseTime === null || sunsetTime === null) {
+            const hour = now.getHours()
+            return hour < 6 || hour >= 18
+        }
 
-        // Parse sunset time (format: "07:45 PM")
-        const sunsetStr = astronomy.sunset
-        const sunsetMatch = sunsetStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
-        if (!sunsetMatch) return currentHour < 6 || currentHour >= 18
-
-        let sunsetHour = parseInt(sunsetMatch[1])
-        const sunsetMinute = parseInt(sunsetMatch[2])
-        const sunsetAMPM = sunsetMatch[3].toUpperCase()
-
-        if (sunsetAMPM === "PM" && sunsetHour !== 12) sunsetHour += 12
-        if (sunsetAMPM === "AM" && sunsetHour === 12) sunsetHour = 0
-        const sunsetTime = sunsetHour * 60 + sunsetMinute
-
-        // It's night if current time is before sunrise or after sunset
         return currentTime < sunriseTime || currentTime >= sunsetTime
     }
 
@@ -201,139 +226,113 @@ Singleton {
         const isNight = isNightTime()
 
         const dayIconMap = {
-            "113": "clear_day", // Sunny
-            "116": "partly_cloudy_day", // Partly cloudy
-            "119": "cloud", // Cloudy
-            "122": "cloud", // Overcast
-            "143": "foggy", // Mist
-            "176": "rainy_light", // Patchy rain possible
-            "179": "weather_snowy", // Patchy snow possible
-            "182": "cloudy_snowing", // Patchy sleet possible
-            "185": "cloudy_snowing", // Patchy freezing drizzle possible
-            "200": "thunderstorm", // Thundery outbreaks possible
-            "227": "weather_snowy", // Blowing snow
-            "230": "weather_snowy", // Blizzard
-            "248": "foggy", // Fog
-            "260": "foggy", // Freezing fog
-            "263": "grain", // Patchy light drizzle
-            "266": "grain", // Light drizzle
-            "281": "grain", // Freezing drizzle
-            "284": "rainy", // Heavy freezing drizzle
-            "293": "rainy_light", // Patchy light rain
-            "296": "rainy_light", // Light rain
-            "299": "rainy", // Moderate rain at times
-            "302": "rainy", // Moderate rain
-            "305": "rainy_heavy", // Heavy rain at times
-            "308": "rainy_heavy", // Heavy rain
-            "311": "cloudy_snowing", // Light freezing rain
-            "314": "cloudy_snowing", // Moderate or heavy freezing rain
-            "317": "cloudy_snowing", // Light sleet
-            "320": "cloudy_snowing", // Moderate or heavy sleet
-            "323": "weather_snowy", // Patchy light snow
-            "326": "weather_snowy", // Light snow
-            "329": "weather_snowy", // Patchy moderate snow
-            "332": "weather_snowy", // Moderate snow
-            "335": "ac_unit", // Patchy heavy snow
-            "338": "ac_unit", // Heavy snow
-            "350": "ac_unit", // Ice pellets
-            "353": "rainy_light", // Light rain shower
-            "356": "rainy", // Moderate or heavy rain shower
-            "359": "rainy_heavy", // Torrential rain shower
-            "362": "cloudy_snowing", // Light sleet showers
-            "365": "cloudy_snowing", // Moderate or heavy sleet showers
-            "368": "weather_snowy", // Light snow showers
-            "371": "ac_unit", // Moderate or heavy snow showers
-            "374": "ac_unit", // Light showers of ice pellets
-            "377": "ac_unit", // Moderate or heavy showers of ice pellets
-            "386": "thunderstorm", // Patchy light rain with thunder
-            "389": "thunderstorm", // Moderate or heavy rain with thunder
-            "392": "thunderstorm", // Patchy light snow with thunder
-            "395": "thunderstorm"  // Moderate or heavy snow with thunder
+            "113": { icon: "clear_day",           svg: "sunny" },
+            "116": { icon: "partly_cloudy_day",   svg: "sunny_with_cloudy" },
+            "119": { icon: "cloud",               svg: "cloudy" },
+            "122": { icon: "cloud",               svg: "cloudy" },
+            "143": { icon: "foggy",               svg: "cloudy" },
+            "176": { icon: "rainy_light",         svg: "cloudy_with_rain" },
+            "179": { icon: "weather_snowy",       svg: "cloudy_with_snow" },
+            "182": { icon: "cloudy_snowing",      svg: "rain_with_snow" },
+            "185": { icon: "cloudy_snowing",      svg: "rain_with_snow" },
+            "200": { icon: "thunderstorm",        svg: "thunderstorms" },
+            "227": { icon: "weather_snowy",       svg: "blowing_snow" },
+            "230": { icon: "weather_snowy",       svg: "blizzard" },
+            "248": { icon: "foggy",               svg: "cloudy" },
+            "260": { icon: "foggy",               svg: "cloudy" },
+            "263": { icon: "grain",               svg: "drizzle" },
+            "266": { icon: "grain",               svg: "drizzle" },
+            "281": { icon: "grain",               svg: "drizzle" },
+            "284": { icon: "rainy",               svg: "cloudy_with_rain" },
+            "293": { icon: "rainy_light",         svg: "cloudy_with_rain" },
+            "296": { icon: "rainy_light",         svg: "cloudy_with_rain" },
+            "299": { icon: "rainy",               svg: "rain_with_cloudy" },
+            "302": { icon: "rainy",               svg: "rain_with_cloudy" },
+            "305": { icon: "rainy_heavy",         svg: "heavy_rain" },
+            "308": { icon: "rainy_heavy",         svg: "heavy_rain" },
+            "311": { icon: "cloudy_snowing",      svg: "sleet_hail" },
+            "314": { icon: "cloudy_snowing",      svg: "sleet_hail" },
+            "317": { icon: "cloudy_snowing",      svg: "rain_with_snow" },
+            "320": { icon: "cloudy_snowing",      svg: "rain_with_snow" },
+            "323": { icon: "weather_snowy",       svg: "cloudy_with_snow" },
+            "326": { icon: "weather_snowy",       svg: "cloudy_with_snow" },
+            "329": { icon: "weather_snowy",       svg: "heavy_snow" },
+            "332": { icon: "weather_snowy",       svg: "heavy_snow" },
+            "335": { icon: "ac_unit",             svg: "blizzard" },
+            "338": { icon: "ac_unit",             svg: "blizzard" },
+            "350": { icon: "ac_unit",             svg: "sleet_hail" },
+            "353": { icon: "rainy_light",         svg: "drizzle" },
+            "356": { icon: "rainy",               svg: "rain_with_cloudy" },
+            "359": { icon: "rainy_heavy",         svg: "heavy_rain" },
+            "362": { icon: "cloudy_snowing",      svg: "rain_with_snow" },
+            "365": { icon: "cloudy_snowing",      svg: "rain_with_snow" },
+            "368": { icon: "weather_snowy",       svg: "flurries" },
+            "371": { icon: "ac_unit",             svg: "heavy_snow" },
+            "374": { icon: "ac_unit",             svg: "sleet_hail" },
+            "377": { icon: "ac_unit",             svg: "sleet_hail" },
+            "386": { icon: "thunderstorm",        svg: "strong_thunderstorms" },
+            "389": { icon: "thunderstorm",        svg: "strong_thunderstorms" },
+            "392": { icon: "thunderstorm",        svg: "thunderstorms" },
+            "395": { icon: "thunderstorm",        svg: "blizzard" }
         }
 
         const nightIconMap = {
-            "113": "clear_night", // Clear night
-            "116": "partly_cloudy_night", // Partly cloudy night
-            "119": "cloud", // Cloudy night
-            "122": "cloud", // Overcast night
-            "143": "foggy", // Mist
-            "176": "rainy_light", // Patchy rain possible
-            "179": "weather_snowy", // Patchy snow possible
-            "182": "cloudy_snowing", // Patchy sleet possible
-            "185": "cloudy_snowing", // Patchy freezing drizzle possible
-            "200": "thunderstorm", // Thundery outbreaks possible
-            "227": "weather_snowy", // Blowing snow
-            "230": "weather_snowy", // Blizzard
-            "248": "foggy", // Fog
-            "260": "foggy", // Freezing fog
-            "263": "grain", // Patchy light drizzle
-            "266": "grain", // Light drizzle
-            "281": "grain", // Freezing drizzle
-            "284": "rainy", // Heavy freezing drizzle
-            "293": "rainy_light", // Patchy light rain
-            "296": "rainy_light", // Light rain
-            "299": "rainy", // Moderate rain at times
-            "302": "rainy", // Moderate rain
-            "305": "rainy_heavy", // Heavy rain at times
-            "308": "rainy_heavy", // Heavy rain
-            "311": "cloudy_snowing", // Light freezing rain
-            "314": "cloudy_snowing", // Moderate or heavy freezing rain
-            "317": "cloudy_snowing", // Light sleet
-            "320": "cloudy_snowing", // Moderate or heavy sleet
-            "323": "weather_snowy", // Patchy light snow
-            "326": "weather_snowy", // Light snow
-            "329": "weather_snowy", // Patchy moderate snow
-            "332": "weather_snowy", // Moderate snow
-            "335": "ac_unit", // Patchy heavy snow
-            "338": "ac_unit", // Heavy snow
-            "350": "ac_unit", // Ice pellets
-            "353": "rainy_light", // Light rain shower
-            "356": "rainy", // Moderate or heavy rain shower
-            "359": "rainy_heavy", // Torrential rain shower
-            "362": "cloudy_snowing", // Light sleet showers
-            "365": "cloudy_snowing", // Moderate or heavy sleet showers
-            "368": "weather_snowy", // Light snow showers
-            "371": "ac_unit", // Moderate or heavy snow showers
-            "374": "ac_unit", // Light showers of ice pellets
-            "377": "ac_unit", // Moderate or heavy showers of ice pellets
-            "386": "thunderstorm", // Patchy light rain with thunder
-            "389": "thunderstorm", // Moderate or heavy rain with thunder
-            "392": "thunderstorm", // Patchy light snow with thunder
-            "395": "thunderstorm"  // Moderate or heavy snow with thunder
+            "113": { icon: "clear_night",           svg: "clear_night" },
+            "116": { icon: "partly_cloudy_night",   svg: "cloudy_with_sunny" },
+            "119": { icon: "cloud",                 svg: "cloudy" },
+            "122": { icon: "cloud",                 svg: "cloudy" },
+            "143": { icon: "foggy",                 svg: "cloudy" },
+            "176": { icon: "rainy_light",           svg: "cloudy_with_rain" },
+            "179": { icon: "weather_snowy",         svg: "cloudy_with_snow" },
+            "182": { icon: "cloudy_snowing",        svg: "rain_with_snow" },
+            "185": { icon: "cloudy_snowing",        svg: "rain_with_snow" },
+            "200": { icon: "thunderstorm",          svg: "thunderstorms" },
+            "227": { icon: "weather_snowy",         svg: "blowing_snow" },
+            "230": { icon: "weather_snowy",         svg: "blizzard" },
+            "248": { icon: "foggy",                 svg: "cloudy" },
+            "260": { icon: "foggy",                 svg: "cloudy" },
+            "263": { icon: "grain",                 svg: "drizzle" },
+            "266": { icon: "grain",                 svg: "drizzle" },
+            "281": { icon: "grain",                 svg: "drizzle" },
+            "284": { icon: "rainy",                 svg: "cloudy_with_rain" },
+            "293": { icon: "rainy_light",           svg: "cloudy_with_rain" },
+            "296": { icon: "rainy_light",           svg: "cloudy_with_rain" },
+            "299": { icon: "rainy",                 svg: "rain_with_cloudy" },
+            "302": { icon: "rainy",                 svg: "rain_with_cloudy" },
+            "305": { icon: "rainy_heavy",           svg: "heavy_rain" },
+            "308": { icon: "rainy_heavy",           svg: "heavy_rain" },
+            "311": { icon: "cloudy_snowing",        svg: "sleet_hail" },
+            "314": { icon: "cloudy_snowing",        svg: "sleet_hail" },
+            "317": { icon: "cloudy_snowing",        svg: "rain_with_snow" },
+            "320": { icon: "cloudy_snowing",        svg: "rain_with_snow" },
+            "323": { icon: "weather_snowy",         svg: "cloudy_with_snow" },
+            "326": { icon: "weather_snowy",         svg: "cloudy_with_snow" },
+            "329": { icon: "weather_snowy",         svg: "heavy_snow" },
+            "332": { icon: "weather_snowy",         svg: "heavy_snow" },
+            "335": { icon: "ac_unit",               svg: "blizzard" },
+            "338": { icon: "ac_unit",               svg: "blizzard" },
+            "350": { icon: "ac_unit",               svg: "sleet_hail" },
+            "353": { icon: "rainy_light",           svg: "drizzle" },
+            "356": { icon: "rainy",                 svg: "rain_with_cloudy" },
+            "359": { icon: "rainy_heavy",           svg: "heavy_rain" },
+            "362": { icon: "cloudy_snowing",        svg: "rain_with_snow" },
+            "365": { icon: "cloudy_snowing",        svg: "rain_with_snow" },
+            "368": { icon: "weather_snowy",         svg: "flurries" },
+            "371": { icon: "ac_unit",               svg: "heavy_snow" },
+            "374": { icon: "ac_unit",               svg: "sleet_hail" },
+            "377": { icon: "ac_unit",               svg: "sleet_hail" },
+            "386": { icon: "thunderstorm",          svg: "strong_thunderstorms" },
+            "389": { icon: "thunderstorm",          svg: "strong_thunderstorms" },
+            "392": { icon: "thunderstorm",          svg: "thunderstorms" },
+            "395": { icon: "thunderstorm",          svg: "blizzard" }
         }
 
         const iconMap = isNight ? nightIconMap : dayIconMap
-        return iconMap[code] || (isNight ? "clear_night" : "clear_day")
-    }
-    function calculateAQI(c) {
-        var r = {
-            "pm2_5": [[0,30,0,50],[30.1,60,51,100],[60.1,90,101,200],[90.1,120,201,300],[120.1,250,301,400],[250.1,380,401,500]],
-            "pm10": [[0,50,0,50],[51,100,51,100],[101,250,101,200],[251,350,201,300],[351,430,301,400],[431,550,401,500]],
-            "no2": [[0,40,0,50],[41,80,51,100],[81,180,101,200],[181,280,201,300],[281,400,301,400],[401,800,401,500]],
-            "o3": [[0,50,0,50],[51,100,51,100],[101,168,101,200],[169,208,201,300],[209,748,301,400],[749,1000,401,500]],
-            "co": [[0,1000,0,50],[1001,2000,51,100],[2001,10000,101,200],[10001,17000,201,300],[17001,34000,301,400],[34001,50000,401,500]],
-            "so2": [[0,40,0,50],[41,80,51,100],[81,380,101,200],[381,800,201,300],[801,1600,301,400],[1601,2400,401,500]],
-            "nh3": [[0,200,0,50],[201,400,51,100],[401,800,101,200],[801,1200,201,300],[1201,1800,301,400],[1801,2400,401,500]]
-        };
-        var max = 0;
-        for (var p in r) {
-            if (!c[p]) continue;
-            for (var i = 0; i < r[p].length; i++) {
-                var b = r[p][i];
-                if (c[p] >= b[0] && c[p] <= b[1]) {
-                    var aqi = Math.round(((b[3] - b[2]) / (b[1] - b[0])) * (c[p] - b[0]) + b[2]);
-                    if (aqi > max) max = aqi;
-                    break;
-                }
-            }
-        }
-        return max;
+        return iconMap[code] || (isNight
+            ? { icon: "clear_night", svg: "clear_night" }
+            : { icon: "clear_day",   svg: "sunny" }
+        )
     }
 
-
-
-    readonly property string weatherIconPath: {
-        return getWeatherIcon(weatherCode)
-    }
+    readonly property var weatherIconPath: getWeatherIcon(weatherCode)
 }
-

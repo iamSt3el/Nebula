@@ -37,6 +37,76 @@ Item {
         visible: root.editMode
     }
 
+    Canvas {
+        id: outerVizShape
+        anchors.centerIn: parent
+        width: 540
+        height: 540
+        antialiasing: true
+
+        property real shapeRotation: 0
+        property color fillColor: Qt.alpha(Colors.primary, 0.4)
+
+        NumberAnimation on shapeRotation {
+            from: 0; to: 360
+            duration: 20000
+            loops: Animation.Infinite
+            running: ServiceMusic.isPlaying
+        }
+
+        onShapeRotationChanged: requestPaint()
+        onFillColorChanged: requestPaint()
+
+        Connections {
+            target: ServiceCava
+            function onCavaData12Changed() { outerVizShape.requestPaint() }
+        }
+
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.reset()
+            const cx = width / 2
+            const cy = height / 2
+
+            const scale      = Math.min(width, height) / 130
+            const baseOuterR = 44 * scale
+            const valleyR    = 35 * scale
+            const maxExt     = 25 * scale
+
+            const rotRad = shapeRotation * Math.PI / 180
+            const data   = ServiceCava.cavaData12
+            const verts  = []
+
+            for (let i = 0; i < 12; i++) {
+                const tipAngle = (Math.PI / 6  * (i + 1))     + rotRad
+                const valAngle = (Math.PI / 12 * (2 * i + 3)) + rotRad
+                const tipR     = baseOuterR + (data.length === 12 ? data[i] : 0) * maxExt
+
+                verts.push({ x: cx + tipR    * Math.cos(tipAngle),
+                y: cy + tipR    * Math.sin(tipAngle) })
+                verts.push({ x: cx + valleyR * Math.cos(valAngle),
+                y: cy + valleyR * Math.sin(valAngle) })
+            }
+
+            ctx.beginPath()
+            const last  = verts[verts.length - 1]
+            const first = verts[0]
+            ctx.moveTo((last.x + first.x) / 2, (last.y + first.y) / 2)
+
+            for (let i = 0; i < verts.length; i++) {
+                const cur  = verts[i]
+                const next = verts[(i + 1) % verts.length]
+                ctx.quadraticCurveTo(cur.x, cur.y,
+                (cur.x + next.x) / 2,
+                (cur.y + next.y) / 2)
+            }
+
+            ctx.closePath()
+            ctx.fillStyle = fillColor
+            ctx.fill()
+        }
+    }
+
     // ── Visualizer canvas ──────────────────────────────────────────
     Canvas {
         id: vizShape
@@ -198,11 +268,6 @@ Item {
             width: 300
             height: 300
             color: Qt.rgba(0, 0, 0, 0.55)
-
-     
-
-            
-
         }
 
     }

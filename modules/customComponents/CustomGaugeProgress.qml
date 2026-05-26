@@ -6,6 +6,7 @@ import qs.modules.customComponents
 
 Item {
     id: root
+    property bool showData: true
     property real progress: 0.0
     property real thickness: 4
     property real radius: Math.min(width, height) / 2 - thickness
@@ -101,25 +102,30 @@ Item {
         }
     }
 
-    ColumnLayout{
+    Loader{
+        active: root.showData
+        visible: active
         anchors.centerIn: parent
-        MaterialIconSymbol {
-            Layout.alignment: Qt.AlignCenter
-            content: root.icon
-            iconSize: root.iconSize
-            color: root.iconColor
-        }
-        CustomText{
-            Layout.alignment: Qt.AlignCenter
-            content: Math.round(root.progress * 100) + "%"
-            size: 18
-            color: Colors.primary
-        }
+        sourceComponent: ColumnLayout{
+            anchors.centerIn: parent
+            MaterialIconSymbol {
+                Layout.alignment: Qt.AlignCenter
+                content: root.icon
+                iconSize: root.iconSize
+                color: root.iconColor
+            }
+            CustomText{
+                Layout.alignment: Qt.AlignCenter
+                content: Math.round(root.progress * 100) + "%"
+                size: 18
+                color: Colors.primary
+            }
 
-        CustomText{
-            Layout.alignment: Qt.AlignCenter
-            content: "Used"
-            size: 14
+            CustomText{
+                Layout.alignment: Qt.AlignCenter
+                content: "Used"
+                size: 14
+            }
         }
     }
 }

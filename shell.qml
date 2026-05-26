@@ -17,6 +17,7 @@ import qs.modules.components.ShutdownWindow
 import qs.modules.customComponents
 import qs.modules.settings
 import qs.modules
+import qs.rubiksCube
 
 ShellRoot{
     DockPanel{}
@@ -47,14 +48,12 @@ ShellRoot{
         }
     }
 
-    //InputTest{}
+
 
     WidgetScreen{}
     
 
-
-
-    //CubeTest{}
+    CubeTest{}
     //Panel{}
     //ColorPicker{}
 

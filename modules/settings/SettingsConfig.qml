@@ -105,7 +105,7 @@ Singleton {
             })
 
             property var weather: ({
-                location: "Phagwara"
+                location: "Chirawa"
             })
         }
     }

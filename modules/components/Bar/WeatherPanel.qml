@@ -4,264 +4,608 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Effects
+import Quickshell.Widgets
 import qs.modules.customComponents
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
+import "../../MatrialShapes/" as MaterialShapes
+import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
-PopupWindow{
+Item{
     id: root
-    implicitWidth: 240
-    implicitHeight: child.implicitHeight
-    visible: true
-    color: "transparent"
-    signal close
+    anchors.fill: parent
+    signal closed
 
-    anchor{
-        window: layout
-        rect.x: utility.x
-        rect.y: utility.y + utility.height + 2
+
+    opacity:0
+    scale: 0.8
+
+    NumberAnimation on opacity{
+        from: 0
+        to: 1
+        duration: 400
+        running: true
     }
 
-    HyprlandFocusGrab{
-        id: focusGrab
-        active: true
-        windows: [QsWindow.window]
-        onCleared: root.close()
+
+    NumberAnimation on scale{
+        from: 0.8
+        to: 1
+        duration: 400
+        running: true
     }
 
-    Rectangle{
-        id: child
-        implicitWidth: parent.width
-        implicitHeight: col.implicitHeight + 40
-        scale: 0.8
-        opacity: 0
+    ColumnLayout{
+        anchors.fill: parent
+        anchors.margins: 10
+        spacing: 10
 
-        NumberAnimation on opacity{
-            from: 0
-            to: 1
-            duration: 100
-            running: true
-        }
+        RowLayout{
+            Layout.fillWidth: true
 
-        NumberAnimation on scale{
-            from: 0.8
-            to: 1
-            duration: 100
-            running: true
-        }
-
-        color: Settings.layoutColor
-        radius: 20
-
-        ColumnLayout{
-            id: col
-            anchors.fill: parent
-            anchors.margins: 20
-            spacing: 20
-
-            RowLayout{
+            Item{
                 Layout.fillWidth: true
-                Layout.rightMargin: 20
+                Layout.preferredHeight: 40
+                // CustomText{
+                //     anchors.centerIn: parent
+                //     content: ServiceWeather.location
+                //     size: 16
+                // }
+            }
+            Rectangle{
+                Layout.preferredWidth: 40
+                Layout.preferredHeight: 40
+                radius: 10
+                color: Colors.surfaceContainer
+
+                MaterialIconSymbol{
+                    anchors.centerIn: parent
+                    content: "close"
+                    iconSize: 20
+                }
+
+                MouseArea{
+                    anchors.fill: parent
+                    hoverEnabled: true 
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.closed()
+                }
+            }
+        }
+
+
+        MaterialShapes.ShapeCanvas{
+            Layout.alignment: Qt.AlignCenter
+            Layout.preferredWidth: 200
+            Layout.preferredHeight: 200
+            roundedPolygon: MaterialShapeFn.getPill()
+            color: Colors.primary
+
+            CustomText{
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.topMargin: 20
+                anchors.rightMargin: 20
+                content: ServiceWeather.temperature
+                size: 70
+                color: Colors.primaryText
+                weight: 900
+            }
+
+
+            Image{
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.bottomMargin: 20
+                anchors.leftMargin: 20
+                source: IconUtil.getSystemIcon(ServiceWeather.weatherIconPath.svg)
+                width: 80
+                height: 80
+                sourceSize: Qt.size(width, height) 
+            }
+        }
+        CustomText{
+            Layout.alignment: Qt.AlignCenter
+            content: ServiceWeather.description
+            size: 20
+        }
+
+        CustomText{
+            Layout.alignment: Qt.AlignCenter
+            content: "Feels like " + ServiceWeather.feelsLike
+            size: 20
+            color: Colors.outline
+        }
+        Item{
+            Layout.fillHeight: true
+        }
+        Rectangle{
+            Layout.fillWidth: true
+            Layout.preferredHeight: 200
+            color: Colors.surfaceContainer
+            radius: 20
+            clip: true
+
+            ColumnLayout{
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 10
+                RowLayout{
+                    MaterialIconSymbol{
+                        content: "schedule"
+                        iconSize: 20
+                    }
+                    CustomText{
+                        content: "Hourly forecast"
+                        size: 14
+                    }
+                }
+
+                ListView{
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                    orientation: Qt.Horizontal
+                    spacing: 10
+
+                    model: ServiceWeather.todayHourly
+                    delegate: Item{
+                        implicitHeight: parent.height
+                        implicitWidth: 50
+
+                        ColumnLayout{
+                            anchors.fill: parent
+                            anchors.topMargin: 10
+                            anchors.bottomMargin: 10
+
+                            Item{
+                                Layout.alignment: Qt.AlignCenter
+                                Layout.preferredWidth: 40
+                                Layout.preferredHeight: 40
+
+
+                                Loader{
+                                    active: index === 0
+                                    visible: active
+                                    anchors.fill: parent
+                                    sourceComponent:MaterialShapes.ShapeCanvas{
+                                        anchors.fill: parent
+                                        roundedPolygon: MaterialShapeFn.getCookie4Sided()
+                                        color: Colors.primary
+                                    }
+                                }
+
+                                CustomText{
+                                    anchors.centerIn: parent
+                                    content: modelData.tempC
+                                    size: 16
+                                    color:index === 0 ? Colors.primaryText : Colors.surfaceText
+                                }
+                            }
+                            Item{
+                                Layout.fillHeight: true
+                            }
+
+                            Image{
+                                Layout.alignment: Qt.AlignCenter
+                                source: IconUtil.getSystemIcon(ServiceWeather.getWeatherIcon(modelData.weatherCode).svg)
+                                width: 20
+                                height: 20
+                                sourceSize: Qt.size(width, height)
+                            }
+
+                            CustomText{
+                                Layout.alignment: Qt.AlignCenter
+                                content: modelData.chanceofrain + "%"
+                                size: 14
+                                color: Colors.primary
+                            }
+                            Item{
+                                Layout.fillHeight: true
+                            }
+                            CustomText{
+                                Layout.alignment: Qt.AlignCenter
+                                content: modelData.time
+                                size: 14
+                                color: Colors.outline
+                            }
+
+                        }
+                    }
+                }
+
+            }
+        }
+
+
+        RowLayout{
+            Layout.fillWidth: true 
+            spacing: 10
+
+            Rectangle{
+                Layout.preferredHeight: 160
+                Layout.fillWidth: true
+                radius: 20
+                color: Colors.surfaceContainer
 
                 ColumnLayout{
-                    spacing: 2
-                    CustomText{
-                        content: ServiceWeather.temperature
-                        size: 24
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 10
+
+                    RowLayout{
+
+                        MaterialIconSymbol{
+                            content: "rainy_heavy"
+                            iconSize: 20
+                        }
+
+                        CustomText{
+                            content: "Precipitation"
+                            size: 16
+                        }
                     }
-                    CustomText{
-                        content: ServiceWeather.description
-                        size: 16
-                        color: Colors.outline
+                    RowLayout{
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        CustomText{
+                            content: ServiceWeather.precipitation
+                            size: 28
+                            color: Colors.primary
+                        }
+                        CustomText{
+                            Layout.alignment: Qt.AlignBottom
+                            Layout.bottomMargin: 5
+                            content: "in"
+                            size: 16
+                        }
                     }
 
-                    CustomText{
-                        content: "Feels like " + ServiceWeather.feelsLike
-                        size: 14
-                        color: Colors.outline
+                    RowLayout{
+                        Layout.fillWidth: true
+                        CustomText{
+                            Layout.preferredWidth: 80
+                            content: "Total rain for the day"
+                            size: 14
+                            elide: Text.ElideNone
+                            wrapMode: Text.WordWrap
+
+                        }
+                        Item{
+                            Layout.fillWidth: true
+                        }
+
+                        // MaterialIconSymbol{
+                        //     content: "rainy"
+                        //     iconSize: 40
+                        // }
+                        Image{
+                            width: 40
+                            height: 40
+                            sourceSize: Qt.size(width, height)
+                            source: IconUtil.getSystemIcon("heavy_rain")
+                        }
                     }
 
-                }
-                Item{
-                    Layout.fillWidth: true
-                }
-                MaterialIconSymbol{
-                    content: ServiceWeather.weatherIconPath
-                    iconSize: 50
                 }
             }
 
-            // Rectangle{
-            //     Layout.fillWidth: true
-            //     Layout.preferredHeight: 1
-            //     color: Colors.outline
-            // }
-
-            // RowLayout{
-            //     Layout.fillWidth: true
-            //     spacing: 4
-            //
-            //     ColumnLayout{
-            //         Layout.fillWidth: true
-            //         CustomIconImage{
-            //             Layout.alignment: Qt.AlignCenter
-            //             icon: "wi-humidity"
-            //             size: 20
-            //             bright: 1
-            //         }
-            //
-            //         CustomText{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: ServiceWeather.humidity
-            //             size: 14
-            //         }
-            //         CustomText{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: "Humidity"
-            //             size: 12
-            //             color: Colors.outline
-            //             weight: 600
-            //         }
-            //     }
-            //
-            //
-            //     Item{
-            //         Layout.fillWidth: true
-            //     }
-            //
-            //
-            //
-            //     ColumnLayout{
-            //         Layout.fillWidth: true
-            //         CustomIconImage{
-            //             Layout.alignment: Qt.AlignCenter
-            //             icon: "wi-cloudy"
-            //             size: 20
-            //             bright: 1
-            //         }
-            //
-            //         CustomText{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: ServiceWeather.cloudcover
-            //             size: 14
-            //         }
-            //         CustomText{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: "Cloud Cover"
-            //             size: 12
-            //             color: Colors.outline
-            //             weight: 600
-            //         }
-            //     }
-            //     Item{
-            //         Layout.fillWidth: true
-            //     }
-            //
-            //     ColumnLayout{
-            //         Layout.fillWidth: true
-            //         CustomIconImage{
-            //             Layout.alignment: Qt.AlignCenter
-            //             icon: "wi-windy"
-            //             size: 20
-            //             bright: 1
-            //         }
-            //
-            //         CustomText{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: ServiceWeather.windSpeed
-            //             size: 14
-            //         }
-            //         CustomText{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: "Wind Speed"
-            //             size: 12
-            //             color: Colors.outline
-            //             weight: 600
-            //         }
-            //     }
-            // }
+            Rectangle{
+                Layout.preferredHeight: 160
+                Layout.preferredWidth: 160
+                radius: width / 2
+                color: Colors.surfaceContainer
 
 
-            // RowLayout{
-            //     Layout.fillWidth: true
-            //     spacing: 0
-            //     ColumnLayout{
-            //         Layout.fillWidth: true
-            //         MaterialIconSymbol{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: "skull"
-            //             iconSize: 22
-            //         }
-            //
-            //         CustomText{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: ServiceWeather.aqi
-            //             size: 14
-            //         }
-            //         CustomText{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: "     AQI     "
-            //             size: 12
-            //             color: Colors.outline
-            //             weight: 600
-            //         }
-            //     }
-            //
-            //     Item{
-            //         Layout.fillWidth: true
-            //     }
-            //
-            //     ColumnLayout{
-            //         Layout.fillWidth: true
-            //         MaterialIconSymbol{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: "visibility"
-            //             iconSize: 22
-            //         }
-            //
-            //         CustomText{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: ServiceWeather.visibility
-            //             size: 14
-            //         }
-            //         CustomText{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: "Visibility"
-            //             size: 12
-            //             color: Colors.outline
-            //             weight: 600
-            //         }
-            //     }
-            //
-            //     Item{
-            //         Layout.fillWidth: true
-            //     }
-            //
-            //     ColumnLayout{
-            //         Layout.fillWidth: true
-            //         CustomIconImage{
-            //             Layout.alignment: Qt.AlignCenter
-            //             icon: "wi-day-sunny"
-            //             size: 22
-            //             bright: 1
-            //         }
-            //
-            //         CustomText{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: ServiceWeather.uvindex
-            //             size: 14
-            //         }
-            //         CustomText{
-            //             Layout.alignment: Qt.AlignCenter
-            //             content: "UV Index"
-            //             size: 12
-            //             color: Colors.outline
-            //             weight: 600
-            //         }
-            //     }
-            // }
+                MaterialShapes.ShapeCanvas{
+                    rotation: ServiceWeather.windDegree
+                    anchors.centerIn: parent
+                    implicitHeight: 150
+                    implicitWidth: 135
+                    roundedPolygon: MaterialShapeFn.getArrow()
+                    color: Qt.alpha(Colors.primary, 0.8)
+                }
+
+                ColumnLayout{
+                    anchors.centerIn: parent
+                    spacing: 20
+
+                    RowLayout{
+                        Layout.alignment: Qt.AlignCenter
+
+                        MaterialIconSymbol{
+                            content: "air"
+                            iconSize: 20
+                        }
+
+                        CustomText{
+                            content: "Wind"
+                            size: 16
+                        }
+                    }
+
+                    CustomText{
+                        Layout.alignment: Qt.AlignCenter
+                        content: ServiceWeather.windSpeed
+                        size: 20
+                    }
+
+                    CustomText{
+                        Layout.alignment: Qt.AlignCenter
+                        content: "From " + ServiceWeather.windDirection
+                        size: 14
+                    }
+                }
+            }
         }
+
+        RowLayout{
+            Layout.fillWidth: true 
+            spacing: 10
+
+            Rectangle{
+                Layout.preferredHeight: 160
+                Layout.fillWidth: true
+                radius: 20
+                color: Colors.surfaceContainer
+
+                ColumnLayout{
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 30
+
+                    RowLayout{
+                        MaterialIconSymbol{
+                            content: "wb_twilight"
+                            iconSize: 20
+                        }
+
+                        CustomText{
+                            content: "Sunrise & sunset"
+                            size: 16
+                        }
+                    }
+
+
+
+                    Item{
+                        Layout.fillHeight: true
+                    }
+
+
+                }
+
+                Rectangle{
+                    implicitWidth: parent.width
+                    implicitHeight: 80
+                    anchors.bottom: parent.bottom
+                    color: Qt.alpha(Colors.surface, 0.5)
+
+                    Rectangle{
+                        anchors.top: parent
+                        implicitWidth: parent.width
+                        implicitHeight: 1
+                        color: Colors.outline
+                    }
+
+                    ColumnLayout{
+                        anchors.centerIn: parent
+
+                        RowLayout{
+                            MaterialIconSymbol{
+                                content: "sunny"
+                                iconSize: 20
+                            }
+                            CustomText{
+                                content: ServiceWeather.astronomy.sunrise
+                                size: 14
+                            }
+                        }
+
+                        RowLayout{
+                            MaterialIconSymbol{
+                                content: "wb_twilight"
+                                iconSize: 20
+                            }
+                            CustomText{
+                                content: ServiceWeather.astronomy.sunset
+                                size: 14
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle{
+                Layout.preferredWidth: 160
+                Layout.preferredHeight: 160
+                radius: width / 2
+                color: Colors.surfaceContainer
+
+                MaterialShapes.ShapeCanvas{
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    roundedPolygon: MaterialShapeFn.getCookie12Sided()
+                    color: Qt.alpha(Colors.primary, 0.5)
+                }
+
+                ColumnLayout{
+                    anchors.centerIn: parent
+                    spacing: 10
+                    RowLayout{
+                        spacing: 2
+                        MaterialIconSymbol{
+                            content: "visibility"
+                            iconSize: 20
+                        }
+                        CustomText{
+                            content: "Visibility"
+                            size: 14
+                        }
+                    }
+
+                    RowLayout{
+                        Layout.alignment: Qt.AlignCenter
+                        spacing: 5
+                        CustomText{
+                            content: ServiceWeather.visibility
+                            size: 40
+                            color: Colors.primaryText
+                        }
+                        CustomText{
+                            Layout.alignment: Qt.AlignBottom
+                            Layout.bottomMargin: 10
+                            content: "km"
+                            size: 16
+                        }
+                    }
+
+                    Item{
+                        Layout.fillHeight: true
+                    }
+
+                }
+            }
+
+        }
+
+        RowLayout{
+            Layout.fillWidth: true 
+            spacing: 10
+
+            ClippingWrapperRectangleInternal{
+                Layout.preferredHeight: 160
+                Layout.fillWidth: true
+                radius: 20
+                color: Colors.surfaceContainer
+
+
+                Canvas {
+                    id: wave
+                    property color color: Qt.alpha(Colors.primary, 0.5)
+                    property real amplitude: 3
+                    property real frequency: 6
+                    property real lineWidth: 0
+                    anchors.bottom: parent.bottom
+                    implicitWidth: parent.width
+                    implicitHeight: parent.height * ServiceWeather.humidity / 100
+
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.clearRect(0, 0, width, height)
+
+                        var waveY
+
+                        // --- draw the filled wavy rectangle ---
+                        ctx.beginPath()
+
+                        // 1. trace the wave across the top
+                        for (var x = 0; x <= width; x += 1) {
+                            waveY = amplitude + amplitude * Math.sin(frequency * 2 * Math.PI * x / width)
+                            if (x === 0)
+                            ctx.moveTo(x, waveY)
+                            else
+                            ctx.lineTo(x, waveY)
+                        }
+
+                        // 2. go down to bottom-right
+                        ctx.lineTo(width, height)
+
+                        // 3. go to bottom-left
+                        ctx.lineTo(0, height)
+
+                        // 4. close back to wave start
+                        ctx.closePath()
+
+                        ctx.fillStyle = wave.color
+                        ctx.fill()
+
+
+                    }
+                }
+
+                ColumnLayout{
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 30
+
+                    RowLayout{
+                        MaterialIconSymbol{
+                            content: "humidity_low"
+                            iconSize: 20
+                        }
+
+                        CustomText{
+                            content: "Humidity"
+                            size: 16
+                        }
+                    }
+
+                    CustomText{
+                        content: ServiceWeather.humidity + "%"
+                        size: 40
+                        color: Colors.primary
+                        weight: 700
+                    }
+
+                    Item{
+                        Layout.fillHeight: true
+                    }
+                }
+            }
+
+            Rectangle{
+                Layout.preferredHeight: 160
+                Layout.preferredWidth: 160
+                radius: width / 2
+                color: Colors.surfaceContainer
+
+                CustomGaugeProgress {
+                    anchors.centerIn: parent
+                    width: 150
+                    height: 150
+                    progress: ServiceWeather.pressure
+                    thickness: 8
+                    gap: 0.1
+                    showData: false
+                    sperm: false
+
+                    ColumnLayout{
+                        anchors.centerIn: parent
+                        spacing: 4
+
+                        RowLayout{
+                            spacing: 2
+                            MaterialIconSymbol{
+                                content: "compress"
+                                iconSize: 20
+                            }
+                            CustomText{
+                                content: "Pressure"
+                                size: 14
+                            }
+                        }
+
+                        CustomText{
+                            Layout.alignment: Qt.AlignCenter
+                            content: ServiceWeather.pressureInches
+                            size: 30
+                            color: Colors.primary
+                            weight: 700
+                        }
+
+                        CustomText{
+                            Layout.alignment: Qt.AlignCenter
+                            content: "in"
+                            size: 18
+                        }
+                    }
+                }
+            }
+        }
+
+
     }
 }
+
 

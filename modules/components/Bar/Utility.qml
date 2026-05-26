@@ -22,7 +22,7 @@ Item{
     property bool isNotificationClicked: false
     property bool isSoundPanelClicked: false
     property bool isBatteryInfoClicked: false
-    property bool isTodoClicked: false
+    property bool isWeatherPanelClicked: false
     property bool isDashboard: height > 900
 
     onIsClickedChanged:{
@@ -43,6 +43,17 @@ Item{
             utility.implicitWidth = row.width + 20
             utility.implicitHeight = Appearance.size.barHeight
         }
+    }
+
+    onIsWeatherPanelClickedChanged:{
+        if(utility.isWeatherPanelClicked){
+            utility.implicitWidth = Appearance.size.weatherPanelWidth
+            utility.implicitHeight = Appearance.size.weatherPanelHeight
+        }else{
+            utility.implicitWidth = row.width + 20
+            utility.implicitHeight = Appearance.size.barHeight
+        }
+
     }
 
     // onIsBatteryInfoClickedChanged:{
@@ -103,27 +114,28 @@ Item{
                 }
             }
         }
-        //
-        // Loader{
-        //     id: batteryInfo
-        //     active: utility.isBatteryInfoClicked
-        //     visible: false
-        //     anchors.fill: parent
-        //     Timer{
-        //         interval: Appearance.duration.normal
-        //         running: utility.isBatteryInfoClicked
-        //         onTriggered:{
-        //             batteryInfo.visible = true
-        //         }
-        //     }
-        //     sourceComponent:BatteryInfo{
-        //         onClose: {
-        //             utility.isBatteryInfoClicked = false
-        //             batteryInfo.visible = false
-        //         }
-        //     }
-        // }
-        //
+
+        Loader{
+            id: weatherLoader
+            active: utility.isWeatherPanelClicked
+            anchors.fill: parent
+            visible: false
+            Timer{
+                interval: Appearance.duration.normal 
+                running: utility.isWeatherPanelClicked
+                onTriggered:{
+                    weatherLoader.visible = true
+                }
+            }
+            sourceComponent: WeatherPanel{
+                id: weatherCenter
+                onClosed: {
+                    utility.isWeatherPanelClicked = false
+                    weatherLoader.visible = false
+                }
+            }
+        }
+
         Loader{
             id: dashboardLoader
             active: utility.isClicked
@@ -168,6 +180,7 @@ Item{
 
             Weather{
                 Layout.preferredHeight: Appearance.size.widgetHeight
+                onClicked: utility.isWeatherPanelClicked = true
             }
 
             Rectangle{

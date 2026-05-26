@@ -22,9 +22,9 @@ PanelWindow{
 
     // Temperature{
     // } 
-     CircularMusicPlayer{
-    
-     }
+    CircularMusicPlayer{
+
+    }
 
 
 }

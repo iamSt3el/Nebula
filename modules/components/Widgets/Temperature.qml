@@ -54,100 +54,57 @@ Item{
         radius: 12
         visible: root.editMode
     }
-    MaterialShapes.ShapeCanvas{
+    Rectangle{
         anchors.centerIn: parent
         implicitWidth: 300
-        implicitHeight: 300
-        color: Colors.surface
-        roundedPolygon: MaterialShapesFn.getCookie6Sided()
+        implicitHeight: 70
+        color: Colors.primary
+        radius: 30
 
 
 
-        MaterialShapes.ShapeCanvas{
-            anchors.centerIn: parent
-            implicitWidth: 260
-            implicitHeight: 260
-            color: Colors.surfaceContainer
-            roundedPolygon: MaterialShapesFn.getCookie6Sided()
+        RowLayout{
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 10
 
-
-        }
-
-        MaterialShapes.ShapeCanvas{
-            anchors.centerIn: parent
-            implicitWidth: 220
-            implicitHeight: 220
-            color: Colors.surfaceContainerHigh
-            roundedPolygon: MaterialShapesFn.getCookie6Sided()
-
-
-        }
-
-        MaterialShapes.ShapeCanvas{
-            anchors.centerIn: parent
-            implicitWidth: 180
-            implicitHeight: 180
-            color: Colors.surfaceContainerHighest
-            roundedPolygon: MaterialShapesFn.getCookie6Sided()
-
-
-        }
-
-        MaterialShapes.ShapeCanvas{
-            x: -50
-            y: -50
-            implicitWidth: 200
-            implicitHeight: 200
-            color: Colors.primary
-            roundedPolygon: MaterialShapesFn.getGem()
-
-
-            MaterialIconSymbol{
-                anchors.centerIn: parent
+            Rectangle{
+                Layout.preferredHeight: 50
+                Layout.preferredWidth: 50
+                radius: width / 2
                 color: Colors.primaryText
-                content: ServiceWeather.weatherIconPath
-                iconSize: 80
+
+                MaterialIconSymbol{
+                    anchors.centerIn: parent
+                    content: ServiceWeather.weatherIconPath
+                    iconSize: 30
+                    color: Colors.primary
+                }
             }
 
-        }
+            Rectangle{
+                Layout.preferredHeight: 50
+                Layout.fillWidth: true
+                radius: width / 2
+                color: Colors.primaryText
 
+                RowLayout{
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.leftMargin: 20
+                    spacing: 20
+                    CustomText{
+                        content: ServiceWeather.temperature
+                        size: 24
+                        color: Colors.primary
+                    }
 
-        // MaterialShapes.ShapeCanvas{
-        //     x: 180
-        //     y: -40
-        //     implicitWidth: 150
-        //     implicitHeight: 150
-        //     color: Colors.tertiary
-        //     roundedPolygon: MaterialShapesFn.getCookie12Sided()
-        //
-        //     CustomText{
-        //         anchors.centerIn: parent
-        //         content: ServiceWeather.description
-        //         size: 24
-        //         color: Colors.tertiaryText
-        //         font.family: "Titan One"
-        //         weight: 600
-        //
-        //     }
-        //
-        // }
-
-
-        MaterialShapes.ShapeCanvas{
-            x: 150
-            y: 150
-            implicitWidth: 160
-            implicitHeight: 160
-            color: Colors.error
-            roundedPolygon: MaterialShapesFn.getVerySunny()
-            CustomText{
-                anchors.centerIn: parent
-                content: ServiceWeather.temperature
-                size: 40
-                color: Colors.errorText
-                font.family: "Titan One"
-                weight: 600
-
+                    CustomText{
+                        content: ServiceWeather.description
+                        size: 16
+                        color: Colors.outline
+                    }
+                }
             }
         }
     }

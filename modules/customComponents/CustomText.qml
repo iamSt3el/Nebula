@@ -20,8 +20,6 @@ Text{
     font.family: family
 
 
-
-
     Behavior on color{
         ColorAnimation{
             duration: 200

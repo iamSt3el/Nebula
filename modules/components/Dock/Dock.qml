@@ -6,6 +6,8 @@ import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
 import qs.modules.services
+import "../../MatrialShapes/" as MaterialShapes
+import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
 Item {
     id: root
@@ -156,12 +158,7 @@ Item {
             }
         }
 
-        Rectangle {
-            Layout.fillHeight: true
-            Layout.preferredWidth: 2
-            color: Colors.outline
-            radius: 4
-        }
+        
         Loader{ 
             active: SettingsConfig.general.dockMusicPlayer
             visible: active
@@ -171,59 +168,11 @@ Item {
             DockMusicPlayer{}
         }
 
-
-
         // Rectangle {
-        //     Layout.preferredWidth: 40
-        //     Layout.preferredHeight: 40
-        //     color: typingArea.containsMouse ? Colors.surfaceContainerHighest : "transparent"
-        //     radius: 10
-        //     Behavior on color { ColorAnimation { duration: 100 } }
-        //     MaterialIconSymbol {
-        //         anchors.centerIn: parent
-        //         content: "keyboard"
-        //         iconSize: 28
-        //     }
-        //     MouseArea {
-        //         id: typingArea
-        //         anchors.fill: parent
-        //         hoverEnabled: true
-        //         cursorShape: Qt.PointingHandCursor
-        //         onClicked: {
-        //             GlobalStates.typingGameOpen = !GlobalStates.typingGameOpen
-        //             if (GlobalStates.typingGameOpen) {
-        //                 GlobalStates.clipboardOpen = false
-        //                 GlobalStates.wallpaperOpen = false
-        //             }
-        //         }
-        //     }
-        // }
-
-        // Rectangle {
-        //     Layout.preferredWidth: 40
-        //     Layout.preferredHeight: 40
-        //     color: area.containsMouse ? Colors.surfaceContainerHighest : "transparent"
-        //     radius: 10
-        //     Behavior on color{
-        //         ColorAnimation{
-        //             duration: 100
-        //         }
-        //     }
-        //     MaterialIconSymbol {
-        //         anchors.centerIn: parent
-        //         content: "apps"
-        //         iconSize: 40
-        //     }
-        //     MouseArea{
-        //         id: area
-        //         anchors.fill: parent
-        //         hoverEnabled: true
-        //         cursorShape: Qt.PointingHandCursor
-        //         onClicked:{
-        //             if(!GlobalStates.appLauncherOpen) GlobalStates.appLauncherOpen = true
-        //         }
-        //     }
+        //     Layout.fillHeight: true
+        //     Layout.preferredWidth: 2
+        //     color: Colors.outline
+        //     radius: 4
         // }
     }
-
 }

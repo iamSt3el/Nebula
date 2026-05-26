@@ -12,15 +12,15 @@ Rectangle{
     radius: 10
     color: Colors.surfaceContainerHigh
     implicitWidth: row.implicitWidth + 20
-    property bool isWeatherPanelClicked: false
+    signal clicked
 
-    Loader{
-        active: root.isWeatherPanelClicked
-        visible: active
-        sourceComponent: WeatherPanel{
-            onClose: root.isWeatherPanelClicked = false
-        }
-    }
+    // Loader{
+    //     active: root.isWeatherPanelClicked
+    //     visible: active
+    //     sourceComponent: WeatherPanel{
+    //         onClose: root.isWeatherPanelClicked = false
+    //     }
+    // }
 
     RowLayout{
         id: row
@@ -33,9 +33,15 @@ Rectangle{
         //     size: 14
         //     bright: 1
         // }
-        MaterialIconSymbol{
-            content: ServiceWeather.weatherIconPath
-            iconSize: 16
+        // MaterialIconSymbol{
+        //     content: ServiceWeather.weatherIconPath.icon
+        //     iconSize: 16
+        // }
+        Image{
+            width: 16
+            height: 16
+            sourceSize: Qt.size(width, height)
+            source: IconUtil.getSystemIcon(ServiceWeather.weatherIconPath.svg)
         }
 
         CustomText{
@@ -46,8 +52,6 @@ Rectangle{
 
     CustomMouseArea{
         cursorShape: Qt.PointingHandCursor
-        onClicked:{
-           root.isWeatherPanelClicked = true 
-        }
+        onClicked:root.clicked()
     }
 }

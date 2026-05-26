@@ -23,73 +23,73 @@ Item{
     }
 
     property var notifications: ServiceNotification.popups
-    property real disX: 18
-    property real disY: 18
-    property real radX: 18
-    property real radY: 18
+    // property real disX: 18
+    // property real disY: 18
+    // property real radX: 18
+    // property real radY: 18
 
-    Shape{
-        preferredRendererType: Shape.CurveRenderer
-        visible: root.height > 0
-        ShapePath{
-            strokeWidth: 2
-            strokeColor: "transparent"
-            fillColor: Colors.surface
-            startX: innerItem.x
-            startY: innerItem.y + innerItem.height 
-
-            PathArc{
-                relativeX: root.disX
-                relativeY: -root.disY
-                radiusX: root.radX
-                radiusY: root.radY
-                direction: PathArc.Counterclockwise
-            }
-
-            PathLine{
-                relativeX: 0
-                relativeY: - (innerItem.height - 3 * root.disY)
-            }
-
-            PathArc{
-                relativeX: root.disX
-                relativeY: -root.disY
-                radiusX: root.radX
-                radiusY: root.radY
-            }
-
-            PathLine{
-                relativeX: innerItem.width - 3 * root.disX
-                relativeY: 0
-            }
-
-            PathArc{
-                relativeX: root.disX
-                relativeY: -root.disY
-                radiusX: root.radX
-                radiusY: root.radY
-                direction: PathArc.Counterclockwise
-            }
-
-            PathLine{
-                relativeX: 0
-                relativeY: innerItem.height
-            }
-
-        }
-    }
+    // Shape{
+    //     preferredRendererType: Shape.CurveRenderer
+    //     visible: root.height > 0
+    //     ShapePath{
+    //         strokeWidth: 2
+    //         strokeColor: "transparent"
+    //         fillColor: Colors.surface
+    //         startX: innerItem.x
+    //         startY: innerItem.y + innerItem.height 
+    //
+    //         PathArc{
+    //             relativeX: root.disX
+    //             relativeY: -root.disY
+    //             radiusX: root.radX
+    //             radiusY: root.radY
+    //             direction: PathArc.Counterclockwise
+    //         }
+    //
+    //         PathLine{
+    //             relativeX: 0
+    //             relativeY: - (innerItem.height - 3 * root.disY)
+    //         }
+    //
+    //         PathArc{
+    //             relativeX: root.disX
+    //             relativeY: -root.disY
+    //             radiusX: root.radX
+    //             radiusY: root.radY
+    //         }
+    //
+    //         PathLine{
+    //             relativeX: innerItem.width - 3 * root.disX
+    //             relativeY: 0
+    //         }
+    //
+    //         PathArc{
+    //             relativeX: root.disX
+    //             relativeY: -root.disY
+    //             radiusX: root.radX
+    //             radiusY: root.radY
+    //             direction: PathArc.Counterclockwise
+    //         }
+    //
+    //         PathLine{
+    //             relativeX: 0
+    //             relativeY: innerItem.height
+    //         }
+    //
+    //     }
+    // }
 
     Item{
         id: innerItem
         width: 400
-        height: list.contentHeight + 40
+        height: list.contentHeight + 20
         anchors.bottom: parent.bottom
         anchors.right: parent.right
 
         ListView{
             id: list
             anchors.fill: parent
-            anchors.margins: 30
+            anchors.margins: 10
             orientation: Qt.Vertical
             model: ScriptModel{
                 values: [...root.notifications].reverse()
@@ -107,14 +107,14 @@ Item{
                 }
             }
 
-            addDisplaced: Transition{
-                NumberAnimation{
-                    property: "y"
-                    duration: 200
-                    easing.type: Easing.OutQuad
-                }
-            }
-
+            // addDisplaced: Transition{
+            //     NumberAnimation{
+            //         property: "y"
+            //         duration: 200
+            //         easing.type: Easing.OutQuad
+            //     }
+            // }
+            //
             move: Transition {
                 NumberAnimation {
                     property: "y"
@@ -123,13 +123,13 @@ Item{
                 }
             }
 
-            displaced: Transition {
-                NumberAnimation {
-                    property: "y"
-                    duration: 250
-                    easing.type: Easing.OutQuad
-                }
-            }
+            // displaced: Transition {
+            //     NumberAnimation {
+            //         property: "y"
+            //         duration: 250
+            //         easing.type: Easing.OutQuad
+            //     }
+            // }
 
             delegate: Rectangle{
                 id: popup
@@ -164,6 +164,19 @@ Item{
                             content: modelData.body
                             size: 14
                             color: Colors.outline
+                        }
+                    }
+
+                    Loader{
+                        active: modelData.image
+                        visible: active
+                        Layout.preferredHeight: 65
+                        Layout.preferredWidth: 65
+                        sourceComponent:Image{
+                            source: modelData.image
+                            anchors.fill: parent
+                            sourceSize: Qt.size(width, height)
+                            fillMode: Image.PreserveAspectFit
                         }
                     }
                 }

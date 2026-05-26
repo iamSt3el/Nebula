@@ -70,13 +70,13 @@ Singleton {
 
         property bool popup
         required property Notification notification
-        readonly property string id: notification.id
-        readonly property string summary: notification.summary
-        readonly property string body: notification.body
-        readonly property string appIcon: notification.appIcon
-        readonly property string appName: notification.appName
+        readonly property string id: notification.id ?? null
+        readonly property string summary: notification.summary ?? null
+        readonly property string body: notification.body ?? null
+        readonly property string appIcon: notification.appIcon ?? null
+        readonly property string appName: notification.appName ?? null
         readonly property string image: notification.image
-        readonly property int urgency: notification.urgency
+        readonly property int urgency: notification.urgency ?? null
         readonly property bool isLow: notification.urgency === NotificationUrgency.Low
         readonly property bool isNormal: notification.urgency === NotificationUrgency.Normal
         readonly property bool isCritical: notification.urgency === NotificationUrgency.Critical
