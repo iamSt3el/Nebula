@@ -149,6 +149,48 @@ Rectangle{
                         }
                     }
 
+                    // Sort pills
+                    Rectangle {
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: _sortLocalRow.implicitWidth + 6
+                        radius: 20
+                        color: Colors.surfaceContainerHighest
+                        RowLayout {
+                            id: _sortLocalRow
+                            anchors.centerIn: parent
+                            spacing: 2
+                            Repeater {
+                                model: [["schedule", "Newest", "newest"], ["sort_by_alpha", "Name", "name"]]
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    readonly property bool active: ServiceWallpaper.localSortBy === modelData[2]
+                                    height: 24
+                                    implicitWidth: _sRow.implicitWidth + 14
+                                    radius: 12
+                                    color: active ? Colors.primary : "transparent"
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    RowLayout {
+                                        id: _sRow
+                                        anchors.centerIn: parent
+                                        spacing: 4
+                                        MaterialIconSymbol {
+                                            content: modelData[0]; iconSize: 13
+                                            customColor: parent.parent.active ? Colors.primaryText : Colors.surfaceText
+                                        }
+                                        CustomText {
+                                            content: modelData[1]; size: 11
+                                            customColor: parent.parent.active ? Colors.primaryText : Colors.surfaceText
+                                        }
+                                    }
+                                    CustomMouseArea {
+                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        onClicked: ServiceWallpaper.localSortBy = modelData[2]
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     Item { Layout.fillWidth: true }
                     Rectangle {
                         Layout.preferredHeight: 30
@@ -561,6 +603,58 @@ Rectangle{
                                 ServiceWallpaper.downloadAndSetWallpaper(wallpaperItemImageContainer.modelData)
                             else
                                 ServiceWallpaper.setWallpaper(wallpaperItemImageContainer.modelData)
+                        }
+                    }
+
+                    // Download progress overlay (online mode, active download only)
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 5
+                        radius: 8
+                        color: Qt.rgba(0, 0, 0, 0.6)
+                        visible: ServiceWallpaper.onlineMode &&
+                                 ServiceWallpaper.downloadingId === wallpaperItemImageContainer.modelData.id
+                        z: 3
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            MaterialIconSymbol {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                content: "downloading"
+                                iconSize: 28
+                                customColor: "white"
+                            }
+
+                            Rectangle {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: 80
+                                height: 4
+                                radius: 2
+                                color: Qt.rgba(1, 1, 1, 0.3)
+                                Rectangle {
+                                    width: parent.width * ServiceWallpaper.downloadProgress
+                                    height: parent.height
+                                    radius: parent.radius
+                                    color: "white"
+                                    Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
+                                }
+                            }
+
+                            CustomText {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                content: {
+                                    const mb = (ServiceWallpaper.downloadedBytes / (1024 * 1024)).toFixed(1)
+                                    if (ServiceWallpaper.downloadTotalBytes > 0) {
+                                        const total = (ServiceWallpaper.downloadTotalBytes / (1024 * 1024)).toFixed(1)
+                                        return mb + " / " + total + " MB"
+                                    }
+                                    return mb + " MB"
+                                }
+                                size: 11
+                                customColor: "white"
+                            }
                         }
                     }
 

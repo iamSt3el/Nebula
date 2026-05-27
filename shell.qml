@@ -47,15 +47,14 @@ ShellRoot{
             }
         }
     }
-
+    
+    //InputTest{}
 
 
     WidgetScreen{}
     
 
-    CubeTest{}
-    //Panel{}
-    //ColorPicker{}
+    //CubeTest{}
 
 
 

@@ -9,7 +9,6 @@ FocusScope {
     property alias text: textInput.text
     property string placeholderText: ""
     property color placeholderColor: Colors.outline
-    property bool enabled: true
 
     signal accepted()
 

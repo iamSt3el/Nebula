@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Notifications
 import QtMultimedia
 
@@ -157,6 +158,21 @@ Singleton {
 
     function toggleMute() {
         root.muted = !root.muted
+    }
+
+    function sendNotification(summary, body, appName, appIcon) {
+        notifSender.command = [
+            "notify-send",
+            "--app-name", appName || "Quickshell",
+            "--icon", appIcon || "dialog-information",
+            summary,
+            body || ""
+        ]
+        notifSender.running = true
+    }
+
+    Process {
+        id: notifSender
     }
 
     Component {

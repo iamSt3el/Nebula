@@ -2,8 +2,10 @@ import Quickshell
 import Quickshell.Io
 import Qt.labs.folderlistmodel
 import QtCore
+import QtQuick
 import qs.modules.settings
 import qs.modules.utils
+import qs.modules.services
 
 pragma Singleton
 pragma ComponentBehavior: Bound
@@ -23,6 +25,9 @@ Singleton {
     property string currentSearchText: ""
     property var wallpaperMap: ({})
     property var processedFiles: ({})
+    property string localSortBy: "name"
+
+    onLocalSortByChanged: updateWallpapersList()
 
     // ── Favorites ──────────────────────────────────────────────────────────
     property string favoritesPath: "/home/steel/.config/quickshell/favorites.json"
@@ -82,6 +87,11 @@ Singleton {
     property string _fetchBuffer: ""
     property string _pendingDownloadPath: ""
     property string onlineError: ""
+    property string downloadingId: ""
+    property int downloadedBytes: 0
+    property int downloadTotalBytes: 0
+    readonly property real downloadProgress: downloadTotalBytes > 0
+        ? Math.min(1.0, downloadedBytes / downloadTotalBytes) : 0
 
     onOnlineModeChanged: {
         if (onlineMode) {
@@ -146,7 +156,8 @@ Singleton {
                 thumbUrl:   item.thumbs.large,
                 fullUrl:    item.path,
                 resolution: item.resolution,
-                fileType:   item.file_type
+                fileType:   item.file_type,
+                fileSize:   item.file_size || 0
             }))
 
             onlineWallpapers = (onlinePage === 1)
@@ -180,6 +191,10 @@ Singleton {
         const ext = wallpaper.fullUrl.split('.').pop().split('?')[0] || "jpg"
         const savePath = root.wallpaperDir + "/" + wallpaper.id + "." + ext
         _pendingDownloadPath = savePath
+        downloadingId = wallpaper.id
+        downloadedBytes = 0
+        downloadTotalBytes = wallpaper.fileSize || 0
+        downloadPoller.restart()
         console.log("[ServiceWallpaper] Downloading wallpaper", wallpaper.id, "->", savePath)
         wallhavenDownloader.command = [
             "bash", "-c",
@@ -338,6 +353,7 @@ Singleton {
                 processNextThumbnail()
             } else {
                 console.log("[ServiceWallpaper] Generating thumbnail for:", originalPath)
+                root.wallpaperMap[thumbPath] = originalPath
                 thumbGenerator.originalPath = originalPath
                 thumbGenerator.thumbPath = thumbPath
                 thumbGenerator.command = [
@@ -362,9 +378,9 @@ Singleton {
         onExited: (exitCode) => {
             if (exitCode === 0) {
                 console.log("[ServiceWallpaper] Thumbnail generated successfully:", thumbPath)
-                root.wallpaperMap[thumbPath] = originalPath
             } else {
                 console.error("[ServiceWallpaper] Failed to generate thumbnail for:", originalPath)
+                delete root.wallpaperMap[thumbPath]
             }
             currentIndex++
             processNextThumbnail()
@@ -372,19 +388,28 @@ Singleton {
     }
 
     function updateWallpapersList() {
-        const newWallpapers = []
-
-        console.log("[ServiceWallpaper] Updating wallpapers list from cache...")
-        for (let i = 0; i < cacheModel.count; i++) {
-            const cachePath = cacheModel.get(i, "filePath")
-            console.log("[ServiceWallpaper] Cache file:", cachePath)
-            if (cachePath && cachePath.length) {
-                newWallpapers.push(cachePath)
+        const entries = []
+        for (let i = 0; i < folderModel.count; i++) {
+            const originalPath = folderModel.get(i, "filePath")
+            const cachePath = root.cacheDir + "/" + Qt.md5(originalPath) + ".jpg"
+            if (root.wallpaperMap[cachePath]) {
+                entries.push({
+                    cachePath: cachePath,
+                    modified: folderModel.get(i, "fileModified")
+                })
             }
         }
-
-        console.log("[ServiceWallpaper] Total wallpapers available:", newWallpapers.length)
-        root.wallpapers = newWallpapers
+        if (localSortBy === "newest") {
+            entries.sort((a, b) => new Date(b.modified) - new Date(a.modified))
+        } else {
+            entries.sort((a, b) => {
+                const nameA = root.wallpaperMap[a.cachePath].split("/").pop().toLowerCase()
+                const nameB = root.wallpaperMap[b.cachePath].split("/").pop().toLowerCase()
+                return nameA < nameB ? -1 : nameA > nameB ? 1 : 0
+            })
+        }
+        console.log("[ServiceWallpaper] Total wallpapers available:", entries.length)
+        root.wallpapers = entries.map(e => e.cachePath)
     }
 
     function getOriginalPath(cachePath: string): string {
@@ -442,14 +467,93 @@ Singleton {
     Process {
         id: wallhavenDownloader
         onExited: (exitCode) => {
+            downloadPoller.stop()
+            root.downloadingId = ""
+            root.downloadedBytes = 0
             if (exitCode === 0) {
                 console.log("[ServiceWallpaper] Download complete:", root._pendingDownloadPath)
-                wallpaperSetter.exec([wallpaperScript, root._pendingDownloadPath, root.scheme, root.theme])
-                root.refresh()
+                const savePath = root._pendingDownloadPath
+                const thumbPath = root.cacheDir + "/" + Qt.md5(savePath) + ".jpg"
+                root.processedFiles[savePath] = true
+                downloadedThumbGen.savePath = savePath
+                downloadedThumbGen.thumbPath = thumbPath
+                downloadedThumbGen.command = [
+                    "convert", savePath,
+                    "-resize", root.thumbSize + "x" + root.thumbSize + "^",
+                    "-gravity", "center",
+                    "-extent", root.thumbSize + "x" + root.thumbSize,
+                    "-quality", "85",
+                    thumbPath
+                ]
+                downloadedThumbGen.running = true
+                wallpaperSetter.exec([wallpaperScript, savePath, root.scheme, root.theme])
             } else {
                 console.error("[ServiceWallpaper] Download failed for:", root._pendingDownloadPath)
+                ServiceNotification.sendNotification(
+                    "Wallpaper Download Failed",
+                    root._pendingDownloadPath.split("/").pop(),
+                    "Wallpaper",
+                    "dialog-error"
+                )
             }
             root._pendingDownloadPath = ""
+        }
+    }
+
+    Process {
+        id: downloadedThumbGen
+        property string savePath: ""
+        property string thumbPath: ""
+        onExited: (exitCode) => {
+            if (exitCode === 0) {
+                console.log("[ServiceWallpaper] Download thumbnail ready:", thumbPath)
+                root.wallpaperMap[thumbPath] = savePath
+                const fileName = savePath.split("/").pop()
+                ServiceNotification.sendNotification(
+                    "Wallpaper Downloaded",
+                    fileName,
+                    "Wallpaper",
+                    "image-x-generic"
+                )
+                root.refresh()
+            } else {
+                console.error("[ServiceWallpaper] Failed to generate thumbnail for:", savePath)
+                ServiceNotification.sendNotification(
+                    "Wallpaper Download Failed",
+                    savePath.split("/").pop(),
+                    "Wallpaper",
+                    "dialog-error"
+                )
+            }
+        }
+    }
+
+    Timer {
+        id: downloadPoller
+        interval: 300
+        repeat: true
+        running: false
+        onTriggered: {
+            if (root._pendingDownloadPath.length > 0 && !fileSizeChecker.running) {
+                fileSizeChecker._buf = ""
+                fileSizeChecker.command = ["stat", "-c", "%s", root._pendingDownloadPath]
+                fileSizeChecker.running = true
+            }
+        }
+    }
+
+    Process {
+        id: fileSizeChecker
+        property string _buf: ""
+        stdout: SplitParser {
+            onRead: line => fileSizeChecker._buf += line
+        }
+        onExited: (exitCode) => {
+            if (exitCode === 0) {
+                const sz = parseInt(fileSizeChecker._buf.trim())
+                if (!isNaN(sz)) root.downloadedBytes = sz
+            }
+            fileSizeChecker._buf = ""
         }
     }
     // ── End Wallhaven processes ─────────────────────────────────────────────
