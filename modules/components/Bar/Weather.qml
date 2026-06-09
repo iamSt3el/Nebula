@@ -51,6 +51,7 @@ Rectangle{
     }
 
     CustomMouseArea{
+        radius: parent.radius
         cursorShape: Qt.PointingHandCursor
         onClicked:root.clicked()
     }

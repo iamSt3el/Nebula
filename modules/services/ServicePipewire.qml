@@ -33,8 +33,17 @@ Singleton{
     readonly property PwNode sink: Pipewire.defaultAudioSink
     readonly property PwNode source: Pipewire.defaultAudioSource
     
-    readonly property bool muted: !!sink?.audio?.muted
-    readonly property real volume: sink?.audio?.volume ?? 0
+    readonly property bool muted:    !!sink?.audio?.muted
+    readonly property bool micMuted: !!source?.audio?.muted
+    readonly property real volume:   sink?.audio?.volume ?? 0
+
+    function toggleMute(): void {
+        if (sink?.audio) sink.audio.muted = !sink.audio.muted
+    }
+
+    function toggleMicMute(): void {
+        if (source?.audio) source.audio.muted = !source.audio.muted
+    }
 
     function setVolume(newVolume: real): void{
         if(sink?.ready && sink?.audio){

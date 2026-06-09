@@ -45,14 +45,42 @@ Singleton {
         adapter: JsonAdapter {
             id: settingsAdapter
 
+            readonly property var _generalDefaults: ({
+                dock: true,
+                dockAutoHide: true,
+                dockMusicPlayer: true,
+                appGrid: false,
+                pinnedApps: [],
+                musicVisOn: true,
+                profile: "/home/steel/Downloads/DANDADAN.jpg",
+                defaultFont: "Rubik",
+                musicVisBars: 60,
+                wallpaperDir: "/home/steel/wallpaper"
+            })
+
             property var general: ({
                 dock: true,
                 dockAutoHide: true,
                 dockMusicPlayer: true,
                 appGrid: false,
                 pinnedApps: [],
-                musicVisOn: true
+                musicVisOn: true,
+                profile: "/home/steel/Downloads/DANDADAN.jpg",
+                defaultFont: "Rubik",
+                musicVisBars: 60,
+                wallpaperDir: "/home/steel/wallpaper"
             })
+
+            onGeneralChanged: {
+                const d = _generalDefaults
+                const cur = general || {}
+                let needsPatch = false
+                for (const k in d) {
+                    if (cur[k] === undefined) { needsPatch = true; break }
+                }
+                if (needsPatch)
+                    general = Object.assign({}, d, cur)
+            }
 
             property var theme: ({
                 matugenScheme: "scheme-content",
@@ -74,7 +102,9 @@ Singleton {
             })
 
             property var ai: ({
-                googleApiKey: ""
+                googleApiKey: "",
+                backend: "ollama",
+                ollamaModel: "deepseek-r1:1.5b"
             })
 
             property var manga: ({
@@ -105,7 +135,16 @@ Singleton {
             })
 
             property var weather: ({
-                location: "Chirawa"
+                location: "Chirawa",
+                useMetric: true,
+                refreshInterval: 15
+            })
+
+            property var toggles: ({
+                airplaneMode: false,
+                notificationMuted: false,
+                speakerMuted: false,
+                micMuted: false
             })
         }
     }

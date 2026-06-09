@@ -11,7 +11,7 @@ Text{
     verticalAlignment: Text.AlignVCenter
     property int weight: 800
     property string customColor: Colors.surfaceText
-    property string family: Settings.defaultFont
+    property string family: SettingsConfig.general.defaultFont ?? "Rubik"
     renderType: Text.NativeRendering
     elide: Text.ElideRight
     color: customColor

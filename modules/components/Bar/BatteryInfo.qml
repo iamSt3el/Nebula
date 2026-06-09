@@ -72,7 +72,8 @@ Item{
                     iconSize: 18
 
                     CustomMouseArea{
-                        cursorShape: Qt.PointingHandCursor    
+                        radius: parent.radius
+                        cursorShape: Qt.PointingHandCursor
                         onClicked:root.close()
                     }
                 }

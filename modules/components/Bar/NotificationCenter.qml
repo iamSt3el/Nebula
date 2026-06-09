@@ -87,12 +87,21 @@ Item{
                 Layout.fillWidth: true
                 Layout.preferredHeight: 30
                 radius: 20
-                color: Colors.surfaceContainerHighest
+                color: clearArea.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
 
                 CustomText{
                     anchors.centerIn: parent
                     content: "Clear all"
                     size: 14
+                    color: clearArea.containsMouse ? Colors.primaryText : Colors.surfaceText
+                }
+
+                MouseArea{
+                    id: clearArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: ServiceNotification.clear()
                 }
 
             }
@@ -170,20 +179,20 @@ Item{
                     NumberAnimation { property: "x"; from: notifList.width; to: 0; duration: 300; easing.type: Easing.OutQuad }
                 }
 
-                remove: Transition {
-                    ParallelAnimation {
-                        NumberAnimation { property: "opacity"; to: 0; duration: 200; easing.type: Easing.InQuad }
-                        NumberAnimation { property: "x"; to: notifList.width; duration: 200; easing.type: Easing.InQuad }
-                    }
-                }
+                // remove: Transition {
+                //     ParallelAnimation {
+                //         NumberAnimation { property: "opacity"; to: 0; duration: 200; easing.type: Easing.InQuad }
+                //         NumberAnimation { property: "x"; to: notifList.width; duration: 200; easing.type: Easing.InQuad }
+                //     }
+                // }
 
                 addDisplaced: Transition {
                     NumberAnimation { property: "y"; duration: 300; easing.type: Easing.OutQuad }
                 }
 
-                removeDisplaced: Transition {
-                    NumberAnimation { property: "y"; duration: 350; easing.type: Easing.OutBack }
-                }
+                // removeDisplaced: Transition {
+                //     NumberAnimation { property: "y"; duration: 350; easing.type: Easing.OutBack }
+                // }
 
                 displaced: Transition {
                     NumberAnimation { property: "y"; duration: 300; easing.type: Easing.OutQuad }

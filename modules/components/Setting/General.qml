@@ -15,20 +15,24 @@ Item{
     id: root
     anchors.fill: parent
     anchors.margins: 5
+
+    FileDialog {
+        id: imagePicker
+        title: "Select a profile image"
+        nameFilters: ["Image files (*.png *.jpg *.jpeg *.webp *.gif)"]
+        onAccepted: {
+            SettingsConfig.general = Object.assign({}, SettingsConfig.general, {profile: imagePicker.file.toString().replace(/^file:\/\//, "")})
+            GlobalStates.fileDialogOpen = false
+        }
+        onRejected: GlobalStates.fileDialogOpen = false
+    }
+
     Flickable{
         id: flickable
         anchors.fill: parent  
         contentHeight: column.implicitHeight
         contentWidth: width   
         clip: true
-
-        // MouseArea{
-        //     anchors.fill: parent
-        //     onClicked:{
-        //         list.isListClicked = false
-        //         flickable.clip = true
-        //     }
-        // }
 
         ColumnLayout{
             id: column
@@ -72,16 +76,7 @@ Item{
                 Layout.fillWidth: true
                 Layout.preferredHeight: 90
                 spacing: 10
-                // ClippingWrapperRectangle{
-                //     Layout.fillHeight: true
-                //     Layout.preferredWidth: 90
-                //     radius: 20
-                //     Image{
-                //         anchors.fill: parent
-                //         sourceSize: Qt.size(width, height)
-                //         source: Settings.profile
-                //     }
-                // }
+
                 Item{
                     Layout.preferredWidth: 90    
                     Layout.preferredHeight: 90
@@ -96,7 +91,7 @@ Item{
                         id: profileArt
                         anchors.fill: parent
                         sourceSize: Qt.size(width, height)
-                        source: Settings.profile
+                        source: SettingsConfig.general.profile
                         fillMode: Image.PreserveAspectCrop
                         visible: false
                         layer.enabled: true
@@ -144,7 +139,7 @@ Item{
                                 anchors.left: parent.left
                                 anchors.leftMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
-                                content: Settings.profile
+                                content: SettingsConfig.general.profile
                                 size: 12
                             }
                         }
@@ -158,25 +153,22 @@ Item{
                             bottomRightRadius: 15
                             icon: "image"
                             iconSize: 18
+                            onClicked: {
+                                GlobalStates.fileDialogOpen = true
+                                imagePicker.open()
+                            }
                         }
                     }
                 }
             }
-            // Rectangle{
-            //     Layout.topMargin: 10
-            //     Layout.bottomMargin: 10
-            //     Layout.fillWidth: true
-            //     Layout.preferredHeight: 1
-            //     color: Colors.outline
-            // }
-            CustomSpermSeparator{
+            Rectangle{
                 Layout.topMargin: 10
                 Layout.bottomMargin: 10
                 Layout.fillWidth: true
-                Layout.preferredHeight: 6
+                Layout.preferredHeight: 1
                 color: Colors.outline
-                frequency: 16
             }
+
 
             CustomText{
                 content: "Fonts"
@@ -216,33 +208,25 @@ Item{
                 CustomListNew{
                     Layout.preferredHeight: 30
                     Layout.preferredWidth: 200
-                    currentVal: Settings.defaultFont
+                    currentVal: SettingsConfig.general.defaultFont
                     list: Settings.fonts
 
-                    onIsListClickedChanged:{
-                        if(isListClicked)
-                        grab.active = false
-                        else 
-                        grab.active = true
+                    onCurrentValChanged: {
+                        if (currentVal)
+                            SettingsConfig.general = Object.assign({}, SettingsConfig.general, {defaultFont: currentVal})
                     }
+
                 }
 
             }
-            // Rectangle{
-            //     Layout.topMargin: 10
-            //     Layout.bottomMargin: 10
-            //     Layout.fillWidth: true
-            //     Layout.preferredHeight: 1
-            //     color: Colors.outline
-            // }
-             CustomSpermSeparator{
+            Rectangle{
                 Layout.topMargin: 10
                 Layout.bottomMargin: 10
                 Layout.fillWidth: true
-                Layout.preferredHeight: 6
+                Layout.preferredHeight: 1
                 color: Colors.outline
-                frequency: 16
             }
+
 
             CustomText{
                 content: "Dock"
@@ -339,21 +323,14 @@ Item{
                 }
             }
 
-            // Rectangle{
-            //     Layout.topMargin: 10
-            //     Layout.bottomMargin: 10
-            //     Layout.fillWidth: true
-            //     Layout.preferredHeight: 1
-            //     color: Colors.outline
-            // }
-             CustomSpermSeparator{
+            Rectangle{
                 Layout.topMargin: 10
                 Layout.bottomMargin: 10
                 Layout.fillWidth: true
-                Layout.preferredHeight: 6
+                Layout.preferredHeight: 1
                 color: Colors.outline
-                frequency: 16
             }
+
 
             CustomText{
                 content: "Music Visualizer"
@@ -418,13 +395,13 @@ Item{
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 30
                     radius: 10
-                    color: Colors.tertiary
+                    color: Colors.primary
 
                     MaterialIconSymbol{
                         anchors.centerIn: parent
                         content: "palette"
                         iconSize: 20
-                        color: Colors.tertiaryText
+                        color: Colors.primaryText
                     }
                     MouseArea{
                         anchors.fill: parent
@@ -455,32 +432,20 @@ Item{
                 }
 
                 CustomSpinBox{
-                    Layout.preferredWidth: 100
-                    Layout.preferredHeight: 30
-                    val: Settings.musicVisBars
-
-                    onValChanged:{
-                        Settings.musicVisBars = val
-                    }
+                    Component.onCompleted: val = SettingsConfig.general.musicVisBars
+                    onValChanged: SettingsConfig.general = Object.assign({}, SettingsConfig.general, {musicVisBars: val})
                 }
 
 
             }
-            // Rectangle{
-            //     Layout.topMargin: 10
-            //     Layout.bottomMargin: 10
-            //     Layout.fillWidth: true
-            //     Layout.preferredHeight: 1
-            //     color: Colors.outline
-            // }
-             CustomSpermSeparator{
+            Rectangle{
                 Layout.topMargin: 10
                 Layout.bottomMargin: 10
                 Layout.fillWidth: true
-                Layout.preferredHeight: 6
+                Layout.preferredHeight: 1
                 color: Colors.outline
-                frequency: 16
             }
+
         }
     }  
 

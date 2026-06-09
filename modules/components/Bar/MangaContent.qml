@@ -93,7 +93,7 @@ Item {
                             Layout.fillWidth: true
                             visible: root.viewState === "browse"
                             font.pixelSize: 13
-                            font.family: Settings.defaultFont
+                            font.family: SettingsConfig.general.defaultFont
                             color: Colors.surfaceText
                             background: null
                             placeholderText: "Search manga..."

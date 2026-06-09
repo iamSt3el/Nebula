@@ -56,11 +56,21 @@ Item {
                     anchors.margins: 15
                     spacing: 5
 
-                    CustomText {
-                        content: "Nebula"
-                        size: 24
-                        weight: 700
-                        color: Colors.primary
+                    RowLayout{
+                        Image{
+                            Layout.preferredWidth: 40
+                            Layout.preferredHeight: 40
+                            sourceSize: Qt.size(width, height)
+                            source: IconUtil.getSystemIconPng("nebula")
+                            fillMode: Image.PreserveAspectFit
+                            
+                        }
+                        CustomText {
+                            content: "Nebula"
+                            size: 24
+                            weight: 700
+                            color: Colors.primary
+                        }
                     }
                     CustomText {
                         content: "v0.1.0-beta"

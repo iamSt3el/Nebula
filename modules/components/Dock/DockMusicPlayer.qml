@@ -49,6 +49,7 @@ Rectangle{
             iconSize: 18
 
             CustomMouseArea{
+                radius: parent.radius
                 id: loopArea
                 cursorShape: Qt.PointingHandCursor
                 hoverEnabled: true
@@ -63,6 +64,7 @@ Rectangle{
             iconSize: 18
 
             CustomMouseArea{
+                radius: parent.radius
                 id: nArea
                 cursorShape: Qt.PointingHandCursor
                 hoverEnabled: true

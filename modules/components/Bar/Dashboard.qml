@@ -62,6 +62,23 @@ Item{
         }
     }
 
+    Connections {
+        target: ServiceWifi
+        function onWifiEnabledChanged() {
+            SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, { airplaneMode: !ServiceWifi.wifiEnabled })
+        }
+    }
+
+    Connections {
+        target: ServicePipewire
+        function onMutedChanged() {
+            SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, { speakerMuted: ServicePipewire.muted })
+        }
+        function onMicMutedChanged() {
+            SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, { micMuted: ServicePipewire.micMuted })
+        }
+    }
+
 
 
 
@@ -226,7 +243,7 @@ Item{
                     Image{
                         anchors.fill: parent
                         sourceSize: Qt.size(width, height)
-                        source: Settings.profile
+                        source: SettingsConfig.general.profile
                     }
                 }
 
@@ -584,68 +601,61 @@ Item{
                     Repeater{
                         model: Settings.quickIcons
                         delegate: Rectangle{
-                            property bool isMute:false
-                            Layout.fillHeight: true
-                            Layout.fillWidth: true
-                            color: isMute ? Colors.primary : iconsArea.containsMouse ? Qt.alpha(Colors.primary, 0.5) : Colors.surfaceContainerHighest
+                            id: qBtn
                             required property int index
                             required property var modelData
-                            property bool active: isMute
-                            property bool leftmost: index === 0
-                            property bool rightmost: index === Settings.quickIcons.length - 1
 
+                            Layout.fillHeight: true
+                            Layout.fillWidth: true
 
-
-                            onYChanged: {
-                                if (index === 0) {
-                                    button.leftmost = true
-                                } else {
-                                    var prev = flow.children[index - 1]
-                                    var thisIsOnNewLine = prev && prev.y !== button.y
-                                    button.leftmost = thisIsOnNewLine
-                                    prev.rightmost = thisIsOnNewLine
-                                }
+                            property bool active: {
+                                if (index === 0) return !ServiceWifi.wifiEnabled
+                                if (index === 1) return ServiceNotification.muted
+                                if (index === 2) return ServicePipewire.muted
+                                if (index === 3) return ServicePipewire.micMuted
+                                return false
                             }
+                            property bool isFirst: index === 0
+                            property bool isLast:  index === Settings.quickIcons.length - 1
 
+                            color: active ? Colors.primary : Colors.surfaceContainerHighest
+                            Behavior on color { ColorAnimation { duration: 150 } }
 
-                            topLeftRadius: (active || leftmost) ? height / 2 : 5
-                            topRightRadius: (active || rightmost) ? height / 2 : 5
-                            bottomLeftRadius: (active || leftmost) ? height / 2 : 5
-                            bottomRightRadius: (active || rightmost) ? height / 2 : 5
+                            topLeftRadius:     (active || isFirst) ? height / 2 : 5
+                            topRightRadius:    (active || isLast)  ? height / 2 : 5
+                            bottomLeftRadius:  (active || isFirst) ? height / 2 : 5
+                            bottomRightRadius: (active || isLast)  ? height / 2 : 5
+                            Behavior on topLeftRadius     { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+                            Behavior on topRightRadius    { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+                            Behavior on bottomLeftRadius  { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+                            Behavior on bottomRightRadius { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
 
-
-                            Behavior on topLeftRadius {
-                                NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
-                            }
-                            Behavior on topRightRadius {
-                                NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
-                            }
-                            Behavior on bottomLeftRadius {
-                                NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
-                            }
-                            Behavior on bottomRightRadius {
-                                NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
-                            }
-                            Behavior on color {
-                                ColorAnimation { duration: 100 }
-                            }
-
-
-                            MaterialIconSymbol{
+                            MaterialIconSymbol {
                                 anchors.centerIn: parent
-                                content: parent.isMute ? modelData.iconActive : modelData.icon
+                                content: qBtn.active ? qBtn.modelData.iconActive : qBtn.modelData.icon
                                 iconSize: 20
-                                color: parent.isMute? Colors.primaryText : Colors.surfaceText
+                                color: qBtn.active ? Colors.primaryText : Colors.surfaceText
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                layer.enabled: true
+                                layer.smooth: true
+                                scale: qRipple.pressed ? 0.82 : 1.0
+                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack; easing.overshoot: 1.5 } }
                             }
 
-
-                            MouseArea{
-                                id: iconsArea
+                            RippleEffect {
+                                id: qRipple
                                 anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                hoverEnabled: true
-                                onClicked:{
-                                    parent.isMute = !parent.isMute
+                                topLeftRadius:     qBtn.topLeftRadius
+                                topRightRadius:    qBtn.topRightRadius
+                                bottomLeftRadius:  qBtn.bottomLeftRadius
+                                bottomRightRadius: qBtn.bottomRightRadius
+                                hoverColor: Qt.alpha(qBtn.active ? Colors.primaryText : Colors.primary, 0.10)
+                                pressColor: Qt.alpha(qBtn.active ? Colors.primaryText : Colors.primary, 0.20)
+                                onClicked: {
+                                    if      (qBtn.index === 0) ServiceWifi.toggleWifi()
+                                    else if (qBtn.index === 1) ServiceNotification.toggleMute()
+                                    else if (qBtn.index === 2) ServicePipewire.toggleMute()
+                                    else if (qBtn.index === 3) ServicePipewire.toggleMicMute()
                                 }
                             }
                         }

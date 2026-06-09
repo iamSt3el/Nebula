@@ -21,21 +21,27 @@ Item {
             "telegram": "telegram",
             "brave-browser": "brave-browser",
             "zen": "zen-browser",
-            "emblem-mail": "telegram"
+            "emblem-mail": "telegram",
+            "quickshell": "Quickshell"
 
         }
-        
+
         if (!windowClass) return ""
         var lowerClass = windowClass.toLowerCase()
         return iconMap[lowerClass] || lowerClass || ""
     }
-    
+
     function getIconPath(windowClass, fallback = "application-x-executable") { 
+        console.log(windowClass)
         return Quickshell.iconPath(getIconName(windowClass), fallback)
     }
-    
+
     function getSystemIcon(iconName) {
         return Qt.resolvedUrl("../../assets/" + iconName + ".svg")
+    }
+
+    function getSystemIconPng(iconName){
+        return Qt.resolvedUrl("../../assets/" + iconName + ".png")
     }
 
     function getImage(name){

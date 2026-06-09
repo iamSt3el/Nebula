@@ -26,6 +26,21 @@ Rectangle {
 
     x: 0
 
+
+    // SequentialAnimation {
+    //     id: removeAnimation
+    //     PropertyAction { target: notif; property: "ListView.delayRemove"; value: true }
+    //
+    //     ParallelAnimation{
+    //         NumberAnimation { target: notif; property: "x"; to: parent.width; duration: 350; easing.type: Easing.InCubic }
+    //         NumberAnimation { target: notif; property: "opacity"; from: 1; to: 0; duration: 250; easing.type: Easing.InQuad }
+    //     }
+    //
+    //
+    //     PropertyAction { target: notif; property: "ListView.delayRemove"; value: false }
+    // }
+    // ListView.onRemove: removeAnimation.start()
+
     Behavior on x {
         NumberAnimation {
             duration: 300
@@ -106,6 +121,7 @@ Rectangle {
             Layout.margins: 5
             Layout.fillHeight: true
 
+
             CustomText{
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -177,6 +193,25 @@ Rectangle {
             }
         }
 
+        Loader {
+            active: !!modelData.image
+            visible: active
+            Layout.preferredHeight: 52
+            Layout.preferredWidth: 52
+            Layout.alignment: Qt.AlignTop
+            sourceComponent: Rectangle {
+                radius: 10
+                clip: true
+                color: "transparent"
+                Image {
+                    anchors.fill: parent
+                    source: modelData.image
+                    sourceSize: Qt.size(width, height)
+                    fillMode: Image.PreserveAspectCrop
+                }
+            }
+        }
+
         Rectangle{
             Layout.preferredWidth: 20
             Layout.preferredHeight: 20
@@ -194,7 +229,7 @@ Rectangle {
                     }
                 }
             }
-            
+
 
             MaterialIconSymbol{
                 content: "keyboard_arrow_down"

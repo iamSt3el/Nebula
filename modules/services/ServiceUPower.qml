@@ -33,15 +33,27 @@ Singleton{
     property bool _ready: false
 
 
-    //
-    // onIsChargingChanged: {
-    //     if (isCharging) {
-    //         _lowNotified = false
-    //         Quickshell.execDetached(["notify-send", "-i", "battery_charging_full", "Battery", "Charging — " + Math.round(powerLevel) + "%"])
-    //     } else {
-    //         Quickshell.execDetached(["notify-send", "-i", "battery_full", "Battery", "Unplugged — " + Math.round(powerLevel) + "%"])
-    //     }
-    // }
+
+    onIsChargingChanged: {
+        if (isCharging) {
+            _lowNotified = false
+            //Quickshell.execDetached(["notify-send", "-i", "battery_charging_full", "Battery", "Charging — " + Math.round(powerLevel) + "%"])
+            ServiceNotification.sendNotification(
+                "Battery",
+                "Charging - " + Math.round(powerLevel) + "%",
+                "Battery",
+                "battery_charging_full"
+            )
+        } else {
+            //Quickshell.execDetached(["notify-send", "-i", "battery_full", "Battery", "Unplugged — " + Math.round(powerLevel) + "%"])
+            ServiceNotification.sendNotification(
+                "Battery",
+                "Unplugged - " + Math.round(powerLevel) + "%",
+                "Battery",
+                "battery_full"
+            )
+        }
+    }
 
 
 

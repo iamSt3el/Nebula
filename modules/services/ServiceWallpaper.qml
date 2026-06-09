@@ -13,7 +13,16 @@ pragma ComponentBehavior: Bound
 Singleton {
     id: root
 
-    property string wallpaperDir: "/home/steel/wallpaper"
+    property string wallpaperDir: SettingsConfig.general.wallpaperDir ?? "/home/steel/wallpaper"
+
+    onWallpaperDirChanged: {
+        if (folderModel.folder.toString() !== "") {
+            processedFiles = {}
+            wallpaperMap = {}
+            wallpapers = []
+            folderModel.folder = "file://" + wallpaperDir
+        }
+    }
     property string cacheDir: StandardPaths.writableLocation(StandardPaths.CacheLocation).toString().replace("file://", "") + "/wallpaper-thumbs"
     property int thumbSize: 256
     property string wallpaperScript:"/home/steel/.config/quickshell/scripts/wallpaper.sh"

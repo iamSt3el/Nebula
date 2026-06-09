@@ -1,137 +1,98 @@
 import Quickshell
 import Quickshell.Wayland
 import QtQuick
-import QtQuick.Effects
 import qs.modules.utils
-import qs.modules.customComponents
-import qs.modules.services
-import "modules/MatrialShapes/" as MaterialShapes
-import "modules/MatrialShapes/material-shapes.js" as MatrialShapeFn
-
 
 PanelWindow {
     id: root
-    implicitWidth: 400
-    implicitHeight: 400
+
+    anchors { top: true; left: true; right: true; bottom: true }
+    color: "transparent"
+    aboveWindows: true
     WlrLayershell.layer: WlrLayer.Overlay
     exclusionMode: ExclusionMode.Normal
-    color: "transparent"
-    property real posX: 0
-    property real posY: 0
-    property real iconOpacity: 0
 
-    mask: Region {
-        item: maskRect
-        intersection: Intersection.Xor
+    // ── Charging wave shader ─────────────────────────────────────────────────
+    property real animProgress: 0.0
+
+    NumberAnimation {
+        id: chargeAnim
+        target: root
+        property: "animProgress"
+        from: 0.0; to: 1.0
+        duration: 3000
+        easing.type: Easing.Linear
     }
 
-    Rectangle {
-        id: maskRect
-        implicitHeight: parent.height
-        implicitWidth: parent.width
-        anchors.bottom: parent.bottom
-        color: "transparent"
+    ShaderEffect {
+        anchors.fill: parent
+
+        vertexShader:   "shaders/charging_wave.vert.qsb"
+        fragmentShader: "shaders/charging_wave.frag.qsb"
+
+        blending: true
+
+        property real iTime:   root.animProgress
+        property real iR:      Colors.primary.r
+        property real iG:      Colors.primary.g
+        property real iB:      Colors.primary.b
+        property real iAspect: width / height
     }
 
-    SequentialAnimation {
-        id: introAnim
-        NumberAnimation {
-            target: shapeCanvas
-            property: "scale"
-            from: 0
-            to: 1
-            duration: 600
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.2
+    // ── Controls ─────────────────────────────────────────────────────────────
+    Row {
+        anchors {
+            bottom:           parent.bottom
+            horizontalCenter: parent.horizontalCenter
+            bottomMargin:     48
         }
-        PauseAnimation { duration: 80 }
-        ScriptAction {
-            script: shapeCanvas.roundedPolygon = MatrialShapeFn.getCookie4Sided()
-        }
-        PauseAnimation { duration: 400 }
-        NumberAnimation {
-            target: root
-            property: "iconOpacity"
-            from: 0
-            to: 1
-            duration: 300
-            easing.type: Easing.OutCubic
-        }
-    }
+        spacing: 14
 
-    Component.onCompleted: introAnim.start()
+        Rectangle {
+            width: 110; height: 40
+            radius: 20
+            color: Qt.rgba(Colors.primary.r, Colors.primary.g, Colors.primary.b, playArea.containsMouse ? 0.9 : 0.7)
+            Behavior on color { ColorAnimation { duration: 150 } }
+            scale: playArea.pressed ? 0.91 : 1.0
+            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutBack } }
 
-    Item{
-        anchors.centerIn: parent
-        implicitWidth: 300
-        implicitHeight: 300
-
-        MaterialShapes.ShapeCanvas{
-            id: shapeCanvas
-            anchors.fill: parent
-            roundedPolygon: MatrialShapeFn.getCircle()
-            color: Colors.primary
-            scale: 0
-            transformOrigin: Item.Center
-        }
-
-        MaterialIconSymbol{
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.topMargin: 50
-            anchors.leftMargin: 50
-            content: "camera"
-            iconSize: 50
-            color: Colors.primaryText
-            opacity: root.iconOpacity
-        }
-
-        MaterialIconSymbol{
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.topMargin: 50
-            anchors.rightMargin: 50
-            content: "videocam"
-            iconSize: 50
-            color: Colors.primaryText
-            opacity: root.iconOpacity
-        }
-
-        MaterialIconSymbol{
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            anchors.bottomMargin: 50
-            anchors.leftMargin: 50
-            content: "power_settings_new"
-            iconSize: 50
-            color: Colors.primaryText
-            opacity: root.iconOpacity
-        }
-
-        MaterialIconSymbol{
-            anchors.bottom: parent.bottom
-            anchors.right: parent.right
-            anchors.bottomMargin: 50
-            anchors.rightMargin: 50
-            content: "settings"
-            iconSize: 50
-            color: Colors.primaryText
-            opacity: root.iconOpacity
-        }
-
-
-        Rectangle{
-            anchors.centerIn: parent
-            implicitHeight: 50
-            implicitWidth: 50
-            radius: width / 2
-            color: Colors.primaryText
-            opacity: root.iconOpacity
-            MaterialIconSymbol{
+            Row {
                 anchors.centerIn: parent
-                content: "close"
-                iconSize: 40
-                color: Colors.primary
+                spacing: 6
+                Text { text: "▶"; color: "white"; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "Play";  color: "white"; font.pixelSize: 13; font.weight: Font.Medium; anchors.verticalCenter: parent.verticalCenter }
+            }
+
+            MouseArea {
+                id: playArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: { root.animProgress = 0.0; chargeAnim.restart() }
+            }
+        }
+
+        Rectangle {
+            width: 110; height: 40
+            radius: 20
+            color: exitArea.containsMouse ? "#cc2222" : Qt.rgba(0.5, 0.1, 0.1, 0.75)
+            Behavior on color { ColorAnimation { duration: 150 } }
+            scale: exitArea.pressed ? 0.91 : 1.0
+            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutBack } }
+
+            Row {
+                anchors.centerIn: parent
+                spacing: 6
+                Text { text: "✕"; color: "white"; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "Exit";  color: "white"; font.pixelSize: 13; font.weight: Font.Medium; anchors.verticalCenter: parent.verticalCenter }
+            }
+
+            MouseArea {
+                id: exitArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Qt.quit()
             }
         }
     }

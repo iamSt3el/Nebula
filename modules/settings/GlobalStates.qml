@@ -15,4 +15,5 @@ Singleton{
     property bool typingGameOpen: false
     property bool toolsWidgetOpen: false
     property bool shutdownWindow: false
+    property bool fileDialogOpen: false
 }

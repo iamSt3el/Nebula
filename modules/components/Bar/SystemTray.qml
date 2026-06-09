@@ -46,6 +46,7 @@ Rectangle{
                 size: 16
 
                 CustomMouseArea{
+                    radius: parent.radius
                     id: iconArea
                     hoverEnabled: true
                     acceptedButtons: Qt.RightButton | Qt.LeftButton

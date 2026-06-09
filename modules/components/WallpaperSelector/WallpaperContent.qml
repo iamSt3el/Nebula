@@ -66,6 +66,30 @@ Rectangle{
                 }
             }
 
+            // Stable online row model — append-only on pagination so existing
+            // delegates are never destroyed mid-scroll; only clears on page-1 results.
+            ListModel { id: onlineRowModel }
+
+            Connections {
+                target: ServiceWallpaper
+                function onOnlineWallpapersChanged() {
+                    if (!ServiceWallpaper.onlineMode) return
+                    const total = ServiceWallpaper.onlineWallpapers.length
+                    if (total === 0) { onlineRowModel.clear(); return }
+                    const newRowCount = Math.ceil(total / 4)
+                    if (onlineRowModel.count === 0 || ServiceWallpaper.onlinePage === 1) {
+                        onlineRowModel.clear()
+                        for (let i = 0; i < newRowCount; i++) onlineRowModel.append({})
+                    } else {
+                        const prev = onlineRowModel.count
+                        for (let i = prev; i < newRowCount; i++) onlineRowModel.append({})
+                    }
+                }
+                function onOnlineModeChanged() {
+                    if (!ServiceWallpaper.onlineMode) onlineRowModel.clear()
+                }
+            }
+
             NumberAnimation on opacity {
                 from: 0; to: 1; duration: 100; running: col.visible
             }
@@ -143,6 +167,7 @@ Rectangle{
                                 }
                             }
                             CustomMouseArea {
+                                radius: parent.radius
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                 onClicked: col.activeTab = modelData[2]
                             }
@@ -150,45 +175,14 @@ Rectangle{
                     }
 
                     // Sort pills
-                    Rectangle {
+                    ButtonGroup {
                         Layout.preferredHeight: 30
-                        Layout.preferredWidth: _sortLocalRow.implicitWidth + 6
-                        radius: 20
-                        color: Colors.surfaceContainerHighest
-                        RowLayout {
-                            id: _sortLocalRow
-                            anchors.centerIn: parent
-                            spacing: 2
-                            Repeater {
-                                model: [["schedule", "Newest", "newest"], ["sort_by_alpha", "Name", "name"]]
-                                delegate: Rectangle {
-                                    required property var modelData
-                                    readonly property bool active: ServiceWallpaper.localSortBy === modelData[2]
-                                    height: 24
-                                    implicitWidth: _sRow.implicitWidth + 14
-                                    radius: 12
-                                    color: active ? Colors.primary : "transparent"
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                    RowLayout {
-                                        id: _sRow
-                                        anchors.centerIn: parent
-                                        spacing: 4
-                                        MaterialIconSymbol {
-                                            content: modelData[0]; iconSize: 13
-                                            customColor: parent.parent.active ? Colors.primaryText : Colors.surfaceText
-                                        }
-                                        CustomText {
-                                            content: modelData[1]; size: 11
-                                            customColor: parent.parent.active ? Colors.primaryText : Colors.surfaceText
-                                        }
-                                    }
-                                    CustomMouseArea {
-                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                        onClicked: ServiceWallpaper.localSortBy = modelData[2]
-                                    }
-                                }
-                            }
-                        }
+                        model: [
+                            {icon: "schedule",      label: "Newest", value: "newest"},
+                            {icon: "sort_by_alpha",  label: "Name",   value: "name"}
+                        ]
+                        activeCheck: v => ServiceWallpaper.localSortBy === v
+                        onSegmentClicked: v => ServiceWallpaper.localSortBy = v
                     }
 
                     Item { Layout.fillWidth: true }
@@ -198,7 +192,10 @@ Rectangle{
                         radius: 20
                         color: Colors.surfaceContainerHighest
                         MaterialIconSymbol { anchors.centerIn: parent; content: "refresh"; iconSize: 20 }
-                        CustomMouseArea { cursorShape: Qt.PointingHandCursor; anchors.fill: parent; onClicked: ServiceWallpaper.refresh() }
+                        CustomMouseArea {
+                            radius: parent.radius
+                            cursorShape: Qt.PointingHandCursor; anchors.fill: parent; onClicked: ServiceWallpaper.refresh()
+                        }
                     }
                     Rectangle {
                         Layout.preferredHeight: 30
@@ -214,6 +211,7 @@ Rectangle{
                             CustomText { content: "Online"; size: 12 }
                         }
                         CustomMouseArea {
+                            radius: parent.radius
                             cursorShape: Qt.PointingHandCursor
                             anchors.fill: parent
                             onClicked: { ServiceWallpaper.onlineMode = true; ServiceWallpaper.fetchWallhaven(true) }
@@ -280,6 +278,7 @@ Rectangle{
                             CustomText { content: "Local"; size: 11; customColor: Colors.surfaceText }
                         }
                         CustomMouseArea {
+                            radius: parent.radius
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                             onClicked: ServiceWallpaper.onlineMode = false
                         }
@@ -288,176 +287,68 @@ Rectangle{
                     Item { Layout.fillWidth: true }
 
                     // Sorting group
-                    Rectangle {
-                        height: 28; radius: 14
-                        color: Colors.surfaceContainerHighest
-                        implicitWidth: _sortRow.implicitWidth + 6
-                        RowLayout {
-                            id: _sortRow
-                            anchors.centerIn: parent
-                            spacing: 2
-                            Repeater {
-                                model: onlineConfigCol.sortOpts.length
-                                delegate: Rectangle {
-                                    required property int index
-                                    readonly property string val: onlineConfigCol.sortOpts[index][1]
-                                    readonly property string lbl: onlineConfigCol.sortOpts[index][0]
-                                    property bool active: SettingsConfig.wallhaven.sorting === val
-                                    height: 24; radius: 12
-                                    implicitWidth: _sLbl.implicitWidth + 14
-                                    color: active ? Colors.primary : "transparent"
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                    CustomText {
-                                        id: _sLbl
-                                        anchors.centerIn: parent
-                                        content: parent.lbl; size: 11
-                                        customColor: parent.active ? Colors.primaryText : Colors.surfaceText
-                                    }
-                                    CustomMouseArea {
-                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                        onClicked: SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, {sorting: parent.val})
-                                    }
-                                }
-                            }
-                        }
+                    ButtonGroup {
+                        model: onlineConfigCol.sortOpts.map(o => ({label: o[0], value: o[1]}))
+                        activeCheck: v => SettingsConfig.wallhaven.sorting === v
+                        onSegmentClicked: v => SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, {sorting: v})
                     }
 
                     // TopRange group (only when sorting=toplist)
-                    Rectangle {
-                        height: 28; radius: 14
-                        color: Colors.surfaceContainerHighest
-                        implicitWidth: _rangeRow.implicitWidth + 6
+                    ButtonGroup {
                         visible: SettingsConfig.wallhaven.sorting === "toplist"
-                        RowLayout {
-                            id: _rangeRow
-                            anchors.centerIn: parent
-                            spacing: 2
-                            Repeater {
-                                model: onlineConfigCol.rangeOpts.length
-                                delegate: Rectangle {
-                                    required property int index
-                                    readonly property string val: onlineConfigCol.rangeOpts[index]
-                                    property bool active: SettingsConfig.wallhaven.topRange === val
-                                    height: 24; radius: 12
-                                    implicitWidth: _rLbl.implicitWidth + 14
-                                    color: active ? Colors.primary : "transparent"
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                    CustomText {
-                                        id: _rLbl
-                                        anchors.centerIn: parent
-                                        content: parent.val; size: 11
-                                        customColor: parent.active ? Colors.primaryText : Colors.surfaceText
-                                    }
-                                    CustomMouseArea {
-                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                        onClicked: SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, {topRange: parent.val})
-                                    }
-                                }
-                            }
-                        }
+                        model: onlineConfigCol.rangeOpts.map(v => ({label: v, value: v}))
+                        activeCheck: v => SettingsConfig.wallhaven.topRange === v
+                        onSegmentClicked: v => SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, {topRange: v})
                     }
 
                     // Order group (↓ ↑)
-                    Rectangle {
-                        height: 28; radius: 14
-                        color: Colors.surfaceContainerHighest
-                        implicitWidth: _orderRow.implicitWidth + 6
-                        RowLayout {
-                            id: _orderRow
-                            anchors.centerIn: parent
-                            spacing: 2
-                            Repeater {
-                                model: [["arrow_downward", "desc"], ["arrow_upward", "asc"]]
-                                delegate: Rectangle {
-                                    required property var modelData
-                                    property bool active: SettingsConfig.wallhaven.order === modelData[1]
-                                    height: 24; width: 28; radius: 12
-                                    color: active ? Colors.primary : "transparent"
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                    MaterialIconSymbol {
-                                        anchors.centerIn: parent
-                                        content: parent.modelData[0]; iconSize: 14
-                                        customColor: parent.active ? Colors.primaryText : Colors.surfaceText
-                                    }
-                                    CustomMouseArea {
-                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                        onClicked: SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, {order: parent.modelData[1]})
-                                    }
-                                }
-                            }
-                        }
+                    ButtonGroup {
+                        model: [
+                            {icon: "arrow_downward", value: "desc"},
+                            {icon: "arrow_upward",   value: "asc"}
+                        ]
+                        activeCheck: v => SettingsConfig.wallhaven.order === v
+                        onSegmentClicked: v => SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, {order: v})
                     }
 
                     // Categories group
-                    Rectangle {
-                        height: 28; radius: 14
-                        color: Colors.surfaceContainerHighest
-                        implicitWidth: _catRow.implicitWidth + 6
-                        RowLayout {
-                            id: _catRow
-                            anchors.centerIn: parent
-                            spacing: 2
-                            Rectangle {
-                                property bool active: SettingsConfig.wallhaven.categories[0] === "1"
-                                height: 24; radius: 12; implicitWidth: _cg.implicitWidth + 14
-                                color: active ? Colors.primary : "transparent"
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                                CustomText { id: _cg; anchors.centerIn: parent; content: "General"; size: 11; customColor: parent.active ? Colors.primaryText : Colors.surfaceText }
-                                CustomMouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: onlineConfigCol.toggleCat(0) }
-                            }
-                            Rectangle {
-                                property bool active: SettingsConfig.wallhaven.categories[1] === "1"
-                                height: 24; radius: 12; implicitWidth: _ca.implicitWidth + 14
-                                color: active ? Colors.primary : "transparent"
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                                CustomText { id: _ca; anchors.centerIn: parent; content: "Anime"; size: 11; customColor: parent.active ? Colors.primaryText : Colors.surfaceText }
-                                CustomMouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: onlineConfigCol.toggleCat(1) }
-                            }
-                            Rectangle {
-                                property bool active: SettingsConfig.wallhaven.categories[2] === "1"
-                                height: 24; radius: 12; implicitWidth: _cp.implicitWidth + 14
-                                color: active ? Colors.primary : "transparent"
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                                CustomText { id: _cp; anchors.centerIn: parent; content: "People"; size: 11; customColor: parent.active ? Colors.primaryText : Colors.surfaceText }
-                                CustomMouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: onlineConfigCol.toggleCat(2) }
-                            }
-                        }
+                    ButtonGroup {
+                        model: [
+                            {label: "General", value: 0},
+                            {label: "Anime",   value: 1},
+                            {label: "People",  value: 2}
+                        ]
+                        activeCheck: v => SettingsConfig.wallhaven.categories[v] === "1"
+                        onSegmentClicked: v => onlineConfigCol.toggleCat(v)
                     }
 
-                    // Purity group
+                    // Purity group — SFW/Sketchy share a group; NSFW is separate (different color, conditional)
+                    ButtonGroup {
+                        model: [
+                            {label: "SFW",     value: 0},
+                            {label: "Sketchy", value: 1}
+                        ]
+                        activeCheck: v => SettingsConfig.wallhaven.purity[v] === "1"
+                        onSegmentClicked: v => onlineConfigCol.togglePur(v)
+                    }
                     Rectangle {
-                        height: 28; radius: 14
-                        color: Colors.surfaceContainerHighest
-                        implicitWidth: _purRow.implicitWidth + 6
-                        RowLayout {
-                            id: _purRow
+                        visible: SettingsConfig.wallhaven.apiKey.length > 0
+                        readonly property bool active: SettingsConfig.wallhaven.purity[2] === "1"
+                        height: 30; radius: 15
+                        implicitWidth: _nsfwText.implicitWidth + 24
+                        color: active ? Colors.error : "transparent"
+                        border.width: 1
+                        border.color: Colors.outline
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        CustomText {
+                            id: _nsfwText
                             anchors.centerIn: parent
-                            spacing: 2
-                            Rectangle {
-                                property bool active: SettingsConfig.wallhaven.purity[0] === "1"
-                                height: 24; radius: 12; implicitWidth: _ps.implicitWidth + 14
-                                color: active ? Colors.primary : "transparent"
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                                CustomText { id: _ps; anchors.centerIn: parent; content: "SFW"; size: 11; customColor: parent.active ? Colors.primaryText : Colors.surfaceText }
-                                CustomMouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: onlineConfigCol.togglePur(0) }
-                            }
-                            Rectangle {
-                                property bool active: SettingsConfig.wallhaven.purity[1] === "1"
-                                height: 24; radius: 12; implicitWidth: _pk.implicitWidth + 14
-                                color: active ? Colors.primary : "transparent"
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                                CustomText { id: _pk; anchors.centerIn: parent; content: "Sketchy"; size: 11; customColor: parent.active ? Colors.primaryText : Colors.surfaceText }
-                                CustomMouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: onlineConfigCol.togglePur(1) }
-                            }
-                            Rectangle {
-                                visible: SettingsConfig.wallhaven.apiKey.length > 0
-                                property bool active: SettingsConfig.wallhaven.purity[2] === "1"
-                                height: 24; radius: 12; implicitWidth: _pn.implicitWidth + 14
-                                color: active ? Colors.error : "transparent"
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                                CustomText { id: _pn; anchors.centerIn: parent; content: "NSFW"; size: 11; customColor: parent.active ? Colors.errorText : Colors.surfaceText }
-                                CustomMouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: onlineConfigCol.togglePur(2) }
-                            }
+                            content: "NSFW"; size: 11
+                            customColor: parent.active ? Colors.errorText : Colors.surfaceText
+                        }
+                        CustomMouseArea {
+                            radius: parent.radius
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: onlineConfigCol.togglePur(2)
                         }
                     }
 
@@ -473,6 +364,7 @@ Rectangle{
                             customColor: ServiceWallpaper.isFetchingOnline ? Colors.surfaceText : Colors.primaryText
                         }
                         CustomMouseArea {
+                            radius: parent.radius
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                             onClicked: if (!ServiceWallpaper.isFetchingOnline) ServiceWallpaper.fetchWallhaven(true)
                         }
@@ -489,7 +381,7 @@ Rectangle{
                 Rectangle {
                     anchors.centerIn: parent
                     visible: ServiceWallpaper.onlineMode &&
-                             (ServiceWallpaper.isFetchingOnline || ServiceWallpaper.onlineError.length > 0)
+                    (ServiceWallpaper.isFetchingOnline || ServiceWallpaper.onlineError.length > 0)
                     z: 1
                     implicitWidth: _overlayRow.implicitWidth + 32
                     implicitHeight: _overlayRow.implicitHeight + 20
@@ -507,197 +399,267 @@ Rectangle{
                         }
                         CustomText {
                             content: ServiceWallpaper.onlineError.length > 0
-                                ? ServiceWallpaper.onlineError
-                                : "Fetching wallpapers…"
+                            ? ServiceWallpaper.onlineError
+                            : "Fetching wallpapers…"
                             size: 13
                             customColor: ServiceWallpaper.onlineError.length > 0 ? Colors.error : Colors.surfaceText
                         }
                     }
                 }
 
-            GridView{
-                id: grid
-                anchors.fill: parent
-                cellWidth: width / 4
-                cellHeight: height / (4 / 2)
-                model: ScriptModel {
-                    values: ServiceWallpaper.onlineMode
-                        ? ServiceWallpaper.onlineWallpapers
-                        : (col.activeTab === "favorites"
-                           ? ServiceWallpaper.favoritedWallpapers
-                           : ServiceWallpaper.filteredWallpapers)
-                }
-                clip: true
+                ListView {
+                    id: grid
+                    anchors.fill: parent
+                    clip: true
+                    interactive: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    ScrollBar.vertical: CustomScrollBar{}
 
-                interactive: true
-                boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: CustomScrollBar{}
+                    flickDeceleration: 3000
+                    maximumFlickVelocity: 6000
+                    pixelAligned: true
 
-                onAtYEndChanged: {
-                    if (atYEnd && ServiceWallpaper.onlineMode)
+                    // 1. Centralized spacing control (adjust this to change layout gaps)
+                    property real itemSpacing: 8
+                    spacing: itemSpacing
+
+                    // 2. Resolve your conditional data model structure cleanly at the root
+                    readonly property var currentDataArray: ServiceWallpaper.onlineMode
+                    ? ServiceWallpaper.onlineWallpapers
+                    : (col.activeTab === "favorites"
+                    ? ServiceWallpaper.favoritedWallpapers
+                    : ServiceWallpaper.filteredWallpapers)
+
+                    // Online mode uses a stable ListModel (append-only) to avoid full delegate recycling.
+                    model: ServiceWallpaper.onlineMode
+                        ? onlineRowModel
+                        : (currentDataArray ? Math.ceil(currentDataArray.length / 4) : 0)
+
+                    // Unchanged Pagination Trigger Function
+                    onAtYEndChanged: {
+                        if (atYEnd && ServiceWallpaper.onlineMode)
                         ServiceWallpaper.fetchNextPage()
-                }
-
-                delegate: Rectangle{
-                    id: wallpaperItemImageContainer
-                    required property var modelData
-                    width: grid.cellWidth
-                    height: grid.cellHeight
-                    radius: 10
-                    color: area.containsMouse ? Colors.primary : "transparent"
-
-                    Image{
-                        id: thumbnail
-                        anchors.fill: parent
-                        anchors.margins: 5
-                        sourceSize: Qt.size(width, height)
-                        asynchronous: true
-                        anchors.centerIn: parent
-                        smooth: true
-                        cache: true
-                        source: ServiceWallpaper.onlineMode
-                            ? wallpaperItemImageContainer.modelData.thumbUrl
-                            : "file://" + wallpaperItemImageContainer.modelData
-                        fillMode: Image.PreserveAspectCrop
-                        Behavior on anchors.margins{
-                            NumberAnimation{
-                                duration: 200
-                                easing.type: Easing.OutQuad
-                            }
-                        }
-
-                        layer.enabled: true
-                        layer.effect: OpacityMask {
-                            maskSource: Rectangle {
-                                width: thumbnail.width
-                                height: thumbnail.height
-                                radius: 10
-                            }
-                        }
                     }
 
-                    // loading spinner for online thumbnails still fetching
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 28; height: 28
-                        radius: 14
-                        color: Colors.surfaceContainer
-                        visible: ServiceWallpaper.onlineMode && thumbnail.status === Image.Loading
+                    delegate: Item {
+                        id: rowContainer
+                        width: grid.width
 
-                        MaterialIconSymbol {
+                        readonly property real cellWidth: (grid.width - (grid.itemSpacing * 3)) / 4
+
+                        // Captures your original aspect ratio rule: height / (4 / 2)
+                         property real targetHeight: cellWidth * 1
+                        //property real targetHeight: grid.height / 2
+                        property int rowIndex: index
+
+                        // Material You Parallax position calculations
+                        property real rowCenterY: y + (targetHeight / 2)
+                        property real viewCenterY: grid.contentY + (grid.height / 2)
+                        property real distanceFromCenter: Math.abs(rowCenterY - viewCenterY)
+                        property real maxDistance: grid.height / 2
+
+                        // M3 carousel: center rows full-size, outer rows compress.
+                        property real maskRatio: Math.max(0.62, 1.0 - (distanceFromCenter / maxDistance) * 0.52)
+                        height: targetHeight * maskRatio
+
+                        // 0 at center → 1 at max compression. Drives radius morphing.
+                        property real compressRatio: (1.0 - maskRatio) / (1.0 - 0.62)
+                        // M3 shape token: extraLarge (12dp) at center → near-pill at edges.
+                        property real dynamicRadius: 12 + compressRatio * 36
+
+                        Row {
                             anchors.centerIn: parent
-                            content: "hourglass_empty"
-                            iconSize: 16
-                        }
-                    }
+                            spacing: grid.itemSpacing
 
-                    HoverHandler { id: tileHover }
+                            Repeater {
+                                model: 4 // Rigid 4 columns grid distribution
 
-                    MouseArea{
-                        id: area
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (ServiceWallpaper.onlineMode)
-                                ServiceWallpaper.downloadAndSetWallpaper(wallpaperItemImageContainer.modelData)
-                            else
-                                ServiceWallpaper.setWallpaper(wallpaperItemImageContainer.modelData)
-                        }
-                    }
+                                delegate: Rectangle {
+                                    id: wallpaperItemImageContainer
 
-                    // Download progress overlay (online mode, active download only)
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: 5
-                        radius: 8
-                        color: Qt.rgba(0, 0, 0, 0.6)
-                        visible: ServiceWallpaper.onlineMode &&
-                                 ServiceWallpaper.downloadingId === wallpaperItemImageContainer.modelData.id
-                        z: 3
+                                    // Maps localized loop index smoothly to flat 1D backend model array
+                                    property int wallpaperIndex: (rowContainer.rowIndex * 4) + index
 
-                        Column {
-                            anchors.centerIn: parent
-                            spacing: 6
+                                    // Dynamically binds item payload data down to child layers
+                                    property var modelData: (grid.currentDataArray && wallpaperIndex < grid.currentDataArray.length) 
+                                    ? grid.currentDataArray[wallpaperIndex] 
+                                    : null
 
-                            MaterialIconSymbol {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                content: "downloading"
-                                iconSize: 28
-                                customColor: "white"
-                            }
+                                    // Hides out-of-bound structural item cells on the final row
+                                    visible: modelData !== null
 
-                            Rectangle {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: 80
-                                height: 4
-                                radius: 2
-                                color: Qt.rgba(1, 1, 1, 0.3)
-                                Rectangle {
-                                    width: parent.width * ServiceWallpaper.downloadProgress
-                                    height: parent.height
-                                    radius: parent.radius
-                                    color: "white"
-                                    Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
-                                }
-                            }
+                                    // Automatically fits columns evenly across layout width minus gaps
+                                    width: (grid.width - (grid.itemSpacing * 3)) / 4
+                                    height: rowContainer.height
+                                    // Shape morphs from extraLarge rounded rect → pill as row compresses.
+                                    radius: rowContainer.dynamicRadius
+                                    color: area.containsMouse ? Colors.primary : "transparent"
 
-                            CustomText {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                content: {
-                                    const mb = (ServiceWallpaper.downloadedBytes / (1024 * 1024)).toFixed(1)
-                                    if (ServiceWallpaper.downloadTotalBytes > 0) {
-                                        const total = (ServiceWallpaper.downloadTotalBytes / (1024 * 1024)).toFixed(1)
-                                        return mb + " / " + total + " MB"
+                                    // The Dynamic Masking Element Container
+                                    Item {
+                                        id: maskContainer
+                                        anchors.fill: parent
+                                        scale: tileHover.hovered ? 0.98 : 1.0
+                                        Behavior on scale {
+                                            NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+                                        }
+
+                                        layer.enabled: true
+                                        layer.effect: OpacityMask {
+                                            maskSource: Rectangle {
+                                                width: maskContainer.width
+                                                height: maskContainer.height
+                                                radius: rowContainer.dynamicRadius
+                                            }
+                                        }
+
+                                        Image {
+                                            id: thumbnail
+                                            anchors.centerIn: parent
+                                            anchors.verticalCenterOffset: -(rowContainer.rowCenterY - rowContainer.viewCenterY) * 0.12
+                                            width: parent.width
+                                            height: rowContainer.targetHeight
+
+                                            sourceSize: Qt.size(width, height)
+                                            asynchronous: true
+                                            smooth: true
+                                            cache: true
+
+                                            source: if (!wallpaperItemImageContainer.modelData) { "" }
+                                            else {
+                                                ServiceWallpaper.onlineMode
+                                                ? wallpaperItemImageContainer.modelData.thumbUrl
+                                                : "file://" + wallpaperItemImageContainer.modelData
+                                            }
+                                            fillMode: Image.PreserveAspectCrop
+                                        }
                                     }
-                                    return mb + " MB"
+
+                                    // Loading spinner for online thumbnails still fetching
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 28; height: 28
+                                        radius: 14
+                                        color: Colors.surfaceContainer
+                                        visible: ServiceWallpaper.onlineMode && thumbnail.status === Image.Loading
+
+                                        MaterialIconSymbol {
+                                            anchors.centerIn: parent
+                                            content: "hourglass_empty"
+                                            iconSize: 16
+                                        }
+                                    }
+
+                                    HoverHandler { id: tileHover }
+
+                                    MouseArea {
+                                        id: area
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (ServiceWallpaper.onlineMode)
+                                            ServiceWallpaper.downloadAndSetWallpaper(wallpaperItemImageContainer.modelData)
+                                            else
+                                            ServiceWallpaper.setWallpaper(wallpaperItemImageContainer.modelData)
+                                        }
+                                    }
+
+                                    // Download progress overlay (online mode, active download only)
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        anchors.margins: 5
+                                        radius: 8
+                                        color: Qt.rgba(0, 0, 0, 0.6)
+                                        visible: ServiceWallpaper.onlineMode && 
+                                        wallpaperItemImageContainer.modelData &&
+                                        ServiceWallpaper.downloadingId === wallpaperItemImageContainer.modelData.id
+                                        z: 3
+
+                                        Column {
+                                            anchors.centerIn: parent
+                                            spacing: 6
+
+                                            MaterialIconSymbol {
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                content: "downloading"
+                                                iconSize: 28
+                                                customColor: "white"
+                                            }
+
+                                            Rectangle {
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                width: Math.min(80, parent.parent.width - 16)
+                                                height: 4
+                                                radius: 2
+                                                color: Qt.rgba(1, 1, 1, 0.3)
+
+                                                Rectangle {
+                                                    width: parent.width * ServiceWallpaper.downloadProgress
+                                                    height: parent.height
+                                                    radius: parent.radius
+                                                    color: "white"
+                                                    Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
+                                                }
+                                            }
+
+                                            CustomText {
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                content: {
+                                                    const mb = (ServiceWallpaper.downloadedBytes / (1024 * 1024)).toFixed(1)
+                                                    if (ServiceWallpaper.downloadTotalBytes > 0) {
+                                                        const total = (ServiceWallpaper.downloadTotalBytes / (1024 * 1024)).toFixed(1)
+                                                        return mb + " / " + total + " MB"
+                                                    }
+                                                    return mb + " MB"
+                                                }
+                                                size: 11
+                                                customColor: "white"
+                                            }
+                                        }
+                                    }
+
+                                    // Heart / favourite button (local mode only)
+                                    Rectangle {
+                                        id: heartBtn
+                                        visible: !ServiceWallpaper.onlineMode && wallpaperItemImageContainer.modelData !== null
+                                        anchors.top: parent.top
+                                        anchors.right: parent.right
+                                        anchors.margins: 8
+                                        width: 28; height: 28; radius: 14
+                                        z: 2
+
+                                        readonly property bool faved: ServiceWallpaper.favoritedWallpapers.indexOf(
+                                            wallpaperItemImageContainer.modelData) >= 0
+
+                                            color: faved ? Colors.error : Colors.surfaceContainer
+                                            opacity: faved || tileHover.hovered ? 0.92 : 0
+                                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                                            Behavior on color   { ColorAnimation  { duration: 150 } }
+
+                                            MaterialIconSymbol {
+                                                anchors.centerIn: parent
+                                                content: heartBtn.faved ? "favorite" : "favorite_border"
+                                                iconSize: 16
+                                                customColor: heartBtn.faved ? Colors.errorText : Colors.surfaceText
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: (mouse) => {
+                                                    ServiceWallpaper.toggleFavorite(wallpaperItemImageContainer.modelData)
+                                                    mouse.accepted = true
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
-                                size: 11
-                                customColor: "white"
                             }
                         }
-                    }
+                    } // GridView
 
-                    // Heart / favourite button (local mode only)
-                    Rectangle {
-                        id: heartBtn
-                        visible: !ServiceWallpaper.onlineMode
-                        anchors.top: parent.top
-                        anchors.right: parent.right
-                        anchors.margins: 8
-                        width: 28; height: 28; radius: 14
-                        z: 2
-
-                        readonly property bool faved:
-                            ServiceWallpaper.favoritedWallpapers.indexOf(
-                                wallpaperItemImageContainer.modelData) >= 0
-
-                        color: faved ? Colors.error : Colors.surfaceContainer
-                        opacity: faved || tileHover.hovered ? 0.92 : 0
-                        Behavior on opacity { NumberAnimation { duration: 150 } }
-                        Behavior on color   { ColorAnimation  { duration: 150 } }
-
-                        MaterialIconSymbol {
-                            anchors.centerIn: parent
-                            content: heartBtn.faved ? "favorite" : "favorite_border"
-                            iconSize: 16
-                            customColor: heartBtn.faved ? Colors.errorText : Colors.surfaceText
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: (mouse) => {
-                                ServiceWallpaper.toggleFavorite(wallpaperItemImageContainer.modelData)
-                                mouse.accepted = true
-                            }
-                        }
-                    }
-                }
-
-            } // GridView
-
-            } // Item
+                } // Item
+            }
         }
     }
-}

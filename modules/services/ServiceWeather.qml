@@ -9,8 +9,8 @@ Singleton {
     id: root
 
     property string location: SettingsConfig.weather.location
-    property bool useMetric: true
-    property int refreshInterval: 900000 // 15 minutes
+    property bool useMetric: SettingsConfig.weather.useMetric ?? true
+    property int refreshInterval: (SettingsConfig.weather.refreshInterval ?? 15) * 60000
     property bool isLoading: false
     property bool hasError: false
 
@@ -138,6 +138,12 @@ Singleton {
         repeat: true
         onTriggered: root.fetchWeather()
         Component.onCompleted: root.fetchWeather()
+    }
+
+    function refresh() {
+        if (root.isLoading) return
+        refreshTimer.restart()
+        fetchWeather()
     }
 
     function fetchWeather() {

@@ -32,7 +32,7 @@ Item {
             RowLayout {
                 spacing: 10
                 MaterialIconSymbol {
-                    content: "smart_toy"
+                    content: "neurology"
                     iconSize: 20
                 }
                 CustomText {
@@ -101,7 +101,7 @@ Item {
                                 color: Colors.surfaceVariantText
                                 selectionColor: Colors.primary
                                 font.pixelSize: 13
-                                font.family: Settings.defaultFont
+                                font.family: SettingsConfig.general.defaultFont
                                 verticalAlignment: TextInput.AlignVCenter
                                 clip: true
 
@@ -246,7 +246,7 @@ Item {
             Rectangle {
                 Layout.topMargin: 10
                 Layout.fillWidth: true
-                Layout.preferredHeight: 50
+                Layout.preferredHeight: 70
                 radius: 12
                 color: Colors.surfaceContainerHigh
 

@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Notifications
 import QtMultimedia
+import qs.modules.settings
 
 Singleton {
     id: root
@@ -13,6 +14,9 @@ Singleton {
     property list<NotificationItem> popups: allNotifications.filter(n => n.popup)
     property int notificationsNumber: allNotifications.length
     property bool muted: false
+
+    Component.onCompleted: muted = SettingsConfig.toggles?.notificationMuted ?? false
+    onMutedChanged: SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, { notificationMuted: muted })
 
     SoundEffect {
         id: notificationSound
@@ -160,16 +164,16 @@ Singleton {
         root.muted = !root.muted
     }
 
-    function sendNotification(summary, body, appName, appIcon) {
-        notifSender.command = [
-            "notify-send",
-            "--app-name", appName || "Quickshell",
-            "--icon", appIcon || "dialog-information",
-            summary,
-            body || ""
-        ]
-        notifSender.running = true
-    }
+function sendNotification(summary, body, appName, appIcon) {
+    notifSender.command = [
+        "notify-send",
+        "--app-name", appName || "Quickshell",
+        "--app-icon", appIcon || "dialog-information",
+        summary,
+        body || ""
+    ]
+    notifSender.running = true
+}
 
     Process {
         id: notifSender

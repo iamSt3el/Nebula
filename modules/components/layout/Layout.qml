@@ -71,28 +71,7 @@ PanelWindow{
         color: "transparent"
     }
 
-    // Rectangle{
-    //     implicitHeight: 120 
-    //     implicitWidth: 320
-    //     anchors.centerIn: parent
-    //     radius: 20
-    //     color: Colors.surface
-    //
-    //     // CustomMatrialCircularProgress{
-    //     //     anchors.fill: parent
-    //     //     progress: 0.4
-    //     //     thickness: 6
-    //     //     gap: 0.3
-    //     //     icon: "memory"
-    //     //     iconSize: 40
-    //     //     sperm: false
-    //     // }
-    //     CustomSliderOld{
-    //         anchors.centerIn: parent
-    //         implicitHeight: 4
-    //         implicitWidth: parent.width
-    //     }
-    // }
+
 
     Item{
         id: root
@@ -251,6 +230,52 @@ PanelWindow{
                 }
             }
         }
+
+        // Shape{
+        //     preferredRendererType: Shape.CurveRenderer   
+        //     ShapePath{
+        //         strokeWidth: 0
+        //         strokeColor: "transparent"
+        //         fillColor: Colors.surface//"transparent"
+        //         startX: 0
+        //         startY: 60
+        //
+        //         PathArc{
+        //             relativeX: root.disX
+        //             relativeY: -root.disY
+        //             radiusX: root.radX
+        //             radiusY: root.radY
+        //         }
+        //
+        //         PathLine{
+        //             relativeX: root.width - 2 * root.disX
+        //             relativeY: 0
+        //         }
+        //
+        //         PathArc{
+        //             relativeX: root.disX
+        //             relativeY: root.disY
+        //             radiusX: root.radX
+        //             radiusY: root.radY
+        //         }
+        //
+        //         PathLine{
+        //             relativeX: 0
+        //             relativeY: -60
+        //         }
+        //
+        //         PathLine{
+        //             relativeX: -root.width
+        //             relativeY: 0
+        //         }
+        //
+        //         PathLine{
+        //             relativeX: 0
+        //             relativeY: 60
+        //         }
+        //     }
+        //
+        // }
 
         Workspaces{
             id: workspaces

@@ -11,7 +11,7 @@ Singleton {
 
     property var availableNetworks: Networking.devices ?? null
     property bool isConnected: Networking.wifiEnabled
-    property var currentNetwork: (availableNetworks?.values?.length ?? 0) > 0 ? availableNetworks.values[0] : null
+    property var currentNetwork: (availableNetworks?.values?.length ?? 0) > 0 ? availableNetworks.values[1] : null
 
     property var networks: !currentNetwork?.networks?.values ? [] :
     currentNetwork.networks.values.slice()
@@ -21,6 +21,8 @@ Singleton {
     property var available: networks.filter(n => !n.known && !n.connected)
     property var connectedAndSavedNetworks: networks.filter(n => n.connected || n.known)
     .sort((a, b) => b.connected - a.connected)
+
+
 
     property string qrImagePath: "/tmp/wifi_qr.png"
     signal qrGenerated(string path)

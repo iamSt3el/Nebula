@@ -57,8 +57,8 @@ Item{
         active: false
         visible: active
         anchors.fill: parent
-         //sourceComponent: AiContent{}
-        sourceComponent: MangaContent{}
+         sourceComponent: AiContent{}
+        //sourceComponent: MangaContent{}
     }
 
     RowLayout{

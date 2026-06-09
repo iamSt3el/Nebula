@@ -198,6 +198,7 @@ Item{
                 }
 
                 CustomMouseArea{
+                    radius: parent.radius
                     cursorShape: Qt.PointingHandCursor
                     hoverEnabled: true
                     onClicked:{
@@ -258,6 +259,7 @@ Item{
 
 
                         CustomMouseArea{
+                            radius: parent.radius
                             id: notificaitonArea
                             cursorShape: Qt.PointingHandCursor
                             hoverEnabled: true
@@ -299,6 +301,7 @@ Item{
                 }
 
                 CustomMouseArea{
+                    radius: parent.radius
                     cursorShape: Qt.PointingHandCursor
                     hoverEnabled: true
                     onClicked:{

@@ -44,31 +44,75 @@ Item{
         RowLayout{
             Layout.fillWidth: true
 
-            Item{
+            Rectangle{
                 Layout.fillWidth: true
                 Layout.preferredHeight: 40
-                // CustomText{
-                //     anchors.centerIn: parent
-                //     content: ServiceWeather.location
-                //     size: 16
-                // }
+                color: Colors.surfaceContainer
+                topLeftRadius: 20
+                topRightRadius: 5
+                bottomLeftRadius: 20
+                bottomRightRadius: 5
+                CustomText{
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: 20
+                    content: ServiceWeather.location
+                    size: 16
+                }
+            }
+
+            Rectangle{
+                Layout.preferredWidth: 40
+                Layout.preferredHeight: 40
+                topLeftRadius: 5
+                topRightRadius: 5
+                bottomLeftRadius: 5
+                bottomRightRadius: 5
+                color: Colors.surfaceContainer
+
+                MaterialIconSymbol{
+                    anchors.centerIn: parent
+                    content: "refresh"
+                    iconSize: refreshRipple.containsMouse ? 21 : 18
+                    Behavior on iconSize { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+
+                    RotationAnimation on rotation {
+                        running: ServiceWeather.isLoading
+                        from: 0; to: 360
+                        duration: 800
+                        loops: Animation.Infinite
+                    }
+                }
+
+                RippleEffect {
+                    id: refreshRipple
+                    anchors.fill: parent
+                    topLeftRadius: 5; topRightRadius: 5
+                    bottomLeftRadius: 5; bottomRightRadius: 5
+                    onClicked: ServiceWeather.refresh()
+                }
             }
             Rectangle{
                 Layout.preferredWidth: 40
                 Layout.preferredHeight: 40
-                radius: 10
+                topLeftRadius: 5
+                topRightRadius: 20
+                bottomLeftRadius: 5
+                bottomRightRadius: 20
                 color: Colors.surfaceContainer
 
                 MaterialIconSymbol{
                     anchors.centerIn: parent
                     content: "close"
-                    iconSize: 20
+                    iconSize: closeRipple.containsMouse ? 21 : 18
+                    Behavior on iconSize { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
                 }
 
-                MouseArea{
+                RippleEffect {
+                    id: closeRipple
                     anchors.fill: parent
-                    hoverEnabled: true 
-                    cursorShape: Qt.PointingHandCursor
+                    topLeftRadius: 5; topRightRadius: 20
+                    bottomLeftRadius: 5; bottomRightRadius: 20
                     onClicked: root.closed()
                 }
             }
@@ -303,7 +347,7 @@ Item{
                     implicitHeight: 150
                     implicitWidth: 135
                     roundedPolygon: MaterialShapeFn.getArrow()
-                    color: Qt.alpha(Colors.primary, 0.8)
+                    color: Qt.alpha(Colors.primary, 0.5)
                 }
 
                 ColumnLayout{
@@ -328,6 +372,7 @@ Item{
                         Layout.alignment: Qt.AlignCenter
                         content: ServiceWeather.windSpeed
                         size: 20
+                        color: Colors.primaryText
                     }
 
                     CustomText{
@@ -352,67 +397,66 @@ Item{
                 ColumnLayout{
                     anchors.fill: parent
                     anchors.margins: 10
-                    spacing: 30
+                    spacing: 10
 
                     RowLayout{
-                        MaterialIconSymbol{
-                            content: "wb_twilight"
-                            iconSize: 20
+                        Layout.alignment: Qt.AlignCenter
+                        spacing: 20
+                        Rectangle{
+                            Layout.preferredWidth: 50
+                            Layout.preferredHeight: 50
+                            radius: width / 2
+                            color: "#FFE97D"
                         }
 
-                        CustomText{
-                            content: "Sunrise & sunset"
-                            size: 16
-                        }
-                    }
-
-
-
-                    Item{
-                        Layout.fillHeight: true
-                    }
-
-
-                }
-
-                Rectangle{
-                    implicitWidth: parent.width
-                    implicitHeight: 80
-                    anchors.bottom: parent.bottom
-                    color: Qt.alpha(Colors.surface, 0.5)
-
-                    Rectangle{
-                        anchors.top: parent
-                        implicitWidth: parent.width
-                        implicitHeight: 1
-                        color: Colors.outline
-                    }
-
-                    ColumnLayout{
-                        anchors.centerIn: parent
-
-                        RowLayout{
-                            MaterialIconSymbol{
-                                content: "sunny"
-                                iconSize: 20
+                        ColumnLayout{
+                            spacing: 0
+                            CustomText{
+                                content: "Sunrise"
+                                size: 16
                             }
                             CustomText{
                                 content: ServiceWeather.astronomy.sunrise
                                 size: 14
+                                color: Colors.outline
                             }
                         }
+                    }
 
-                        RowLayout{
-                            MaterialIconSymbol{
-                                content: "wb_twilight"
-                                iconSize: 20
+                    CustomSpermSeparator{
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 6
+                        frequency: 10
+                        color: Colors.outline
+                    }
+
+                    RowLayout{
+                        Layout.alignment: Qt.AlignCenter
+                        spacing: 20
+
+
+                        ColumnLayout{
+                            spacing: 0
+                            CustomText{
+                                content: "Sunset"
+                                size: 16
                             }
                             CustomText{
                                 content: ServiceWeather.astronomy.sunset
                                 size: 14
+                                color: Colors.outline
                             }
                         }
+
+                        Rectangle{
+                            Layout.preferredWidth: 50
+                            Layout.preferredHeight: 50
+                            radius: width / 2
+                            color: "#D51C39"
+                        }
                     }
+
+
                 }
             }
 

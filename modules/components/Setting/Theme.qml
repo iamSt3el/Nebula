@@ -3,22 +3,35 @@ import Quickshell.Widgets
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
+import Qt.labs.platform
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
 
-Item{
+Item {
+    id: root
     anchors.fill: parent
     anchors.margins: 5
-    
-    Flickable{
-        anchors.fill: parent  
+
+    FolderDialog {
+        id: folderPicker
+        title: "Select wallpaper directory"
+        onAccepted: {
+            const path = folder.toString().replace(/^file:\/\//, "")
+            SettingsConfig.general = Object.assign({}, SettingsConfig.general, { wallpaperDir: path })
+            GlobalStates.fileDialogOpen = false
+        }
+        onRejected: GlobalStates.fileDialogOpen = false
+    }
+
+    Flickable {
+        anchors.fill: parent
         contentHeight: column.implicitHeight
-        contentWidth: width   
+        contentWidth: width
         clip: true
-        
-        ColumnLayout{
+
+        ColumnLayout {
             id: column
             width: parent.width
             anchors.top: parent.top
@@ -27,238 +40,206 @@ Item{
             anchors.leftMargin: 5
             anchors.rightMargin: 5
             anchors.topMargin: 5
-            spacing: 0        
+            spacing: 0
 
-            RowLayout{
+            // ── Header ───────────────────────────────────────────────────────
+            RowLayout {
                 spacing: 10
-                MaterialIconSymbol{
-                    content: "palette"
-                    iconSize: 20
-                } 
-
-                CustomText{
-                    content: "Theme"
-                    size: 20
-                    color: Colors.primary
-                }
+                MaterialIconSymbol { content: "palette"; iconSize: 20 }
+                CustomText { content: "Theme"; size: 20; color: Colors.primary }
             }
 
-            CustomText{
-                Layout.topMargin: 30
-                content: "Appearance"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText{
-                content: "Edit the appearance details"
-                size: 14
-                color: Colors.outline
-            }
+            // ── Appearance section ────────────────────────────────────────────
+            CustomText { Layout.topMargin: 30; content: "Appearance"; size: 18; color: Colors.primary }
+            CustomText { content: "Edit the appearance details"; size: 14; color: Colors.outline }
 
-            RowLayout{
+            // Wallpaper Directory
+            RowLayout {
+                Layout.topMargin: 14
                 Layout.fillWidth: true
-                Layout.topMargin: 10
-                spacing: 10
-                ColumnLayout{
+                ColumnLayout {
                     spacing: 0
-                    CustomText{
-                        content: "Wallpaper"
-                        size: 16
-                    }
-                    CustomText{
-                        content: "Choose your wallpaper"
-                        size: 13
-                        color: Colors.outline
-                    }
-
+                    CustomText { content: "Wallpaper Directory"; size: 16 }
+                    CustomText { content: "Local folder scanned for wallpapers"; size: 13; color: Colors.outline }
                 }
-
-                Item{
-                    Layout.fillWidth: true
-                }
-                Rectangle{
-                    Layout.preferredWidth: 200
-                    Layout.preferredHeight: 30
-                    radius: 10
-                    color: Colors.surfaceContainerHighest
-                    clip: true
-                    CustomText{
-                        anchors.right: parent.right
-                        anchors.left: parent.left
-                        anchors.rightMargin: 10
-                        anchors.leftMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        content: Colors.wallpaper
-                        size: 14
+                Item { Layout.fillWidth: true }
+                RowLayout {
+                    spacing: 4
+                    Rectangle {
+                        implicitHeight: 34
+                        implicitWidth: 180
+                        topLeftRadius: 15; bottomLeftRadius: 15
+                        topRightRadius: 5; bottomRightRadius: 5
+                        color: Colors.surfaceContainerHighest
+                        clip: true
+                        CustomText {
+                            anchors.left: parent.left; anchors.leftMargin: 10
+                            anchors.right: parent.right; anchors.rightMargin: 5
+                            anchors.verticalCenter: parent.verticalCenter
+                            content: SettingsConfig.general.wallpaperDir ?? "/home/steel/wallpaper"
+                            size: 12
+                        }
+                    }
+                    CustomButton {
+                        implicitHeight: 34; implicitWidth: 40
+                        topLeftRadius: 5; bottomLeftRadius: 5
+                        topRightRadius: 15; bottomRightRadius: 15
+                        icon: "folder_open"; iconSize: 18
+                        onClicked: {
+                            GlobalStates.fileDialogOpen = true
+                            folderPicker.open()
+                        }
                     }
                 }
-                Rectangle{
-                    Layout.preferredHeight: 30 
-                    Layout.preferredWidth: 30
-                    radius: 10
-                    color: Colors.tertiary
-
-
-                    MaterialIconSymbol{
-                        anchors.centerIn: parent
-                        content: "wallpaper"
-                        size: 26
-                        color: Colors.tertiaryText
-                    }
-                } 
             }
-            RowLayout{
-                Layout.topMargin: 10
-                ColumnLayout{
+
+            // Theme Mode
+            RowLayout {
+                Layout.topMargin: 14
+                Layout.fillWidth: true
+                ColumnLayout {
                     spacing: 0
-                    CustomText{
-                        content: "Theme Mode"
-                        size: 16
-                    }
-                    CustomText{
-                        content: "Set Theme mode Dark/Light"
-                        size: 13
-                        color: Colors.outline
-                    }
+                    CustomText { content: "Theme Mode"; size: 16 }
+                    CustomText { content: "Dark or Light color scheme"; size: 13; color: Colors.outline }
                 }
-                Item{
-                    Layout.fillWidth: true
-                }
-                
-                Rectangle{
-                    id: outer
-                    Layout.preferredWidth:120
-                    Layout.preferredHeight: 30 
-                    color: "transparent"
-                    radius: 10
-                    border{
-                        width: 1
-                        color: Colors.outline
-                    }
-                    property bool active: SettingsConfig.theme.matugenTheme === "dark" ? false : true
+                Item { Layout.fillWidth: true }
+                RowLayout {
+                    spacing: 6
+                    Repeater {
+                        model: Settings.themeModes
+                        delegate: Rectangle {
+                            id: modeBtn
+                            implicitHeight: 34
+                            implicitWidth: modeRow.implicitWidth + 20
+                            property bool isFirst: index === 0
+                            property bool isLast: index === Settings.themeModes.length - 1
+                            topLeftRadius:     isFirst ? 15 : 5
+                            bottomLeftRadius:  isFirst ? 15 : 5
+                            topRightRadius:    isLast  ? 15 : 5
+                            bottomRightRadius: isLast  ? 15 : 5
+                            property bool isActive: SettingsConfig.theme.matugenTheme === modelData.name.toLowerCase()
+                            color: isActive ? Colors.primary : Colors.surfaceContainerHigh
+                            Behavior on color { ColorAnimation { duration: 150 } }
 
-              
-                    Rectangle{
-                        id: slider
-                        implicitWidth: 60 
-                        implicitHeight: 30
-                        radius: 10
-                        color: Colors.tertiary
-                        x: outer.active ? moon.x : sun.x
-
-                        Behavior on x{
-                            NumberAnimation{
-                                duration: 200
-                                easing.type: Easing.OutQuad
-                            }
-                        }
-                    }
-                    Row{
-                        Item{
-                            id: sun
-                            implicitHeight: 30
-                            implicitWidth: 60
-                            MaterialIconSymbol{
+                            RowLayout {
+                                id: modeRow
                                 anchors.centerIn: parent
-                                content: "bedtime"
-                                size: 24
-                                color: !outer.active ? Colors.tertiaryText : Colors.surfaceText
-                            }
-                            MouseArea{
-                                anchors.fill: parent
-                                onClicked:{
-                                    outer.active = false
-                                    if(!outer.active){
-                                        SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, {matugenTheme: "dark"})
-                                        Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, ServiceWallpaper.scheme, ServiceWallpaper.theme])
-                                    }
+                                spacing: 6
+                                MaterialIconSymbol {
+                                    content: modelData.icon
+                                    iconSize: 16
+                                    color: modeBtn.isActive ? Colors.primaryText : Colors.surfaceVariantText
+                                    Behavior on color { ColorAnimation { duration: 150 } }
                                 }
-                            }
-                        }
-                        Item{
-                            id: moon
-                            implicitHeight: 30
-                            implicitWidth: 60
-                            MaterialIconSymbol{
-                                anchors.centerIn: parent
-                                content: "sunny"
-                                size: 24
-                                color: outer.active ? Colors.tertiaryText : Colors.surfaceText
-                            }
-                            MouseArea{
-                                anchors.fill: parent
-                                onClicked:{
-                                    outer.active = true 
-                                    if(outer.active){
-                                        SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, {matugenTheme: "light"})
-                                        Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, ServiceWallpaper.scheme, ServiceWallpaper.theme])
-                                    }
+                                CustomText {
+                                    content: modelData.name
+                                    size: 13
+                                    color: modeBtn.isActive ? Colors.primaryText : Colors.surfaceVariantText
+                                    Behavior on color { ColorAnimation { duration: 150 } }
                                 }
                             }
 
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    const newTheme = modelData.name.toLowerCase()
+                                    SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenTheme: newTheme })
+                                    Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, ServiceWallpaper.scheme, newTheme])
+                                }
+                            }
                         }
                     }
                 }
             }
-            RowLayout{
-                Layout.topMargin: 10
-                ColumnLayout{
+
+            // Matugen Scheme
+            RowLayout {
+                Layout.topMargin: 14
+                Layout.fillWidth: true
+                ColumnLayout {
                     spacing: 0
-                    CustomText{
-                        content: "Matugen"
-                        size: 16
-                    }
-                    CustomText{
-                        content: "Matugen lets you generates colors from your wallpaper"
-                        size: 13
-                        color: Colors.outline
-                    }
+                    CustomText { content: "Matugen Scheme"; size: 16 }
+                    CustomText { content: "Color generation algorithm"; size: 13; color: Colors.outline }
                 }
-                Item{
-                    Layout.fillWidth: true
-                }
-
-                CustomToogle{
-
-                }
-            }
-            RowLayout{
-                Layout.topMargin: 10
-                ColumnLayout{
-                    spacing: 0
-                    CustomText{
-                        content: "Matugen Styles"
-                        size: 16
-                    }
-                    CustomText{
-                        content: "Choose matugen style"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-                Item{
-                    Layout.fillWidth: true
-                }
-
-                CustomListNew{
+                Item { Layout.fillWidth: true }
+                CustomListNew {
                     Layout.preferredWidth: 200
                     Layout.preferredHeight: 30
                     currentVal: SettingsConfig.theme.matugenScheme
                     list: Settings.matugen
-                    onIsListClickedChanged:{
-                        if(isListClicked)
-                        grab.active = false
-                        else 
-                        grab.active = true
-                    }
-
-                    onCurrentValChanged:{
-                        SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, {matugenScheme: currentVal})
-                        Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, ServiceWallpaper.scheme, ServiceWallpaper.theme])
+                    onCurrentValChanged: {
+                        if (currentVal) {
+                            SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenScheme: currentVal })
+                            Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, currentVal, SettingsConfig.theme.matugenTheme])
+                        }
                     }
                 }
             }
+
+            Rectangle {
+                Layout.topMargin: 20; Layout.bottomMargin: 20
+                Layout.fillWidth: true; Layout.preferredHeight: 1
+                color: Colors.outline
+            }
+
+            // ── Wallhaven section ─────────────────────────────────────────────
+            CustomText { content: "Wallhaven"; size: 18; color: Colors.primary }
+            CustomText { content: "Configure online wallpaper browsing"; size: 14; color: Colors.outline }
+
+            // API Key
+            RowLayout {
+                Layout.topMargin: 14
+                Layout.fillWidth: true
+                ColumnLayout {
+                    spacing: 0
+                    CustomText { content: "API Key"; size: 16 }
+                    CustomText { content: "For NSFW access and higher rate limits"; size: 13; color: Colors.outline }
+                }
+                Item { Layout.fillWidth: true }
+                Rectangle {
+                    implicitWidth: 220; implicitHeight: 34
+                    radius: 10
+                    color: Colors.surfaceContainerHigh
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10; anchors.rightMargin: 8
+                        spacing: 6
+
+                        MaterialIconSymbol { content: "key"; iconSize: 16; color: Colors.outline }
+
+                        TextInput {
+                            id: apiKeyInput
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            text: SettingsConfig.wallhaven.apiKey
+                            color: Colors.inverseSurface
+                            font.pixelSize: 13
+                            clip: true
+                            verticalAlignment: TextInput.AlignVCenter
+                            echoMode: TextInput.Password
+                            onEditingFinished: {
+                                SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, { apiKey: text })
+                            }
+                        }
+
+                        MaterialIconSymbol {
+                            content: apiKeyInput.echoMode === TextInput.Password ? "visibility_off" : "visibility"
+                            iconSize: 16
+                            color: Colors.outline
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: apiKeyInput.echoMode = apiKeyInput.echoMode === TextInput.Password
+                                           ? TextInput.Normal : TextInput.Password
+                            }
+                        }
+                    }
+                }
+            }
+
+            Item { Layout.preferredHeight: 16 }
         }
     }
 }
-

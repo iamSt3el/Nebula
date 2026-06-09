@@ -200,6 +200,7 @@ Rectangle{
                         }
 
                         CustomMouseArea{
+                            radius: parent.radius
                             id: refreshArea
                             anchors.fill: parent
                             hoverEnabled: true
@@ -236,6 +237,7 @@ Rectangle{
                         }
 
                         CustomMouseArea{
+                            radius: parent.radius
                             id: area
                             anchors.fill: parent
                             hoverEnabled: true

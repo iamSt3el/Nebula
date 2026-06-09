@@ -46,9 +46,9 @@ PanelWindow {
         function drawMountainWave(ctx, data, isShadow) {
             if (data.length < 2) return
             var gradient = ctx.createLinearGradient(0, 0, width, height);
-            gradient.addColorStop(0.0, SettingsConfig.theme.firstColor);
-            gradient.addColorStop(0.5, SettingsConfig.theme.secondColor);
-            gradient.addColorStop(1.0, SettingsConfig.theme.thirdColor);
+            gradient.addColorStop(0.0, Colors.primary)//SettingsConfig.theme.firstColor);
+            gradient.addColorStop(0.5, Colors.primary)//SettingsConfig.theme.secondColor);
+            gradient.addColorStop(1.0, Colors.primary)//SettingsConfig.theme.thirdColor);
 
             ctx.beginPath()
 

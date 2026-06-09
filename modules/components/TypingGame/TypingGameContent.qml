@@ -443,7 +443,7 @@ Item {
                                             id: letter
                                             text: parent.ch
                                             font.pixelSize: root.wordFontSize
-                                            font.family:    Settings.defaultFont
+                                            font.family:    SettingsConfig.general.defaultFont
                                             font.weight:    Font.Normal
                                             color: {
                                                 if (!fw.isDone && !fw.isCurrent)
@@ -471,7 +471,7 @@ Item {
                                             return i < root.typedWord.length ? root.typedWord[i] : ""
                                         }
                                         font.pixelSize: root.wordFontSize
-                                        font.family:    Settings.defaultFont
+                                        font.family:    SettingsConfig.general.defaultFont
                                         font.weight:    Font.Normal
                                         color: Colors.error
                                     }

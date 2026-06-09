@@ -47,6 +47,7 @@ Item{
             iconSize: 24
 
             CustomMouseArea{
+                radius: parent.radius
                 id: loopArea
                 cursorShape: Qt.PointingHandCursor
                 hoverEnabled: true
@@ -61,6 +62,7 @@ Item{
             iconSize: 24
 
             CustomMouseArea{
+                radius: parent.radius
                 id: nArea
                 cursorShape: Qt.PointingHandCursor
                 hoverEnabled: true

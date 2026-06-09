@@ -203,6 +203,7 @@ Item{
                             }
 
                             CustomMouseArea{
+                                radius: parent.radius
                                 id: listArea
                                 anchors.fill: parent
                                 hoverEnabled: true
@@ -232,6 +233,7 @@ Item{
                             }
 
                             CustomMouseArea{
+                                radius: parent.radius
                                 id: gridArea
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor

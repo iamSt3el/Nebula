@@ -9,15 +9,12 @@ Singleton{
 
     property string layoutColor: Colors.surface
     property string activeTheme: "Wallpaper"
-    property string profile: "/home/steel/Downloads/DANDADAN.jpg"
     property int    dashboardHeight: 400
-    property string defaultFont: "Rubik"
     property string wallpaper: Colors.wallpaper
     property string matugenSetting: "Light"
     property string matugenTheme: matugenSetting.toLowerCase()
     property string currentDisplayMode: "Extended"
     property string currentMatugenStyle: "default"
-    property int    musicVisBars: 60
     property string matugenScheme: "scheme-content"
 
     // Workspace configur ation per monitor
@@ -69,10 +66,6 @@ Singleton{
         {
             name: "Light",
             icon: "sunny"
-        },
-        {
-            name: "Wallpaper",
-            icon: "wallpaper"
         }
     ]
 
@@ -86,8 +79,8 @@ Singleton{
             icon: "palette",
         },
         {
-            name: "Display",
-            icon: "monitor"
+            name: "Sound",
+            icon: "volume_up"
         },
         {
             name: "Networking",
@@ -98,8 +91,16 @@ Singleton{
             icon: "bluetooth"
         },
         {
+            name: "Ai",
+            icon: "neurology"
+        },
+        {
             name: "Manga",
             icon: "menu_book"
+        },
+        {
+            name: "Weather",
+            icon: "partly_cloudy_day"
         },
         {
             name: "About",
@@ -171,10 +172,6 @@ Singleton{
 
     function setActiveTheme(theme): void{
         settings.activeTheme = theme
-    }
-
-    function setDefaultFont(font): void{
-        settings.defaultFont = font
     }
 
     function setMatugenTheme(theme): void{

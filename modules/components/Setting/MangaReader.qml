@@ -117,8 +117,6 @@ Item {
                 }
                 Item { Layout.fillWidth: true }
                 CustomSpinBox {
-                    Layout.preferredWidth: 140
-                    Layout.preferredHeight: 30
                     val: SettingsConfig.manga.scrollSpeed
                     inc: 1
                     limit: 30
@@ -144,8 +142,6 @@ Item {
                 }
                 Item { Layout.fillWidth: true }
                 CustomSpinBox {
-                    Layout.preferredWidth: 140
-                    Layout.preferredHeight: 30
                     val: SettingsConfig.manga.pageSpacing
                     inc: 2
                     limit: 60
@@ -171,8 +167,6 @@ Item {
                 }
                 Item { Layout.fillWidth: true }
                 CustomSpinBox {
-                    Layout.preferredWidth: 140
-                    Layout.preferredHeight: 30
                     val: SettingsConfig.manga.preloadPages
                     inc: 500
                     limit: 8000

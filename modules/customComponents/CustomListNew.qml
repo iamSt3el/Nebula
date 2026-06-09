@@ -69,12 +69,11 @@ Item{
         active: root.isListClicked
         sourceComponent: PopupWindow{
             id: popup
-            anchor.window: panelWindow
+            anchor.window: root.QsWindow.window
             visible: true
             implicitWidth: root.width
             implicitHeight: child.implicitHeight
             color: "transparent"
-
 
             HyprlandFocusGrab {
                 active: true
@@ -82,9 +81,7 @@ Item{
                 onCleared: root.isListClicked = false
             }
 
-
-
-            property var windowPos: panelWindow?.mapFromItem(root, 0, root.height) ?? Qt.point(0, 0)
+            property var windowPos: root.mapToItem(null, 0, root.height)
 
             anchor{
                 rect.x: windowPos.x

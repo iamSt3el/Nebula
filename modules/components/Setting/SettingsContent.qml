@@ -38,13 +38,16 @@ Item{
     Rectangle{
         anchors.fill: parent
         radius: 20
-        color: Settings.layoutColor
+        color: Colors.surface
 
         Rectangle{
             anchors.fill: parent
             anchors.margins: 10
             radius: 20
             color: Colors.surfaceContainer
+
+
+            
             RowLayout{
                 anchors.fill: parent
 
@@ -104,35 +107,101 @@ Item{
                                     model: Settings.pages
 
                                     delegate: Item{
+                                        id: delegateItem
                                         property bool active: root.currentPage === index
                                         width: navColumn.width
                                         height: 40
+
+                                        // hover overlay
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            radius: 10
+                                            color: navMouse.containsMouse && !active
+                                                   ? Qt.rgba(0.5, 0.5, 0.5, 0.08)
+                                                   : "transparent"
+                                            Behavior on color { ColorAnimation { duration: 150 } }
+                                        }
 
                                         RowLayout{
                                             anchors.fill: parent
                                             anchors.margins: 5
                                             spacing: 10
-                                            MaterialIconSymbol{
-                                                content: modelData.icon
-                                                iconSize: 20
-                                                color: active ? Colors.primaryText : Colors.surfaceVariantText
+
+                                            Item {
+                                                implicitWidth: 22
+                                                implicitHeight: 22
+
+                                                MaterialIconSymbol{
+                                                    id: navIcon
+                                                    anchors.centerIn: parent
+                                                    content: modelData.icon
+                                                    iconSize: 20
+                                                    layer.enabled: true
+                                                    layer.smooth: true
+                                                    color: active ? Colors.primaryText : Colors.surfaceVariantText
+
+                                                    fill: (navMouse.pressed || active) ? 1 : 0
+                                                    Behavior on fill {
+                                                        NumberAnimation { duration: 200 }
+                                                    }
+
+                                                    rotation: navMouse.pressed       ? 25
+                                                            : navMouse.containsMouse ? 15
+                                                            : active                 ? 20
+                                                            : 0
+                                                    Behavior on rotation {
+                                                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                                                    }
+
+                                                    Behavior on color {
+                                                        ColorAnimation { duration: 150 }
+                                                    }
+
+                                                    transform: Rotation {
+                                                        id: flipRotation
+                                                        origin.x: navIcon.width / 2
+                                                        origin.y: navIcon.height / 2
+                                                        axis { x: 0; y: 1; z: 0 }
+                                                        angle: 0
+                                                    }
+
+                                                    states: State {
+                                                        name: "flipped"
+                                                        when: navMouse.pressed
+                                                        PropertyChanges { target: flipRotation; angle: 180 }
+                                                    }
+
+                                                    transitions: Transition {
+                                                        NumberAnimation {
+                                                            target: flipRotation
+                                                            property: "angle"
+                                                            duration: 300
+                                                            easing.type: Easing.OutCubic
+                                                        }
+                                                    }
+                                                }
                                             }
+
                                             CustomText{
                                                 Layout.fillWidth: true
                                                 content: modelData.name
-                                                size: 14
+                                                size: 15
+                                                weight: active ? 800 : 600
                                                 color: active ? Colors.primaryText : Colors.surfaceVariantText
+
+                                                Behavior on color {
+                                                    ColorAnimation { duration: 150 }
+                                                }
                                             }
                                         }
 
                                         MouseArea{
+                                            id: navMouse
                                             anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            hoverEnabled: true
-
-                                            onClicked:{
-                                                root.currentPage = index
-                                            }
+                                            cursorShape: GlobalStates.fileDialogOpen ? Qt.ArrowCursor : Qt.PointingHandCursor
+                                            hoverEnabled: !GlobalStates.fileDialogOpen
+                                            enabled: !GlobalStates.fileDialogOpen
+                                            onClicked: root.currentPage = index
                                         }
                                     }
                                 }
@@ -147,19 +216,19 @@ Item{
                             Layout.fillWidth: true
                             Layout.preferredHeight: 40
                             radius: 15
-                            color: Colors.tertiary
+                            color: Colors.primary
 
                             RowLayout{
                                 anchors.centerIn: parent
                                 MaterialIconSymbol{
                                     content: "edit"
                                     size: 20
-                                    color: Colors.tertiaryText
+                                    color: Colors.primaryText
                                 }
                                 CustomText{
                                     content: "Edit Config"
                                     size: 14
-                                    color: Colors.tertiaryText
+                                    color: Colors.primaryText
                                 }
                             }
                         }
@@ -183,7 +252,7 @@ Item{
                     Loader{
                         anchors.fill: parent
                         active: root.currentPage === 2
-                        sourceComponent: Display{}
+                        sourceComponent: Sound{}
                     }
 
                     Loader{
@@ -204,20 +273,26 @@ Item{
                     //     sourceComponent: Keybindings{}
                     // }
 
-                    // Loader{
-                    //     anchors.fill: parent
-                    //     active: root.currentPage === 4
-                    //     sourceComponent: Ai{}
-                    // }
                     Loader{
                         anchors.fill: parent
                         active: root.currentPage === 5
+                        sourceComponent: Ai{}
+                    }
+                    Loader{
+                        anchors.fill: parent
+                        active: root.currentPage === 6
                         sourceComponent: MangaReader{}
                     }
 
                     Loader{
                         anchors.fill: parent
-                        active: root.currentPage === 6
+                        active: root.currentPage === 7
+                        sourceComponent: WeatherSettings{}
+                    }
+
+                    Loader{
+                        anchors.fill: parent
+                        active: root.currentPage === 8
                         sourceComponent: About{}
                     }
 
@@ -225,6 +300,33 @@ Item{
 
                 }
 
+            }
+
+            Rectangle{
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.topMargin: 10
+                anchors.rightMargin: 10
+                implicitWidth: 30
+                implicitHeight: 30
+                radius: 10
+                color: closeArea.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
+
+                MaterialIconSymbol{
+                    anchors.centerIn: parent
+                    content: "close"
+                    iconSize: 16
+                    color: closeArea.containsMouse ? Colors.primaryText : Colors.surfaceText
+                }
+
+                MouseArea{
+                    id: closeArea
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
+                    onClicked: root.settingClosed()
+
+                }
             }
         }
 

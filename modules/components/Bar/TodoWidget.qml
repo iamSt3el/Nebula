@@ -191,7 +191,7 @@ Item {
                     focus: true
                     color: Colors.surfaceText
                     font.pixelSize: 13
-                    font.family: Settings.defaultFont
+                    font.family: SettingsConfig.general.defaultFont
                     verticalAlignment: TextInput.AlignVCenter
                     clip: true
 

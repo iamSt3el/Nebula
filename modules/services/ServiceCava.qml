@@ -9,7 +9,7 @@ import qs.modules.settings
 Singleton {
     id: root
 
-    // Full bar array matching Settings.musicVisBars, values 0.0–1.0
+    // Full bar array matching SettingsConfig.general.musicVisBars, values 0.0–1.0
     property var cavaData: []
 
     // Averaged down to exactly 12 groups — one per cookie12 star tip
@@ -23,7 +23,7 @@ Singleton {
         command: ["sh", "-c", `
 cava -p /dev/stdin <<'CAVAEOF'
 [general]
-bars = ${Settings.musicVisBars}
+bars = ${SettingsConfig.general.musicVisBars ?? 60}
 framerate = 60
 autosens = 1
 

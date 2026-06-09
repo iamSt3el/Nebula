@@ -18,7 +18,7 @@ Item{
         implicitWidth: parent.width
         implicitHeight: parent.height
         radius: 12
-        color: root.isToggleOn ? Colors.tertiary : Colors.surfaceVariant
+        color: root.isToggleOn ? Colors.primary : Colors.surfaceVariant
 
         Behavior on color{
             ColorAnimation{

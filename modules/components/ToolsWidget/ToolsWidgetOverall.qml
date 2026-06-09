@@ -52,48 +52,99 @@ Item {
         transformOrigin: Item.Center
     }
 
-    MaterialIconSymbol {
+    // Camera / Screenshot
+    Item {
         anchors.top: parent.top
         anchors.left: parent.left
-        anchors.topMargin: 50
-        anchors.leftMargin: 50
-        content: "photo_camera"
-        iconSize: 50
-        color: Colors.primaryText
+        anchors.topMargin: 30
+        anchors.leftMargin: 30
+        width: 80; height: 80
         opacity: root.iconOpacity
+        MaterialIconSymbol {
+            anchors.centerIn: parent
+            content: "photo_camera"
+            iconSize: camArea.containsMouse ? 56 : 50
+            color: Colors.primaryText
+            Behavior on iconSize { NumberAnimation { duration: 120 } }
+        }
+        MouseArea {
+            id: camArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.cameraClicked()
+        }
     }
 
-    MaterialIconSymbol {
+    // Recording
+    Item {
         anchors.top: parent.top
         anchors.right: parent.right
-        anchors.topMargin: 50
-        anchors.rightMargin: 50
-        content: "videocam"
-        iconSize: 50
-        color: Colors.primaryText
+        anchors.topMargin: 30
+        anchors.rightMargin: 30
+        width: 80; height: 80
         opacity: root.iconOpacity
+        MaterialIconSymbol {
+            anchors.centerIn: parent
+            content: "videocam"
+            iconSize: recArea.containsMouse ? 56 : 50
+            color: Colors.primaryText
+            Behavior on iconSize { NumberAnimation { duration: 120 } }
+        }
+        MouseArea {
+            id: recArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.recordingClicked()
+        }
     }
 
-    MaterialIconSymbol {
+    // Power
+    Item {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.bottomMargin: 50
-        anchors.leftMargin: 50
-        content: "power_settings_new"
-        iconSize: 50
-        color: Colors.primaryText
+        anchors.bottomMargin: 30
+        anchors.leftMargin: 30
+        width: 80; height: 80
         opacity: root.iconOpacity
+        MaterialIconSymbol {
+            anchors.centerIn: parent
+            content: "power_settings_new"
+            iconSize: powerArea.containsMouse ? 56 : 50
+            color: Colors.primaryText
+            Behavior on iconSize { NumberAnimation { duration: 120 } }
+        }
+        MouseArea {
+            id: powerArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+        }
     }
 
-    MaterialIconSymbol {
+    // Settings
+    Item {
         anchors.bottom: parent.bottom
         anchors.right: parent.right
-        anchors.bottomMargin: 50
-        anchors.rightMargin: 50
-        content: "settings"
-        iconSize: 50
-        color: Colors.primaryText
+        anchors.bottomMargin: 30
+        anchors.rightMargin: 30
+        width: 80; height: 80
         opacity: root.iconOpacity
+        MaterialIconSymbol {
+            anchors.centerIn: parent
+            content: "settings"
+            iconSize: settingsArea.containsMouse ? 56 : 50
+            color: Colors.primaryText
+            Behavior on iconSize { NumberAnimation { duration: 120 } }
+        }
+        MouseArea {
+            id: settingsArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: GlobalStates.settingsOpen = true
+        }
     }
 
     Rectangle {

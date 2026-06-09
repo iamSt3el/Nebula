@@ -60,10 +60,7 @@ Item{
         //anchors.centerIn: parent
     }
 
-    Temperature{
-        x: 600
-        y: 100
-    }
+
 
 
     Item{
@@ -221,7 +218,7 @@ Item{
                             radius: 10
                             color: Colors.primary
                             Image{
-                                source: Settings.profile
+                                source: SettingsConfig.general.profile
                                 anchors.fill: parent
                                 sourceSize: Qt.size(width, height)
                                 fillMode: Qt.PreserveAspectCrop

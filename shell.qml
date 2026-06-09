@@ -36,7 +36,6 @@ ShellRoot{
     SettingsPanel{}
     ToolsWidget{}
     Shutdown{}
-    //Dis{}
     Loader{
         active: SettingsConfig.general.musicVisOn
         sourceComponent:Vis{

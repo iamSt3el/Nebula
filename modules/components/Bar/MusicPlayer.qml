@@ -243,6 +243,7 @@ Rectangle{
          
                     
                     CustomMouseArea{
+                        radius: parent.radius
                         id: loopArea
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
@@ -275,6 +276,7 @@ Rectangle{
                     }
       
                     CustomMouseArea{
+                        radius: parent.radius
                         id: sArea
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
@@ -308,6 +310,7 @@ Rectangle{
                         color: lArea.containsMouse ? Colors.primaryText : Colors.surfaceText
                     }
                     CustomMouseArea{
+                        radius: parent.radius
                         id: lArea
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
@@ -341,6 +344,7 @@ Rectangle{
 
 
                     CustomMouseArea{
+                        radius: parent.radius
                         id: pArea
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
@@ -376,6 +380,7 @@ Rectangle{
 
 
                     CustomMouseArea{
+                        radius: parent.radius
                         id: nArea
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true

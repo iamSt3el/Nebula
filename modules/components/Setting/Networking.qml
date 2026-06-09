@@ -17,13 +17,13 @@ Item{
     property bool passwordPrompt: false
     property var network: null
 
-    onPasswordPromptChanged:{
-        if(passwordPrompt){
-            grab.active = false
-        }else{
-            grab.active = true
-        }
-    }
+    // onPasswordPromptChanged:{
+    //     if(passwordPrompt){
+    //         grab.active = false
+    //     }else{
+    //         grab.active = true
+    //     }
+    // }
 
     Loader{
         anchors.fill: parent
