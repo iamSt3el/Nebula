@@ -126,7 +126,7 @@ Item{
 
             CustomText{
                 Layout.topMargin: 5
-                content: "Hyprland keyboard shortcuts"
+                content: "All configured keybindings from your Hyprland config"
                 size: 14
                 color: Colors.outline
             }

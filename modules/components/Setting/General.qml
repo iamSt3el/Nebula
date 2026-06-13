@@ -65,7 +65,7 @@ Item{
                 color: Colors.primary
             }
             CustomText{
-                content: "Edit your profile details"
+                content: "Set your name and avatar shown across the shell"
                 size: 14
                 color: Colors.outline
             }
@@ -118,7 +118,7 @@ Item{
                         Layout.fillHeight: true
                     }
                     CustomText{
-                        content: "Choose your profile picture"
+                        content: "Shown in the overview and lock screen"
                         size: 12
                         color: Colors.outline
                     }
@@ -176,7 +176,7 @@ Item{
                 color: Colors.primary
             }
             CustomText{
-                content: "Choose your fonts"
+                content: "Font used across the shell interface"
                 size: 14
                 color: Colors.outline
             }
@@ -196,7 +196,7 @@ Item{
                         size: 16
                     }
                     CustomText{
-                        content: "Choose default font"
+                        content: "Applied globally to all text elements"
                         size: 13
                         color: Colors.outline
                     }
@@ -234,7 +234,7 @@ Item{
                 color: Colors.primary
             }
             CustomText{
-                content: "Edit Dock settings"
+                content: "Configure dock visibility and behavior"
                 size: 14
                 color: Colors.outline
             }
@@ -249,7 +249,7 @@ Item{
                         size: 16
                     }
                     CustomText{
-                        content: "Turn Dock on/off"
+                        content: "Show or hide the application dock"
                         size: 13
                         color: Colors.outline
                     }
@@ -277,7 +277,7 @@ Item{
                         size: 16
                     }
                     CustomText{
-                        content: "Turn Autohide on/off"
+                        content: "Dock hides when a window overlaps it"
                         size: 13
                         color: Colors.outline
                     }
@@ -305,7 +305,7 @@ Item{
                         size: 16
                     }
                     CustomText{
-                        content: "Turn Music Player on/off"
+                        content: "Show the mini player in the dock"
                         size: 13
                         color: Colors.outline
                     }
@@ -338,7 +338,7 @@ Item{
                 color: Colors.primary
             }
             CustomText{
-                content: "Edit music visualizer settings"
+                content: "Control the audio frequency visualizer in the bar"
                 size: 14
                 color: Colors.outline
             }
@@ -353,7 +353,7 @@ Item{
                         size: 16
                     }
                     CustomText{
-                        content: "Turn Visualizer on/off"
+                        content: "Display audio bars alongside the music player"
                         size: 13
                         color: Colors.outline
                     }
@@ -381,7 +381,7 @@ Item{
                         size: 16
                     }
                     CustomText{
-                        content: "Choose colors for visualizer"
+                        content: "Two accent colors blended across the frequency bars"
                         size: 13
                         color: Colors.outline
                     }
@@ -421,7 +421,7 @@ Item{
                     }
 
                     CustomText{
-                        content: "Choose visualizer bars"
+                        content: "Number of frequency bands to render"
                         size: 13
                         color: Colors.outline
                     }

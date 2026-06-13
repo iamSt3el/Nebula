@@ -28,6 +28,7 @@ Singleton {
     property string wallpaperScript:"/home/steel/.config/quickshell/scripts/wallpaper.sh"
     property string scheme: SettingsConfig.theme.matugenScheme
     property string theme: SettingsConfig.theme.matugenTheme
+    property string transitionType: SettingsConfig.theme.transitionType ?? "fade"
 
     property list<string> wallpapers: []
     property var filteredWallpapers: []
@@ -429,7 +430,7 @@ Singleton {
         const originalPath = getOriginalPath(cachePath)
         if (originalPath) {
             console.log("[ServiceWallpaper] Setting wallpaper:", originalPath)
-            wallpaperSetter.exec([wallpaperScript, originalPath, root.scheme, root.theme])
+            wallpaperSetter.exec([wallpaperScript, originalPath, root.scheme, root.theme, root.transitionType])
             wallpapersChanged()
         } else {
             console.error("[ServiceWallpaper] Cannot find original path for:", cachePath)
@@ -495,7 +496,7 @@ Singleton {
                     thumbPath
                 ]
                 downloadedThumbGen.running = true
-                wallpaperSetter.exec([wallpaperScript, savePath, root.scheme, root.theme])
+                wallpaperSetter.exec([wallpaperScript, savePath, root.scheme, root.theme, root.transitionType])
             } else {
                 console.error("[ServiceWallpaper] Download failed for:", root._pendingDownloadPath)
                 ServiceNotification.sendNotification(

@@ -99,7 +99,7 @@ Item{
                 color: Colors.primary
             }
             CustomText{
-                content: "Edit the networking details"
+                content: "Manage Wi-Fi connections and saved networks"
                 size: 14
                 color: Colors.outline
             }
@@ -115,7 +115,7 @@ Item{
                     }
 
                     CustomText{
-                        content: "Select your network"
+                        content: "Quick-connect to a nearby network"
                         size: 13
                         color: Colors.outline
                     }

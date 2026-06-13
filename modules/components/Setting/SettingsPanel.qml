@@ -7,7 +7,7 @@ import qs.modules.customComponents
 Scope {
     FloatingWindow {
         id: floatWindow
-        implicitWidth: 700
+        implicitWidth: 1000
         implicitHeight: 700
         title: "Settings"
         color: "transparent"

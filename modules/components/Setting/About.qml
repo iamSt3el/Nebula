@@ -94,7 +94,7 @@ Item {
                 color: Colors.primary
             }
             CustomText {
-                content: "Who made this"
+                content: "The person behind Nebula"
                 size: 14
                 color: Colors.outline
             }
@@ -155,7 +155,7 @@ Item {
                 color: Colors.primary
             }
             CustomText {
-                content: "Find the project online"
+                content: "Source code, issues, and updates"
                 size: 14
                 color: Colors.outline
             }

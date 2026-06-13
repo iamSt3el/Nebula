@@ -51,7 +51,7 @@ Item {
                 color: Colors.primary
             }
             CustomText {
-                content: "Filter what content is shown"
+                content: "Control what types of content appear in search results"
                 size: 14
                 color: Colors.outline
             }
@@ -67,7 +67,7 @@ Item {
                         size: 16
                     }
                     CustomText {
-                        content: "Hide manga tagged as adult, hentai, or explicit"
+                        content: "Filters out 18+ titles from search results"
                         size: 13
                         color: Colors.outline
                     }
@@ -94,7 +94,7 @@ Item {
                 color: Colors.primary
             }
             CustomText {
-                content: "Configure manga reading experience"
+                content: "Tune scroll behavior, spacing, and image preloading"
                 size: 14
                 color: Colors.outline
             }
@@ -110,7 +110,7 @@ Item {
                         size: 16
                     }
                     CustomText {
-                        content: "Scroll velocity multiplier (higher = faster)"
+                        content: "Higher values scroll faster per swipe"
                         size: 13
                         color: Colors.outline
                     }
@@ -135,7 +135,7 @@ Item {
                         size: 16
                     }
                     CustomText {
-                        content: "Gap between pages in the reader"
+                        content: "Vertical gap between consecutive pages"
                         size: 13
                         color: Colors.outline
                     }
@@ -160,7 +160,7 @@ Item {
                         size: 16
                     }
                     CustomText {
-                        content: "Pixels ahead to preload images"
+                        content: "More pixels reduces load-in but uses more memory"
                         size: 13
                         color: Colors.outline
                     }
@@ -189,7 +189,7 @@ Item {
                 color: Colors.primary
             }
             CustomText {
-                content: "Choose the default manga source"
+                content: "Sets the library searched when opening the reader"
                 size: 14
                 color: Colors.outline
             }

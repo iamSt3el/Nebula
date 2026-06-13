@@ -52,7 +52,7 @@ Item {
                 color: Colors.primary
             }
             CustomText {
-                content: "Where to fetch weather data for"
+                content: "City or coordinates used for all weather data"
                 size: 14
                 color: Colors.outline
             }
@@ -68,7 +68,7 @@ Item {
                         size: 16
                     }
                     CustomText {
-                        content: "City name or lat,lon coordinates"
+                        content: "e.g. London or 51.5,-0.1"
                         size: 13
                         color: Colors.outline
                     }
@@ -128,7 +128,7 @@ Item {
                 color: Colors.primary
             }
             CustomText {
-                content: "Temperature and measurement system"
+                content: "Applies to temperature, wind speed, and distance"
                 size: 14
                 color: Colors.outline
             }
@@ -228,7 +228,7 @@ Item {
                 color: Colors.primary
             }
             CustomText {
-                content: "How often to fetch new weather data"
+                content: "Shorter intervals use more network requests"
                 size: 14
                 color: Colors.outline
             }
@@ -244,7 +244,7 @@ Item {
                         size: 16
                     }
                     CustomText {
-                        content: "Minutes between automatic updates"
+                        content: "Minimum 5 min recommended"
                         size: 13
                         color: Colors.outline
                     }

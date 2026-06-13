@@ -82,13 +82,34 @@ Singleton {
                     general = Object.assign({}, d, cur)
             }
 
+            readonly property var _themeDefaults: ({
+                matugenScheme: "scheme-content",
+                matugenTheme: "Light",
+                firstColor: "#ffffff",
+                secondColor: "#ffffff",
+                thirdColor: "#ffffff",
+                transitionType: "fade"
+            })
+
             property var theme: ({
                 matugenScheme: "scheme-content",
                 matugenTheme: "Light",
                 firstColor: "#ffffff",
                 secondColor: "#ffffff",
-                thirdColor: "#ffffff"
+                thirdColor: "#ffffff",
+                transitionType: "fade"
             })
+
+            onThemeChanged: {
+                const d = _themeDefaults
+                const cur = theme || {}
+                let needsPatch = false
+                for (const k in d) {
+                    if (cur[k] === undefined) { needsPatch = true; break }
+                }
+                if (needsPatch)
+                    theme = Object.assign({}, d, cur)
+            }
 
             property var wallhaven: ({
                 apiKey: "",

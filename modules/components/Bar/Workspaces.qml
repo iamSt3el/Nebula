@@ -74,11 +74,11 @@ Item{
                 Layout.preferredHeight: currentWorkspace ? 25 : 15
                 Layout.preferredWidth: currentWorkspace ? Math.max(15, topLevels.appList.width) + 10 : 15
                 radius: 10
-                color: currentWorkspace ? currentWorkspace.active ? Colors.primary : Colors.surfaceContainer : Colors.surfaceContainer
-                border{
-                    width: 1
-                    color: Qt.alpha(Colors.outline, 0.5)
-                }
+                color: currentWorkspace ? currentWorkspace.active ? Colors.primary : Colors.surfaceContainerHighest : Colors.surfaceContainer
+                // border{
+                //     width: 1
+                //     color: Qt.alpha(Colors.outline, 0.5)
+                // }
 
                 Behavior on implicitWidth{
                     NumberAnimation{

@@ -14,6 +14,45 @@ FocusScope {
 
     implicitHeight: 40
 
+    // index 0 is circle — reserved as the settled state; cycle indices 1-34 for the burst shape
+    property var shapeGetters: [
+        MaterialShapeFn.getCircle,
+        MaterialShapeFn.getSquare,
+        MaterialShapeFn.getSlanted,
+        MaterialShapeFn.getArch,
+        MaterialShapeFn.getFan,
+        MaterialShapeFn.getArrow,
+        MaterialShapeFn.getSemiCircle,
+        MaterialShapeFn.getOval,
+        MaterialShapeFn.getPill,
+        MaterialShapeFn.getTriangle,
+        MaterialShapeFn.getDiamond,
+        MaterialShapeFn.getClamShell,
+        MaterialShapeFn.getPentagon,
+        MaterialShapeFn.getGem,
+        MaterialShapeFn.getSunny,
+        MaterialShapeFn.getVerySunny,
+        MaterialShapeFn.getCookie4Sided,
+        MaterialShapeFn.getCookie6Sided,
+        MaterialShapeFn.getCookie7Sided,
+        MaterialShapeFn.getCookie9Sided,
+        MaterialShapeFn.getCookie12Sided,
+        MaterialShapeFn.getGhostish,
+        MaterialShapeFn.getClover4Leaf,
+        MaterialShapeFn.getClover8Leaf,
+        MaterialShapeFn.getBurst,
+        MaterialShapeFn.getSoftBurst,
+        MaterialShapeFn.getBoom,
+        MaterialShapeFn.getSoftBoom,
+        MaterialShapeFn.getFlower,
+        MaterialShapeFn.getPuffy,
+        MaterialShapeFn.getPuffyDiamond,
+        MaterialShapeFn.getPixelCircle,
+        MaterialShapeFn.getPixelTriangle,
+        MaterialShapeFn.getBun,
+        MaterialShapeFn.getHeart
+    ]
+
     ListModel { id: shapesModel }
 
     TextInput {
@@ -31,8 +70,11 @@ FocusScope {
 
         onLengthChanged: {
             if (length > trackedLength) {
-                for (let i = 0; i < length - trackedLength; i++)
-                    shapesModel.append({})
+                for (let i = 0; i < length - trackedLength; i++) {
+                    // cycle indices 1..N-1 so the burst shape is never a plain circle
+                    const idx = (shapesModel.count % (root.shapeGetters.length - 1)) + 1
+                    shapesModel.append({ shapeIndex: idx })
+                }
             } else {
                 for (let i = 0; i < trackedLength - length; i++)
                     if (shapesModel.count > 0)
@@ -63,12 +105,32 @@ FocusScope {
         interactive: false
         model: shapesModel
 
-        delegate: MaterialShapes.ShapeCanvas {
+        delegate: Item {
             width: 30
             height: 30
-            color: Colors.primary
-            roundedPolygon: MaterialShapeFn.getCircle()
-            Component.onCompleted: roundedPolygon = MaterialShapeFn.getCookie7Sided()
+
+            MaterialShapes.ShapeCanvas {
+                id: shapeCanvas
+                anchors.centerIn: parent
+                width: 30
+                height: 30
+                color: Colors.primary
+                roundedPolygon: root.shapeGetters[model.shapeIndex]()
+
+                Behavior on scale {
+                    NumberAnimation { duration: 350; easing.type: Easing.OutCubic }
+                }
+            }
+
+            Timer {
+                interval: 100
+                running: true
+                repeat: false
+                onTriggered: {
+                    shapeCanvas.roundedPolygon = MaterialShapeFn.getCircle()
+                    shapeCanvas.scale = 0.62
+                }
+            }
         }
     }
 

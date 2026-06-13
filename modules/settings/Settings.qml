@@ -143,6 +143,23 @@ Singleton{
         }
     ]
 
+    property var transitionTypes: [
+        { name: "fade" },
+        { name: "simple" },
+        { name: "none" },
+        { name: "left" },
+        { name: "right" },
+        { name: "top" },
+        { name: "bottom" },
+        { name: "wipe" },
+        { name: "wave" },
+        { name: "grow" },
+        { name: "center" },
+        { name: "any" },
+        { name: "outer" },
+        { name: "random" }
+    ]
+
     property var matugen:[
         {
             name: "scheme-tonal-spot"

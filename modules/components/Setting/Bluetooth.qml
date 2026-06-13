@@ -68,7 +68,7 @@ Item{
                 color: Colors.primary
             }
             CustomText{
-                content: "Configure the bluetooth"
+                content: "Pair and manage Bluetooth devices"
                 size: 14
                 color: Colors.outline
             }
@@ -86,7 +86,7 @@ Item{
                     }
 
                     CustomText{
-                        content: "Turn On/Off"
+                        content: "Enable or disable the Bluetooth adapter"
                         size: 13
                         color: Colors.outline
                     }

@@ -49,7 +49,7 @@ Item {
                 color: Colors.primary
             }
             CustomText {
-                content: "Configure your Google AI API key"
+                content: "Required to use the AI assistant in the shell"
                 size: 14
                 color: Colors.outline
             }
@@ -238,7 +238,7 @@ Item {
                 color: Colors.primary
             }
             CustomText {
-                content: "Currently using"
+                content: "Active model for all AI assistant requests"
                 size: 14
                 color: Colors.outline
             }

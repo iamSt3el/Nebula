@@ -41,128 +41,235 @@ Item{
         anchors.margins: 10
         spacing: 10
 
-        RowLayout{
+        // ── Header bar ───────────────────────────────────────────────────
+        RowLayout {
             Layout.fillWidth: true
+            spacing: 6
 
-            Rectangle{
+            Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 40
                 color: Colors.surfaceContainer
-                topLeftRadius: 20
-                topRightRadius: 5
-                bottomLeftRadius: 20
-                bottomRightRadius: 5
-                CustomText{
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 20
-                    content: ServiceWeather.location
-                    size: 16
+                topLeftRadius: 20; bottomLeftRadius: 20
+                topRightRadius: 5;  bottomRightRadius: 5
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 14
+                    anchors.rightMargin: 10
+                    spacing: 6
+
+                    MaterialIconSymbol {
+                        content: "location_on"
+                        iconSize: 15
+                        color: Colors.primary
+                    }
+                    CustomText {
+                        Layout.fillWidth: true
+                        content: ServiceWeather.cityName !== "Unknown"
+                            ? ServiceWeather.cityName
+                            : ServiceWeather.location
+                        size: 14
+                    }
                 }
             }
 
-            Rectangle{
+            Rectangle {
                 Layout.preferredWidth: 40
                 Layout.preferredHeight: 40
-                topLeftRadius: 5
-                topRightRadius: 5
-                bottomLeftRadius: 5
-                bottomRightRadius: 5
+                radius: 5
                 color: Colors.surfaceContainer
 
-                MaterialIconSymbol{
+                MaterialIconSymbol {
                     anchors.centerIn: parent
                     content: "refresh"
                     iconSize: refreshRipple.containsMouse ? 21 : 18
                     Behavior on iconSize { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
-
                     RotationAnimation on rotation {
                         running: ServiceWeather.isLoading
-                        from: 0; to: 360
-                        duration: 800
+                        from: 0; to: 360; duration: 800
                         loops: Animation.Infinite
                     }
                 }
-
                 RippleEffect {
                     id: refreshRipple
-                    anchors.fill: parent
-                    topLeftRadius: 5; topRightRadius: 5
-                    bottomLeftRadius: 5; bottomRightRadius: 5
+                    anchors.fill: parent; radius: 5
                     onClicked: ServiceWeather.refresh()
                 }
             }
-            Rectangle{
+
+            Rectangle {
                 Layout.preferredWidth: 40
                 Layout.preferredHeight: 40
-                topLeftRadius: 5
-                topRightRadius: 20
-                bottomLeftRadius: 5
-                bottomRightRadius: 20
+                topLeftRadius: 5;  bottomLeftRadius: 5
+                topRightRadius: 20; bottomRightRadius: 20
                 color: Colors.surfaceContainer
 
-                MaterialIconSymbol{
+                MaterialIconSymbol {
                     anchors.centerIn: parent
                     content: "close"
                     iconSize: closeRipple.containsMouse ? 21 : 18
                     Behavior on iconSize { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
                 }
-
                 RippleEffect {
                     id: closeRipple
                     anchors.fill: parent
-                    topLeftRadius: 5; topRightRadius: 20
-                    bottomLeftRadius: 5; bottomRightRadius: 20
+                    topLeftRadius: 5;  bottomLeftRadius: 5
+                    topRightRadius: 20; bottomRightRadius: 20
                     onClicked: root.closed()
                 }
             }
         }
 
+        // ── Hero card (temp + stats combined) ───────────────────────────
+        ClippingWrapperRectangleInternal {
+            Layout.fillWidth: true
+            implicitHeight: heroColumn.implicitHeight + 40
+            radius: 20
+            color: Colors.surfaceContainer
 
-        MaterialShapes.ShapeCanvas{
-            Layout.alignment: Qt.AlignCenter
-            Layout.preferredWidth: 200
-            Layout.preferredHeight: 200
-            roundedPolygon: MaterialShapeFn.getPill()
-            color: Colors.primary
-
-            CustomText{
-                anchors.top: parent.top
+            // Decorative burst — clipped to rounded corners by ClippingWrapper
+            MaterialShapes.ShapeCanvas {
                 anchors.right: parent.right
-                anchors.topMargin: 20
-                anchors.rightMargin: 20
-                content: ServiceWeather.temperature
-                size: 70
-                color: Colors.primaryText
-                weight: 900
+                anchors.top: parent.top
+                anchors.rightMargin: -30
+                anchors.topMargin: -25
+                implicitWidth: 140
+                implicitHeight: 140
+                roundedPolygon: MaterialShapeFn.getSoftBurst()
+                color: Qt.alpha(Colors.primary, 0.09)
             }
 
-
-            Image{
-                anchors.bottom: parent.bottom
+            ColumnLayout {
+                id: heroColumn
                 anchors.left: parent.left
-                anchors.bottomMargin: 20
-                anchors.leftMargin: 20
-                source: IconUtil.getSystemIcon(ServiceWeather.weatherIconPath.svg)
-                width: 80
-                height: 80
-                sourceSize: Qt.size(width, height) 
-            }
-        }
-        CustomText{
-            Layout.alignment: Qt.AlignCenter
-            content: ServiceWeather.description
-            size: 20
-        }
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 20
+                spacing: 16
 
-        CustomText{
-            Layout.alignment: Qt.AlignCenter
-            content: "Feels like " + ServiceWeather.feelsLike
-            size: 20
-            color: Colors.outline
-        }
-        Item{
-            Layout.fillHeight: true
+                // Icon + temperature block
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 16
+
+                    // Weather icon in shaped badge
+                    Item {
+                        Layout.preferredWidth: 80
+                        Layout.preferredHeight: 80
+                        Layout.alignment: Qt.AlignVCenter
+
+                        MaterialShapes.ShapeCanvas {
+                            anchors.fill: parent
+                            roundedPolygon: MaterialShapeFn.getCookie7Sided()
+                            color: Qt.alpha(Colors.primary, 0.18)
+                        }
+                        Image {
+                            anchors.centerIn: parent
+                            width: 52; height: 52
+                            source: IconUtil.getSystemIcon(ServiceWeather.weatherIconPath.svg)
+                            sourceSize: Qt.size(width, height)
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        CustomText {
+                            content: ServiceWeather.temperature
+                            size: 50
+                            color: Colors.primary
+                            weight: 900
+                        }
+
+                        RowLayout {
+                            spacing: 10
+                            CustomText {
+                                content: "↑ " + (ServiceWeather.useMetric
+                                    ? (ServiceWeather.forecastDays[0]?.maxtempC ?? "--") + "°"
+                                    : (ServiceWeather.forecastDays[0]?.maxtempF ?? "--") + "°")
+                                size: 13
+                                color: Colors.inverseSurface
+                            }
+                            CustomText {
+                                content: "↓ " + (ServiceWeather.useMetric
+                                    ? (ServiceWeather.forecastDays[0]?.mintempC ?? "--") + "°"
+                                    : (ServiceWeather.forecastDays[0]?.mintempF ?? "--") + "°")
+                                size: 13
+                                color: Colors.outline
+                            }
+                        }
+
+                        CustomText {
+                            Layout.fillWidth: true
+                            content: ServiceWeather.description
+                            size: 14
+                            color: Colors.inverseSurface
+                        }
+
+                        CustomText {
+                            content: "Feels like " + ServiceWeather.feelsLike
+                            size: 12
+                            color: Colors.outline
+                        }
+                    }
+                }
+
+                // Divider
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: Colors.outline
+                    opacity: 0.25
+                }
+
+                // Four stat mini-cards
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: 4
+                    spacing: 8
+
+                    Repeater {
+                        model: [
+                            { icon: "wb_sunny",   label: "UV Index", val: ServiceWeather.uvindex             },
+                            { icon: "cloud",      label: "Cloud",    val: ServiceWeather.cloudcover           },
+                            { icon: "visibility", label: "Visibility", val: ServiceWeather.visibility + " km" },
+                            { icon: "water_drop", label: "Rain",     val: ServiceWeather.precipitation + " in"}
+                        ]
+
+                        delegate: Item {
+                            Layout.fillWidth: true
+                            implicitHeight: 58
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: 3
+
+                                MaterialIconSymbol {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    content: modelData.icon
+                                    iconSize: 15
+                                    color: Colors.primary
+                                }
+                                CustomText {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    content: modelData.val
+                                    size: 12
+                                    weight: 700
+                                    color: Colors.inverseSurface
+                                }
+                                CustomText {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    content: modelData.label
+                                    size: 10
+                                    color: Colors.outline
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         Rectangle{
             Layout.fillWidth: true

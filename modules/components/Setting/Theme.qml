@@ -51,7 +51,7 @@ Item {
 
             // ── Appearance section ────────────────────────────────────────────
             CustomText { Layout.topMargin: 30; content: "Appearance"; size: 18; color: Colors.primary }
-            CustomText { content: "Edit the appearance details"; size: 14; color: Colors.outline }
+            CustomText { content: "Personalize colors, wallpaper, and transitions"; size: 14; color: Colors.outline }
 
             // Wallpaper Directory
             RowLayout {
@@ -60,7 +60,7 @@ Item {
                 ColumnLayout {
                     spacing: 0
                     CustomText { content: "Wallpaper Directory"; size: 16 }
-                    CustomText { content: "Local folder scanned for wallpapers"; size: 13; color: Colors.outline }
+                    CustomText { content: "Wallpapers are picked randomly from this folder"; size: 13; color: Colors.outline }
                 }
                 Item { Layout.fillWidth: true }
                 RowLayout {
@@ -100,7 +100,7 @@ Item {
                 ColumnLayout {
                     spacing: 0
                     CustomText { content: "Theme Mode"; size: 16 }
-                    CustomText { content: "Dark or Light color scheme"; size: 13; color: Colors.outline }
+                    CustomText { content: "Switch between dark and light variants"; size: 13; color: Colors.outline }
                 }
                 Item { Layout.fillWidth: true }
                 RowLayout {
@@ -145,7 +145,7 @@ Item {
                                 onClicked: {
                                     const newTheme = modelData.name.toLowerCase()
                                     SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenTheme: newTheme })
-                                    Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, ServiceWallpaper.scheme, newTheme])
+                                    Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, ServiceWallpaper.scheme, newTheme, ServiceWallpaper.transitionType])
                                 }
                             }
                         }
@@ -160,7 +160,7 @@ Item {
                 ColumnLayout {
                     spacing: 0
                     CustomText { content: "Matugen Scheme"; size: 16 }
-                    CustomText { content: "Color generation algorithm"; size: 13; color: Colors.outline }
+                    CustomText { content: "Algorithm used to extract colors from your wallpaper"; size: 13; color: Colors.outline }
                 }
                 Item { Layout.fillWidth: true }
                 CustomListNew {
@@ -171,7 +171,30 @@ Item {
                     onCurrentValChanged: {
                         if (currentVal) {
                             SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenScheme: currentVal })
-                            Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, currentVal, SettingsConfig.theme.matugenTheme])
+                            Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, currentVal, SettingsConfig.theme.matugenTheme, ServiceWallpaper.transitionType])
+                        }
+                    }
+                }
+            }
+
+            // Transition Type
+            RowLayout {
+                Layout.topMargin: 14
+                Layout.fillWidth: true
+                ColumnLayout {
+                    spacing: 0
+                    CustomText { content: "Transition Type"; size: 16 }
+                    CustomText { content: "Animation style when swapping wallpapers"; size: 13; color: Colors.outline }
+                }
+                Item { Layout.fillWidth: true }
+                CustomListNew {
+                    Layout.preferredWidth: 200
+                    Layout.preferredHeight: 30
+                    currentVal: SettingsConfig.theme.transitionType ?? "fade"
+                    list: Settings.transitionTypes
+                    onCurrentValChanged: {
+                        if (currentVal) {
+                            SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { transitionType: currentVal })
                         }
                     }
                 }
@@ -185,7 +208,7 @@ Item {
 
             // ── Wallhaven section ─────────────────────────────────────────────
             CustomText { content: "Wallhaven"; size: 18; color: Colors.primary }
-            CustomText { content: "Configure online wallpaper browsing"; size: 14; color: Colors.outline }
+            CustomText { content: "Search and download wallpapers from Wallhaven"; size: 14; color: Colors.outline }
 
             // API Key
             RowLayout {
@@ -194,7 +217,7 @@ Item {
                 ColumnLayout {
                     spacing: 0
                     CustomText { content: "API Key"; size: 16 }
-                    CustomText { content: "For NSFW access and higher rate limits"; size: 13; color: Colors.outline }
+                    CustomText { content: "Optional — needed for adult content and faster searches"; size: 13; color: Colors.outline }
                 }
                 Item { Layout.fillWidth: true }
                 Rectangle {

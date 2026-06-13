@@ -38,9 +38,12 @@ Item{
             topRightRadius: 5
             bottomRightRadius: 5
             color: Colors.surfaceContainerHighest
+            clip: true
             CustomText{
                 anchors.left: parent.left
+                anchors.right: parent.right
                 anchors.leftMargin: 10
+                anchors.rightMargin: 5
                 anchors.verticalCenter: parent.verticalCenter
                 content: root.currentVal ?? root.objectVal?.name ?? ""
                 size: 12
@@ -121,10 +124,11 @@ Item{
                         color: (root.currentVal ? root.currentVal === modelData.name : root.objectVal?.name === modelData.name) ? Colors.primary : area.containsMouse ? Qt.alpha(Colors.primary, 0.5) : "transparent"
                         CustomText{
                             anchors.left: parent.left
+                            anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.leftMargin: 5
+                            anchors.rightMargin: 5
                             content: modelData.name
-                            width: parent.width
                             size: 12
                             weight: 600
                             color: (root.currentVal ? root.currentVal === modelData.name : root.objectVal?.name === modelData.name) ? Colors.primaryText : Colors.surfaceVariantText

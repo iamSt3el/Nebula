@@ -14,6 +14,7 @@ import qs.modules.components.Dock
 import qs.modules.components.Widgets
 import qs.modules.components.ToolsWidget
 import qs.modules.components.ShutdownWindow
+import qs.modules.components.Screenshot
 import qs.modules.customComponents
 import qs.modules.settings
 import qs.modules
@@ -57,6 +58,9 @@ ShellRoot{
 
 
 
+
+    // Screenshot preview — slides in from bottom-right on new screenshot
+    ScreenshotPreview {}
 
     // Lock screen - responds to `loginctl lock-session`
     LockScreen {}
