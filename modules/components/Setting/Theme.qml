@@ -103,52 +103,12 @@ Item {
                     CustomText { content: "Switch between dark and light variants"; size: 13; color: Colors.outline }
                 }
                 Item { Layout.fillWidth: true }
-                RowLayout {
-                    spacing: 6
-                    Repeater {
-                        model: Settings.themeModes
-                        delegate: Rectangle {
-                            id: modeBtn
-                            implicitHeight: 34
-                            implicitWidth: modeRow.implicitWidth + 20
-                            property bool isFirst: index === 0
-                            property bool isLast: index === Settings.themeModes.length - 1
-                            topLeftRadius:     isFirst ? 15 : 5
-                            bottomLeftRadius:  isFirst ? 15 : 5
-                            topRightRadius:    isLast  ? 15 : 5
-                            bottomRightRadius: isLast  ? 15 : 5
-                            property bool isActive: SettingsConfig.theme.matugenTheme === modelData.name.toLowerCase()
-                            color: isActive ? Colors.primary : Colors.surfaceContainerHigh
-                            Behavior on color { ColorAnimation { duration: 150 } }
-
-                            RowLayout {
-                                id: modeRow
-                                anchors.centerIn: parent
-                                spacing: 6
-                                MaterialIconSymbol {
-                                    content: modelData.icon
-                                    iconSize: 16
-                                    color: modeBtn.isActive ? Colors.primaryText : Colors.surfaceVariantText
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                }
-                                CustomText {
-                                    content: modelData.name
-                                    size: 13
-                                    color: modeBtn.isActive ? Colors.primaryText : Colors.surfaceVariantText
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    const newTheme = modelData.name.toLowerCase()
-                                    SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenTheme: newTheme })
-                                    Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, ServiceWallpaper.scheme, newTheme, ServiceWallpaper.transitionType])
-                                }
-                            }
-                        }
+                ButtonGroup {
+                    model: Settings.themeModes.map(m => ({ value: m.name.toLowerCase(), label: m.name, icon: m.icon }))
+                    activeCheck: function(v) { return SettingsConfig.theme.matugenTheme === v }
+                    onSegmentClicked: function(v) {
+                        SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenTheme: v })
+                        Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, ServiceWallpaper.scheme, v, ServiceWallpaper.transitionType])
                     }
                 }
             }

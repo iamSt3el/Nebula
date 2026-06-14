@@ -59,8 +59,8 @@ ShellRoot{
 
 
 
-    // Screenshot preview — slides in from bottom-right on new screenshot
-    ScreenshotPreview {}
+    // Fullscreen area selector (replaces slurp for screenshot/recording area mode)
+    AreaSelectorOverlay {}
 
     // Lock screen - responds to `loginctl lock-session`
     LockScreen {}

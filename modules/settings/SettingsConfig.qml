@@ -13,6 +13,7 @@ Singleton {
     property alias ai: settingsAdapter.ai
     property alias manga: settingsAdapter.manga
     property alias recording: settingsAdapter.recording
+    property alias screenshot: settingsAdapter.screenshot
     property alias widgets: settingsAdapter.widgets
     property alias weather: settingsAdapter.weather
 
@@ -143,16 +144,25 @@ Singleton {
                 framerate: "30",
                 pixelFormat: "yuv420p",
                 audioEnabled: true,
+                audioSource: "mic",
                 audioCodec: "aac",
                 audioBitrate: "128k",
                 audioSampleRate: "48000"
+            })
+
+            property var screenshot: ({
+                outputPath: "~/Pictures",
+                soundEnabled: true,
+                soundPath: ""
             })
 
             property var widgets: ({
                 clockX: 100,
                 clockY: 100,
                 temperatureX: 600,
-                temperatureY: 100
+                temperatureY: 100,
+                musicPlayerX: 200,
+                musicPlayerY: 200
             })
 
             property var weather: ({

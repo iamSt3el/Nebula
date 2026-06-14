@@ -212,7 +212,7 @@ Item{
                     list: Settings.fonts
 
                     onCurrentValChanged: {
-                        if (currentVal)
+                        if (currentVal && currentVal !== SettingsConfig.general.defaultFont)
                             SettingsConfig.general = Object.assign({}, SettingsConfig.general, {defaultFont: currentVal})
                     }
 

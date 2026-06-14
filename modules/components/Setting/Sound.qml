@@ -92,27 +92,15 @@ Item {
                 Layout.fillWidth: true
                 spacing: 6
 
-                // Mute toggle button
-                Rectangle {
-                    implicitWidth: 36
-                    implicitHeight: 36
-                    radius: 10
-                    color: ServicePipewire.muted ? Colors.primary : Colors.surfaceContainerHigh
-                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                    MaterialIconSymbol {
-                        anchors.centerIn: parent
-                        content: ServicePipewire.muted ? "volume_off" : "volume_up"
-                        iconSize: 18
-                        color: ServicePipewire.muted ? Colors.primaryText : Colors.surfaceVariantText
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                ButtonGroup {
+                    model: [
+                        { value: false, icon: "volume_up"  },
+                        { value: true,  icon: "volume_off" }
+                    ]
+                    activeCheck: function(v) { return ServicePipewire.muted === v }
+                    onSegmentClicked: function(v) {
+                        if (ServicePipewire.muted !== v) ServicePipewire.toggleMute()
                     }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: ServicePipewire.toggleMute()
-                    }
-                    RippleEffect { anchors.fill: parent; radius: 10 }
                 }
 
                 // Slider track
@@ -195,27 +183,15 @@ Item {
                 Layout.fillWidth: true
                 spacing: 6
 
-                // Mic mute toggle
-                Rectangle {
-                    implicitWidth: 36
-                    implicitHeight: 36
-                    radius: 10
-                    color: ServicePipewire.micMuted ? Colors.primary : Colors.surfaceContainerHigh
-                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                    MaterialIconSymbol {
-                        anchors.centerIn: parent
-                        content: ServicePipewire.micMuted ? "mic_off" : "mic"
-                        iconSize: 18
-                        color: ServicePipewire.micMuted ? Colors.primaryText : Colors.surfaceVariantText
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                ButtonGroup {
+                    model: [
+                        { value: false, icon: "mic"     },
+                        { value: true,  icon: "mic_off" }
+                    ]
+                    activeCheck: function(v) { return ServicePipewire.micMuted === v }
+                    onSegmentClicked: function(v) {
+                        if (ServicePipewire.micMuted !== v) ServicePipewire.toggleMicMute()
                     }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: ServicePipewire.toggleMicMute()
-                    }
-                    RippleEffect { anchors.fill: parent; radius: 10 }
                 }
 
                 // Mic peak bar

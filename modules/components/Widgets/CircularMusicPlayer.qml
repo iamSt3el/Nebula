@@ -6,6 +6,7 @@ import Quickshell.Io
 import QtQuick.Effects
 import qs.modules.utils
 import qs.modules.services
+import qs.modules.settings
 import qs.modules.customComponents
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
@@ -19,6 +20,38 @@ Item {
 
     property bool editMode: false
 
+    Component.onCompleted: {
+        root.x = SettingsConfig.widgets.musicPlayerX ?? 200
+        root.y = SettingsConfig.widgets.musicPlayerY ?? 200
+    }
+
+    // Settings load asynchronously via a 100ms timer in SettingsConfig,
+    // so widgets.musicPlayerX may not be ready at Component.onCompleted time.
+    // React to the load completing here.
+    Connections {
+        target: SettingsConfig
+        function onWidgetsChanged() {
+            if (!root.editMode) {
+                root.x = SettingsConfig.widgets.musicPlayerX ?? 200
+                root.y = SettingsConfig.widgets.musicPlayerY ?? 200
+            }
+        }
+    }
+
+    onXChanged: if (editMode) musicSaveTimer.restart()
+    onYChanged: if (editMode) musicSaveTimer.restart()
+
+    Timer {
+        id: musicSaveTimer
+        interval: 500
+        repeat: false
+        onTriggered: {
+            SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, {
+                musicPlayerX: root.x,
+                musicPlayerY: root.y
+            })
+        }
+    }
 
     MouseArea {
         anchors.fill: parent

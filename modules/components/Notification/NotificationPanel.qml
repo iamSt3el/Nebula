@@ -10,7 +10,7 @@ import qs.modules.customComponents
 
 Item {
     id: root
-    implicitHeight: notifications.length > 0 ? innerItem.height + 20 : 0
+    implicitHeight: ServiceNotification.popups.length > 0 ? innerItem.height + 20 : 0
     implicitWidth: 380
     anchors.right: parent.right
     anchors.bottom: parent.bottom

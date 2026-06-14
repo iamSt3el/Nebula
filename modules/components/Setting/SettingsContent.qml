@@ -293,6 +293,12 @@ Item{
                     Loader{
                         anchors.fill: parent
                         active: root.currentPage === 8
+                        sourceComponent: MediaSettings{}
+                    }
+
+                    Loader{
+                        anchors.fill: parent
+                        active: root.currentPage === 9
                         sourceComponent: About{}
                     }
 

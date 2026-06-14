@@ -103,6 +103,10 @@ Singleton{
             icon: "partly_cloudy_day"
         },
         {
+            name: "Media",
+            icon: "perm_media"
+        },
+        {
             name: "About",
             icon: 'info'
         }

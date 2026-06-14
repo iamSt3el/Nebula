@@ -197,77 +197,15 @@ Item {
             RowLayout {
                 Layout.topMargin: 14
                 Layout.fillWidth: true
-                spacing: 10
 
-                // Comix button
-                Rectangle {
-                    Layout.preferredHeight: 36
-                    Layout.preferredWidth: siteComixRow.implicitWidth + 24
-                    radius: 10
-                    color: SettingsConfig.manga.defaultSite === "comix"
-                           ? Colors.primary
-                           : Colors.surfaceContainerHigh
-
-                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                    RowLayout {
-                        id: siteComixRow
-                        anchors.centerIn: parent
-                        spacing: 6
-                        MaterialIconSymbol {
-                            content: "public"
-                            iconSize: 16
-                            color: SettingsConfig.manga.defaultSite === "comix"
-                                   ? Colors.primaryText : Colors.surfaceVariantText
-                        }
-                        CustomText {
-                            content: "Comix.to"
-                            size: 13
-                            color: SettingsConfig.manga.defaultSite === "comix"
-                                   ? Colors.primaryText : Colors.surfaceVariantText
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, {defaultSite: "comix"})
-                    }
-                }
-
-                // WEEBCentral button
-                Rectangle {
-                    Layout.preferredHeight: 36
-                    Layout.preferredWidth: siteWeebRow.implicitWidth + 24
-                    radius: 10
-                    color: SettingsConfig.manga.defaultSite === "weebcentral"
-                           ? Colors.primary
-                           : Colors.surfaceContainerHigh
-
-                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                    RowLayout {
-                        id: siteWeebRow
-                        anchors.centerIn: parent
-                        spacing: 6
-                        MaterialIconSymbol {
-                            content: "language"
-                            iconSize: 16
-                            color: SettingsConfig.manga.defaultSite === "weebcentral"
-                                   ? Colors.primaryText : Colors.surfaceVariantText
-                        }
-                        CustomText {
-                            content: "WEEBCentral"
-                            size: 13
-                            color: SettingsConfig.manga.defaultSite === "weebcentral"
-                                   ? Colors.primaryText : Colors.surfaceVariantText
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, {defaultSite: "weebcentral"})
+                ButtonGroup {
+                    model: [
+                        { value: "comix",       label: "Comix.to",    icon: "public"   },
+                        { value: "weebcentral", label: "WEEBCentral", icon: "language" }
+                    ]
+                    activeCheck: function(v) { return SettingsConfig.manga.defaultSite === v }
+                    onSegmentClicked: function(v) {
+                        SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, { defaultSite: v })
                     }
                 }
 

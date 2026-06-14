@@ -136,77 +136,15 @@ Item {
             RowLayout {
                 Layout.topMargin: 14
                 Layout.fillWidth: true
-                spacing: 5
 
-                Rectangle {
-                    Layout.preferredHeight: 36
-                    Layout.preferredWidth: metricRow.implicitWidth + 24
-                    topLeftRadius: 15; bottomLeftRadius: 15
-                    topRightRadius: 5; bottomRightRadius: 5
-                    color: SettingsConfig.weather.useMetric
-                           ? Colors.primary : Colors.surfaceContainerHigh
-                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                    RowLayout {
-                        id: metricRow
-                        anchors.centerIn: parent
-                        spacing: 6
-                        MaterialIconSymbol {
-                            content: "thermometer"
-                            iconSize: 16
-                            color: SettingsConfig.weather.useMetric
-                                   ? Colors.primaryText : Colors.surfaceVariantText
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                        }
-                        CustomText {
-                            content: "Metric (°C)"
-                            size: 13
-                            color: SettingsConfig.weather.useMetric
-                                   ? Colors.primaryText : Colors.surfaceVariantText
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: SettingsConfig.weather = Object.assign({}, SettingsConfig.weather, { useMetric: true })
-                    }
-                }
-
-                Rectangle {
-                    Layout.preferredHeight: 36
-                    Layout.preferredWidth: imperialRow.implicitWidth + 24
-                    topLeftRadius: 5; bottomLeftRadius: 5
-                    topRightRadius: 15; bottomRightRadius: 15
-                    color: !SettingsConfig.weather.useMetric
-                           ? Colors.primary : Colors.surfaceContainerHigh
-                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                    RowLayout {
-                        id: imperialRow
-                        anchors.centerIn: parent
-                        spacing: 6
-                        MaterialIconSymbol {
-                            content: "thermometer"
-                            iconSize: 16
-                            color: !SettingsConfig.weather.useMetric
-                                   ? Colors.primaryText : Colors.surfaceVariantText
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                        }
-                        CustomText {
-                            content: "Imperial (°F)"
-                            size: 13
-                            color: !SettingsConfig.weather.useMetric
-                                   ? Colors.primaryText : Colors.surfaceVariantText
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: SettingsConfig.weather = Object.assign({}, SettingsConfig.weather, { useMetric: false })
+                ButtonGroup {
+                    model: [
+                        { value: true,  label: "Metric (°C)",   icon: "thermometer" },
+                        { value: false, label: "Imperial (°F)", icon: "thermometer" }
+                    ]
+                    activeCheck: function(v) { return SettingsConfig.weather.useMetric === v }
+                    onSegmentClicked: function(v) {
+                        SettingsConfig.weather = Object.assign({}, SettingsConfig.weather, { useMetric: v })
                     }
                 }
 

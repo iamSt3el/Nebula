@@ -493,6 +493,7 @@ Rectangle{
                                     height: rowContainer.height
                                     // Shape morphs from extraLarge rounded rect → pill as row compresses.
                                     radius: rowContainer.dynamicRadius
+                                    clip: true
                                     color: area.containsMouse ? Colors.primary : "transparent"
 
                                     // The Dynamic Masking Element Container

@@ -11,11 +11,21 @@ import qs.modules.customComponents
 
 Item{
     id: utility
-    implicitWidth: row.width + 20 
-    implicitHeight: Appearance.size.barHeight
+    implicitWidth: {
+        if (isClicked)              return Appearance.size.dashboardPanelWidth
+        if (isNotificationClicked)  return Appearance.size.notificationPanelWidth
+        if (isWeatherPanelClicked)  return Appearance.size.weatherPanelWidth
+        return row.implicitWidth + 20
+    }
+    implicitHeight: {
+        if (isClicked)              return Appearance.size.dashboardPanelHeight
+        if (isNotificationClicked)  return Appearance.size.notificationPanelHeight
+        if (isWeatherPanelClicked)  return Appearance.size.weatherPanelHeight
+        return Appearance.size.barHeight
+    }
     anchors.right: parent.right
     property alias container: container
-    property bool isClicked: false 
+    property bool isClicked: false
 
     property bool isWifiClicked: false
     property bool isBluetoothClicked: false
@@ -24,47 +34,6 @@ Item{
     property bool isBatteryInfoClicked: false
     property bool isWeatherPanelClicked: false
     property bool isDashboard: height > 900
-
-    onIsClickedChanged:{
-        if(utility.isClicked){
-            utility.implicitWidth = Appearance.size.dashboardPanelWidth
-            utility.implicitHeight = Appearance.size.dashboardPanelHeight
-        }else{
-            utility.implicitWidth = row.width + 20
-            utility.implicitHeight = Appearance.size.barHeight
-        }
-    }
-
-    onIsNotificationClickedChanged:{
-        if(utility.isNotificationClicked){
-            utility.implicitWidth = Appearance.size.notificationPanelWidth
-            utility.implicitHeight = Appearance.size.notificationPanelHeight
-        }else{
-            utility.implicitWidth = row.width + 20
-            utility.implicitHeight = Appearance.size.barHeight
-        }
-    }
-
-    onIsWeatherPanelClickedChanged:{
-        if(utility.isWeatherPanelClicked){
-            utility.implicitWidth = Appearance.size.weatherPanelWidth
-            utility.implicitHeight = Appearance.size.weatherPanelHeight
-        }else{
-            utility.implicitWidth = row.width + 20
-            utility.implicitHeight = Appearance.size.barHeight
-        }
-
-    }
-
-    // onIsBatteryInfoClickedChanged:{
-    //     if(utility.isBatteryInfoClicked){
-    //         utility.implicitWidth = Appearance.size.batteryPanelWidth
-    //         utility.implicitHeight = Appearance.size.batteryPanelHeight
-    //     }else{
-    //         utility.implicitWidth = row.width + 20
-    //         utility.implicitHeight = Appearance.size.barHeight
-    //     }
-    // }
 
     Behavior on implicitWidth{
         NumberAnimation{
@@ -164,18 +133,75 @@ Item{
 
         RowLayout{
             id: row
-            visible: !utility.isClicked && !utility.isTodoClicked && utility.height === 40
+            visible: !utility.isClicked && utility.height === Appearance.size.barHeight
             spacing: Appearance.spacing.medium
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: parent.right
             anchors.rightMargin: Appearance.margin.medium
 
+            // ── Recording pill (M3 error container chip) ──────────────────
+            Loader {
+                active: ServiceTools.isRecording
+                visible: active
+                Layout.preferredHeight: Appearance.size.widgetHeight
+                Layout.preferredWidth:  active ? implicitWidth : 0
+
+                sourceComponent: Rectangle {
+                    implicitWidth:  recPillContent.implicitWidth + 16
+                    implicitHeight: Appearance.size.widgetHeight
+                    radius: height / 2
+                    color:  Colors.errorContainer
+                    clip:   true
+
+                    RowLayout {
+                        id: recPillContent
+                        anchors.centerIn: parent
+                        spacing: 5
+
+                        Rectangle {
+                            width: 6; height: 6; radius: 3
+                            color: Colors.error
+                            SequentialAnimation on opacity {
+                                running: true
+                                loops:   Animation.Infinite
+                                NumberAnimation { to: 0.2; duration: 700; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 1.0; duration: 700; easing.type: Easing.InOutSine }
+                            }
+                        }
+
+                        CustomText { content: "REC"; size: 10; weight: 700; color: Colors.errorContainerText }
+
+                        Rectangle { width: 1; height: 10; color: Qt.alpha(Colors.errorContainerText, 0.30) }
+
+                        CustomText {
+                            content: {
+                                const s = ServiceTools.recordingSeconds
+                                return String(Math.floor(s / 60)).padStart(2, "0") + ":" +
+                                       String(s % 60).padStart(2, "0")
+                            }
+                            size: 10; weight: 500; color: Colors.errorContainerText
+                        }
+                    }
+
+                    MouseArea {
+                        id: recPillMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape:  Qt.PointingHandCursor
+                        onClicked:    ServiceTools.stopRecording()
+                    }
+
+                    CustomToolTip {
+                        content: "Stop recording"
+                        visible: recPillMa.containsMouse
+                    }
+                }
+            }
+
             Loader{
                 active: ServiceSystemTray.active
                 visible: active
-                Layout.fillWidth: true
-                sourceComponent:SystemTray{
-                }
+                sourceComponent: SystemTray {}
             }
 
             Weather{
@@ -212,7 +238,7 @@ Item{
 
             Rectangle{
                 radius: Appearance.radius.medium
-                Layout.preferredWidth: child.width + child.spacing * 2
+                Layout.preferredWidth: child.implicitWidth + Appearance.spacing.medium * 2
                 Layout.preferredHeight: Appearance.size.widgetHeight
                 color: Colors.surfaceContainerHigh
                 RowLayout{
@@ -259,7 +285,7 @@ Item{
 
 
                         CustomMouseArea{
-                            radius: parent.radius
+                            radius: 0
                             id: notificaitonArea
                             cursorShape: Qt.PointingHandCursor
                             hoverEnabled: true
