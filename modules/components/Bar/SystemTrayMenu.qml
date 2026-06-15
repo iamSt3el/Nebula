@@ -29,7 +29,7 @@ PopupWindow{
     }
 
 
-    Rectangle{
+    Item{
         id: container
         anchors{
             left: parent.left
@@ -38,8 +38,6 @@ PopupWindow{
             topMargin: 2
         }
         implicitHeight: stackView.implicitHeight
-        radius: 15
-        color: Settings.layoutColor
 
         scale: 0.8
         opacity: 0
@@ -98,8 +96,7 @@ PopupWindow{
                 property bool show
                 property bool isSubMenu
 
-                padding: 5 
-                spacing: 5
+                spacing: 4
 
                 opacity: show ? 1 : 0
                 scale: show ? 1 : 0.8
@@ -132,18 +129,22 @@ PopupWindow{
 
                 Loader{
                     active: isSubMenu
+                    visible: active
 
-                    sourceComponent: Item{
+                    sourceComponent: Rectangle{
                         implicitWidth: 230
-                        implicitHeight: 30
+                        implicitHeight: 40
+                        radius: 15
+                        color: Colors.surface
 
                         RowLayout{
                             anchors.fill: parent
                             anchors.margins: 5
+                            anchors.leftMargin: 10
 
-                            CustomIconImage{
-                                icon: "left"
-                                size: 20
+                            MaterialIconSymbol{
+                                content: "arrow_back"
+                                iconSize: 18
                             }
 
                             CustomText{
@@ -161,64 +162,94 @@ PopupWindow{
                     }
                 }
 
-                Repeater{
-                    model: menuOpener.children
-
-                    Rectangle{
-                        implicitWidth: 230
-                        implicitHeight: modelData.isSeparator ? 1 : 30
-                        radius: 10
-                        color: area.containsMouse ? Colors.surfaceContainerHigh : modelData.isSeparator ? Colors.outline : "transparent"
-                        Loader{
-                            active: !modelData.isSeparator
-                            anchors.fill: parent
-                            sourceComponent: RowLayout{
-                                anchors.fill: parent
-                                anchors.margins: 5
-                                anchors.leftMargin: 10
-                                spacing: 10
-
-
-                                CustomText{
-                                    Layout.fillWidth: true
-                                    width: text.implicitWidth
-                                    content: modelData.text
-                                    size: 12
-                                }
-                                Loader{
-                                    active: modelData.hasChildren
-                                    visible: active
-                                    sourceComponent: CustomIconImage{
-                                        icon: "right"
-                                        size: 18
-                                    }
-                                }
-
-                                Loader{
-                                    active: modelData.buttonType === 1
-                                    visible: active
-                                    sourceComponent: CustomCheckbox{
-                                        checkState: modelData.checkState === 2 ? true : false
-                                    }
+                Repeater {
+                    model: ScriptModel {
+                        values: {
+                            var _ = menuOpener.children.values.length
+                            var groups = []
+                            var current = []
+                            var c = menuOpener.children.values
+                            for (var i = 0; i < c.length; i++) {
+                                if (!c[i]) continue
+                                if (c[i].isSeparator) {
+                                    if (current.length > 0) { groups.push(current); current = [] }
+                                } else {
+                                    current.push(c[i])
                                 }
                             }
+                            if (current.length > 0) groups.push(current)
+                            return groups
                         }
-                        MouseArea{
-                            id: area
-                            visible: !modelData.isSeparator
+                    }
+
+                    Rectangle {
+                        implicitWidth: 230
+                        implicitHeight: groupCol.implicitHeight + 10
+                        radius: 15
+                        color: Colors.surface
+                        clip: true
+
+                        Column {
+                            id: groupCol
                             anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked:{
-                                const entry = modelData
-                                if(entry.hasChildren){
-                                    stackView.push(subMenuComp.createObject(null, {
-                                        handle: entry,
-                                        isSubMenu: true
-                                    }));
-                                }else{
-                                    root.close()
-                                    modelData.triggered()
+                            anchors.margins: 5
+
+                            Repeater {
+                                model: modelData
+
+                                Rectangle {
+                                    id: itemRow
+                                    property var entry: modelData
+                                    width: 220
+                                    height: 35
+                                    radius: 10
+                                    color: itemArea.containsMouse ? Colors.surfaceContainer : "transparent"
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 5
+                                        anchors.leftMargin: 10
+                                        spacing: 10
+
+                                        CustomText {
+                                            Layout.fillWidth: true
+                                            content: itemRow.entry.text
+                                            size: 12
+                                        }
+                                        Loader {
+                                            active: itemRow.entry.hasChildren
+                                            visible: active
+                                            sourceComponent: MaterialIconSymbol {
+                                                content: "chevron_right"
+                                                iconSize: 18
+                                            }
+                                        }
+                                        Loader {
+                                            active: itemRow.entry.buttonType === 1
+                                            visible: active
+                                            sourceComponent: CustomCheckbox {
+                                                checkState: itemRow.entry.checkState === 2 ? true : false
+                                            }
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: itemArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (itemRow.entry.hasChildren) {
+                                                stackView.push(subMenuComp.createObject(null, {
+                                                    handle: itemRow.entry,
+                                                    isSubMenu: true
+                                                }))
+                                            } else {
+                                                root.close()
+                                                itemRow.entry.triggered()
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
