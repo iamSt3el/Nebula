@@ -62,7 +62,7 @@ Item {
                             weight: 700
                         }
                         CustomText {
-                            content: "v0.1.0-beta"
+                            content: "v0.2.0-beta"
                             size: 12
                             customColor: Colors.outline
                         }

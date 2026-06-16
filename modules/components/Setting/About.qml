@@ -55,7 +55,7 @@ Item {
                     ColumnLayout {
                         spacing: 3
                         CustomText { content: "Nebula"; size: 22; weight: 700; customColor: Colors.primary }
-                        CustomText { content: "v0.1.0-beta"; size: 13; customColor: Colors.outline }
+                        CustomText { content: "v0.2.0-beta"; size: 13; customColor: Colors.outline }
                         CustomText {
                             content: "A modern desktop shell for Wayland built with QuickShell"
                             size: 12; customColor: Colors.outline
