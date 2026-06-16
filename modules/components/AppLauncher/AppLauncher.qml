@@ -17,7 +17,7 @@ Scope{
         property bool animation: false
         sourceComponent: PanelWindow{
             id: panelWindow
-            implicitWidth: 300
+            implicitWidth: 420
             anchors.left: true
             anchors.top: true
             anchors.bottom: true
@@ -142,8 +142,8 @@ Scope{
 
                 Item {
                     id: child
-                    implicitWidth: loader.animation ? 300 : 0
-                    implicitHeight: 600
+                    implicitWidth: loader.animation ? 420 : 0
+                    implicitHeight: 720
                     clip: true
 
                     Behavior on implicitWidth {

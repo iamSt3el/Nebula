@@ -16,4 +16,6 @@ Singleton{
     property bool toolsWidgetOpen: false
     property bool shutdownWindow: false
     property bool fileDialogOpen: false
+    property bool areaSelectOpen: false
+    property string areaSelectMode: ""   // "screenshot" or "recording"
 }

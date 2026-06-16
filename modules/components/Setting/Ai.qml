@@ -29,268 +29,164 @@ Item {
             anchors.topMargin: 5
             spacing: 0
 
+            // ── Page header ──────────────────────────────────────
             RowLayout {
                 spacing: 10
-                MaterialIconSymbol {
-                    content: "neurology"
-                    iconSize: 20
-                }
-                CustomText {
-                    content: "AI"
-                    size: 20
-                    color: Colors.primary
-                }
+                MaterialIconSymbol { content: "neurology"; iconSize: 20 }
+                CustomText { content: "AI"; size: 20; customColor: Colors.primary }
             }
 
-            CustomText {
-                Layout.topMargin: 30
-                content: "Google Gemini"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText {
-                content: "Required to use the AI assistant in the shell"
-                size: 14
-                color: Colors.outline
-            }
+            // ── Google Gemini ────────────────────────────────────
+            CustomText { Layout.topMargin: 24; content: "Google Gemini"; size: 13; customColor: Colors.primary }
 
-            Rectangle {
-                Layout.topMargin: 10
+            ColumnLayout {
+                Layout.topMargin: 6
                 Layout.fillWidth: true
-                Layout.preferredHeight: apiCol.implicitHeight + 20
-                radius: 15
-                color: Colors.surfaceContainerHigh
+                spacing: 3
 
-                ColumnLayout {
-                    id: apiCol
-                    anchors.fill: parent
-                    anchors.margins: 15
-                    spacing: 10
+                // API Key
+                CustomCard {
+                    autoRadius: false; topRadius: 20; bottomRadius: 5
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "API Key"; size: 14 }
+                            CustomText { content: "Required to use the AI assistant"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+
+                        Rectangle {
+                            implicitWidth: 220; implicitHeight: 32
+                            radius: 10
+                            color: Colors.surfaceContainerHighest
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 10; anchors.rightMargin: 8
+                                spacing: 6
+
+                                MaterialIconSymbol { content: "key"; iconSize: 16; customColor: Colors.outline }
+
+                                TextInput {
+                                    id: apiKeyInput
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    text: SettingsConfig.ai.googleApiKey
+                                    echoMode: showKey.checked ? TextInput.Normal : TextInput.Password
+                                    color: Colors.inverseSurface
+                                    selectionColor: Colors.primary
+                                    font.pixelSize: 13
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    clip: true
+                                    onEditingFinished: {
+                                        SettingsConfig.ai = Object.assign({}, SettingsConfig.ai, { googleApiKey: text })
+                                        savedNotice.visible = true
+                                        savedTimer.restart()
+                                    }
+                                }
+
+                                Rectangle {
+                                    id: showKey
+                                    property bool checked: false
+                                    implicitWidth: 24; implicitHeight: 24
+                                    radius: 6
+                                    color: checked ? Colors.primary : "transparent"
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+
+                                    MaterialIconSymbol {
+                                        anchors.centerIn: parent
+                                        content: parent.checked ? "visibility_off" : "visibility"
+                                        iconSize: 15
+                                        customColor: parent.checked ? Colors.primaryText : Colors.outline
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: showKey.checked = !showKey.checked
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: savedNotice.visible
+
+                        MaterialIconSymbol { content: "check_circle"; iconSize: 14; customColor: Colors.primary }
+                        CustomText {
+                            id: savedNotice
+                            content: "API key saved"
+                            size: 12; customColor: Colors.primary
+                            visible: false
+                            Timer {
+                                id: savedTimer
+                                interval: 2000
+                                onTriggered: savedNotice.visible = false
+                            }
+                        }
+                    }
+                }
+
+                // How to get a key
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
 
                     RowLayout {
                         spacing: 8
-                        MaterialIconSymbol {
-                            content: "key"
-                            iconSize: 18
-                            color: Colors.primary
-                        }
-                        CustomText {
-                            content: "API Key"
-                            size: 14
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 36
-                        radius: 10
-                        color: Colors.surfaceContainer
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 8
-                            spacing: 6
-
-                            TextInput {
-                                id: apiKeyInput
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                text: SettingsConfig.ai.googleApiKey
-                                echoMode: showKey.checked ? TextInput.Normal : TextInput.Password
-                                color: Colors.surfaceVariantText
-                                selectionColor: Colors.primary
-                                font.pixelSize: 13
-                                font.family: SettingsConfig.general.defaultFont
-                                verticalAlignment: TextInput.AlignVCenter
-                                clip: true
-
-                                onEditingFinished: {
-                                    SettingsConfig.ai = Object.assign({}, SettingsConfig.ai, {googleApiKey: text})
-                                }
-                            }
-
-                            Rectangle {
-                                id: showKey
-                                property bool checked: false
-                                Layout.preferredWidth: 26
-                                Layout.preferredHeight: 26
-                                radius: 8
-                                color: checked ? Colors.primary : "transparent"
-
-                                Behavior on color { ColorAnimation { duration: 150 } }
-
-                                MaterialIconSymbol {
-                                    anchors.centerIn: parent
-                                    content: parent.checked ? "visibility_off" : "visibility"
-                                    iconSize: 16
-                                    color: parent.checked ? Colors.primaryText : Colors.outline
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: showKey.checked = !showKey.checked
-                                }
-                            }
-                        }
-                    }
-
-                    // Save button
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 34
-                        radius: 10
-                        color: Colors.primary
-
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 6
-                            MaterialIconSymbol {
-                                content: "save"
-                                iconSize: 16
-                                color: Colors.primaryText
-                            }
-                            CustomText {
-                                content: "Save"
-                                size: 13
-                                color: Colors.primaryText
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                SettingsConfig.ai = Object.assign({}, SettingsConfig.ai, {googleApiKey: apiKeyInput.text})
-                                savedNotice.visible = true
-                                savedTimer.restart()
-                            }
-                        }
-                    }
-
-                    CustomText {
-                        id: savedNotice
-                        content: "API key saved!"
-                        size: 12
-                        color: Colors.primary
-                        visible: false
-
-                        Timer {
-                            id: savedTimer
-                            interval: 2000
-                            onTriggered: savedNotice.visible = false
-                        }
-                    }
-                }
-            }
-
-            // Info box
-            Rectangle {
-                Layout.topMargin: 15
-                Layout.fillWidth: true
-                Layout.preferredHeight: infoCol.implicitHeight + 20
-                radius: 12
-                color: Colors.surfaceContainer
-
-                ColumnLayout {
-                    id: infoCol
-                    anchors.fill: parent
-                    anchors.margins: 15
-                    spacing: 6
-
-                    RowLayout {
-                        spacing: 6
-                        MaterialIconSymbol {
-                            content: "info"
-                            iconSize: 16
-                            color: Colors.outline
-                        }
-                        CustomText {
-                            content: "How to get an API key"
-                            size: 13
-                            color: Colors.outline
-                        }
+                        MaterialIconSymbol { content: "info"; iconSize: 16; customColor: Colors.outline }
+                        CustomText { content: "How to get an API key"; size: 13; customColor: Colors.outline }
                     }
 
                     CustomText {
                         Layout.fillWidth: true
-                        content: "1. Go to Google AI Studio (aistudio.google.com)\n2. Sign in with your Google account\n3. Click \"Get API key\" → \"Create API key\"\n4. Copy the key and paste it above"
+                        content: "1. Go to aistudio.google.com\n2. Sign in with your Google account\n3. Click \"Get API key\" → \"Create API key\"\n4. Copy the key and paste it above"
                         size: 12
-                        color: Colors.outline
+                        customColor: Colors.outline
                         wrapMode: Text.WordWrap
                     }
                 }
             }
 
-            Rectangle {
-                Layout.topMargin: 10
-                Layout.bottomMargin: 10
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
-            }
+            // ── Model ────────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Model"; size: 13; customColor: Colors.primary }
 
-            // Model info
-            CustomText {
-                content: "Model"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText {
-                content: "Active model for all AI assistant requests"
-                size: 14
-                color: Colors.outline
-            }
-
-            Rectangle {
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                Layout.preferredHeight: 70
-                radius: 12
-                color: Colors.surfaceContainerHigh
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 20
 
                 RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 15
-                    spacing: 10
+                    Layout.fillWidth: true
+                    spacing: 12
 
-                    MaterialIconSymbol {
-                        content: "auto_awesome"
-                        iconSize: 20
-                        color: Colors.primary
-                    }
+                    MaterialIconSymbol { content: "auto_awesome"; iconSize: 20; customColor: Colors.primary }
 
                     ColumnLayout {
                         spacing: 2
-                        CustomText {
-                            content: "Gemini 3 Flash Preview"
-                            size: 14
-                        }
-                        CustomText {
-                            content: "Fast, efficient model"
-                            size: 11
-                            color: Colors.outline
-                        }
+                        CustomText { content: "Gemini 2.0 Flash"; size: 14 }
+                        CustomText { content: "Fast, efficient model for all requests"; size: 12; customColor: Colors.outline }
                     }
 
                     Item { Layout.fillWidth: true }
 
                     Rectangle {
-                        Layout.preferredWidth: 50
-                        Layout.preferredHeight: 22
-                        radius: 6
-                        color: Colors.primary
+                        implicitWidth: 54; implicitHeight: 24
+                        radius: 12
+                        color: Colors.primaryContainer
 
                         CustomText {
                             anchors.centerIn: parent
                             content: "Active"
                             size: 11
-                            color: Colors.primaryText
+                            customColor: Colors.primary
                         }
                     }
                 }
             }
+
+            Item { Layout.preferredHeight: 20 }
         }
     }
 }

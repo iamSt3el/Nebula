@@ -42,81 +42,112 @@ Item{
         spacing: 10
 
         // ── Header bar ───────────────────────────────────────────────────
-        RowLayout {
+        Rectangle {
             Layout.fillWidth: true
-            spacing: 6
+            Layout.preferredHeight: 60
+            radius: 20
+            color: Colors.surfaceContainer
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 40
-                color: Colors.surfaceContainer
-                topLeftRadius: 20; bottomLeftRadius: 20
-                topRightRadius: 5;  bottomRightRadius: 5
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 8
+                spacing: 10
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 10
-                    spacing: 6
+                MaterialIconSymbol {
+                    Layout.alignment: Qt.AlignVCenter
+                    content: "location_on"
+                    iconSize: 20
+                    customColor: Colors.primary
+                }
 
-                    MaterialIconSymbol {
-                        content: "location_on"
-                        iconSize: 15
-                        color: Colors.primary
-                    }
+                ColumnLayout {
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 1
+
                     CustomText {
-                        Layout.fillWidth: true
                         content: ServiceWeather.cityName !== "Unknown"
                             ? ServiceWeather.cityName
                             : ServiceWeather.location
                         size: 14
+                        weight: 700
+                    }
+                    CustomText {
+                        content: Qt.formatDate(new Date(), "dddd, MMMM d")
+                        size: 11
+                        customColor: Colors.outline
                     }
                 }
-            }
 
-            Rectangle {
-                Layout.preferredWidth: 40
-                Layout.preferredHeight: 40
-                radius: 5
-                color: Colors.surfaceContainer
+                Item { Layout.fillWidth: true }
 
-                MaterialIconSymbol {
-                    anchors.centerIn: parent
-                    content: "refresh"
-                    iconSize: refreshRipple.containsMouse ? 21 : 18
-                    Behavior on iconSize { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
-                    RotationAnimation on rotation {
-                        running: ServiceWeather.isLoading
-                        from: 0; to: 360; duration: 800
-                        loops: Animation.Infinite
+                Timer {
+                    id: tickTimer
+                    interval: 60000
+                    running: true
+                    repeat: true
+                    triggeredOnStart: true
+                }
+
+                Rectangle {
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitHeight: 36
+                    implicitWidth: refreshRow.implicitWidth + 20
+                    radius: 18
+                    color: refreshRipple.containsMouse ? Colors.surfaceContainerHigh : Colors.surfaceContainerHighest
+
+                    RowLayout {
+                        id: refreshRow
+                        anchors.centerIn: parent
+                        spacing: 4
+
+                        MaterialIconSymbol {
+                            Layout.alignment: Qt.AlignVCenter
+                            content: "refresh"
+                            iconSize: 16
+                            customColor: ServiceWeather.isLoading ? Colors.primary : Colors.outline
+                        }
+
+                        CustomText {
+                            Layout.alignment: Qt.AlignVCenter
+                            content: {
+                                tickTimer.running
+                                if (!ServiceWeather.lastUpdated) return ServiceWeather.isLoading ? "updating…" : "—"
+                                if (ServiceWeather.isLoading) return "updating…"
+                                var mins = Math.floor((new Date() - ServiceWeather.lastUpdated) / 60000)
+                                if (mins < 1) return "just now"
+                                if (mins < 60) return mins + "m ago"
+                                return Math.floor(mins / 60) + "h ago"
+                            }
+                            size: 11
+                            customColor: Colors.outline
+                        }
+                    }
+
+                    RippleEffect {
+                        id: refreshRipple
+                        anchors.fill: parent
+                        radius: 18
+                        onClicked: ServiceWeather.refresh()
                     }
                 }
-                RippleEffect {
-                    id: refreshRipple
-                    anchors.fill: parent; radius: 5
-                    onClicked: ServiceWeather.refresh()
-                }
-            }
 
-            Rectangle {
-                Layout.preferredWidth: 40
-                Layout.preferredHeight: 40
-                topLeftRadius: 5;  bottomLeftRadius: 5
-                topRightRadius: 20; bottomRightRadius: 20
-                color: Colors.surfaceContainer
+                Rectangle {
+                    Layout.alignment: Qt.AlignVCenter
+                    width: 36; height: 36; radius: 18
+                    color: closeRipple.containsMouse ? Colors.surfaceContainerHigh : "transparent"
 
-                MaterialIconSymbol {
-                    anchors.centerIn: parent
-                    content: "close"
-                    iconSize: closeRipple.containsMouse ? 21 : 18
-                    Behavior on iconSize { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
-                }
-                RippleEffect {
-                    id: closeRipple
-                    anchors.fill: parent
-                    topLeftRadius: 5;  bottomLeftRadius: 5
-                    topRightRadius: 20; bottomRightRadius: 20
-                    onClicked: root.closed()
+                    MaterialIconSymbol {
+                        anchors.centerIn: parent
+                        content: "close"
+                        iconSize: 18
+                    }
+                    RippleEffect {
+                        id: closeRipple
+                        anchors.fill: parent
+                        radius: 18
+                        onClicked: root.closed()
+                    }
                 }
             }
         }

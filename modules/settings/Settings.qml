@@ -83,6 +83,14 @@ Singleton{
             icon: "volume_up"
         },
         {
+            name: "Notifications",
+            icon: "notifications"
+        },
+        {
+            name: "Widgets",
+            icon: "widgets"
+        },
+        {
             name: "Networking",
             icon: "android_wifi_4_bar"
         },
@@ -128,23 +136,23 @@ Singleton{
         }
     ]
 
-    property var fonts:[
-        { 
-            name: "Noto Sans"
-        },
+    property var fonts: [
+        { name: "Adwaita Sans" },
+        { name: "Cantarell" },
+        { name: "DejaVu Sans" },
+        { name: "Fira Sans" },
+        { name: "Liberation Sans" },
+        { name: "Noto Sans" },
+        { name: "Readex Pro" },
+        { name: "Rubik" }
+    ]
 
-        {
-           name:"Fira Sans"
-        },
-        {
-            name:"Readex Pro"
-        },
-        {
-            name:"Cantarell"
-        },
-        {
-            name: "Rubik"
-        }
+    property var displayFonts: [
+        { name: "Titan One" },
+        { name: "Orbitron" },
+        { name: "Michroma" },
+        { name: "Just Another Hand" },
+        { name: "Fira Sans" }
     ]
 
     property var transitionTypes: [

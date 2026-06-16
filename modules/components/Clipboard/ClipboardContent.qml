@@ -8,449 +8,360 @@ import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
 
-Rectangle{
+Rectangle {
     id: container
     implicitWidth: parent.width
-    property string searchText: ""
     color: Settings.layoutColor
     anchors.bottom: parent.bottom
     topRightRadius: 20
     topLeftRadius: 20
     signal closed
+
     property var filteredEntries: ServiceCliphist.filteredEntries
 
-    Behavior on implicitHeight{
-        NumberAnimation{
-            duration: 300
-            easing.type: Easing.OutQuad
-        }
+    Behavior on implicitHeight {
+        NumberAnimation { duration: 300; easing.type: Easing.OutQuad }
     }
-    //
-    // layer.enabled: true
-    // layer.effect: MultiEffect{
-    //     shadowEnabled: true
-    //     shadowBlur: 0.4
-    //     shadowOpacity: 1.0
-    //     shadowColor: Qt.alpha(Colors.shadow, 1)
-    // }
-    // Connections{
-    //     target: clipLoader
-    //     function onAnimationChanged(){
-    //         if(clipLoader.animation){
-    //             timer.start()
-    //         }else{
-    //             col.visible = false
-    //         }
-    //     }
-    // }
 
-
-    Timer{
+    Timer {
         id: timer
         interval: 300
         running: true
-        onTriggered:{
-            col.visible = true
-        }
+        onTriggered: col.visible = true
     }
 
+    Component.onCompleted: searchInput.forceActiveFocus()
 
-    Component.onCompleted: {
-        searchInput.forceActiveFocus()
-    }
-
-    ColumnLayout{
+    ColumnLayout {
         id: col
         anchors.fill: parent
         anchors.margins: 10
-        spacing: 10
+        spacing: 8
         visible: false
 
-        NumberAnimation on opacity{
-            from: 0
-            to: 1
-            duration: 100
-            running: col.visible
-        }
+        NumberAnimation on opacity { from: 0; to: 1; duration: 120; running: col.visible }
+        NumberAnimation on scale   { from: 0.92; to: 1; duration: 180; easing.type: Easing.OutCubic; running: col.visible }
 
-        NumberAnimation on scale{
-            from: 0.8
-            to: 1
-            duration: 100
-            running: col.visible
-        }
-
-        Rectangle{
+        // ── Search bar ────────────────────────────────────────────────────
+        Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 80
-            radius: 20
-            color: Colors.surfaceContainer
-            ColumnLayout{
+            Layout.preferredHeight: 50
+            radius: 16
+            color: Colors.surfaceContainerHigh
+
+            RowLayout {
                 anchors.fill: parent
-                spacing: 0
-                Rectangle{
+                anchors.leftMargin: 14
+                anchors.rightMargin: 10
+                spacing: 10
+
+                MaterialIconSymbol {
+                    content: "search"
+                    iconSize: 20
+                    customColor: Colors.primary
+                }
+
+                Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
-                    color: Colors.surfaceContainerHigh
-                    radius: 20
-
-                    RowLayout{
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 10
-                        MaterialIconSymbol{
-                            content: "search"
-                            iconSize: 20
-                        }
-
-                        TextInput{
-                            id: searchInput
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            Layout.alignment: Qt.AlignVCenter
-                            verticalAlignment: TextInput.AlignVCenter
-                            focus: true
-                            clip: true
-                            text: ""
-                            font.pixelSize: 16
-                            color: Colors.inverseSurface
-                            onTextChanged: {
-                                ServiceCliphist.updateSearch(text)
-                            }
-
-
-
-                            onAccepted: {
-                                const item = clipboardList.itemAtIndex(clipboardList.activeIndex)
-                                if (item) {
-                                    container.closed()
-                                    ServiceCliphist.copy(item.modelData)
-                                }
-                            }
-
-                            Keys.onPressed: (event) => {
-                                if (event.key === Qt.Key_Down) {
-                                    if (clipboardList.activeIndex < clipboardList.count - 1) {
-                                        clipboardList.activeIndex++
-                                        clipboardList.positionViewAtIndex(clipboardList.activeIndex, ListView.Contain)
-                                    }
-                                    event.accepted = true
-                                }
-                                else if (event.key === Qt.Key_Up) {
-                                    if (clipboardList.activeIndex > 0) {
-                                        clipboardList.activeIndex--
-                                        clipboardList.positionViewAtIndex(clipboardList.activeIndex, ListView.Contain)
-                                    }
-                                    event.accepted = true
-                                }
-                                else if (event.key === Qt.Key_Delete) {
-                                    const item = clipboardList.itemAtIndex(clipboardList.activeIndex)
-                                    if (item) {
-                                        ServiceCliphist.deleteEntry(item.modelData)
-                                    }
-                                    event.accepted = true
-                                }
-                                else if(event.key === Qt.Key_Escape){
-                                    container.closed()
-                                }
-                            }
-
-                        }
-
-                    }
-                }
-                RowLayout{
                     Layout.fillHeight: true
-                    Layout.preferredHeight: 40
-                    Layout.leftMargin: 10
-                    Layout.rightMargin: 10
 
-                    MaterialIconSymbol{
-                        content: "notes"
-                        iconSize: 22
-                    }
-                    CustomText{
-                        content: ServiceCliphist.items + " Items"
-                        size: 14
+                    CustomText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        content: "Search clipboard…"
+                        size: 15
+                        customColor: Colors.outline
+                        visible: searchInput.text.length === 0
                     }
 
-                    Item{
-                        Layout.fillWidth: true
-                    }
+                    TextInput {
+                        id: searchInput
+                        anchors.fill: parent
+                        verticalAlignment: TextInput.AlignVCenter
+                        clip: true
+                        font.pixelSize: 15
+                        font.weight: 600
+                        font.family: SettingsConfig.general.defaultFont ?? "Rubik"
+                        color: Colors.surfaceText
+                        focus: true
 
+                        onTextChanged: ServiceCliphist.updateSearch(text)
 
-                    Rectangle{
-                        Layout.preferredHeight: 30
-                        Layout.preferredWidth: 30
-                        radius: 10
-                        color: refreshArea.containsMouse ? Colors.primary : Colors.surfaceContainerHigh
-
-                        MaterialIconSymbol{
-                            anchors.centerIn: parent
-                            content: "cached"
-                            iconSize: 20
-                            color: refreshArea.containsMouse ? Colors.primaryText : Colors.surfaceText
-                        }
-
-
-                        Behavior on color{
-                            ColorAnimation{
-                                duration: 200
+                        onAccepted: {
+                            const item = clipboardList.itemAtIndex(clipboardList.activeIndex)
+                            if (item) {
+                                container.closed()
+                                ServiceCliphist.copy(item.modelData)
                             }
                         }
 
-                        CustomMouseArea{
-                            radius: parent.radius
-                            id: refreshArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked:{
-                                ServiceCliphist.refresh()
+                        Keys.onPressed: event => {
+                            if (event.key === Qt.Key_Down) {
+                                if (clipboardList.activeIndex < clipboardList.count - 1) {
+                                    clipboardList.activeIndex++
+                                    clipboardList.positionViewAtIndex(clipboardList.activeIndex, ListView.Contain)
+                                }
+                                event.accepted = true
+                            } else if (event.key === Qt.Key_Up) {
+                                if (clipboardList.activeIndex > 0) {
+                                    clipboardList.activeIndex--
+                                    clipboardList.positionViewAtIndex(clipboardList.activeIndex, ListView.Contain)
+                                }
+                                event.accepted = true
+                            } else if (event.key === Qt.Key_Delete) {
+                                const item = clipboardList.itemAtIndex(clipboardList.activeIndex)
+                                if (item) ServiceCliphist.deleteEntry(item.modelData)
+                                event.accepted = true
+                            } else if (event.key === Qt.Key_Escape) {
+                                container.closed()
                             }
-                        }
-
-                        CustomToolTip{
-                            visible: refreshArea.containsMouse
-                            content: "Refresh"
                         }
                     }
-
-                    Rectangle{
-                        Layout.preferredHeight: 30
-                        Layout.preferredWidth: 30
-                        radius: 10
-                        color: area.containsMouse ? Colors.primary : Colors.surfaceContainerHigh
-
-                        MaterialIconSymbol{
-                            anchors.centerIn: parent
-                            content: "clear_all"
-                            iconSize: 20
-                            color: area.containsMouse ? Colors.primaryText : Colors.surfaceText
-                        }
-
-
-                        Behavior on color{
-                            ColorAnimation{
-                                duration: 200
-                            }
-                        }
-
-                        CustomMouseArea{
-                            radius: parent.radius
-                            id: area
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked:{
-                                ServiceCliphist.wipe()
-                            }
-                        }
-
-                        CustomToolTip{
-                            visible: area.containsMouse
-                            content: "Clear all"
-                        }
-                    }
-
                 }
 
+                // Clear search
+                Rectangle {
+                    width: 28; height: 28; radius: 10
+                    color: Colors.surfaceContainerHighest
+                    visible: searchInput.text.length > 0
+
+                    MaterialIconSymbol {
+                        anchors.centerIn: parent
+                        content: "close"; iconSize: 14
+                        customColor: Colors.outline
+                    }
+                    MouseArea {
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: searchInput.text = ""
+                    }
+                }
             }
         }
 
-        ClippingWrapperRectangle{
-            id: clippingWrapper
+        // ── Stats + actions row ───────────────────────────────────────────
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 2
+            spacing: 0
+
+            MaterialIconSymbol { content: "notes"; iconSize: 14; customColor: Colors.outline }
+            CustomText {
+                Layout.leftMargin: 4
+                content: ServiceCliphist.items + " items"
+                size: 12
+                customColor: Colors.outline
+            }
+
+            Item { Layout.fillWidth: true }
+
+            // Refresh
+            Rectangle {
+                width: 32; height: 32; radius: 10
+                color: refreshArea.containsMouse ? Colors.primaryContainer : Colors.surfaceContainerHigh
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: "cached"; iconSize: 18
+                    customColor: refreshArea.containsMouse ? Colors.primaryContainerText : Colors.outline
+                }
+                MouseArea {
+                    id: refreshArea
+                    anchors.fill: parent
+                    hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: ServiceCliphist.refresh()
+                }
+                CustomToolTip { visible: refreshArea.containsMouse; content: "Refresh" }
+            }
+
+            Item { implicitWidth: 6 }
+
+            // Clear all
+            Rectangle {
+                width: 32; height: 32; radius: 10
+                color: clearArea.containsMouse ? Qt.alpha(Colors.error, 0.15) : Colors.surfaceContainerHigh
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: "clear_all"; iconSize: 18
+                    customColor: clearArea.containsMouse ? Colors.error : Colors.outline
+                }
+                MouseArea {
+                    id: clearArea
+                    anchors.fill: parent
+                    hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: ServiceCliphist.wipe()
+                }
+                CustomToolTip { visible: clearArea.containsMouse; content: "Clear all" }
+            }
+        }
+
+        // ── Clipboard list ────────────────────────────────────────────────
+        ClippingWrapperRectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: 10
+            radius: 12
             color: "transparent"
-            clip: true
 
-            ListView{
+            ListView {
                 id: clipboardList
-                property int activeIndex : 0
                 anchors.fill: parent
-                anchors.margins: 5
-                spacing: 5
+                spacing: 3
                 clip: true
+                property int activeIndex: 0
                 property bool animationsEnabled: false
 
-                model: ScriptModel{
-                    values: {
-                        return container.filteredEntries
-                        // const isHtmlImageEntry = (entry) => {
-                        //     const text = ServiceCliphist.getEntryText(entry)
-                        //     return text.startsWith("<meta") && text.includes("<img")
-                        // }
-                        //
-                        // let filteredEntries = ServiceCliphist..filter(entry => !isHtmlImageEntry(entry))
-                        //
-                        //
-                        // return filteredEntries
-                    }
-                    onValuesChanged: clipboardList.animationsEnabled= true
+                model: ScriptModel {
+                    values: container.filteredEntries
+                    onValuesChanged: clipboardList.animationsEnabled = true
                 }
-
-
 
                 add: Transition {
                     enabled: clipboardList.animationsEnabled
-
-                    NumberAnimation {
-                        properties: "opacity,scale"
-                        from: 0
-                        to: 1
-                        duration: 400
-                        easing.type: Easing.OutQuad
+                    ParallelAnimation {
+                        NumberAnimation { property: "x";       from: 60;  to: 0; duration: 320; easing.type: Easing.OutCubic }
+                        NumberAnimation { property: "opacity"; from: 0;   to: 1; duration: 220; easing.type: Easing.OutQuad }
+                        NumberAnimation { property: "scale";   from: 0.9; to: 1; duration: 300; easing.type: Easing.OutBack; easing.overshoot: 0.4 }
                     }
                 }
-
-                remove: Transition {
-                    enabled: clipboardList.animationsEnabled
-
-                    NumberAnimation {
-                        properties: "opacity,scale"
-                        from: 1
-                        to: 0
-                        duration: 400
-                        easing.type: Easing.OutQuad
-                    }
-                }
-
                 move: Transition {
-                    NumberAnimation {
-                        property: "y"
-                        duration: 400
-                        easing.type: Easing.OutQuad
-                    }
-                    NumberAnimation {
-                        properties: "opacity,scale"
-                        to: 1
-                        duration: 400
-                        easing.type: Easing.OutQuad
-                    }
+                    NumberAnimation { property: "y"; duration: 380; easing.type: Easing.OutBack; easing.overshoot: 0.3 }
                 }
-
                 addDisplaced: Transition {
-                    NumberAnimation {
-                        property: "y"
-                        duration: 400
-                        easing.type: Easing.OutQuad
-                    }
-                    NumberAnimation {
-                        properties: "opacity,scale"
-                        to: 1
-                        duration: 400
-                        easing.type: Easing.OutQuad
+                    ParallelAnimation {
+                        NumberAnimation { property: "y";       duration: 380; easing.type: Easing.OutBack; easing.overshoot: 0.3 }
+                        NumberAnimation { property: "opacity"; to: 1;         duration: 120 }
                     }
                 }
-
                 displaced: Transition {
-                    NumberAnimation {
-                        property: "y"
-                        duration: 400
-                        easing.type: Easing.OutQuad
-                    }
-                    NumberAnimation {
-                        properties: "opacity,scale"
-                        to: 1
-                        duration: 400
-                        easing.type: Easing.OutQuad
+                    ParallelAnimation {
+                        NumberAnimation { property: "y";       duration: 380; easing.type: Easing.OutBack; easing.overshoot: 0.3 }
+                        NumberAnimation { property: "opacity"; to: 1;         duration: 120 }
                     }
                 }
 
-                delegate: Rectangle{
+                delegate: Rectangle {
                     id: clipItem
                     required property var modelData
                     required property int index
-                    property bool active: clipboardList.activeIndex === index
+
+                    readonly property bool isActive: clipboardList.activeIndex === index
+                    readonly property bool hovered: itemMouse.containsMouse
+                    readonly property bool isImage: ServiceCliphist.entryIsImage(modelData)
 
                     width: clipboardList.width
-                    height: ServiceCliphist.entryIsImage(modelData) ? 120 : 60
-                    color:  active ? Colors.primary : "transparent"
-                    radius: 10
+                    height: isImage ? 130 : 68
+                    radius: 16
 
-                    RowLayout{
+                    color: isActive
+                        ? Colors.primaryContainer
+                        : hovered ? Qt.alpha(Colors.primary, 0.08) : "transparent"
+
+                    Behavior on color { ColorAnimation { duration: 100 } }
+
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 10
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
                         spacing: 10
 
-                        Item{
+                        // Type badge
+                        Rectangle {
+                            Layout.alignment: Qt.AlignVCenter
+                            width: 38; height: 38; radius: 12
+                            color: clipItem.isActive
+                                ? Qt.alpha(Colors.primary, 0.25)
+                                : Qt.alpha(Colors.surfaceText, 0.06)
+                            Behavior on color { ColorAnimation { duration: 100 } }
+
+                            MaterialIconSymbol {
+                                anchors.centerIn: parent
+                                content: clipItem.isImage ? "image" : "content_paste"
+                                iconSize: 18
+                                customColor: clipItem.isActive ? Colors.primaryContainerText : Colors.outline
+                            }
+                        }
+
+                        // Content
+                        Item {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
 
-                            CustomText{
-                                visible: !ServiceCliphist.entryIsImage(clipItem.modelData)
-                                width: parent.width
+                            CustomText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                visible: !clipItem.isImage
                                 content: ServiceCliphist.getEntryText(clipItem.modelData)
-                                color: clipItem.active ? Colors.primaryText : Colors.surfaceVariantText
+                                size: 13
+                                customColor: clipItem.isActive ? Colors.primaryContainerText : Colors.surfaceText
                                 elide: Text.ElideRight
-                                wrapMode: Text.Wrap
+                                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                                 maximumLineCount: 2
-                                verticalAlignment: Text.AlignVCenter
                             }
 
-                            // Image content
-                            Loader{
-                                visible: ServiceCliphist.entryIsImage(clipItem.modelData)
+                            Loader {
                                 anchors.fill: parent
-                                active: ServiceCliphist.entryIsImage(clipItem.modelData)
-
-                                sourceComponent: ClipboardImage{
-                                    entry: clipItem.modelData
-                                }
+                                active: clipItem.isImage
+                                visible: active
+                                sourceComponent: ClipboardImage { entry: clipItem.modelData }
                             }
                         }
 
-                        //Delete button
-                        Rectangle{
-                            Layout.preferredWidth: 40
-                            Layout.preferredHeight: 40
-                            color: deleteMouseArea.containsMouse ? Qt.alpha(Colors.error, 0.5) : "transparent"
-                            radius: height
+                        // Delete button
+                        Rectangle {
+                            Layout.alignment: Qt.AlignVCenter
+                            width: 30; height: 30; radius: 10
+                            color: delArea.containsMouse
+                                ? Qt.alpha(Colors.error, 0.15)
+                                : "transparent"
+                            opacity: clipItem.hovered || clipItem.isActive ? 1 : 0
+                            Behavior on color   { ColorAnimation  { duration: 120 } }
+                            Behavior on opacity { NumberAnimation  { duration: 150 } }
 
-
-
-                            MaterialIconSymbol{
+                            MaterialIconSymbol {
                                 anchors.centerIn: parent
-                                content: "close"
-                                iconSize: 20
-                                fill: 1
-                                color: clipItem.active ? Colors.primaryText : Colors.surfaceVariantText
-
+                                content: "close"; iconSize: 16
+                                customColor: delArea.containsMouse ? Colors.error
+                                    : clipItem.isActive ? Colors.primaryContainerText : Colors.outline
                             }
 
-                            MouseArea{
-                                id: deleteMouseArea
+                            MouseArea {
+                                id: delArea
                                 anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-
-                                onClicked: {
-                                    ServiceCliphist.deleteEntry(clipItem.modelData)
-                                }
+                                hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: ServiceCliphist.deleteEntry(clipItem.modelData)
                             }
                         }
-
                     }
 
-                    MouseArea{
-                        id: clipItemMouseArea
+                    MouseArea {
+                        id: itemMouse
                         anchors.fill: parent
-                        anchors.rightMargin: 50
-                        hoverEnabled: true      
+                        anchors.rightMargin: 48
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onEntered:{ 
-                            clipboardList.activeIndex = clipItem.index
-
-                        }
+                        onEntered: clipboardList.activeIndex = clipItem.index
                         onClicked: {
                             container.closed()
                             ServiceCliphist.copy(clipItem.modelData)
                         }
                     }
+
+                    // ── Remove animation ──────────────────────────────────
+                    SequentialAnimation {
+                        id: removeAnim
+                        PropertyAction  { target: clipItem; property: "ListView.delayRemove"; value: true }
+                        ParallelAnimation {
+                            NumberAnimation { target: clipItem; property: "x";       to: clipboardList.width + 24; duration: 220; easing.type: Easing.InCubic }
+                            NumberAnimation { target: clipItem; property: "opacity"; to: 0;                        duration: 180; easing.type: Easing.InQuad  }
+                        }
+                        NumberAnimation  { target: clipItem; property: "height";    to: 0; duration: 160; easing.type: Easing.InCubic }
+                        PropertyAction  { target: clipItem; property: "ListView.delayRemove"; value: false }
+                    }
+                    ListView.onRemove: removeAnim.start()
                 }
             }
-        }   
-    }    
+        }
+    }
 }

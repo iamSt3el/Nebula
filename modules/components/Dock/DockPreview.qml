@@ -11,14 +11,14 @@ import qs.modules.settings
 
 PopupWindow {
     id: root
-    readonly property int cardWidth: 180
-    readonly property int cardSpacing: 6
-    readonly property int layoutMargins: 10
+    readonly property int cardWidth:    180
+    readonly property int cardSpacing:  6
+    readonly property int layoutMargins: 8
 
     implicitWidth: appEntry
         ? appEntry.toplevels.length * (cardWidth + cardSpacing) - cardSpacing + layoutMargins * 2
         : cardWidth + layoutMargins * 2
-    implicitHeight: 170
+    implicitHeight: 180
     visible: true
     color: "transparent"
 
@@ -42,86 +42,115 @@ PopupWindow {
     Rectangle {
         anchors.fill: parent
         radius: 20
-        color: Colors.surface
+        color: Colors.surfaceContainer
 
-        NumberAnimation on opacity {
-            from: 0
-            to: 1
-            duration: 100
-        }
+        scale: 0.88
+        opacity: 0
+        NumberAnimation on scale   { from: 0.88; to: 1; duration: 180; easing.type: Easing.OutQuad; running: true }
+        NumberAnimation on opacity { from: 0;    to: 1; duration: 150; running: true }
 
-        NumberAnimation on scale {
-            from: 0.8
-            to: 1
-            duration: 100
-        }
-
-        RowLayout {
+        ColumnLayout {
             anchors.fill: parent
             anchors.margins: root.layoutMargins
-            spacing: root.cardSpacing
+            spacing: 6
 
-            Repeater {
-                model: root.appEntry.toplevels
+            // ── App name chip ────────────────────────────────────────────
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
 
-                delegate: Rectangle {
-                    id: card
-                    required property var modelData
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: root.cardWidth
-                    color: Colors.surfaceContainerHigh
-                    radius: 10
-                    layer.enabled: true
+                Image {
+                    width: 18; height: 18
+                    source: Quickshell.iconPath(
+                        DesktopEntries.heuristicLookup(root.appEntry?.appId ?? "")?.icon,
+                        "image-missing")
+                    sourceSize: Qt.size(width, height)
+                    fillMode: Image.PreserveAspectFit
+                }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: card.modelData.activate()
-                    }
+                CustomText {
+                    Layout.fillWidth: true
+                    content: DesktopEntries.heuristicLookup(root.appEntry?.appId ?? "")?.name
+                             ?? root.appEntry?.appId ?? ""
+                    size: 12
+                    weight: 700
+                    elide: Text.ElideRight
+                    customColor: Colors.outline
+                }
+            }
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 6
-                        spacing: 4
+            // ── Window cards ─────────────────────────────────────────────
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: root.cardSpacing
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 4
+                Repeater {
+                    model: root.appEntry.toplevels
 
-                            CustomText {
-                                Layout.fillWidth: true
-                                content: card.modelData.title ?? ""
-                                size: 11
-                                weight: 600
-                            }
+                    delegate: Rectangle {
+                        id: card
+                        required property var modelData
+                        Layout.fillHeight: true
+                        Layout.preferredWidth: root.cardWidth
+                        color: Colors.surfaceContainerHigh
+                        radius: 14
+                        clip: true
 
-                            Rectangle {
-                                width: 20
-                                height: 20
-                                radius: 10
-                                color: closeArea.containsMouse ? Colors.surfaceVariant : "transparent"
-
-                                MaterialIconSymbol {
-                                    anchors.centerIn: parent
-                                    content: "close"
-                                    iconSize: 14
-                                }
-
-                                MouseArea {
-                                    id: closeArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: card.modelData.close()
-                                }
-                            }
+                        RippleEffect {
+                            anchors.fill: parent
+                            radius: 14
+                            onClicked: card.modelData.activate()
                         }
 
-                        ScreencopyView {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            captureSource: root.visible ? card.modelData : null
-                            live: true
-                            paintCursor: false
-                            constraintSize: Qt.size(root.cardWidth, 120)
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 6
+
+                            // Title row
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 4
+
+                                CustomText {
+                                    Layout.fillWidth: true
+                                    content: card.modelData.title ?? ""
+                                    size: 10
+                                    weight: 600
+                                    elide: Text.ElideRight
+                                }
+
+                                Rectangle {
+                                    width: 22; height: 22; radius: 11
+                                    color: closeRipple.containsMouse
+                                           ? Colors.surfaceContainerHighest : "transparent"
+
+                                    MaterialIconSymbol {
+                                        anchors.centerIn: parent
+                                        content: "close"
+                                        iconSize: 13
+                                        customColor: closeRipple.containsMouse ? Colors.error : Colors.outline
+                                    }
+
+                                    RippleEffect {
+                                        id: closeRipple
+                                        anchors.fill: parent
+                                        radius: 11
+                                        onClicked: card.modelData.sendClose()
+                                    }
+                                }
+                            }
+
+                            // Preview
+                            ScreencopyView {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                captureSource: root.visible ? card.modelData : null
+                                live: true
+                                paintCursor: false
+                                constraintSize: Qt.size(root.cardWidth, 120)
+                            }
                         }
                     }
                 }

@@ -12,6 +12,7 @@ Item{
     property var currentVal: null
     property var objectVal: null
     property var list: []
+    property color color: Colors.surfaceContainerHigh
     z: isListClicked ? 1000 : 0
     signal listClicked
     signal listChildClicked(var child)
@@ -37,7 +38,7 @@ Item{
             bottomLeftRadius: 15
             topRightRadius: 5
             bottomRightRadius: 5
-            color: Colors.surfaceContainerHighest
+            color: root.color
             clip: true
             CustomText{
                 anchors.left: parent.left
@@ -57,7 +58,7 @@ Item{
             bottomLeftRadius: 5
             topRightRadius: 15
             bottomRightRadius: 15
-            color: Colors.surfaceContainerHighest
+            color: root.color
             MaterialIconSymbol{
                 anchors.centerIn: parent
                 content: "keyboard_arrow_down"
@@ -96,7 +97,7 @@ Item{
                 implicitWidth: parent.width
                 implicitHeight: Math.min(listView.contentHeight + 10, 250)
                 radius: 10
-                color: Colors.surfaceContainerHighest
+                color: root.color
 
                 // border{
                 //     width: 1

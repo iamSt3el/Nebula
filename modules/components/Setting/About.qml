@@ -28,207 +28,121 @@ Item {
             anchors.topMargin: 5
             spacing: 0
 
+            // ── Page header ──────────────────────────────────────
             RowLayout {
                 spacing: 10
-                MaterialIconSymbol {
-                    content: "info"
-                    iconSize: 20
-                }
-
-                CustomText {
-                    content: "About"
-                    size: 20
-                    color: Colors.primary
-                }
+                MaterialIconSymbol { content: "info"; iconSize: 20 }
+                CustomText { content: "About"; size: 20; customColor: Colors.primary }
             }
 
-            // ── App Info ──────────────────────────────────
-            Rectangle {
-                Layout.topMargin: 20
-                Layout.fillWidth: true
-                Layout.preferredHeight: appCol.implicitHeight + 30
-                radius: 15
-                color: Colors.surfaceContainerHigh
-
-                ColumnLayout {
-                    id: appCol
-                    anchors.fill: parent
-                    anchors.margins: 15
-                    spacing: 5
-
-                    RowLayout{
-                        Image{
-                            Layout.preferredWidth: 40
-                            Layout.preferredHeight: 40
-                            sourceSize: Qt.size(width, height)
-                            source: IconUtil.getSystemIconPng("nebula")
-                            fillMode: Image.PreserveAspectFit
-                            
-                        }
-                        CustomText {
-                            content: "Nebula"
-                            size: 24
-                            weight: 700
-                            color: Colors.primary
-                        }
-                    }
-                    CustomText {
-                        content: "v0.1.0-beta"
-                        size: 14
-                        color: Colors.outline
-                    }
-                    CustomText {
-                        Layout.topMargin: 5
-                        content: "A modern desktop shell for Wayland built with QuickShell"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-            }
-
-            // ── Developer ─────────────────────────────────
-            CustomText {
-                Layout.topMargin: 20
-                content: "Developer"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText {
-                content: "The person behind Nebula"
-                size: 14
-                color: Colors.outline
-            }
-
-            Rectangle {
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                Layout.preferredHeight: devRow.implicitHeight + 20
-                radius: 15
-                color: Colors.surfaceContainerHigh
+            // ── App info ─────────────────────────────────────────
+            CustomCard {
+                Layout.topMargin: 24
+                autoRadius: false; topRadius: 20; bottomRadius: 20
 
                 RowLayout {
-                    id: devRow
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 10
+                    spacing: 14
+
+                    Image {
+                        Layout.preferredWidth: 44
+                        Layout.preferredHeight: 44
+                        Layout.alignment: Qt.AlignVCenter
+                        sourceSize: Qt.size(width, height)
+                        source: IconUtil.getSystemIconPng("nebula")
+                        fillMode: Image.PreserveAspectFit
+                    }
+
+                    ColumnLayout {
+                        spacing: 3
+                        CustomText { content: "Nebula"; size: 22; weight: 700; customColor: Colors.primary }
+                        CustomText { content: "v0.1.0-beta"; size: 13; customColor: Colors.outline }
+                        CustomText {
+                            content: "A modern desktop shell for Wayland built with QuickShell"
+                            size: 12; customColor: Colors.outline
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                    }
+                }
+            }
+
+            // ── Developer ────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Developer"; size: 13; customColor: Colors.primary }
+
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 20
+
+                RowLayout {
+                    spacing: 12
 
                     Rectangle {
-                        Layout.preferredWidth: 50
-                        Layout.preferredHeight: 50
-                        radius: 25
-                        color: Colors.primary
+                        implicitWidth: 48; implicitHeight: 48
+                        radius: 24
+                        color: Colors.primaryContainer
 
                         CustomText {
                             anchors.centerIn: parent
-                            content: "S"
-                            size: 22
-                            weight: 700
-                            color: Colors.primaryText
+                            content: "S"; size: 20; weight: 700
+                            customColor: Colors.primary
                         }
                     }
 
                     ColumnLayout {
                         spacing: 2
-                        CustomText {
-                            content: "St3el"
-                            size: 16
-                            weight: 600
-                        }
-                        CustomText {
-                            content: "Developer & Designer"
-                            size: 12
-                            color: Colors.outline
-                        }
+                        CustomText { content: "St3el"; size: 15; weight: 600 }
+                        CustomText { content: "Developer & Designer"; size: 12; customColor: Colors.outline }
                     }
 
-                    Item {
-                        Layout.fillWidth: true
-                    }
+                    Item { Layout.fillWidth: true }
                 }
             }
 
-            // ── Links ─────────────────────────────────────
-            CustomText {
-                Layout.topMargin: 20
-                content: "Links"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText {
-                content: "Source code, issues, and updates"
-                size: 14
-                color: Colors.outline
-            }
+            // ── Links ────────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Links"; size: 13; customColor: Colors.primary }
 
             ColumnLayout {
-                Layout.topMargin: 10
+                Layout.topMargin: 6
                 Layout.fillWidth: true
-                spacing: 5
+                spacing: 3
 
                 Repeater {
                     model: [
-                        {
-                            icon: "code",
-                            label: "GitHub",
-                            desc: "github.com/St3el"
-                        },
-                        {
-                            icon: "bug_report",
-                            label: "Report Issue",
-                            desc: "Open a bug report on GitHub"
-                        },
-                        {
-                            icon: "star",
-                            label: "Star the Project",
-                            desc: "Show your support"
-                        }
+                        { icon: "code",       label: "GitHub",          desc: "github.com/St3el",          first: true,  last: false },
+                        { icon: "bug_report", label: "Report Issue",    desc: "Open a bug report on GitHub", first: false, last: false },
+                        { icon: "star",       label: "Star the Project", desc: "Show your support",          first: false, last: true  }
                     ]
 
                     delegate: Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 45
-                        radius: 10
+                        implicitHeight: linkRow.implicitHeight + 24
                         color: linkArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
-
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: 150
-                            }
-                        }
+                        topLeftRadius:     modelData.first ? 20 : 5
+                        topRightRadius:    modelData.first ? 20 : 5
+                        bottomLeftRadius:  modelData.last  ? 20 : 5
+                        bottomRightRadius: modelData.last  ? 20 : 5
+                        Behavior on color { ColorAnimation { duration: 150 } }
 
                         RowLayout {
+                            id: linkRow
                             anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 12
-                            spacing: 10
+                            anchors.leftMargin: 14; anchors.rightMargin: 14
+                            spacing: 12
 
                             MaterialIconSymbol {
-                                content: modelData.icon
-                                iconSize: 18
-                                color: Colors.primary
+                                content: modelData.icon; iconSize: 18; customColor: Colors.primary
                             }
 
                             ColumnLayout {
-                                spacing: 0
-                                CustomText {
-                                    content: modelData.label
-                                    size: 14
-                                }
-                                CustomText {
-                                    content: modelData.desc
-                                    size: 11
-                                    color: Colors.outline
-                                }
+                                spacing: 1
+                                CustomText { content: modelData.label; size: 14 }
+                                CustomText { content: modelData.desc; size: 11; customColor: Colors.outline }
                             }
 
-                            Item {
-                                Layout.fillWidth: true
-                            }
+                            Item { Layout.fillWidth: true }
 
                             MaterialIconSymbol {
-                                content: "arrow_forward"
-                                iconSize: 16
-                                color: Colors.outline
+                                content: "arrow_forward"; iconSize: 16; customColor: Colors.outline
                             }
                         }
 
@@ -241,6 +155,8 @@ Item {
                     }
                 }
             }
+
+            Item { Layout.preferredHeight: 20 }
         }
     }
 }

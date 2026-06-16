@@ -3,71 +3,151 @@ import Quickshell.Widgets
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
+import QtQuick.Controls.Basic
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
+import "../../MatrialShapes/" as MaterialShapes
+import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
-Item{
+Item {
     id: root
     anchors.fill: parent
     anchors.margins: 5
-    property bool infoCard: false
+
     property bool qrCode: false
     property bool passwordPrompt: false
     property var network: null
 
-    // onPasswordPromptChanged:{
-    //     if(passwordPrompt){
-    //         grab.active = false
-    //     }else{
-    //         grab.active = true
-    //     }
-    // }
-
-    Loader{
-        anchors.fill: parent
-        active: root.infoCard
-        visible: active
-        z: 10
-        sourceComponent: NetworkInfoCard{
-            network: root.network
-            onClose: root.infoCard = false
+    property bool hasSavedNetworks: {
+        const ns = ServiceNetwork.networks ?? []
+        for (let i = 0; i < ns.length; i++) {
+            if (ns[i].known && !ns[i].connected) return true
         }
+        return false
+    }
+    property bool hasAvailableNetworks: {
+        const ns = ServiceNetwork.networks ?? []
+        for (let i = 0; i < ns.length; i++) {
+            if (!ns[i].known && !ns[i].connected) return true
+        }
+        return false
     }
 
-    Loader{
+    // ── QR overlay ───────────────────────────────────────────────
+    Loader {
         anchors.fill: parent
         active: root.qrCode
         visible: active
         z: 10
-        sourceComponent: QrCode{
+        sourceComponent: QrCode {
             network: root.network
             onClose: root.qrCode = false
         }
     }
 
-    Loader{
+    // ── Password dialog ──────────────────────────────────────────
+    Rectangle {
         anchors.fill: parent
-        active: root.passwordPrompt
-        visible: active
+        visible: root.passwordPrompt
         z: 11
-        sourceComponent: PasswordInput{
-            onClose: root.passwordPrompt = false
-            onSubmit: function(password){
-                root.network.connectWithPsk(password)
-                root.passwordPrompt = false
+        color: Qt.alpha(Colors.surface, 0.75)
+        radius: 20
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: mouse => mouse.accepted = true
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: 380; height: 150
+            radius: 20
+            color: Colors.surfaceContainer
+
+            NumberAnimation on scale {
+                from: 0.85; to: 1; duration: 200
+                easing.type: Easing.OutQuad
+                running: root.passwordPrompt
+            }
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 20
+                spacing: 14
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    RowLayout {
+                        spacing: 8
+                        MaterialIconSymbol { content: "lock"; iconSize: 16; customColor: Colors.outline }
+                        CustomText { content: "Enter password"; size: 15 }
+                    }
+                    Item { Layout.fillWidth: true }
+                    MaterialIconSymbol {
+                        content: "close"; iconSize: 18; customColor: Colors.outline
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.passwordPrompt = false
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 48
+                    radius: 12
+                    color: Colors.surfaceContainerHighest
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 14; anchors.rightMargin: 10
+                        spacing: 8
+
+                        TextField {
+                            id: pwField
+                            Layout.fillWidth: true
+                            background: null
+                            placeholderText: "Password"
+                            echoMode: TextInput.Password
+                            font.pixelSize: 14
+                            color: Colors.surfaceText
+                            verticalAlignment: TextInput.AlignVCenter
+                            Component.onCompleted: forceActiveFocus()
+                            onAccepted: {
+                                if (root.network) root.network.connectWithPsk(pwField.text)
+                                root.passwordPrompt = false
+                            }
+                        }
+
+                        MaterialIconSymbol {
+                            content: "send"; iconSize: 20; customColor: Colors.primary
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (root.network) root.network.connectWithPsk(pwField.text)
+                                    root.passwordPrompt = false
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-    Flickable{
+    // ── Main content ─────────────────────────────────────────────
+    Flickable {
         anchors.fill: parent
         contentHeight: column.implicitHeight
         contentWidth: width
         clip: true
 
-        ColumnLayout{
+        ColumnLayout {
             id: column
             width: parent.width
             anchors.top: parent.top
@@ -78,238 +158,236 @@ Item{
             anchors.topMargin: 5
             spacing: 0
 
-            RowLayout{
+            // ── Page header ──────────────────────────────────────
+            RowLayout {
                 spacing: 10
-                MaterialIconSymbol{
-                    content: "android_wifi_4_bar"
-                    iconSize: 20
-                }
-
-                CustomText{
-                    content: "Networking"
-                    size: 20
-                    color: Colors.primary
-                }
+                MaterialIconSymbol { content: "android_wifi_4_bar"; iconSize: 20 }
+                CustomText { content: "Networking"; size: 20; customColor: Colors.primary }
             }
 
-            CustomText{
-                Layout.topMargin: 30
-                content: "Networking"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText{
-                content: "Manage Wi-Fi connections and saved networks"
-                size: 14
-                color: Colors.outline
-            }
-            RowLayout{
-                Layout.fillWidth: true
-                Layout.topMargin: 10
-                spacing: 10
-                ColumnLayout{
-                    spacing: 0
-                    CustomText{
-                        content: "Available Nodes"
-                        size: 16
-                    }
+            // ── Available Nodes ──────────────────────────────────
+            CustomText { Layout.topMargin: 24; content: "Available Nodes"; size: 13; customColor: Colors.primary }
 
-                    CustomText{
-                        content: "Quick-connect to a nearby network"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 20
 
-                Item{
+                RowLayout {
                     Layout.fillWidth: true
-                }
-
-
-
-                CustomListNew{
-                    Layout.preferredHeight: 30 
-                    Layout.preferredWidth: 200
-                    objectVal: ServiceNetwork.currentNetwork
-                    list: ServiceNetwork.availableNetworks
-
-                    onIsListClickedChanged:{
-                        if(isListClicked)
-                        grab.active = false
-                        else 
-                        grab.active = true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Quick Connect"; size: 14 }
+                        CustomText { content: "Switch to a nearby network"; size: 12; customColor: Colors.outline }
                     }
-                } 
-            }
-
-            NetworkPill{
-                Layout.topMargin: 20
-                network: ServiceNetwork.connectedNetwork
-                onClick:function(network){
-                    root.infoCard = true
-                    root.network = network
-                }
-                onNeedsPassword: function(net) {
-                    root.network = net
-                    root.passwordPrompt = true
-                }
-
-                onQrCode: function(network){
-                    root.network = network
-                    root.qrCode = true
+                    Item { Layout.fillWidth: true }
+                    CustomListNew {
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: 200
+                        color: Colors.surfaceContainerHighest
+                        objectVal: ServiceNetwork.currentNetwork
+                        list: ServiceNetwork.availableNetworks
+                    }
                 }
             }
 
-            Rectangle{
-                Layout.topMargin: 10
-                Layout.bottomMargin: 10
+            // ── Connected ────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Connected"; size: 13; customColor: Colors.primary }
+
+            // Empty state — not connected
+            Rectangle {
+                Layout.topMargin: 6
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
-            }
+                implicitHeight: 90
+                visible: ServiceNetwork.connectedNetwork == null
+                color: Colors.surfaceContainerHigh
+                radius: 20
 
-
-            RowLayout{
-                Layout.fillWidth: true
-                spacing: 10
-
-
-                CustomText{
-                    content: "Saved Networks"
-                    size: 16
-                    color: Colors.primary
-                }
-
-                Item{
-                    Layout.fillWidth: true
-                }
-            }
-
-
-            Item{
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                Layout.preferredHeight: savedList.item.implicitHeight
-                Layout.minimumHeight: 60
-                Layout.maximumHeight: 200
-                clip: true
-
-
-
-                Loader {
-                    active: !ServiceNetwork.savedNetworks || ServiceNetwork.savedNetworks.length === 0
+                ColumnLayout {
                     anchors.centerIn: parent
+                    spacing: 10
 
-                    sourceComponent: CustomText {
-                        anchors.centerIn: parent
-                        content: "No Saved Networks"
-                        size: 14
-                    }
-                }
+                    Item {
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitWidth: 46; implicitHeight: 46
 
-                Loader {
-                    id: savedList
-                    active: ServiceNetwork.savedNetworks && ServiceNetwork.savedNetworks.length > 0
-                    anchors.fill: parent
-                    sourceComponent: ListView {
-                        id: wifiList
-                        anchors.fill: parent
-                        implicitHeight: contentHeight
-                        model: ServiceNetwork.savedNetworks
-                        spacing: 10
-                        delegate: NetworkPill {
-                            width: ListView.view.width
-                            network: modelData
-                            onNeedsPassword: function(net) {
-                                root.network = net
-                                root.passwordPrompt = true
-                            }
-                            onClick:function(network){
-                                root.infoCard = true
-                                root.network = network
-                            }
+                        MaterialShapes.ShapeCanvas {
+                            anchors.fill: parent
+                            roundedPolygon: MaterialShapeFn.getCookie6Sided()
+                            color: Colors.surfaceContainerHighest
+                        }
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: "wifi_off"; iconSize: 22; customColor: Colors.outline
                         }
                     }
+                    CustomText {
+                        Layout.alignment: Qt.AlignHCenter
+                        content: "Not connected"; size: 13; customColor: Colors.outline
+                    }
                 }
-
             }
 
-
-            Rectangle{
-                Layout.topMargin: 10
-                Layout.bottomMargin: 10
+            NetworkPill {
+                Layout.topMargin: 6
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
+                visible: ServiceNetwork.connectedNetwork != null
+                network: ServiceNetwork.connectedNetwork
+                onNeedsPassword: function(net) { root.network = net; root.passwordPrompt = true }
+                onQrCode: function(network) { root.network = network; root.qrCode = true }
             }
 
-            RowLayout{
+            // ── Saved Networks ───────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Saved Networks"; size: 13; customColor: Colors.primary }
+
+            // Empty state — no saved
+            Rectangle {
+                Layout.topMargin: 6
                 Layout.fillWidth: true
-                spacing: 10
-                CustomText{
-                    content: "Available Netoworks"
-                    size: 16
-                    color: Colors.primary
-                }
-                Item{
-                    Layout.fillWidth: true
-                }
+                implicitHeight: 90
+                visible: !root.hasSavedNetworks
+                color: Colors.surfaceContainerHigh
+                radius: 20
 
-                MaterialIconSymbol{
-                    content: "refresh"
-                    iconSize: 20
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 10
 
-                    MouseArea{
+                    Item {
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitWidth: 46; implicitHeight: 46
+
+                        MaterialShapes.ShapeCanvas {
+                            anchors.fill: parent
+                            roundedPolygon: MaterialShapeFn.getCookie6Sided()
+                            color: Colors.surfaceContainerHighest
+                        }
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: "wifi_off"; iconSize: 22; customColor: Colors.outline
+                        }
+                    }
+                    CustomText {
+                        Layout.alignment: Qt.AlignHCenter
+                        content: "No saved networks"; size: 13; customColor: Colors.outline
+                    }
+                }
+            }
+
+            ColumnLayout {
+                Layout.topMargin: 6
+                Layout.fillWidth: true
+                spacing: 3
+                visible: root.hasSavedNetworks
+
+                Repeater {
+                    model: ServiceNetwork.networks
+                    delegate: NetworkPill {
+                        Layout.fillWidth: true
+                        network: (modelData?.known && !modelData?.connected) ? modelData : null
+                        topRadius: {
+                            const ns = ServiceNetwork.networks ?? []
+                            for (let i = 0; i < ns.length; i++) {
+                                if (ns[i].known && !ns[i].connected) return (i === index) ? 20 : 5
+                            }
+                            return 20
+                        }
+                        bottomRadius: {
+                            const ns = ServiceNetwork.networks ?? []
+                            let last = -1
+                            for (let i = 0; i < ns.length; i++) {
+                                if (ns[i].known && !ns[i].connected) last = i
+                            }
+                            return (last === index) ? 20 : 5
+                        }
+                        onNeedsPassword: function(net) { root.network = net; root.passwordPrompt = true }
+                        onQrCode: function(network) { root.network = network; root.qrCode = true }
+                    }
+                }
+            }
+
+            // ── Available Networks ───────────────────────────────
+            RowLayout {
+                Layout.topMargin: 16
+                Layout.fillWidth: true
+                CustomText { content: "Available Networks"; size: 13; customColor: Colors.primary }
+                Item { Layout.fillWidth: true }
+                MaterialIconSymbol {
+                    content: "refresh"; iconSize: 18; customColor: Colors.outline
+                    MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            ServiceNetwork.currentNetwork.scannerEnabled = true
-                        }
+                        onClicked: ServiceNetwork.currentNetwork.scannerEnabled = true
                     }
                 }
             }
 
-            Item{
-                Layout.topMargin: 10
+            // Empty state — none found
+            Rectangle {
+                Layout.topMargin: 6
                 Layout.fillWidth: true
-                Layout.preferredHeight: 300
-                clip: true
+                implicitHeight: 90
+                visible: !root.hasAvailableNetworks
+                color: Colors.surfaceContainerHigh
+                radius: 20
 
-                Loader {
-                    active: !ServiceNetwork.available || ServiceNetwork.available.length === 0
+                ColumnLayout {
                     anchors.centerIn: parent
+                    spacing: 10
 
-                    sourceComponent: CustomText {
-                        anchors.centerIn: parent
-                        content: "No Available Networks"
-                        size: 14
-                    }
-                }
+                    Item {
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitWidth: 46; implicitHeight: 46
 
-                Loader {
-                    active: ServiceNetwork.available && ServiceNetwork.available.length > 0
-                    anchors.fill: parent
-                    sourceComponent:                 ListView{
-                        anchors.fill: parent
-                        orientation: Qt.Vertical
-                        model: ServiceNetwork.available
-                        spacing: 10
-                        delegate: NetworkPill{
-                            width: ListView.view.width
-                            network: modelData
-                            onNeedsPassword: function(net) {
-                                root.network = net
-                                root.passwordPrompt = true
-                            }
-                            onClick:function(network){
-                                root.infoCard = true
-                                root.network = network
-                            }
+                        MaterialShapes.ShapeCanvas {
+                            anchors.fill: parent
+                            roundedPolygon: MaterialShapeFn.getCookie6Sided()
+                            color: Colors.surfaceContainerHighest
+                        }
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: "wifi_find"; iconSize: 22; customColor: Colors.outline
                         }
                     }
+                    CustomText {
+                        Layout.alignment: Qt.AlignHCenter
+                        content: "No networks found"; size: 13; customColor: Colors.outline
+                    }
                 }
-
             }
+
+            ColumnLayout {
+                Layout.topMargin: 6
+                Layout.fillWidth: true
+                spacing: 3
+                visible: root.hasAvailableNetworks
+
+                Repeater {
+                    model: ServiceNetwork.networks
+                    delegate: NetworkPill {
+                        Layout.fillWidth: true
+                        network: (!modelData?.known && !modelData?.connected) ? modelData : null
+                        topRadius: {
+                            const ns = ServiceNetwork.networks ?? []
+                            for (let i = 0; i < ns.length; i++) {
+                                if (!ns[i].known && !ns[i].connected) return (i === index) ? 20 : 5
+                            }
+                            return 20
+                        }
+                        bottomRadius: {
+                            const ns = ServiceNetwork.networks ?? []
+                            let last = -1
+                            for (let i = 0; i < ns.length; i++) {
+                                if (!ns[i].known && !ns[i].connected) last = i
+                            }
+                            return (last === index) ? 20 : 5
+                        }
+                        onNeedsPassword: function(net) { root.network = net; root.passwordPrompt = true }
+                        onQrCode: function(network) { root.network = network; root.qrCode = true }
+                    }
+                }
+            }
+
+            Item { Layout.preferredHeight: 20 }
         }
     }
 }

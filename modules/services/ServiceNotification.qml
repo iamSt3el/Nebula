@@ -85,6 +85,8 @@ Singleton {
         readonly property bool isLow: notification.urgency === NotificationUrgency.Low
         readonly property bool isNormal: notification.urgency === NotificationUrgency.Normal
         readonly property bool isCritical: notification.urgency === NotificationUrgency.Critical
+        readonly property var actions: notification.actions.filter(a => a.identifier !== "default")
+        readonly property real arrivalTimestamp: Date.now()
 
         property Timer timer: Timer {
             running: true

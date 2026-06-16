@@ -5,254 +5,302 @@ import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.customComponents
 import qs.modules.services
-import qs.modules.settings
 
 Rectangle {
     id: notif
     property bool isExtended: false
-    property int padding: 10
 
     property real topRadius: 20
     property real bottomRadius: 20
 
+    readonly property var notifData: modelData
+    readonly property bool hasActions: modelData.actions.length > 0
+    readonly property bool hasBody: (modelData.body ?? "").length > 0
+    readonly property bool hasImage: !!modelData.image
+
+    property string relativeTime: notif.computeRelative(modelData.arrivalTimestamp)
+
+    function computeRelative(ts) {
+        var diff = Date.now() - ts
+        var mins = Math.floor(diff / 60000)
+        if (mins < 1)  return "now"
+        if (mins < 60) return mins + "m ago"
+        var hrs = Math.floor(mins / 60)
+        if (hrs < 24)  return hrs + "h ago"
+        return Math.floor(hrs / 24) + "d ago"
+    }
+
+    Timer {
+        interval: 30000
+        running: true
+        repeat: true
+        onTriggered: notif.relativeTime = notif.computeRelative(modelData.arrivalTimestamp)
+    }
+
+    function resolveSymbol(appIcon, appName) {
+        const ic = (appIcon || "").toLowerCase()
+        const ap = (appName || "").toLowerCase()
+        if (ic.includes("camera-photo") || ap.includes("screenshot")) return "photo_camera"
+        if (ic.includes("camera-video") || ap.includes("record"))     return "screen_record"
+        if (ic.includes("dialog-error") || ic.includes("error"))      return "error_outline"
+        if (ic.includes("bluetooth"))                                  return "bluetooth"
+        if (ic.includes("network") || ic.includes("wifi"))            return "wifi"
+        if (ic.includes("battery"))                                    return "battery_std"
+        if (ic.includes("volume") || ic.includes("audio"))            return "volume_up"
+        return ""
+    }
+
+    readonly property string symbol: notif.resolveSymbol(modelData.appIcon, modelData.appName)
+    readonly property bool usesSymbol: notif.symbol !== ""
+
+    // Height is driven entirely by content — no hardcoded magic numbers
     implicitWidth: parent ? parent.width : 0
-    implicitHeight: isExtended ? notifRow.implicitHeight + 20 : 60
+    implicitHeight: contentCol.implicitHeight + 20
+
     topLeftRadius: topRadius
     topRightRadius: topRadius
     bottomLeftRadius: bottomRadius
     bottomRightRadius: bottomRadius
     color: Colors.surfaceContainerHigh
     clip: true
-
     x: 0
 
-
-    // SequentialAnimation {
-    //     id: removeAnimation
-    //     PropertyAction { target: notif; property: "ListView.delayRemove"; value: true }
-    //
-    //     ParallelAnimation{
-    //         NumberAnimation { target: notif; property: "x"; to: parent.width; duration: 350; easing.type: Easing.InCubic }
-    //         NumberAnimation { target: notif; property: "opacity"; from: 1; to: 0; duration: 250; easing.type: Easing.InQuad }
-    //     }
-    //
-    //
-    //     PropertyAction { target: notif; property: "ListView.delayRemove"; value: false }
-    // }
-    // ListView.onRemove: removeAnimation.start()
-
     Behavior on x {
-        NumberAnimation {
-            duration: 300
-            easing.type: Easing.OutQuad
-        }
+        NumberAnimation { duration: 300; easing.type: Easing.OutQuad }
     }
 
-    Behavior on implicitHeight {
-        NumberAnimation {
-            duration: 300
-            easing.type: Easing.OutQuad
-        }
-    }
-
-    // Drag gestures
+    // ── Drag to dismiss / expand ─────────────────────────────────────────
     MouseArea {
-        property int startY
+        property int startY: 0
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: pressed ? Qt.ClosedHandCursor : Qt.PointingHandCursor
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         preventStealing: true
-
         drag.target: parent
         drag.axis: Drag.XAxis
 
         onPressed: event => {
             startY = event.y
-            if (event.button === Qt.MiddleButton) {
+            if (event.button === Qt.MiddleButton)
                 ServiceNotification.removeNotification(modelData)
-            }
         }
-
         onReleased: {
-            if (Math.abs(notif.x) < notif.width * 0.3) {
+            if (Math.abs(notif.x) < notif.width * 0.3)
                 notif.x = 0
-            } else {
+            else
                 ServiceNotification.removeNotification(modelData)
-            }
         }
-
         onPositionChanged: event => {
             if (pressed) {
-                const diffY = event.y - startY
-                if (Math.abs(diffY) > 20) {
-                    notif.isExtended = diffY > 0
-                }
+                const dy = event.y - startY
+                if (Math.abs(dy) > 24)
+                    notif.isExtended = dy > 0
             }
         }
     }
 
-    RowLayout{
-        id: notifRow
-        anchors.fill: parent
-        anchors.margins: 5
-        spacing: 5
+    // ── Content ──────────────────────────────────────────────────────────
+    ColumnLayout {
+        id: contentCol
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.leftMargin: 10
+        anchors.rightMargin: 10
+        anchors.topMargin: 10
+        spacing: 0
 
-        Image{
-            source: IconUtil.getIconPath(modelData.appIcon)
-            width: 26
-            height: 26
-            sourceSize: Qt.size(width, height)
-
-            transform: Translate {
-                y: notif.isExtended ? -notifRow.implicitHeight / 2 + 10 : 0
-
-                Behavior on y {
-                    NumberAnimation {
-                        duration: 300
-                        easing.type: Easing.OutQuad
-                    }
-                }
-            }
-        }
-
-        ColumnLayout{
+        // ── Header (always visible) ──────────────────────────────────
+        RowLayout {
             Layout.fillWidth: true
-            Layout.margins: 5
-            Layout.fillHeight: true
+            spacing: 10
 
+            // M3 icon container
+            Rectangle {
+                width: 40; height: 40
+                radius: 12
+                color: notif.usesSymbol ? Colors.primaryContainer : Qt.alpha(Colors.primary, 0.12)
 
-            CustomText{
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                visible: notif.isExtended
-                content: modelData.appName
-                size: 12
-
-                NumberAnimation on opacity{
-                    from: 0
-                    to: 1
-                    duration: 300
-                    running: notif.isExtended
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: notif.symbol
+                    iconSize: 20
+                    customColor: Colors.primaryContainerText
+                    visible: notif.usesSymbol
                 }
-                color: Colors.outline
+
+                Image {
+                    id: itemIcon
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    source: notif.usesSymbol ? "" : IconUtil.getIconPath(modelData.appIcon)
+                    sourceSize: Qt.size(width, height)
+                    fillMode: Image.PreserveAspectFit
+                    visible: !notif.usesSymbol && status === Image.Ready
+                }
+
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: "notifications"
+                    iconSize: 18
+                    customColor: Colors.primaryContainerText
+                    visible: !notif.usesSymbol && itemIcon.status !== Image.Ready
+                }
             }
-            Item{
-                Layout.fillWidth: true
-                Layout.fillHeight: notif.isExtended ? true : false
-                Layout.preferredHeight: notif.isExtended ? summaryText.implicitHeight : summaryFont.height
-                clip: true
-                FontMetrics{
-                    id: summaryFont
-                    font: summaryText.font
-                }
 
-                Behavior on Layout.preferredHeight{
-                    NumberAnimation {
-                        duration: 300
-                        easing.type: Easing.OutQuad
+            // App name + summary
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+
+                RowLayout {
+                    spacing: 4
+                    visible: (modelData.appName ?? "").length > 0
+
+                    CustomText {
+                        content: modelData.appName ?? ""
+                        size: 11
+                        weight: 600
+                        customColor: Colors.primary
+                    }
+
+                    CustomText {
+                        content: "·"
+                        size: 10
+                        customColor: Colors.outline
+                    }
+
+                    CustomText {
+                        content: notif.relativeTime
+                        size: 10
+                        customColor: Colors.outline
                     }
                 }
 
-                CustomText{
-                    id: summaryText
-                    width: parent.width
+                CustomText {
+                    Layout.fillWidth: true
+                    content: modelData.summary ?? ""
                     size: 13
-                    anchors.top: parent.top
-                    content: modelData.summary
-                    wrapMode: notif.isExtended ? Text.WordWrap : Text.NoWrap
-
+                    weight: 600
+                    elide: Text.ElideRight
                 }
             }
 
-            Item{
-                Layout.fillWidth: true
-                Layout.fillHeight: notif.isExtended ? true : false
-                Layout.preferredHeight: notif.isExtended ? bodyText.implicitHeight : fontMetrics.height
-                clip: true
-                FontMetrics{
-                    id: fontMetrics
-                    font: bodyText.font
-                }
+            // Chevron
+            Rectangle {
+                width: 22; height: 22
+                radius: 11
+                color: Colors.surfaceContainerHighest
 
-                Behavior on Layout.preferredHeight{
-                    NumberAnimation {
-                        duration: 300
-                        easing.type: Easing.OutQuad
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: "keyboard_arrow_down"
+                    iconSize: 16
+                    rotation: notif.isExtended ? 180 : 0
+                    Behavior on rotation {
+                        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
                     }
                 }
 
-                CustomText{
-                    id: bodyText
-                    width: parent.width
-                    size: 12
-                    content: modelData.body
-                    wrapMode: notif.isExtended ? Text.WordWrap : Text.NoWrap
-                    color: Colors.outline
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: notif.isExtended = !notif.isExtended
                 }
             }
         }
 
-        Loader {
-            active: !!modelData.image
-            visible: active
-            Layout.preferredHeight: 52
-            Layout.preferredWidth: 52
-            Layout.alignment: Qt.AlignTop
-            sourceComponent: Rectangle {
-                radius: 10
+        // ── Body ─────────────────────────────────────────────────────
+        Item {
+            Layout.fillWidth: true
+            Layout.preferredHeight: (notif.isExtended && notif.hasBody)
+                ? bodyText.implicitHeight + 8 : 0
+            clip: true
+            visible: notif.hasBody
+
+            Behavior on Layout.preferredHeight {
+                NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+            }
+
+            CustomText {
+                id: bodyText
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 50
+                anchors.top: parent.top
+                anchors.topMargin: 4
+                content: modelData.body ?? ""
+                size: 12
+                weight: 400
+                customColor: Colors.outline
+                wrapMode: Text.WordWrap
+                opacity: notif.isExtended ? 1 : 0
+                Behavior on opacity {
+                    NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
+                }
+            }
+        }
+
+        // ── Image ─────────────────────────────────────────────────────
+        Item {
+            Layout.fillWidth: true
+            Layout.preferredHeight: (notif.isExtended && notif.hasImage) ? 80 : 0
+            visible: notif.hasImage
+            clip: true
+
+            Behavior on Layout.preferredHeight {
+                NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+            }
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.leftMargin: 50
+                anchors.top: parent.top
+                width: 80
+                height: 80
+                radius: 12
                 clip: true
-                color: "transparent"
+                color: Colors.surfaceContainerHighest
+                opacity: notif.isExtended ? 1 : 0
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
+                }
+
                 Image {
                     anchors.fill: parent
-                    source: modelData.image
-                    sourceSize: Qt.size(width, height)
+                    source: modelData.image ?? ""
                     fillMode: Image.PreserveAspectCrop
                 }
             }
         }
 
-        Rectangle{
-            Layout.preferredWidth: 20
-            Layout.preferredHeight: 20
-            radius: height
-            color: Colors.surface
+        // ── Actions (button group) ────────────────────────────────────
+        Item {
+            Layout.fillWidth: true
+            Layout.preferredHeight: notif.hasActions ? 38 : 0
+            clip: true
+            visible: notif.hasActions
 
-            transform: Translate {
-                y: notif.isExtended ? -notifRow.implicitHeight / 2 + 10 : 0
-
-
-                Behavior on y {
-                    NumberAnimation {
-                        duration: 300
-                        easing.type: Easing.OutQuad
-                    }
-                }
+            Behavior on Layout.preferredHeight {
+                NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
             }
 
-
-            MaterialIconSymbol{
-                content: "keyboard_arrow_down"
-                iconSize: 16
-                rotation: notif.isExtended ? 180 : 0
-                anchors.centerIn: parent
-
-                Behavior on rotation{
-                    NumberAnimation{
-                        duration: 200
-                        easing.type: Easing.OutQuad
-                    }
-                }
-            }
-
-            MouseArea{
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked:{
-                    notif.isExtended = !notif.isExtended
+            ButtonGroup {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                fillWidth: true
+                model: notif.notifData.actions.map((a, i) => ({ value: i, label: a.text }))
+                activeCheck: function(value) { return false }
+                onSegmentClicked: value => {
+                    notif.notifData.actions[value].invoke()
+                    ServiceNotification.removeNotification(notif.notifData)
                 }
             }
         }
-    }
 
+        Item { Layout.preferredHeight: 2 }
+    }
 }

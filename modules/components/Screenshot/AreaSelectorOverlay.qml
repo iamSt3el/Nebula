@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import Quickshell.Io
 import QtQuick
 import qs.modules.settings
@@ -44,13 +45,38 @@ Scope {
             readonly property real geoH: Math.round(selH)
 
             // ── Window-pick state ────────────────────────────────────────────
-            property var windowList: []
             property int hoveredIdx: -1
+
+            readonly property var windowList: {
+                var ws = Hyprland.focusedWorkspace
+                if (!ws) return []
+                var result = []
+                var tls = ws.toplevels.values
+                for (var i = 0; i < tls.length; i++) {
+                    var t = tls[i]
+                    var obj = t.lastIpcObject
+                    if (!obj || !obj.mapped || obj.hidden) continue
+                    if (!obj.size || obj.size[0] <= 0 || obj.size[1] <= 0) continue
+                    result.push({
+                        at:       obj.at,
+                        size:     obj.size,
+                        address:  t.address,
+                        "class":  obj["class"] || "",
+                        title:    obj.title    || "",
+                        isActive: t.activated
+                    })
+                }
+                return result
+            }
+
+            onWindowListChanged: {
+                var idx = windowList.findIndex(function(w) { return w.isActive })
+                hoveredIdx = idx
+            }
 
             function findWindowAt(mx, my) {
                 var gx = mx + overlay.screen.x
                 var gy = my + overlay.screen.y
-                // Reverse: top-most window is last in list
                 for (var i = windowList.length - 1; i >= 0; i--) {
                     var w = windowList[i]
                     if (gx >= w.at[0] && gx < w.at[0] + w.size[0] &&
@@ -61,19 +87,10 @@ Scope {
                 return -1
             }
 
-            // ── Fetch window list via hyprctl ────────────────────────────────
-            Process {
-                id: hyprProc
-                command: ["hyprctl", "clients", "-j"]
-                running: false
-                property string _buf: ""
-
-                stdout: SplitParser {
-                    onRead: line => { hyprProc._buf += line }
-                }
-                onExited: {
-                    try { overlay.windowList = JSON.parse(hyprProc._buf) } catch(e) {}
-                    hyprProc._buf = ""
+            Connections {
+                target: Hyprland
+                function onFocusedWorkspaceChanged() {
+                    if (overlay.isWindowMode) Hyprland.refreshToplevels()
                 }
             }
 
@@ -86,7 +103,7 @@ Scope {
                 Keys.onEscapePressed: GlobalStates.areaSelectOpen = false
 
                 Component.onCompleted: {
-                    if (overlay.isWindowMode) hyprProc.running = true
+                    if (overlay.isWindowMode) Hyprland.refreshToplevels()
                 }
 
                 // ════════════════════════════════════════════════════════════
@@ -217,15 +234,18 @@ Scope {
                             height: modelData.size[1]
                             radius: 6
 
-                            color: overlay.hoveredIdx === index
-                                   ? Qt.alpha(Colors.primary, 0.14)
-                                   : "transparent"
+                            readonly property bool isActive: modelData.isActive
+                            readonly property bool isHovered: overlay.hoveredIdx === index
+
+                            color: isHovered
+                                ? Qt.alpha(Colors.primary, 0.18)
+                                : isActive ? Qt.alpha(Colors.primary, 0.07) : "transparent"
                             Behavior on color { ColorAnimation { duration: 100 } }
 
-                            border.color: overlay.hoveredIdx === index
-                                          ? Colors.primary
-                                          : Qt.alpha(Colors.outline, 0.30)
-                            border.width: overlay.hoveredIdx === index ? 2.5 : 1
+                            border.color: isHovered
+                                ? Colors.primary
+                                : isActive ? Qt.alpha(Colors.primary, 0.60) : Qt.alpha(Colors.outline, 0.25)
+                            border.width: isHovered ? 2.5 : isActive ? 1.5 : 1
                             Behavior on border.width { NumberAnimation { duration: 100 } }
                             Behavior on border.color { ColorAnimation  { duration: 100 } }
 

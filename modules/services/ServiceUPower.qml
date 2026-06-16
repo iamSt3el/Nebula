@@ -40,7 +40,7 @@ Singleton{
             //Quickshell.execDetached(["notify-send", "-i", "battery_charging_full", "Battery", "Charging — " + Math.round(powerLevel) + "%"])
             ServiceNotification.sendNotification(
                 "Battery",
-                "Charging - " + Math.round(powerLevel) + "%",
+                "Charging - " + Math.round(powerLevel * 100) + "%",
                 "Battery",
                 "battery_charging_full"
             )
@@ -48,7 +48,7 @@ Singleton{
             //Quickshell.execDetached(["notify-send", "-i", "battery_full", "Battery", "Unplugged — " + Math.round(powerLevel) + "%"])
             ServiceNotification.sendNotification(
                 "Battery",
-                "Unplugged - " + Math.round(powerLevel) + "%",
+                "Unplugged - " + Math.round(powerLevel * 100) + "%",
                 "Battery",
                 "battery_full"
             )

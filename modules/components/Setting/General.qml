@@ -11,7 +11,7 @@ import Qt.labs.platform
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
-Item{
+Item {
     id: root
     anchors.fill: parent
     anchors.margins: 5
@@ -21,20 +21,21 @@ Item{
         title: "Select a profile image"
         nameFilters: ["Image files (*.png *.jpg *.jpeg *.webp *.gif)"]
         onAccepted: {
-            SettingsConfig.general = Object.assign({}, SettingsConfig.general, {profile: imagePicker.file.toString().replace(/^file:\/\//, "")})
+            SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                profile: imagePicker.file.toString().replace(/^file:\/\//, "")
+            })
             GlobalStates.fileDialogOpen = false
         }
         onRejected: GlobalStates.fileDialogOpen = false
     }
 
-    Flickable{
-        id: flickable
-        anchors.fill: parent  
+    Flickable {
+        anchors.fill: parent
         contentHeight: column.implicitHeight
-        contentWidth: width   
+        contentWidth: width
         clip: true
 
-        ColumnLayout{
+        ColumnLayout {
             id: column
             width: parent.width
             anchors.top: parent.top
@@ -44,435 +45,350 @@ Item{
             anchors.rightMargin: 5
             anchors.topMargin: 5
             spacing: 0
-            RowLayout{
+
+            // ── Page header ──────────────────────────────────────────────
+            RowLayout {
                 spacing: 10
-                MaterialIconSymbol{
-                    content: "tune"
-                    iconSize: 20
-                }
-
-                CustomText{
-                    content: "General"
-                    size: 20
-                    color: Colors.primary
-                }
+                MaterialIconSymbol { content: "tune"; iconSize: 20 }
+                CustomText { content: "General"; size: 20; customColor: Colors.primary }
             }
 
-            CustomText{
-                Layout.topMargin: 30
-                content: "Profile"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText{
-                content: "Set your name and avatar shown across the shell"
-                size: 14
-                color: Colors.outline
-            }
+            // ── Profile ──────────────────────────────────────────────────
+            CustomText { Layout.topMargin: 24; content: "Profile"; size: 13; customColor: Colors.primary }
 
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 20
 
-            RowLayout{
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                Layout.preferredHeight: 90
-                spacing: 10
+                RowLayout {
+                    spacing: 16
 
-                Item{
-                    Layout.preferredWidth: 90    
-                    Layout.preferredHeight: 90
-                    MaterialShapes.ShapeCanvas{
-                        id: artMask
-                        anchors.fill: parent
-                        roundedPolygon: MaterialShapeFn.getPill()
-                        color: Colors.primary
+                    Item {
+                        Layout.preferredWidth: 68
+                        Layout.preferredHeight: 68
+                        Layout.alignment: Qt.AlignVCenter
+
+                        MaterialShapes.ShapeCanvas {
+                            id: artMask
+                            anchors.fill: parent
+                            roundedPolygon: MaterialShapeFn.getPill()
+                            color: Colors.primaryContainer
+                        }
+                        Image {
+                            id: profileArt
+                            anchors.fill: parent
+                            sourceSize: Qt.size(width, height)
+                            source: SettingsConfig.general.profile
+                            fillMode: Image.PreserveAspectCrop
+                            visible: false
+                            layer.enabled: true
+                        }
+                        MultiEffect {
+                            source: profileArt
+                            anchors.fill: profileArt
+                            maskEnabled: true
+                            maskSource: artMask
+                            maskThresholdMin: 0.5
+                            maskSpreadAtMin: 1.0
+                        }
                     }
 
-                    Image{
-                        id: profileArt
-                        anchors.fill: parent
-                        sourceSize: Qt.size(width, height)
-                        source: SettingsConfig.general.profile
-                        fillMode: Image.PreserveAspectCrop
-                        visible: false
-                        layer.enabled: true
-                    }
-                    MultiEffect{
-                        source: profileArt
-                        anchors.fill: profileArt
-                        maskEnabled: true
-                        maskSource: artMask
-                        maskThresholdMin: 0.5
-                        maskSpreadAtMin: 1.0
-                    }
-
-                }
-
-                ColumnLayout{
-                    Layout.alignment: Qt.AlignLeft
-                    Layout.fillHeight: true
-                    CustomText{
-                        content: "St3el"
-                        size: 18
-                    }
-                    Item{
-                        Layout.fillHeight: true
-                    }
-                    CustomText{
-                        content: "Shown in the overview and lock screen"
-                        size: 12
-                        color: Colors.outline
-                    }
-
-                    RowLayout{
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 30
-                        spacing: 4
-                        Rectangle{
-                            Layout.fillHeight: true
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: 6
+
+                        CustomText { content: "St3el"; size: 16; weight: 700 }
+                        CustomText {
+                            content: "Shown in overview and lock screen"
+                            size: 12; customColor: Colors.outline
+                        }
+
+                        RowLayout {
                             Layout.fillWidth: true
-                            topLeftRadius: 15
-                            bottomLeftRadius: 15
-                            topRightRadius: 5
-                            bottomRightRadius: 5
+                            spacing: 4
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 32
+                                topLeftRadius: 16; bottomLeftRadius: 16
+                                topRightRadius: 6;  bottomRightRadius: 6
+                                color: Colors.surfaceContainerHighest
+                                clip: true
+
+                                CustomText {
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.leftMargin: 12
+                                    anchors.rightMargin: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    content: SettingsConfig.general.profile
+                                    size: 11
+                                    elide: Text.ElideLeft
+                                }
+                            }
+
+                            CustomButton {
+                                Layout.preferredWidth: 42
+                                Layout.preferredHeight: 32
+                                topLeftRadius: 6;   bottomLeftRadius: 6
+                                topRightRadius: 16; bottomRightRadius: 16
+                                icon: "image"
+                                iconSize: 18
+                                onClicked: {
+                                    GlobalStates.fileDialogOpen = true
+                                    imagePicker.open()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Appearance ───────────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Appearance"; size: 13; customColor: Colors.primary }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 6
+                spacing: 3
+
+                CustomCard {
+                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Body Font"; size: 14 }
+                            CustomText { content: "Applied globally to all UI text"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomListNew {
+                            Layout.preferredHeight: 30
+                            Layout.preferredWidth: 180
                             color: Colors.surfaceContainerHighest
-                            CustomText{
-                                anchors.left: parent.left
-                                anchors.leftMargin: 10
-                                anchors.verticalCenter: parent.verticalCenter
-                                content: SettingsConfig.general.profile
-                                size: 12
-                            }
-                        }
-
-                        CustomButton{
-                            Layout.fillHeight: true
-                            Layout.preferredWidth: 40
-                            topLeftRadius: 5
-                            bottomLeftRadius: 5
-                            topRightRadius: 15
-                            bottomRightRadius: 15
-                            icon: "image"
-                            iconSize: 18
-                            onClicked: {
-                                GlobalStates.fileDialogOpen = true
-                                imagePicker.open()
+                            currentVal: SettingsConfig.general.defaultFont
+                            list: Settings.fonts
+                            onCurrentValChanged: {
+                                if (currentVal && currentVal !== SettingsConfig.general.defaultFont)
+                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { defaultFont: currentVal })
                             }
                         }
                     }
                 }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Display Font"; size: 14 }
+                            CustomText { content: "Used in clocks, date widgets, and headings"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomListNew {
+                            Layout.preferredHeight: 30
+                            Layout.preferredWidth: 180
+                            color: Colors.surfaceContainerHighest
+                            currentVal: SettingsConfig.general.displayFont ?? "Titan One"
+                            list: Settings.displayFonts
+                            onCurrentValChanged: {
+                                if (currentVal && currentVal !== (SettingsConfig.general.displayFont ?? "Titan One"))
+                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { displayFont: currentVal })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Font Size"; size: 14 }
+                            CustomText { content: "Scale applied to all text"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        M3Slider {
+                            Layout.preferredWidth: 160
+                            Layout.preferredHeight: 30
+                            stepCount: 4
+                            stepLabels: ["compact", "normal", "large", "xlarge"]
+                            currentStep: ({ "compact": 0, "normal": 1, "large": 2, "xlarge": 3 })[SettingsConfig.general.fontScale ?? "normal"] ?? 1
+                            onStepChanged: step => {
+                                var val = ["compact", "normal", "large", "xlarge"][step]
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { fontScale: val })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Font Weight"; size: 14 }
+                            CustomText { content: "Default weight for body text"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        M3Slider {
+                            Layout.preferredWidth: 160
+                            Layout.preferredHeight: 30
+                            stepCount: 6
+                            stepLabels: ["thin", "regular", "medium", "semibold", "bold", "extrabold"]
+                            currentStep: ({ "thin": 0, "regular": 1, "medium": 2, "semibold": 3, "bold": 4, "extrabold": 5 })[SettingsConfig.general.fontWeight ?? "extrabold"] ?? 5
+                            onStepChanged: step => {
+                                var val = ["thin", "regular", "medium", "semibold", "bold", "extrabold"][step]
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { fontWeight: val })
+                            }
+                        }
+                    }
+                }
             }
-            Rectangle{
-                Layout.topMargin: 10
-                Layout.bottomMargin: 10
+
+            // ── Workspaces ───────────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Workspaces"; size: 13; customColor: Colors.primary }
+
+            ColumnLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
+                Layout.topMargin: 6
+                spacing: 3
+
+                CustomCard {
+                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Workspace Count"; size: 14 }
+                            CustomText { content: "Number of workspaces shown in the bar"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomSpinBox {
+                            color: Colors.surfaceContainerHighest
+                            inc: 1
+                            limit: 20
+                            value: SettingsConfig.general.workspaceCount ?? 10
+                            onValChanged: {
+                                if (val !== value)
+                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { workspaceCount: val })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Show Numbers"; size: 14 }
+                            CustomText { content: "Display index on each workspace indicator"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.general.showWorkspaceNumbers ?? false
+                            onToggled: function(state) {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { showWorkspaceNumbers: state })
+                            }
+                        }
+                    }
+                }
+
             }
 
+            // ── Dock ─────────────────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Dock"; size: 13; customColor: Colors.primary }
 
-            CustomText{
-                content: "Fonts"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText{
-                content: "Font used across the shell interface"
-                size: 14
-                color: Colors.outline
-            }
-
-
-
-            RowLayout{
-                Layout.topMargin: 10
+            ColumnLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 40
+                Layout.topMargin: 6
+                spacing: 3
 
-                ColumnLayout{
-                    Layout.fillHeight: true
-                    spacing: 0
-                    CustomText{
-                        content: "Default Font"
-                        size: 16
-                    }
-                    CustomText{
-                        content: "Applied globally to all text elements"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-                Item{
-                    Layout.fillWidth: true
-                }
-
-                CustomListNew{
-                    Layout.preferredHeight: 30
-                    Layout.preferredWidth: 200
-                    currentVal: SettingsConfig.general.defaultFont
-                    list: Settings.fonts
-
-                    onCurrentValChanged: {
-                        if (currentVal && currentVal !== SettingsConfig.general.defaultFont)
-                            SettingsConfig.general = Object.assign({}, SettingsConfig.general, {defaultFont: currentVal})
-                    }
-
-                }
-
-            }
-            Rectangle{
-                Layout.topMargin: 10
-                Layout.bottomMargin: 10
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
-            }
-
-
-            CustomText{
-                content: "Dock"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText{
-                content: "Configure dock visibility and behavior"
-                size: 14
-                color: Colors.outline
-            }
-
-            RowLayout{
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                ColumnLayout{
-                    spacing: 0
-                    CustomText{
-                        content: "Dock"
-                        size: 16
-                    }
-                    CustomText{
-                        content: "Show or hide the application dock"
-                        size: 13
-                        color: Colors.outline
+                CustomCard {
+                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Show Dock"; size: 14 }
+                            CustomText { content: "Show or hide the application dock"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.general.dock
+                            onToggled: function(state) {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { dock: state })
+                            }
+                        }
                     }
                 }
 
-                Item{
-                    Layout.fillWidth: true
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Auto-hide"; size: 14 }
+                            CustomText { content: "Dock hides when a window overlaps it"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.general.dockAutoHide
+                            onToggled: function(state) {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { dockAutoHide: state })
+                            }
+                        }
+                    }
                 }
 
-                CustomToogle{
-                    isToggleOn: SettingsConfig.general.dock
-                    onToggled: function(state) {
-                        SettingsConfig.general = Object.assign({}, SettingsConfig.general, {dock: state})
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Music Player"; size: 14 }
+                            CustomText { content: "Show the mini player in the dock"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.general.dockMusicPlayer
+                            onToggled: function(state) {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { dockMusicPlayer: state })
+                            }
+                        }
                     }
                 }
             }
 
-            RowLayout{
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                ColumnLayout{
-                    spacing: 0
-                    CustomText{
-                        content: "Autohide"
-                        size: 16
-                    }
-                    CustomText{
-                        content: "Dock hides when a window overlaps it"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-
-                Item{
-                    Layout.fillWidth: true
-                }
-
-                CustomToogle{
-                    isToggleOn: SettingsConfig.general.dockAutoHide
-                    onToggled: function(state) {
-                        SettingsConfig.general = Object.assign({}, SettingsConfig.general, {dockAutoHide: state})
-                    }
-                }
-            }
-
-            RowLayout{
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                ColumnLayout{
-                    spacing: 0
-                    CustomText{
-                        content: "Music Player"
-                        size: 16
-                    }
-                    CustomText{
-                        content: "Show the mini player in the dock"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-
-                Item{
-                    Layout.fillWidth: true
-                }
-
-                CustomToogle{
-                    isToggleOn: SettingsConfig.general.dockMusicPlayer
-                    onToggled: function(state) {
-                        SettingsConfig.general = Object.assign({}, SettingsConfig.general, {dockMusicPlayer: state})
-                    }
-                }
-            }
-
-            Rectangle{
-                Layout.topMargin: 10
-                Layout.bottomMargin: 10
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
-            }
-
-
-            CustomText{
-                content: "Music Visualizer"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText{
-                content: "Control the audio frequency visualizer in the bar"
-                size: 14
-                color: Colors.outline
-            }
-
-            RowLayout{
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                ColumnLayout{
-                    spacing: 0
-                    CustomText{
-                        content: "Visualizer"
-                        size: 16
-                    }
-                    CustomText{
-                        content: "Display audio bars alongside the music player"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-
-                Item{
-                    Layout.fillWidth: true
-                }
-
-                CustomToogle{
-                    isToggleOn: SettingsConfig.general.musicVisOn
-                    onToggled: function(state) {
-                        SettingsConfig.general = Object.assign({}, SettingsConfig.general, {musicVisOn: state})
-                    }
-                }
-            }
-            
-
-            RowLayout{
-                Layout.topMargin: 10
-                ColumnLayout{
-                    spacing: 0
-                    CustomText{
-                        content: "Music Visualizer Colors"
-                        size: 16
-                    }
-                    CustomText{
-                        content: "Two accent colors blended across the frequency bars"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-                Item{
-                    Layout.fillWidth: true
-                }
-
-
-                Rectangle{
-                    Layout.preferredWidth: 40
-                    Layout.preferredHeight: 30
-                    radius: 10
-                    color: Colors.primary
-
-                    MaterialIconSymbol{
-                        anchors.centerIn: parent
-                        content: "palette"
-                        iconSize: 20
-                        color: Colors.primaryText
-                    }
-                    MouseArea{
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: colorPicker.active = true
-                    }
-                }
-            }
-            RowLayout{
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-
-                ColumnLayout{
-                    CustomText{
-                        content: "Music Visualizer Bars"
-                        size: 16
-                    }
-
-                    CustomText{
-                        content: "Number of frequency bands to render"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-
-                Item{
-                    Layout.fillWidth: true
-                }
-
-                CustomSpinBox{
-                    Component.onCompleted: val = SettingsConfig.general.musicVisBars
-                    onValChanged: SettingsConfig.general = Object.assign({}, SettingsConfig.general, {musicVisBars: val})
-                }
-
-
-            }
-            Rectangle{
-                Layout.topMargin: 10
-                Layout.bottomMargin: 10
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
-            }
-
+            Item { Layout.preferredHeight: 20 }
         }
-    }  
+    }
 
-    Loader{
+    Loader {
         id: colorPicker
         active: false
-
-        onActiveChanged:{
-            if(active){
-                grab.active = false
-            }else{
-                grab.active = true
-            }
+        visible: active
+        onActiveChanged: {
+            if (active) grab.active = false
+            else        grab.active = true
         }
-        sourceComponent: CustomCircularColorPicker{
-            onClose:{
-                colorPicker.active = false
-            }
+        sourceComponent: CustomCircularColorPicker {
+            onClose: colorPicker.active = false
             onColorsChanged: (first, second, third) => {
                 SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, {
-                    firstColor: first.toString(),
+                    firstColor:  first.toString(),
                     secondColor: second.toString(),
-                    thirdColor: third.toString()
+                    thirdColor:  third.toString()
                 })
             }
         }
-
     }
-
 }

@@ -154,7 +154,7 @@ Scope {
             implicitHeight: Math.max(20, child.implicitHeight)
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
-            property bool active: SettingsConfig.general.dockAutoHide ? hover.hovered || root.clipboardActive || root.wallpaperActive || root.typingGameActive || GlobalStates.osdOpen || (dockLoder.item && dockLoder.item.showPreview) : true
+            property bool active: SettingsConfig.general.dockAutoHide ? hover.hovered || root.clipboardActive || root.wallpaperActive || root.typingGameActive || GlobalStates.osdOpen || contextMenuLoader.active || (dockLoder.item && dockLoder.item.showPreview) : true
             property bool collapsed: false
 
             onActiveChanged: {
@@ -268,6 +268,7 @@ Scope {
         }
         function onMutedChanged(){
             GlobalStates.osdOpen = true
+            osdTimer.restart()
         }
     }
 

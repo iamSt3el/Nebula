@@ -18,17 +18,17 @@ Item {
     anchors.fill: parent
 
     readonly property var permanentShapeGetters: [
-        MatrialSHapeFn.getGhostish,
-        MatrialSHapeFn.getClover4Leaf,
-        MatrialSHapeFn.getSlanted,
-        MatrialSHapeFn.getGem
+        MatrialSHapeFn.getSquare,
+        MatrialSHapeFn.getSquare,
+        MatrialSHapeFn.getSquare,
+        MatrialSHapeFn.getSquare
     ]
 
     readonly property var hoverShapeGetters: [
         MatrialSHapeFn.getArch,
         MatrialSHapeFn.getCookie7Sided,
-        MatrialSHapeFn.getArrow,
-        MatrialSHapeFn.getPuffyDiamond
+        MatrialSHapeFn.getPill,
+        MatrialSHapeFn.getCookie12Sided
     ]
 
     readonly property var actionIcons: [
@@ -46,33 +46,43 @@ Item {
     ]
 
 
-    Image {
-        id: background
-        source: WallpaperTheme.wallpaper
+    // Image {
+    //     id: background
+    //     source: WallpaperTheme.wallpaper
+    //     anchors.fill: parent
+    //     fillMode: Image.PreserveAspectCrop
+    //     sourceSize: Qt.size(width, height)
+    //
+    //     NumberAnimation on opacity {
+    //         from: 0
+    //         to: 1
+    //         duration: 200
+    //     }
+    //
+    //     layer.enabled: true
+    //     layer.effect: MultiEffect {
+    //         blurEnabled: true
+    //         blur: 0.8
+    //         blurMax: 40
+    //         autoPaddingEnabled: false
+    //     }
+    // }
+    Rectangle{
         anchors.fill: parent
-        fillMode: Image.PreserveAspectCrop
-        sourceSize: Qt.size(width, height)
-
-        NumberAnimation on opacity {
-            from: 0
-            to: 1
-            duration: 200
-        }
-
+        color: Qt.alpha(Colors.surface, 0.5)
         layer.enabled: true
-        layer.effect: MultiEffect {
-            blurEnabled: true
-            blur: 0.8
-            blurMax: 40
-            autoPaddingEnabled: false
-        }
+
+
     }
 
 
 
-    RowLayout {
+    GridLayout {
         anchors.centerIn: parent
-        spacing: 60
+        columns: 2
+        rows: 2
+        columnSpacing: 20
+        rowSpacing: 20
 
         Repeater {
             model: root.actionIcons.length
@@ -81,8 +91,8 @@ Item {
                 id: delegateItem
                 z: 2
                 Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: 300
-                Layout.preferredHeight: 300
+                Layout.preferredWidth: 200
+                Layout.preferredHeight: 200
 
                 property bool isHovered: false
 

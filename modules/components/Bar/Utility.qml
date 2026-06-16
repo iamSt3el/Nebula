@@ -9,152 +9,130 @@ import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
 
-Item{
+Item {
     id: utility
     implicitWidth: {
-        if (isClicked)              return Appearance.size.dashboardPanelWidth
-        if (isNotificationClicked)  return Appearance.size.notificationPanelWidth
-        if (isWeatherPanelClicked)  return Appearance.size.weatherPanelWidth
+        if (isClicked)             return Appearance.size.dashboardPanelWidth
+        if (isNotificationClicked) return Appearance.size.notificationPanelWidth
+        if (isWeatherPanelClicked) return Appearance.size.weatherPanelWidth
         return row.implicitWidth + 20
     }
     implicitHeight: {
-        if (isClicked)              return Appearance.size.dashboardPanelHeight
-        if (isNotificationClicked)  return Appearance.size.notificationPanelHeight
-        if (isWeatherPanelClicked)  return Appearance.size.weatherPanelHeight
+        if (isClicked)             return Appearance.size.dashboardPanelHeight
+        if (isNotificationClicked) return Appearance.size.notificationPanelHeight
+        if (isWeatherPanelClicked) return Appearance.size.weatherPanelHeight
         return Appearance.size.barHeight
     }
     anchors.right: parent.right
     property alias container: container
-    property bool isClicked: false
 
-    property bool isWifiClicked: false
-    property bool isBluetoothClicked: false
+    property bool isClicked:             false
+    property bool isWifiClicked:         false
+    property bool isBluetoothClicked:    false
     property bool isNotificationClicked: false
-    property bool isSoundPanelClicked: false
-    property bool isBatteryInfoClicked: false
+    property bool isSoundPanelClicked:   false
+    property bool isBatteryInfoClicked:  false
     property bool isWeatherPanelClicked: false
-    property bool isDashboard: height > 900
+    property bool isDashboard:           height > 900
 
-    Behavior on implicitWidth{
-        NumberAnimation{
-            duration: Appearance.duration.normal
-            easing.type: Easing.OutQuad
-        }
-    }
-    Behavior on implicitHeight{
-        NumberAnimation{
-            duration: Appearance.duration.normal
-            easing.type: Easing.OutQuad
-        }
-    }
+    Behavior on implicitWidth  { NumberAnimation { duration: Appearance.duration.normal; easing.type: Easing.OutQuad } }
+    Behavior on implicitHeight { NumberAnimation { duration: Appearance.duration.normal; easing.type: Easing.OutQuad } }
 
-    Loader{
-        active: utility.isSoundPanelClicked
+    // ── Sound panel ────────────────────────────────────────────────────────
+    Loader {
+        active:  utility.isSoundPanelClicked
         visible: active
-        sourceComponent: SoundPanel{
-            onClose: utility.isSoundPanelClicked = false
-        }
+        sourceComponent: SoundPanel { onClose: utility.isSoundPanelClicked = false }
     }
 
-
-    Item{
-        id: container 
+    Item {
+        id: container
         anchors.fill: parent
-        //color: Settings.layoutColor
 
-        Loader{
+        // ── Notification panel ─────────────────────────────────────────────
+        Loader {
             id: notificationLoader
-            active: utility.isNotificationClicked
+            active:      utility.isNotificationClicked
             anchors.fill: parent
-            //anchors.margins: Appearance.margin.medium
-            visible: false
-            Timer{
-                interval: Appearance.duration.normal 
-                running: utility.isNotificationClicked
-                onTriggered:{
-                    notificationLoader.visible = true
-                }
+            visible:     false
+            Timer {
+                interval: Appearance.duration.normal
+                running:  utility.isNotificationClicked
+                onTriggered: notificationLoader.visible = true
             }
-            sourceComponent: NotificationCenter{
-                id: notificationCenter
+            sourceComponent: NotificationCenter {
                 onNotificationCenterClosed: {
-                    utility.isNotificationClicked = false
-                    notificationLoader.visible = false
+                    utility.isNotificationClicked    = false
+                    notificationLoader.visible       = false
                 }
             }
         }
 
-        Loader{
+        // ── Weather panel ──────────────────────────────────────────────────
+        Loader {
             id: weatherLoader
-            active: utility.isWeatherPanelClicked
+            active:       utility.isWeatherPanelClicked
             anchors.fill: parent
-            visible: false
-            Timer{
-                interval: Appearance.duration.normal 
-                running: utility.isWeatherPanelClicked
-                onTriggered:{
-                    weatherLoader.visible = true
-                }
+            visible:      false
+            Timer {
+                interval: Appearance.duration.normal
+                running:  utility.isWeatherPanelClicked
+                onTriggered: weatherLoader.visible = true
             }
-            sourceComponent: WeatherPanel{
-                id: weatherCenter
+            sourceComponent: WeatherPanel {
                 onClosed: {
                     utility.isWeatherPanelClicked = false
-                    weatherLoader.visible = false
+                    weatherLoader.visible         = false
                 }
             }
         }
 
-        Loader{
+        // ── Dashboard panel ────────────────────────────────────────────────
+        Loader {
             id: dashboardLoader
-            active: utility.isClicked
-            anchors.centerIn: parent
+            active:       utility.isClicked
             anchors.fill: parent
-            visible: false
-            Timer{
+            visible:      false
+            Timer {
                 interval: Appearance.duration.normal
-                running: utility.isClicked
-                onTriggered:{
-                    dashboardLoader.visible = true
-                }
+                running:  utility.isClicked
+                onTriggered: dashboardLoader.visible = true
             }
-            sourceComponent: Dashboard{
-                id: dashboard
+            sourceComponent: Dashboard {
                 onToggleDashboard: {
-                    utility.isClicked = false
-                    dashboardLoader.visible = false
+                    utility.isClicked          = false
+                    dashboardLoader.visible    = false
                 }
-                onIsWifiClickedChanged: utility.isWifiClicked = dashboard.isWifiClicked
+                onIsWifiClickedChanged:      utility.isWifiClicked      = dashboard.isWifiClicked
                 onIsBluetoothClickedChanged: utility.isBluetoothClicked = dashboard.isBluetoothClicked
             }
         }
 
-
-
-        RowLayout{
+        // ── Utility row ────────────────────────────────────────────────────
+        RowLayout {
             id: row
-            visible: !utility.isClicked && utility.height === Appearance.size.barHeight
-            spacing: Appearance.spacing.medium
+            visible:             !utility.isClicked && utility.height === Appearance.size.barHeight
+            spacing:             6
             anchors.verticalCenter: parent.verticalCenter
-            anchors.right: parent.right
-            anchors.rightMargin: Appearance.margin.medium
+            anchors.right:          parent.right
+            anchors.rightMargin:    10
 
-            // ── Recording pill (M3 error container chip) ──────────────────
+            // ── REC pill ───────────────────────────────────────────────────
             Loader {
-                active: ServiceTools.isRecording
+                active:  ServiceTools.isRecording
                 visible: active
-                Layout.preferredHeight: Appearance.size.widgetHeight
+                Layout.preferredHeight: 30
                 Layout.preferredWidth:  active ? implicitWidth : 0
 
                 sourceComponent: Rectangle {
-                    implicitWidth:  recPillContent.implicitWidth + 16
-                    implicitHeight: Appearance.size.widgetHeight
-                    radius: height / 2
-                    color:  Colors.errorContainer
-                    clip:   true
+                    implicitWidth:  recRow.implicitWidth + 20
+                    implicitHeight: 30
+                    radius:         15
+                    color:          Colors.errorContainer
+                    clip:           true
 
                     RowLayout {
-                        id: recPillContent
+                        id: recRow
                         anchors.centerIn: parent
                         spacing: 5
 
@@ -162,14 +140,13 @@ Item{
                             width: 6; height: 6; radius: 3
                             color: Colors.error
                             SequentialAnimation on opacity {
-                                running: true
-                                loops:   Animation.Infinite
+                                running: true; loops: Animation.Infinite
                                 NumberAnimation { to: 0.2; duration: 700; easing.type: Easing.InOutSine }
                                 NumberAnimation { to: 1.0; duration: 700; easing.type: Easing.InOutSine }
                             }
                         }
 
-                        CustomText { content: "REC"; size: 10; weight: 700; color: Colors.errorContainerText }
+                        CustomText { content: "REC"; size: 11; weight: 700; customColor: Colors.errorContainerText }
 
                         Rectangle { width: 1; height: 10; color: Qt.alpha(Colors.errorContainerText, 0.30) }
 
@@ -179,7 +156,7 @@ Item{
                                 return String(Math.floor(s / 60)).padStart(2, "0") + ":" +
                                        String(s % 60).padStart(2, "0")
                             }
-                            size: 10; weight: 500; color: Colors.errorContainerText
+                            size: 11; weight: 500; customColor: Colors.errorContainerText
                         }
                     }
 
@@ -191,151 +168,309 @@ Item{
                         onClicked:    ServiceTools.stopRecording()
                     }
 
-                    CustomToolTip {
-                        content: "Stop recording"
-                        visible: recPillMa.containsMouse
-                    }
+                    CustomToolTip { content: "Stop recording"; visible: recPillMa.containsMouse }
                 }
             }
 
-            Loader{
-                active: ServiceSystemTray.active
+            // ── System tray ────────────────────────────────────────────────
+            Loader {
+                active:  ServiceSystemTray.active
                 visible: active
                 sourceComponent: SystemTray {}
             }
 
-            Weather{
-                Layout.preferredHeight: Appearance.size.widgetHeight
-                onClicked: utility.isWeatherPanelClicked = true
-            }
+            // ── Weather pill ───────────────────────────────────────────────
+            Rectangle {
+                Layout.preferredHeight: 30
+                implicitWidth:          weatherRow.implicitWidth + 22
+                radius:                 15
+                color:                  weatherHov.containsMouse ? Colors.primaryContainer : Colors.surfaceContainerHigh
+                Behavior on color { ColorAnimation { duration: 150 } }
 
-            Rectangle{
-                Layout.preferredWidth: speaker.implicitWidth + 10
-                Layout.preferredHeight: Appearance.size.widgetHeight
-                radius: Appearance.radius.medium
-                color: Colors.surfaceContainerHigh
-
-
-                MaterialIconSymbol{
-                    id: speaker
+                RowLayout {
+                    id: weatherRow
                     anchors.centerIn: parent
-                    content: "volume_up"
-                    iconSize: Appearance.size.iconSizeNormal - 2
+                    spacing: 7
+
+                    Image {
+                        width: 16; height: 16
+                        sourceSize: Qt.size(width, height)
+                        source: IconUtil.getSystemIcon(ServiceWeather.weatherIconPath.svg)
+                    }
+
+                    CustomText {
+                        content: ServiceWeather.temperature
+                        size: 13; weight: 500
+                        customColor: weatherHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
+                        Behavior on customColor { ColorAnimation { duration: 150 } }
+                    }
                 }
 
-                CustomMouseArea{
-                    radius: parent.radius
-                    cursorShape: Qt.PointingHandCursor
+                MouseArea {
+                    id: weatherHov
+                    anchors.fill: parent
                     hoverEnabled: true
-                    onClicked:{
-                        utility.isSoundPanelClicked = true
-                    }
+                    cursorShape:  Qt.PointingHandCursor
+                    onClicked:    utility.isWeatherPanelClicked = true
                 }
-                
             }
 
+            // ── Volume pill ────────────────────────────────────────────────
+            Rectangle {
+                Layout.preferredHeight: 30
+                implicitWidth:          volRow.implicitWidth + 22
+                radius:                 15
+                color:                  volHov.containsMouse ? Colors.primaryContainer : Colors.surfaceContainerHigh
+                Behavior on color { ColorAnimation { duration: 150 } }
 
-
-            Rectangle{
-                radius: Appearance.radius.medium
-                Layout.preferredWidth: child.implicitWidth + Appearance.spacing.medium * 2
-                Layout.preferredHeight: Appearance.size.widgetHeight
-                color: Colors.surfaceContainerHigh
-                RowLayout{
-                    id: child
-                    spacing: Appearance.spacing.medium
+                RowLayout {
+                    id: volRow
                     anchors.centerIn: parent
-                    MaterialIconSymbol{
-                        iconSize: Appearance.size.iconSizeNormal
-                        content: ServiceWifi.wifiEnabled ? ServiceWifi.icon : "signal_wifi_off"                    
-                        MouseArea{
-                            id: wifiArea
-                            anchors.fill: parent
-                            hoverEnabled: true
+                    spacing: 6
 
+                    MaterialIconSymbol {
+                        content: ServicePipewire.muted ? "volume_off"
+                               : ServicePipewire.volume > 0.6 ? "volume_up"
+                               : ServicePipewire.volume > 0.2 ? "volume_down"
+                               : "volume_mute"
+                        iconSize: 18
+                        customColor: volHov.containsMouse ? Colors.primaryContainerText : Colors.outline
+                        Behavior on customColor { ColorAnimation { duration: 150 } }
+                    }
+
+                    CustomText {
+                        content: ServicePipewire.muted ? "Muted"
+                               : Math.round(ServicePipewire.volume * 100) + "%"
+                        size: 13; weight: 500
+                        customColor: volHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
+                        Behavior on customColor { ColorAnimation { duration: 150 } }
+                    }
+                }
+
+                MouseArea {
+                    id: volHov
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape:  Qt.PointingHandCursor
+                    onClicked:    utility.isSoundPanelClicked = true
+                }
+            }
+
+            // ── Network / BT / Notification group ─────────────────────────
+            Rectangle {
+                Layout.preferredHeight: 30
+                implicitWidth:          groupRow.implicitWidth + 8
+                radius:                 15
+                color:                  Colors.surfaceContainerHigh
+
+                RowLayout {
+                    id: groupRow
+                    anchors.centerIn: parent
+                    spacing: 2
+
+                    // WiFi
+                    Rectangle {
+                        implicitWidth:  28; implicitHeight: 28; radius: 14
+                        color:          wifiHov.containsMouse ? Colors.primaryContainer : "transparent"
+                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content:     ServiceWifi.wifiEnabled ? ServiceWifi.icon : "signal_wifi_off"
+                            iconSize:    18
+                            customColor: wifiHov.containsMouse ? Colors.primaryContainerText : Colors.outline
+                            Behavior on customColor { ColorAnimation { duration: 150 } }
                         }
 
-                        CustomToolTip{
-                            content: ServiceWifi.currentSSID
-                            visible: wifiArea.containsMouse
+                        MouseArea {
+                            id: wifiHov
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape:  Qt.PointingHandCursor
+                        }
+
+                        CustomToolTip {
+                            content: ServiceWifi.currentSSID.length > 0 ? ServiceWifi.currentSSID : "No network"
+                            visible: wifiHov.containsMouse
                         }
                     }
 
-                    MaterialIconSymbol{
-                        iconSize: Appearance.size.iconSizeNormal - 1
-                        content: ServiceBluetooth.state ? "bluetooth" : "bluetooth_disabled"
+                    // Bluetooth
+                    Rectangle {
+                        implicitWidth:  28; implicitHeight: 28; radius: 14
+                        color:          btHov.containsMouse ? Colors.primaryContainer : "transparent"
+                        Behavior on color { ColorAnimation { duration: 150 } }
 
-                        MouseArea{
-                            id: bluetoothArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content:     ServiceBluetooth.state ? "bluetooth" : "bluetooth_disabled"
+                            iconSize:    18
+                            customColor: btHov.containsMouse ? Colors.primaryContainerText : Colors.outline
+                            Behavior on customColor { ColorAnimation { duration: 150 } }
                         }
 
-                        CustomToolTip{
+                        MouseArea {
+                            id: btHov
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape:  Qt.PointingHandCursor
+                        }
+
+                        CustomToolTip {
                             content: ServiceBluetooth.connectedDevices + " connected"
-                            visible: bluetoothArea.containsMouse
+                            visible: btHov.containsMouse
                         }
                     }
 
+                    // Notifications
+                    Rectangle {
+                        implicitWidth:  28; implicitHeight: 28; radius: 14
+                        color:          notifHov.containsMouse ? Colors.primaryContainer : "transparent"
+                        Behavior on color { ColorAnimation { duration: 150 } }
 
-                    MaterialIconSymbol{
-                        iconSize: Appearance.size.iconSizeNormal - 1
-                        content: ServiceNotification.notificationsNumber > 0 ? "notifications_active" : "notifications"
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content:     ServiceNotification.notificationsNumber > 0
+                                         ? "notifications_active" : "notifications"
+                            iconSize:    18
+                            customColor: notifHov.containsMouse
+                                         ? Colors.primaryContainerText
+                                         : ServiceNotification.notificationsNumber > 0
+                                           ? Colors.primary : Colors.outline
+                            Behavior on customColor { ColorAnimation { duration: 150 } }
+                        }
 
+                        // Count badge
+                        Rectangle {
+                            visible:        ServiceNotification.notificationsNumber > 0
+                            anchors.right:  parent.right
+                            anchors.top:    parent.top
+                            anchors.topMargin:   -1
+                            anchors.rightMargin: -1
+                            width:  badgeText.implicitWidth + 4
+                            height: 12
+                            radius: 6
+                            color:  Colors.primary
 
-                        CustomMouseArea{
-                            radius: 0
-                            id: notificaitonArea
-                            cursorShape: Qt.PointingHandCursor
-                            hoverEnabled: true
-                            onClicked:{
-                                utility.isNotificationClicked = true
+                            CustomText {
+                                id: badgeText
+                                anchors.centerIn: parent
+                                content:     ServiceNotification.notificationsNumber > 9
+                                             ? "9+" : String(ServiceNotification.notificationsNumber)
+                                size:        8; weight: 700
+                                customColor: Colors.primaryText
                             }
                         }
-                        CustomToolTip{
+
+                        MouseArea {
+                            id: notifHov
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape:  Qt.PointingHandCursor
+                            onClicked:    utility.isNotificationClicked = true
+                        }
+
+                        CustomToolTip {
                             content: ServiceNotification.notificationsNumber + " notifications"
-                            visible: notificaitonArea.containsMouse
+                            visible: notifHov.containsMouse
                         }
                     }
                 }
             }
 
-            Battery{
-                Layout.preferredHeight: 25
-                Layout.preferredWidth: 34
+            // ── Battery pill ───────────────────────────────────────────────
+            Rectangle {
+                Layout.preferredHeight: 30
+                implicitWidth:          battRow.implicitWidth + 22
+                radius:                 15
+                color:                  battHov.containsMouse
+                                        ? Colors.primaryContainer
+                                        : ServiceUPower.powerLevel < 0.2 && !ServiceUPower.isCharging
+                                          ? Qt.alpha(Colors.error, 0.15)
+                                          : Colors.surfaceContainerHigh
+                Behavior on color { ColorAnimation { duration: 150 } }
 
-            }
-
-
-            Rectangle{
-                Layout.preferredHeight: dashboardIcon.height + 4
-                Layout.preferredWidth: dashboardIcon.width + 10
-                color: Colors.surfaceContainerHighest
-                radius: Appearance.radius.medium
-
-                Behavior on scale{
-                    NumberAnimation{
-                        duration: Appearance.duration.small
-                    }
-                }
-                MaterialIconSymbol{
-                    id: dashboardIcon
-                    iconSize: 18
-                    content: "dashboard"
+                RowLayout {
+                    id: battRow
                     anchors.centerIn: parent
+                    spacing: 4
+
+                    MaterialIconSymbol {
+                        content: {
+                            if (ServiceUPower.isCharging)                  return "battery_android_bolt"
+                            const l = ServiceUPower.powerLevel
+                            if (l === 1)                                   return "battery_android_full"
+                            if (l > 0.9)                                   return "battery_android_6"
+                            if (l > 0.7)                                   return "battery_android_5"
+                            if (l > 0.5)                                   return "battery_android_4"
+                            if (l > 0.3)                                   return "battery_android_3"
+                            if (l > 0.2)                                   return "battery_android_2"
+                            if (l > 0.0)                                   return "battery_android_1"
+                            return "battery_android_0"
+                        }
+                        iconSize: 18
+                        customColor: battHov.containsMouse
+                                     ? Colors.primaryContainerText
+                                     : ServiceUPower.powerLevel < 0.2 && !ServiceUPower.isCharging
+                                       ? Colors.error : Colors.outline
+                        Behavior on customColor { ColorAnimation { duration: 150 } }
+                    }
+
+                    CustomText {
+                        content: Math.round(ServiceUPower.powerLevel * 100) + "%"
+                        size: 13; weight: 500
+                        customColor: battHov.containsMouse
+                                     ? Colors.primaryContainerText
+                                     : ServiceUPower.powerLevel < 0.2 && !ServiceUPower.isCharging
+                                       ? Colors.error : Colors.surfaceText
+                        Behavior on customColor { ColorAnimation { duration: 150 } }
+                    }
                 }
 
-                CustomMouseArea{
-                    radius: parent.radius
-                    cursorShape: Qt.PointingHandCursor
+                MouseArea {
+                    id: battHov
+                    anchors.fill: parent
                     hoverEnabled: true
-                    onClicked:{
-                        utility.isClicked = true
-                    }
+                    cursorShape:  Qt.PointingHandCursor
+                }
+
+                CustomToolTip {
+                    content: ServiceUPower.isCharging ? "Charging" : "Battery"
+                    visible: battHov.containsMouse
                 }
             }
 
+            // ── Dashboard button ───────────────────────────────────────────
+            Rectangle {
+                Layout.preferredHeight: 30
+                Layout.preferredWidth:  30
+                radius:                 15
+                color:                  dashHov.containsMouse ? Colors.primary : Colors.primaryContainer
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                scale: dashHov.containsMouse ? 1.1 : 1.0
+                Behavior on scale {
+                    NumberAnimation { duration: 200; easing.type: Easing.OutBack; easing.overshoot: 0.5 }
+                }
+
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content:     "dashboard"
+                    iconSize:    18
+                    customColor: dashHov.containsMouse ? Colors.primaryText : Colors.primaryContainerText
+                    Behavior on customColor { ColorAnimation { duration: 150 } }
+                }
+
+                MouseArea {
+                    id: dashHov
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape:  Qt.PointingHandCursor
+                    onClicked:    utility.isClicked = true
+                }
+
+                CustomToolTip { content: "Dashboard"; visible: dashHov.containsMouse }
+            }
         }
     }
 }

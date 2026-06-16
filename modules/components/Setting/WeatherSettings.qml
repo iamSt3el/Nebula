@@ -30,259 +30,185 @@ Item {
             anchors.topMargin: 5
             spacing: 0
 
-            // ── Header ───────────────────────────────────────────────────────
+            // ── Page header ──────────────────────────────────────
             RowLayout {
                 spacing: 10
-                MaterialIconSymbol {
-                    content: "partly_cloudy_day"
-                    iconSize: 20
-                }
-                CustomText {
-                    content: "Weather"
-                    size: 20
-                    color: Colors.primary
-                }
+                MaterialIconSymbol { content: "partly_cloudy_day"; iconSize: 20 }
+                CustomText { content: "Weather"; size: 20; customColor: Colors.primary }
             }
 
-            // ── Location ─────────────────────────────────────────────────────
-            CustomText {
-                Layout.topMargin: 30
-                content: "Location"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText {
-                content: "City or coordinates used for all weather data"
-                size: 14
-                color: Colors.outline
-            }
+            // ── Location ─────────────────────────────────────────
+            CustomText { Layout.topMargin: 24; content: "Location"; size: 13; customColor: Colors.primary }
 
-            RowLayout {
-                Layout.topMargin: 14
-                Layout.fillWidth: true
-
-                ColumnLayout {
-                    spacing: 0
-                    CustomText {
-                        content: "City"
-                        size: 16
-                    }
-                    CustomText {
-                        content: "e.g. London or 51.5,-0.1"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-
-                Rectangle {
-                    Layout.preferredWidth: 160
-                    Layout.preferredHeight: 34
-                    radius: 10
-                    color: Colors.surfaceContainerHigh
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 10
-                        spacing: 6
-
-                        MaterialIconSymbol {
-                            content: "location_on"
-                            iconSize: 16
-                            color: Colors.outline
-                        }
-
-                        TextInput {
-                            id: locationInput
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            text: SettingsConfig.weather.location
-                            color: Colors.inverseSurface
-                            font.pixelSize: 14
-                            clip: true
-                            verticalAlignment: TextInput.AlignVCenter
-
-                            onEditingFinished: {
-                                if (text.trim().length > 0)
-                                    SettingsConfig.weather = Object.assign({}, SettingsConfig.weather, { location: text.trim() })
-                            }
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.topMargin: 16
-                Layout.bottomMargin: 16
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
-            }
-
-            // ── Units ────────────────────────────────────────────────────────
-            CustomText {
-                content: "Units"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText {
-                content: "Applies to temperature, wind speed, and distance"
-                size: 14
-                color: Colors.outline
-            }
-
-            RowLayout {
-                Layout.topMargin: 14
-                Layout.fillWidth: true
-
-                ButtonGroup {
-                    model: [
-                        { value: true,  label: "Metric (°C)",   icon: "thermometer" },
-                        { value: false, label: "Imperial (°F)", icon: "thermometer" }
-                    ]
-                    activeCheck: function(v) { return SettingsConfig.weather.useMetric === v }
-                    onSegmentClicked: function(v) {
-                        SettingsConfig.weather = Object.assign({}, SettingsConfig.weather, { useMetric: v })
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-            }
-
-            Rectangle {
-                Layout.topMargin: 16
-                Layout.bottomMargin: 16
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
-            }
-
-            // ── Refresh ──────────────────────────────────────────────────────
-            CustomText {
-                content: "Refresh"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText {
-                content: "Shorter intervals use more network requests"
-                size: 14
-                color: Colors.outline
-            }
-
-            RowLayout {
-                Layout.topMargin: 14
-                Layout.fillWidth: true
-
-                ColumnLayout {
-                    spacing: 0
-                    CustomText {
-                        content: "Refresh Interval"
-                        size: 16
-                    }
-                    CustomText {
-                        content: "Minimum 5 min recommended"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-
-                CustomSpinBox {
-                    inc: 5
-                    limit: 120
-                    Component.onCompleted: val = SettingsConfig.weather.refreshInterval
-                    onValChanged: SettingsConfig.weather = Object.assign({}, SettingsConfig.weather, { refreshInterval: val })
-                }
-            }
-
-            // ── Status card ──────────────────────────────────────────────────
-            Rectangle {
-                Layout.topMargin: 20
-                Layout.fillWidth: true
-                Layout.preferredHeight: statusRow.implicitHeight + 16
-                radius: 10
-                color: Colors.surfaceContainer
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 20
 
                 RowLayout {
-                    id: statusRow
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 8
-
+                    Layout.fillWidth: true
                     ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
-
-                        RowLayout {
-                            spacing: 6
-                            MaterialIconSymbol {
-                                content: ServiceWeather.hasError ? "error" : "check_circle"
-                                iconSize: 15
-                                color: ServiceWeather.hasError ? Colors.error : Colors.outline
-                            }
-                            CustomText {
-                                content: ServiceWeather.hasError
-                                         ? "Last fetch failed"
-                                         : "Showing: " + ServiceWeather.cityName
-                                size: 12
-                                color: ServiceWeather.hasError ? Colors.error : Colors.outline
-                            }
-                        }
-
-                        RowLayout {
-                            spacing: 6
-                            MaterialIconSymbol { content: "info"; iconSize: 15; color: Colors.outline }
-                            CustomText {
-                                content: "Location changes take effect on the next refresh"
-                                size: 12
-                                color: Colors.outline
-                            }
-                        }
+                        spacing: 2
+                        CustomText { content: "City"; size: 14 }
+                        CustomText { content: "City name or coordinates e.g. 51.5,-0.1"; size: 12; customColor: Colors.outline }
                     }
+                    Item { Layout.fillWidth: true }
 
                     Rectangle {
-                        implicitWidth: 34; implicitHeight: 34
+                        implicitWidth: 180; implicitHeight: 32
                         radius: 10
-                        color: refreshArea.containsMouse ? Colors.primary : Colors.surfaceContainerHigh
-                        Behavior on color { ColorAnimation { duration: 150 } }
-                        enabled: !ServiceWeather.isLoading
+                        color: Colors.surfaceContainerHighest
 
-                        MaterialIconSymbol {
-                            anchors.centerIn: parent
-                            content: "refresh"
-                            iconSize: 18
-                            color: refreshArea.containsMouse ? Colors.primaryText : Colors.surfaceVariantText
-                            Behavior on color { ColorAnimation { duration: 150 } }
-
-                            RotationAnimation on rotation {
-                                running: ServiceWeather.isLoading
-                                from: 0; to: 360
-                                duration: 800
-                                loops: Animation.Infinite
-                            }
-                        }
-
-                        MouseArea {
-                            id: refreshArea
+                        RowLayout {
                             anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: ServiceWeather.refresh()
+                            anchors.leftMargin: 10; anchors.rightMargin: 10
+                            spacing: 6
+
+                            MaterialIconSymbol { content: "location_on"; iconSize: 16; customColor: Colors.outline }
+
+                            TextInput {
+                                id: locationInput
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                text: SettingsConfig.weather.location
+                                color: Colors.inverseSurface
+                                font.pixelSize: 13
+                                clip: true
+                                verticalAlignment: TextInput.AlignVCenter
+                                onEditingFinished: {
+                                    if (text.trim().length > 0)
+                                        SettingsConfig.weather = Object.assign({}, SettingsConfig.weather, { location: text.trim() })
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            Rectangle {
-                Layout.topMargin: 16
-                Layout.bottomMargin: 10
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
+            // ── Units ────────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Units"; size: 13; customColor: Colors.primary }
+
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 20
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Temperature Unit"; size: 14 }
+                        CustomText { content: "Applies to temperature, wind speed, and distance"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    ButtonGroup {
+                        model: [
+                            { value: true,  label: "Metric (°C)",   icon: "thermometer" },
+                            { value: false, label: "Imperial (°F)", icon: "thermometer" }
+                        ]
+                        activeCheck: function(v) { return SettingsConfig.weather.useMetric === v }
+                        onSegmentClicked: function(v) {
+                            SettingsConfig.weather = Object.assign({}, SettingsConfig.weather, { useMetric: v })
+                        }
+                    }
+                }
             }
+
+            // ── Refresh ──────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Refresh"; size: 13; customColor: Colors.primary }
+
+            ColumnLayout {
+                Layout.topMargin: 6
+                Layout.fillWidth: true
+                spacing: 3
+
+                CustomCard {
+                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Refresh Interval"; size: 14 }
+                            CustomText { content: "Minutes between automatic updates (min 5)"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomSpinBox {
+                            color: Colors.surfaceContainerHighest
+                            inc: 5; limit: 120
+                            Component.onCompleted: val = SettingsConfig.weather.refreshInterval
+                            onValChanged: SettingsConfig.weather = Object.assign({}, SettingsConfig.weather, { refreshInterval: val })
+                        }
+                    }
+                }
+
+                // Status card
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+
+                            RowLayout {
+                                spacing: 6
+                                MaterialIconSymbol {
+                                    content: ServiceWeather.hasError ? "error" : "check_circle"
+                                    iconSize: 15
+                                    customColor: ServiceWeather.hasError ? Colors.error : Colors.outline
+                                }
+                                CustomText {
+                                    content: ServiceWeather.hasError
+                                             ? "Last fetch failed"
+                                             : "Showing: " + ServiceWeather.cityName
+                                    size: 12
+                                    customColor: ServiceWeather.hasError ? Colors.error : Colors.outline
+                                }
+                            }
+
+                            RowLayout {
+                                spacing: 6
+                                MaterialIconSymbol { content: "info"; iconSize: 15; customColor: Colors.outline }
+                                CustomText {
+                                    content: "Location changes take effect on the next refresh"
+                                    size: 12; customColor: Colors.outline
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            implicitWidth: 36; implicitHeight: 36
+                            radius: 10
+                            color: refreshArea.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            enabled: !ServiceWeather.isLoading
+
+                            MaterialIconSymbol {
+                                anchors.centerIn: parent
+                                content: "refresh"; iconSize: 18
+                                customColor: refreshArea.containsMouse ? Colors.primaryText : Colors.outline
+                                Behavior on customColor { ColorAnimation { duration: 150 } }
+                                RotationAnimation on rotation {
+                                    running: ServiceWeather.isLoading
+                                    from: 0; to: 360; duration: 800
+                                    loops: Animation.Infinite
+                                }
+                            }
+
+                            MouseArea {
+                                id: refreshArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: ServiceWeather.refresh()
+                            }
+                        }
+                    }
+                }
+            }
+
+            Item { Layout.preferredHeight: 20 }
         }
     }
 }

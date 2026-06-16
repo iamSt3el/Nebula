@@ -1,8 +1,6 @@
 import Quickshell
-import Quickshell.Widgets
 import Quickshell.Networking
 import QtQuick
-import QtQuick.Effects
 import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.settings
@@ -11,130 +9,242 @@ import qs.modules.customComponents
 
 Rectangle {
     id: root
-    implicitWidth: parent?.width
-    implicitHeight: 60
-    radius: 15
-    color: network?.connected || handler.hovered ? Colors.surfaceContainerHighest : "transparent"
+
+    implicitWidth: parent?.width ?? 0
+    implicitHeight: network !== null ? mainLayout.implicitHeight + 24 : 0
+    clip: true
+
+    property int topRadius: 20
+    property int bottomRadius: 20
+    topLeftRadius: topRadius
+    topRightRadius: topRadius
+    bottomLeftRadius: bottomRadius
+    bottomRightRadius: bottomRadius
+
+    color: Colors.surfaceContainerHigh
+
     property var network: null
+    property bool expanded: false
+    property string connectionError: ""
+
+    property var buttonModel: {
+        if (!network) return []
+        const connected = network.connected
+        const known = network.known
+        const m = []
+        if (connected) {
+            m.push({ value: "disconnect", label: "Disconnect", icon: "wifi_off" })
+        } else {
+            m.push({ value: "connect", label: "Connect", icon: "wifi" })
+        }
+        if (known) {
+            m.push({ value: "forget", label: "Forget", icon: "link_off" })
+        }
+        if (connected) {
+            m.push({ value: "qr", label: "QR Code", icon: "qr_code" })
+        }
+        return m
+    }
+
     visible: network !== null
-    signal click(var network)
+
     signal needsPassword(var network)
     signal qrCode(var network)
 
-    MouseArea{
-        id: pillArea
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked:{
-            if(!network?.connected){
-                //root.wrongPassword = false
-                network.connect()
-            }
-            else{
-                //root.wrongPassword = false
-                network.disconnect()
-            }
+    onNetworkChanged: {
+        if (!network) {
+            expanded = false
+            connectionError = ""
         }
     }
-    HoverHandler{
-        id: handler
+
+    Behavior on implicitHeight {
+        enabled: root.network !== null
+        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
     }
+    function wifiIcon(strength, security) {
+        const bars = Math.round((strength ?? 0) * 4)
+        const locked = (security ?? 0) !== 0
+        if (bars >= 4) return locked ? "wifi_lock"                    : "wifi"
+        if (bars === 3) return locked ? "network_wifi_3_bar_locked"   : "network_wifi_3_bar"
+        if (bars === 2) return locked ? "network_wifi_2_bar_locked"   : "network_wifi_2_bar"
+        if (bars === 1) return locked ? "network_wifi_1_bar_locked"   : "network_wifi_1_bar"
+        return locked ? "wifi_lock" : "signal_wifi_off"
+    }
+
     Connections {
         target: root.network
         ignoreUnknownSignals: true
         function onConnectionFailed(reason) {
             if (reason === ConnectionFailReason.NoSecrets) {
+                root.connectionError = ""
                 root.needsPassword(root.network)
+            } else if (reason === ConnectionFailReason.AuthenticationFailed) {
+                root.connectionError = "Wrong password"
+                root.expanded = true
             }
         }
     }
-    RowLayout {
-        anchors.fill: parent
-        anchors.margins: 10
-        spacing: 10
-        Rectangle {
-            Layout.preferredWidth: 40
-            Layout.preferredHeight: 40
-            radius: 10
-            //color: Colors.primary
-            color: "transparent"
-            MaterialIconSymbol {
-                anchors.centerIn: parent
-                content: "network_wifi_locked"
-                iconSize: 30
-                // color: Colors.primaryText
-            }
-        }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            CustomText {
-                content: network?.name ?? ""
-                size: 14
-            }
-            CustomText {
-                content: network?.known ? "Known" : "Unknown"
-                size: 13
-                color: Colors.outline
-            }
-        }
+    ColumnLayout {
+        id: mainLayout
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
+        anchors.topMargin: 12
+        spacing: 0
 
-
-
+        // ── Header ────────────────────────────────────────────────
         Item {
             Layout.fillWidth: true
-        }
+            implicitHeight: headerRow.implicitHeight
 
-        Loader{
-            active: handler.hovered && network?.connected
-            visible: active
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 30
-            sourceComponent: Rectangle{
+            RowLayout {
+                id: headerRow
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                spacing: 10
+
+                MaterialIconSymbol {
+                    Layout.alignment: Qt.AlignVCenter
+                    content: root.wifiIcon(network?.signalStrength, network?.security)
+                    fill: network?.connected ? 1 : 0
+                    iconSize: 26
+                    customColor: network?.connected ? Colors.primary : Colors.outline
+                    Behavior on customColor { ColorAnimation { duration: 200 } }
+                    Behavior on fill { NumberAnimation { duration: 200 } }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 2
+
+                    CustomText {
+                        Layout.fillWidth: true
+                        content: network?.name ?? ""
+                        size: 14
+                    }
+                    CustomText {
+                        Layout.fillWidth: true
+                        content: network?.connected ? "Connected"
+                               : network?.known    ? "Saved"
+                               :                     "Available"
+                        size: 12
+                        customColor: network?.connected ? Colors.primary : Colors.outline
+                        Behavior on customColor { ColorAnimation { duration: 200 } }
+                    }
+                    CustomText {
+                        Layout.fillWidth: true
+                        visible: root.connectionError !== ""
+                        content: root.connectionError
+                        size: 11
+                        customColor: Colors.error
+                    }
+                }
+
+                MaterialIconSymbol {
+                    Layout.alignment: Qt.AlignVCenter
+                    content: root.expanded ? "keyboard_arrow_up" : "keyboard_arrow_down"
+                    iconSize: 18
+                    customColor: Colors.outline
+                }
+            }
+
+            MouseArea {
                 anchors.fill: parent
-                radius: width
-                color: qrArea.containsMouse ? Colors.primary: "transparent"
-
-                MaterialIconSymbol{
-                    anchors.centerIn: parent
-                    content: "qr_code"
-                    iconSize: 16
-                    color: qrArea.containsMouse ? Colors.primaryText : Colors.surfaceText
-                }
-                MouseArea {
-                    id: qrArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked:root.qrCode(root.network)
-                }
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.expanded = !root.expanded
             }
         }
 
-        Loader{
-            active: handler.hovered
-            visible: active
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 30
-            sourceComponent: Rectangle {
-                anchors.fill: parent
-                radius: width
-                color: area.containsMouse ? Colors.primary : "transparent"
+        // ── Expanded detail section ────────────────────────────────
+        ColumnLayout {
+            id: detailSection
+            Layout.fillWidth: true
+            Layout.topMargin: 10
+            spacing: 6
+            visible: root.expanded
+            opacity: root.expanded ? 1 : 0
 
-                MaterialIconSymbol{
-                    anchors.centerIn: parent
-                    content: "info"
-                    iconSize: 16
-                    color: area.containsMouse ? Colors.primaryText : Colors.surfaceText
+            Behavior on opacity {
+                NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: 1
+                color: Colors.outline
+                opacity: 0.3
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                CustomText { content: "Signal strength"; size: 12; customColor: Colors.outline }
+                Item { Layout.fillWidth: true }
+                CustomText {
+                    content: Math.floor((network?.signalStrength ?? 0) * 100) + "%"
+                    size: 12
                 }
+            }
 
-                MouseArea {
-                    id: area
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked:root.click(root.network)
+            RowLayout {
+                Layout.fillWidth: true
+                CustomText { content: "Security"; size: 12; customColor: Colors.outline }
+                Item { Layout.fillWidth: true }
+                CustomText {
+                    content: WifiSecurityType.toString(network?.security ?? 0)
+                    size: 12
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                CustomText { content: "Saved network"; size: 12; customColor: Colors.outline }
+                Item { Layout.fillWidth: true }
+                CustomText {
+                    content: (network?.known ?? false) ? "Yes" : "No"
+                    size: 12
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                implicitHeight: 1
+                color: Colors.outline
+                opacity: 0.3
+            }
+
+            ButtonGroup {
+                Layout.topMargin: 6
+                Layout.bottomMargin: 2
+                height: 30
+                model: root.buttonModel
+                activeCheck: function(v) { return false }
+                inactiveColor: Colors.surfaceContainerHighest
+
+                onSegmentClicked: function(action) {
+                    switch (action) {
+                    case "connect":
+                        root.connectionError = ""
+                        network.connect()
+                        break
+                    case "disconnect":
+                        network.disconnect()
+                        break
+                    case "forget":
+                        root.expanded = false
+                        network.forget()
+                        break
+                    case "qr":
+                        root.qrCode(root.network)
+                        break
+                    }
                 }
             }
         }

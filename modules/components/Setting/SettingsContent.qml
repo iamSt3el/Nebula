@@ -7,334 +7,231 @@ import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
 
-
-Item{
+Item {
     id: root
     anchors.fill: parent
 
-
-    property bool isMenuOpen: true
     property var currentPage: 0
     signal settingClosed
-    scale: 0.7
 
     opacity: 0
+    scale: 0.7
 
-    NumberAnimation on opacity{
-        from: 0
-        to: 1
-        duration: 200
-        running: true
-    }
-    NumberAnimation on scale{
-        from: 0.7
-        to: 1
-        duration: 100
-        running: true
-    }
+    NumberAnimation on opacity { from: 0; to: 1; duration: 200; running: true }
+    NumberAnimation on scale   { from: 0.7; to: 1; duration: 100; running: true }
 
+    // Section → page-index mapping
+    readonly property var navSections: [
+        { label: "System",  indices: [0, 1, 2, 3, 4] },
+        { label: "Connect", indices: [5, 6] },
+        { label: "Apps",    indices: [7, 8, 9, 10] },
+        { label: "Info",    indices: [11] }
+    ]
 
-
-    Rectangle{
+    Rectangle {
         anchors.fill: parent
         radius: 20
         color: Colors.surface
 
-        Rectangle{
+        Rectangle {
             anchors.fill: parent
             anchors.margins: 10
             radius: 20
             color: Colors.surfaceContainer
 
-
-            
-            RowLayout{
+            RowLayout {
                 anchors.fill: parent
+                spacing: 0
 
-                Rectangle{
+                // ── Sidebar ──────────────────────────────────────
+                Rectangle {
                     Layout.fillHeight: true
-                    Layout.preferredWidth: 150
-                    radius:20
+                    Layout.preferredWidth: 160
+                    radius: 20
                     color: Colors.surfaceContainerHigh
 
-                    ColumnLayout{
-
+                    ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 10
+                        spacing: 0
 
-                        CustomText{
+                        // Original header — unchanged
+                        CustomText {
                             content: "Nebula"
                             size: 22
                             weight: 700
                         }
-                        CustomText{
+                        CustomText {
                             content: "v0.1.0-beta"
                             size: 12
-                            color: Colors.outline
+                            customColor: Colors.outline
                         }
 
-                        Item{
-                            Layout.preferredHeight: 20
-                        }
+                        Item { Layout.preferredHeight: 14 }
 
-                        Item{
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: navColumn.implicitHeight
+                        // ── Nav sections ──────────────────────────
+                        Repeater {
+                            model: root.navSections
 
-                            Rectangle{
-                                id: navHighlight
-                                width: parent.width
-                                height: 40
-                                radius: 10
-                                color: Colors.primary
-                                y: root.currentPage * (40 + navColumn.spacing)
+                            delegate: ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
 
-                                Behavior on y{
-                                    NumberAnimation{
-                                        duration: 200
-                                        easing.type: Easing.OutQuad
-                                    }
+                                // Separator between sections (skip first)
+                                Rectangle {
+                                    visible: index !== 0
+                                    Layout.fillWidth: true
+                                    Layout.topMargin: 4
+                                    Layout.bottomMargin: 4
+                                    implicitHeight: 1
+                                    color: Colors.surfaceContainerHighest
                                 }
-                            }
 
-                            Column{
-                                id: navColumn
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                spacing: 5
+                                // Items in this section
+                                Repeater {
+                                    model: modelData.indices
 
-                                Repeater{
-                                    model: Settings.pages
+                                    delegate: Item {
+                                        id: navDelegate
+                                        readonly property int pageIndex: modelData
+                                        readonly property bool active: root.currentPage === pageIndex
+                                        readonly property var pageData: Settings.pages[pageIndex]
+                                        Layout.fillWidth: true
+                                        implicitWidth: parent ? parent.width : 0
+                                        implicitHeight: 38
 
-                                    delegate: Item{
-                                        id: delegateItem
-                                        property bool active: root.currentPage === index
-                                        width: navColumn.width
-                                        height: 40
-
-                                        // hover overlay
+                                        // Active / hover background
                                         Rectangle {
                                             anchors.fill: parent
                                             radius: 10
-                                            color: navMouse.containsMouse && !active
-                                                   ? Qt.rgba(0.5, 0.5, 0.5, 0.08)
+                                            color: (navDelegate.active || navMouse.containsMouse)
+                                                   ? Colors.primary
                                                    : "transparent"
                                             Behavior on color { ColorAnimation { duration: 150 } }
+
+                                            scale: navDelegate.active ? 1.0 : 0.96
+                                            Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
                                         }
 
-                                        RowLayout{
+                                        RowLayout {
                                             anchors.fill: parent
-                                            anchors.margins: 5
-                                            spacing: 10
+                                            anchors.leftMargin: 10
+                                            anchors.rightMargin: 8
+                                            spacing: 8
 
-                                            Item {
-                                                implicitWidth: 22
-                                                implicitHeight: 22
-
-                                                MaterialIconSymbol{
-                                                    id: navIcon
-                                                    anchors.centerIn: parent
-                                                    content: modelData.icon
-                                                    iconSize: 20
-                                                    layer.enabled: true
-                                                    layer.smooth: true
-                                                    color: active ? Colors.primaryText : Colors.surfaceVariantText
-
-                                                    fill: (navMouse.pressed || active) ? 1 : 0
-                                                    Behavior on fill {
-                                                        NumberAnimation { duration: 200 }
-                                                    }
-
-                                                    rotation: navMouse.pressed       ? 25
-                                                            : navMouse.containsMouse ? 15
-                                                            : active                 ? 20
-                                                            : 0
-                                                    Behavior on rotation {
-                                                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-                                                    }
-
-                                                    Behavior on color {
-                                                        ColorAnimation { duration: 150 }
-                                                    }
-
-                                                    transform: Rotation {
-                                                        id: flipRotation
-                                                        origin.x: navIcon.width / 2
-                                                        origin.y: navIcon.height / 2
-                                                        axis { x: 0; y: 1; z: 0 }
-                                                        angle: 0
-                                                    }
-
-                                                    states: State {
-                                                        name: "flipped"
-                                                        when: navMouse.pressed
-                                                        PropertyChanges { target: flipRotation; angle: 180 }
-                                                    }
-
-                                                    transitions: Transition {
-                                                        NumberAnimation {
-                                                            target: flipRotation
-                                                            property: "angle"
-                                                            duration: 300
-                                                            easing.type: Easing.OutCubic
-                                                        }
-                                                    }
-                                                }
+                                            MaterialIconSymbol {
+                                                content: navDelegate.pageData?.icon ?? ""
+                                                iconSize: 18
+                                                fill: navDelegate.active ? 1 : 0
+                                                customColor: (navDelegate.active || navMouse.containsMouse) ? Colors.primaryText : Colors.surfaceVariantText
+                                                Behavior on fill        { NumberAnimation { duration: 180 } }
+                                                Behavior on customColor { ColorAnimation  { duration: 150 } }
                                             }
 
-                                            CustomText{
+                                            CustomText {
                                                 Layout.fillWidth: true
-                                                content: modelData.name
+                                                content: navDelegate.pageData?.name ?? ""
                                                 size: 15
-                                                weight: active ? 800 : 600
-                                                color: active ? Colors.primaryText : Colors.surfaceVariantText
-
-                                                Behavior on color {
-                                                    ColorAnimation { duration: 150 }
-                                                }
+                                                weight: navDelegate.active ? 700 : 500
+                                                customColor: (navDelegate.active || navMouse.containsMouse) ? Colors.primaryText : Colors.surfaceVariantText
+                                                Behavior on customColor { ColorAnimation { duration: 150 } }
                                             }
                                         }
 
-                                        MouseArea{
+                                        MouseArea {
                                             id: navMouse
                                             anchors.fill: parent
                                             cursorShape: GlobalStates.fileDialogOpen ? Qt.ArrowCursor : Qt.PointingHandCursor
                                             hoverEnabled: !GlobalStates.fileDialogOpen
                                             enabled: !GlobalStates.fileDialogOpen
-                                            onClicked: root.currentPage = index
+                                            onClicked: root.currentPage = navDelegate.pageIndex
                                         }
                                     }
                                 }
                             }
                         }
 
-                        Item{
-                            Layout.fillHeight: true
-                        }
+                        Item { Layout.fillHeight: true }
 
-                        Rectangle{
+                        // Edit Config button
+                        Rectangle {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 40
                             radius: 15
                             color: Colors.primary
 
-                            RowLayout{
+                            RowLayout {
                                 anchors.centerIn: parent
-                                MaterialIconSymbol{
+                                spacing: 6
+                                MaterialIconSymbol {
                                     content: "edit"
-                                    size: 20
-                                    color: Colors.primaryText
+                                    iconSize: 18
+                                    customColor: Colors.primaryText
                                 }
-                                CustomText{
+                                CustomText {
                                     content: "Edit Config"
                                     size: 14
-                                    color: Colors.primaryText
+                                    customColor: Colors.primaryText
                                 }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Quickshell.execDetached(["kitty", "-e", "nvim",
+                                    Quickshell.env("HOME") + "/.config/quickshell"])
                             }
                         }
                     }
                 }
-                Item{
+
+                // ── Content area ──────────────────────────────────
+                Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
-                    
-                    Loader{
-                        anchors.fill: parent
-                        active: root.currentPage === 0
-                        sourceComponent:General{}
-                    }
-                    Loader{
-                        anchors.fill: parent
-                        active: root.currentPage === 1
-                        sourceComponent: Theme{}
-                    }
 
-                    Loader{
-                        anchors.fill: parent
-                        active: root.currentPage === 2
-                        sourceComponent: Sound{}
-                    }
-
-                    Loader{
-                        anchors.fill: parent
-                        active: root.currentPage === 3
-                        sourceComponent: Networking{}
-                    }
-
-                     Loader{
-                        anchors.fill: parent
-                        active: root.currentPage === 4
-                        sourceComponent: Bluetooth{}
-                    }
-
-                    // Loader{
-                    //     anchors.fill: parent
-                    //     active: root.currentPage === 3
-                    //     sourceComponent: Keybindings{}
-                    // }
-
-                    Loader{
-                        anchors.fill: parent
-                        active: root.currentPage === 5
-                        sourceComponent: Ai{}
-                    }
-                    Loader{
-                        anchors.fill: parent
-                        active: root.currentPage === 6
-                        sourceComponent: MangaReader{}
-                    }
-
-                    Loader{
-                        anchors.fill: parent
-                        active: root.currentPage === 7
-                        sourceComponent: WeatherSettings{}
-                    }
-
-                    Loader{
-                        anchors.fill: parent
-                        active: root.currentPage === 8
-                        sourceComponent: MediaSettings{}
-                    }
-
-                    Loader{
-                        anchors.fill: parent
-                        active: root.currentPage === 9
-                        sourceComponent: About{}
-                    }
-
-
+                    Loader { anchors.fill: parent; active: root.currentPage === 0;  visible: active; sourceComponent: General{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 1;  visible: active; sourceComponent: Theme{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 2;  visible: active; sourceComponent: Sound{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 3;  visible: active; sourceComponent: Notifications{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 4;  visible: active; sourceComponent: Widgets{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 5;  visible: active; sourceComponent: Networking{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 6;  visible: active; sourceComponent: Bluetooth{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 7;  visible: active; sourceComponent: Ai{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 8;  visible: active; sourceComponent: MangaReader{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 9;  visible: active; sourceComponent: WeatherSettings{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 10; visible: active; sourceComponent: MediaSettings{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 11; visible: active; sourceComponent: About{} }
 
                 }
-
             }
 
-            Rectangle{
+            // Close button
+            Rectangle {
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.topMargin: 10
                 anchors.rightMargin: 10
-                implicitWidth: 30
-                implicitHeight: 30
+                implicitWidth: 30; implicitHeight: 30
                 radius: 10
-                color: closeArea.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
+                color: closeArea.containsMouse ? Colors.primary : Colors.primaryContainer
+                Behavior on color { ColorAnimation { duration: 150 } }
 
-                MaterialIconSymbol{
+                MaterialIconSymbol {
                     anchors.centerIn: parent
-                    content: "close"
-                    iconSize: 16
-                    color: closeArea.containsMouse ? Colors.primaryText : Colors.surfaceText
+                    content: "close"; iconSize: 16
+                    customColor: closeArea.containsMouse ? Colors.primaryText : Colors.primaryContainerText
+                    Behavior on customColor { ColorAnimation { duration: 150 } }
                 }
 
-                MouseArea{
+                MouseArea {
                     id: closeArea
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     hoverEnabled: true
                     onClicked: root.settingClosed()
-
                 }
             }
         }
-
     }
 }

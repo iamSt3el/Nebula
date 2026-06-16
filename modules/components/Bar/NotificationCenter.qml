@@ -8,113 +8,143 @@ import qs.modules.services
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MatrialShapeFn
 
-
-Item{
+Item {
     id: root
     anchors.fill: parent
 
     signal notificationCenterClosed
-    property bool active: false//hoverHandler.hovered
+    property bool active: false
 
-    onActiveChanged:{
-        if(!active) root.notificationCenterClosed()
+    onActiveChanged: {
+        if (!active) root.notificationCenterClosed()
     }
 
-    opacity:0
+    opacity: 0
     scale: 0.8
 
-    NumberAnimation on opacity{
-        from: 0
-        to: 1
-        duration: 400
-        running: true
-    }
+    NumberAnimation on opacity { from: 0; to: 1; duration: 400; running: true }
+    NumberAnimation on scale   { from: 0.8; to: 1; duration: 400; running: true }
 
-
-    NumberAnimation on scale{
-        from: 0.8
-        to: 1
-        duration: 400
-        running: true
-    }
-
-    ColumnLayout{
+    ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
         spacing: 10
-        // Rectangle{
-        //     Layout.fillWidth: true
-        //     Layout.preferredHeight: 50
-        //     color: Colors.surfaceContainer
-        //     radius: 
-        //     RowLayout{
-        //         anchors.fill: parent
-        //         anchors.margins: 10
-        //         spacing: 5
-        //         MaterialIconSymbol{
-        //             content: "notifications"
-        //             iconSize: 18
-        //         }
-        //         CustomText{
-        //             Layout.fillWidth: true
-        //             content: "Notifications"
-        //             size: 16
-        //             weight: 600
-        //         }
-        //         MaterialIconSymbol{
-        //             content: "close"
-        //             iconSize: 20
-        //             MouseArea{
-        //                 anchors.fill: parent
-        //                 cursorShape: Qt.PointingHandCursor
-        //                 onClicked: root.notificationCenterClosed()
-        //             }
-        //         }
-        //     }
-        // }
-        RowLayout{
-            Layout.fillWidth: true
-            spacing: 10
 
-            CustomButton{
-                Layout.preferredHeight: 30
-                Layout.preferredWidth: 60
-                icon: "notification_settings"
-                iconSize: 20
+        // ── Header ───────────────────────────────────────────────────────
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            MaterialIconSymbol {
+                content: ServiceNotification.muted ? "notifications_off" : "notifications"
+                iconSize: 18
+                customColor: Colors.primary
+                Behavior on customColor { ColorAnimation { duration: 150 } }
             }
 
-            Rectangle{
-                Layout.fillWidth: true
-                Layout.preferredHeight: 30
-                radius: 20
-                color: clearArea.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
+            CustomText {
+                content: "Notifications"
+                size: 15
+                weight: 700
+            }
 
-                CustomText{
+            // Count badge
+            Rectangle {
+                visible: ServiceNotification.allNotifications.length > 0
+                implicitWidth: Math.max(countText.implicitWidth + 10, 20)
+                implicitHeight: 18
+                radius: 9
+                color: Qt.alpha(Colors.primary, 0.15)
+
+                CustomText {
+                    id: countText
                     anchors.centerIn: parent
-                    content: "Clear all"
-                    size: 14
-                    color: clearArea.containsMouse ? Colors.primaryText : Colors.surfaceText
+                    content: ServiceNotification.allNotifications.length.toString()
+                    size: 11
+                    weight: 700
+                    customColor: Colors.primary
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            // DND toggle
+            Rectangle {
+                Layout.preferredHeight: 30
+                Layout.preferredWidth: 30
+                radius: 10
+                color: ServiceNotification.muted ? Colors.primary
+                     : (dndArea.containsMouse ? Colors.surfaceContainerHighest : "transparent")
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: "notifications_off"
+                    iconSize: 16
+                    customColor: ServiceNotification.muted ? Colors.primaryText : Colors.surfaceVariantText
+                    Behavior on customColor { ColorAnimation { duration: 150 } }
                 }
 
-                MouseArea{
+                MouseArea {
+                    id: dndArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: ServiceNotification.toggleMute()
+                }
+            }
+
+            // Clear all (only when there are notifications)
+            Rectangle {
+                Layout.preferredHeight: 30
+                Layout.preferredWidth: 30
+                radius: 10
+                visible: ServiceNotification.allNotifications.length > 0
+                color: clearArea.containsMouse ? Colors.surfaceContainerHighest : "transparent"
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: "delete_sweep"
+                    iconSize: 16
+                    customColor: Colors.surfaceVariantText
+                }
+
+                MouseArea {
                     id: clearArea
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: ServiceNotification.clear()
                 }
-
             }
 
-            CustomButton{
+            // Close panel
+            Rectangle {
                 Layout.preferredHeight: 30
-                Layout.preferredWidth: 60
-                icon: "close"
-                iconSize: 18
-                onClicked: root.notificationCenterClosed()
+                Layout.preferredWidth: 30
+                radius: 10
+                color: closeArea.containsMouse ? Colors.surfaceContainerHighest : "transparent"
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: "close"
+                    iconSize: 16
+                    customColor: Colors.surfaceVariantText
+                }
+
+                MouseArea {
+                    id: closeArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.notificationCenterClosed()
+                }
             }
         }
 
+        // ── Empty state ──────────────────────────────────────────────────
         Loader {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -124,7 +154,8 @@ Item{
                 anchors.fill: parent
                 ColumnLayout {
                     anchors.centerIn: parent
-                    spacing: 8
+                    spacing: 10
+
                     MaterialShapes.ShapeCanvas {
                         Layout.alignment: Qt.AlignCenter
                         Layout.preferredHeight: 80
@@ -134,21 +165,32 @@ Item{
 
                         MaterialIconSymbol {
                             anchors.centerIn: parent
-                            content: "notifications"
+                            content: ServiceNotification.muted ? "notifications_off" : "notifications"
                             iconSize: 26
-                            color: Colors.primary
+                            customColor: Colors.primary
                         }
                     }
+
                     CustomText {
                         Layout.alignment: Qt.AlignCenter
-                        content: "No Notifications"
-                        size: 16
-                        color: Colors.outline
+                        content: ServiceNotification.muted ? "Do Not Disturb on" : "No notifications"
+                        size: 14
+                        weight: 600
+                        customColor: Colors.outline
+                    }
+
+                    CustomText {
+                        Layout.alignment: Qt.AlignCenter
+                        content: ServiceNotification.muted ? "Notifications are silenced" : "You're all caught up"
+                        size: 12
+                        weight: 400
+                        customColor: Colors.outline
                     }
                 }
             }
         }
 
+        // ── Notification list ────────────────────────────────────────────
         Loader {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -160,9 +202,6 @@ Item{
                 spacing: 0
                 clip: true
 
-                // Flat list of NotificationItems built from groups (newest group first,
-                // newest notification first within each group). Using allNotifications.length
-                // as a reactive dependency so the model updates on every add/remove.
                 model: ScriptModel {
                     values: {
                         var _ = ServiceNotification.allNotifications.length
@@ -179,20 +218,9 @@ Item{
                     NumberAnimation { property: "x"; from: notifList.width; to: 0; duration: 300; easing.type: Easing.OutQuad }
                 }
 
-                // remove: Transition {
-                //     ParallelAnimation {
-                //         NumberAnimation { property: "opacity"; to: 0; duration: 200; easing.type: Easing.InQuad }
-                //         NumberAnimation { property: "x"; to: notifList.width; duration: 200; easing.type: Easing.InQuad }
-                //     }
-                // }
-
                 addDisplaced: Transition {
                     NumberAnimation { property: "y"; duration: 300; easing.type: Easing.OutQuad }
                 }
-
-                // removeDisplaced: Transition {
-                //     NumberAnimation { property: "y"; duration: 350; easing.type: Easing.OutBack }
-                // }
 
                 displaced: Transition {
                     NumberAnimation { property: "y"; duration: 300; easing.type: Easing.OutQuad }
@@ -201,7 +229,6 @@ Item{
                 delegate: Item {
                     id: delegateItem
                     width: notifList.width
-                    // Extra bottom gap after the last item in a group, tight within a group
                     height: notifItem.implicitHeight + (isGroupLast && index < notifList.count - 1 ? 8 : 2)
 
                     readonly property var prevNotif: index > 0 ? notifList.model.values[index - 1] : null
@@ -218,6 +245,5 @@ Item{
                 }
             }
         }
-
-    }    
+    }
 }

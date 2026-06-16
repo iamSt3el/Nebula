@@ -10,138 +10,132 @@ import qs.modules.services
 import qs.modules.settings
 import qs.modules.customComponents
 
-GridView{
+GridView {
     id: appList
     anchors.fill: parent
-    cellWidth: (width) / 4
-    cellHeight: 100
+    cellWidth:  Math.floor(width / 4)
+    cellHeight: 90
+    clip: true
     property int activeIndex: 0
     property bool animationsEnabled: false
+
     model: ScriptModel {
         values: appLauncher.filteredApps
         onValuesChanged: appList.animationsEnabled = true
     }
 
-
     add: Transition {
         enabled: appList.animationsEnabled
-
-        NumberAnimation {
-            properties: "opacity,scale"
-            from: 0
-            to: 1
-            duration: 400
-            easing.type: Easing.OutQuad
-        }
+        NumberAnimation { properties: "opacity,scale"; from: 0; to: 1; duration: 300; easing.type: Easing.OutCubic }
     }
-
     remove: Transition {
         enabled: appList.animationsEnabled
-
-        NumberAnimation {
-            properties: "opacity,scale"
-            from: 1
-            to: 0
-            duration: 400
-            easing.type: Easing.OutQuad
-        }
+        NumberAnimation { properties: "opacity,scale"; from: 1; to: 0; duration: 250; easing.type: Easing.InCubic }
     }
-
     move: Transition {
-        NumberAnimation {
-            property: "y"
-            duration: 400
-            easing.type: Easing.OutQuad
-        }
-        NumberAnimation {
-            properties: "opacity,scale"
-            to: 1
-            duration: 400
-            easing.type: Easing.OutQuad
-        }
+        NumberAnimation { properties: "x,y"; duration: 300; easing.type: Easing.OutCubic }
     }
-
     addDisplaced: Transition {
-        NumberAnimation {
-            property: "y"
-            duration: 400
-            easing.type: Easing.OutQuad
-        }
-        NumberAnimation {
-            properties: "opacity,scale"
-            to: 1
-            duration: 400
-            easing.type: Easing.OutQuad
-        }
+        NumberAnimation { properties: "x,y"; duration: 300; easing.type: Easing.OutCubic }
     }
-
     displaced: Transition {
-        NumberAnimation {
-            property: "y"
-            duration: 400
-            easing.type: Easing.OutQuad
-        }
-        NumberAnimation {
-            properties: "opacity,scale"
-            to: 1
-            duration: 400
-            easing.type: Easing.OutQuad
-        }
+        NumberAnimation { properties: "x,y"; duration: 300; easing.type: Easing.OutCubic }
     }
 
-    delegate: Rectangle{
-        width: appList.cellWidth
+    delegate: Item {
+        width:  appList.cellWidth
         height: appList.cellHeight
-        color: "transparent"
 
-        radius: 10
-        ColumnLayout{
+        readonly property bool isActive: appList.activeIndex === index
+        readonly property bool isPinned: ServiceApps.isPinned(modelData)
+
+        Rectangle {
             anchors.fill: parent
-            spacing: 0
-            Rectangle{
-                Layout.fillWidth: true
-                Layout.preferredHeight: 60
-                radius: 10
-                color: appList.activeIndex === index ? Colors.primary : "transparent"
-                Image{
-                    anchors.centerIn: parent
-                    height: 60
-                    width: 60
-                    sourceSize: Qt.size(width, height)
-                    asynchronous: true
-                    source: IconUtil.getIconPath(modelData.icon)
+            anchors.margins: 3
+            radius: 14
+
+            color: isActive
+                ? Colors.primaryContainer
+                : appArea.containsMouse
+                    ? Qt.alpha(Colors.primary, 0.08)
+                    : "transparent"
+
+            Behavior on color { ColorAnimation { duration: 100 } }
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.topMargin: 8
+                anchors.bottomMargin: 6
+                anchors.leftMargin: 4
+                anchors.rightMargin: 4
+                spacing: 4
+
+                // Icon
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 46
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 46; height: 46; radius: 13
+                        color: isActive
+                            ? Qt.alpha(Colors.primary, 0.2)
+                            : Qt.alpha(Colors.surfaceText, 0.05)
+                        Behavior on color { ColorAnimation { duration: 100 } }
+
+                        Image {
+                            anchors.centerIn: parent
+                            width: 30; height: 30
+                            sourceSize: Qt.size(width, height)
+                            source: IconUtil.getIconPath(modelData.icon)
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                        }
+
+                        // Pin dot
+                        Rectangle {
+                            anchors.right: parent.right; anchors.top: parent.top
+                            anchors.topMargin: -2; anchors.rightMargin: -2
+                            width: 8; height: 8; radius: 4
+                            color: Colors.primary
+                            visible: isPinned
+                        }
+                    }
                 }
 
-                MouseArea{
-                    id: appArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onEntered:{
-                        appList.activeIndex = index
-                    }
-                    onClicked: {
-                        if(modelData){
+                // Label
+                CustomText {
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    content: modelData.name
+                    size: 11; weight: 500
+                    elide: Text.ElideRight
+                    customColor: isActive ? Colors.primaryContainerText : Colors.surfaceText
+                    Behavior on customColor { ColorAnimation { duration: 100 } }
+                }
+            }
+
+            MouseArea {
+                id: appArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                onEntered: appList.activeIndex = index
+
+                onClicked: event => {
+                    if (event.button === Qt.RightButton) {
+                        var pos = mapToItem(appLauncher, event.x, event.y)
+                        appLauncher.showContextMenu(pos.x, pos.y, modelData)
+                    } else {
+                        if (modelData) {
                             modelData.execute()
                             appLauncher.closed()
                         }
                     }
                 }
             }
-            Item{
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                CustomText{
-                    anchors.top: parent.top
-                    width: parent.width
-                    height: parent.height
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                    content: modelData.name
-                    size: 12
-                }
-            }
         }
-
     }
 }

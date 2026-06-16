@@ -12,9 +12,12 @@ import Quickshell.Widgets
 
 Item{
     id: root
-    property bool isClicked: false 
+    property bool isClicked: false
     property bool active: false
     property bool showArc: height > 1000 ? true : false
+
+    readonly property int wsCount:   SettingsConfig.general.workspaceCount ?? 5
+    readonly property bool wsNumbers: SettingsConfig.general.showWorkspaceNumbers ?? false
     implicitWidth: root.active ? 500 : row.implicitWidth + 20//workspacesRow.width + 20
     implicitHeight: root.active ? 1080 : 40
 
@@ -61,49 +64,65 @@ Item{
         //sourceComponent: MangaContent{}
     }
 
-    RowLayout{
+    RowLayout {
         id: row
         anchors.centerIn: parent
-        spacing: 10
-        Repeater{
-            model: 5
-            delegate: Rectangle{
-                property int workspaceId: modelData + 1
+        spacing: 4
+
+        Repeater {
+            model: ScriptModel {
+                values: Array.from({ length: root.wsCount }, (_, i) => i + 1)
+            }
+
+            delegate: Rectangle {
+                property int workspaceId: modelData
                 property var currentWorkspace: ServiceWorkspaces.getWorkspace(workspaceId)
+                readonly property bool isActive:   !!currentWorkspace && currentWorkspace.active
+                readonly property bool isOccupied: !!currentWorkspace
+                readonly property bool showNumbers: root.wsNumbers
+
                 Layout.alignment: Qt.AlignVCenter
-                Layout.preferredHeight: currentWorkspace ? 25 : 15
-                Layout.preferredWidth: currentWorkspace ? Math.max(15, topLevels.appList.width) + 10 : 15
-                radius: 10
-                color: currentWorkspace ? currentWorkspace.active ? Colors.primary : Colors.surfaceContainerHighest : Colors.surfaceContainer
-                // border{
-                //     width: 1
-                //     color: Qt.alpha(Colors.outline, 0.5)
-                // }
+                Layout.preferredHeight: isOccupied ? 28 : 10
+                Layout.preferredWidth:  isOccupied
+                    ? Math.max(showNumbers ? 28 : 28, (topLevels.appList?.width ?? 0) + 12)
+                    : 10
+                radius: 15
+                color: isActive   ? Colors.primary
+                     : isOccupied ? Colors.surfaceContainerHighest
+                     : Qt.alpha(Colors.outline, 0.2)
 
-                Behavior on implicitWidth{
-                    NumberAnimation{
-                        duration: 100
-                        easing.type: Easing.OutQuad
-                    }
-                }
+                border.width: isOccupied && !isActive ? 1 : 0
+                border.color: Qt.alpha(Colors.outline, 0.15)
 
-                TopLevels{
+                Behavior on Layout.preferredHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                Behavior on Layout.preferredWidth  { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                Behavior on color                  { ColorAnimation  { duration: 200 } }
+
+                Loader {
                     id: topLevels
+                    anchors.fill: parent
+                    active: isOccupied && !showNumbers
+                    visible: active
+                    sourceComponent: TopLevels {}
+                    property var appList: item ? item.appList : null
                 }
 
-                MouseArea{
+                CustomText {
+                    anchors.centerIn: parent
+                    visible: showNumbers && isOccupied
+                    content: workspaceId.toString()
+                    size: 10
+                    weight: isActive ? 800 : 600
+                    customColor: isActive ? Colors.primaryText : Colors.surfaceText
+                    Behavior on customColor { ColorAnimation { duration: 200 } }
+                }
+
+                MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    acceptedButtons: Qt.RightButton | Qt.LeftButton
-                    onClicked: function(mouse){
-                        if(mouse.button === Qt.LeftButton){
-                            if(currentWorkspace){
-                                currentWorkspace.activate()
-                            }else{
-                                Hyprland.dispatch(`workspace ${workspaceId}`)
-                            }
-                        }else if(mouse.button === Qt.RightButton){
-                        }
+                    onClicked: {
+                        if (currentWorkspace) currentWorkspace.activate()
+                        else Hyprland.dispatch(`workspace ${workspaceId}`)
                     }
                 }
             }

@@ -6,9 +6,13 @@ import qs.modules.customComponents
 
 Item {
     id: root
+    property int value: 0
     property int val
     property int inc: 10
     property int limit: 100
+
+    onValueChanged: { if (val !== value) val = value }
+    property color color: Colors.surfaceContainerHigh
 
     implicitWidth: 140
     implicitHeight: 34
@@ -16,7 +20,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 10
-        color: Colors.surfaceContainerHigh
+        color: root.color
 
         RowLayout {
             anchors.fill: parent

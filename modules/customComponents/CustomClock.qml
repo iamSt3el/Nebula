@@ -8,6 +8,7 @@ import QtQuick.Effects
 import qs.modules.utils
 import qs.modules.customComponents
 import qs.modules.services
+import qs.modules.settings
 
 Item{
     id: root
@@ -39,17 +40,17 @@ Item{
         spacing: -3
 
         Item {
-            width: text1.width
-            height: text1.height
+            Layout.preferredWidth: text1.implicitWidth
+            Layout.preferredHeight: text1.implicitHeight
 
             CustomText {
                 id: text1
                 content: hourDigit1
                 size: root.fontSize
-                color:Colors.surfaceText
+                color: Colors.surfaceText
                 layer.enabled: true
                 visible: false
-                font.family: "Titan One"
+                font.family: SettingsConfig.general.displayFont ?? "Titan One"
                 style: Text.Raised
                 styleColor: Colors.outline
                 weight: 600
@@ -57,18 +58,18 @@ Item{
 
             Item {
                 id: maskItem
-                width: parent.width
-                height: parent.height
-                layer.enabled: true  
+                width: text1.implicitWidth
+                height: text1.implicitHeight
+                layer.enabled: true
                 visible: false
 
                 CustomText {
                     id: child
                     content: hourDigit2
                     size: root.fontSize + 10
-                    x: text1.width - root.fontX
+                    x: text1.implicitWidth - root.fontX
                     y: -5
-                    font.family: "Titan One"
+                    font.family: SettingsConfig.general.displayFont ?? "Titan One"
                     color: "white"
                     style: Text.Raised
                     styleColor: Colors.outline
@@ -78,10 +79,12 @@ Item{
 
             MultiEffect {
                 source: text1
-                anchors.fill: text1
+                x: 0; y: 0
+                width: text1.implicitWidth
+                height: text1.implicitHeight
                 maskEnabled: true
                 maskSource: maskItem
-                maskInverted: true  
+                maskInverted: true
                 maskThresholdMin: 0.5
                 maskSpreadAtMin: 1.0
             }
@@ -90,7 +93,7 @@ Item{
             content: hourDigit2
             size: root.fontSize
             color:Colors.primary
-            font.family: "Titan One"
+            font.family: SettingsConfig.general.displayFont ?? "Titan One"
             style: Text.Raised
             styleColor: Colors.outline
             weight: 600
@@ -101,7 +104,7 @@ Item{
             Layout.rightMargin: 5
             content: ":"
             size: root.fontSize
-            font.family: "Titan One"
+            font.family: SettingsConfig.general.displayFont ?? "Titan One"
             bottomPadding: 5
             color: Colors.primary
             style: Text.Raised
@@ -110,18 +113,17 @@ Item{
         }
 
         Item {
-            Layout.preferredWidth: text2.width
-            Layout.preferredHeight: text2.height
+            Layout.preferredWidth: text2.implicitWidth
+            Layout.preferredHeight: text2.implicitHeight
 
             CustomText {
                 id: text2
                 content: minuteDigit1
                 size: root.fontSize
-                color:Colors.surfaceText
+                color: Colors.surfaceText
                 layer.enabled: true
                 visible: false
-                font.family: "Titan One"
-                renderType: Text.NativeRendering
+                font.family: SettingsConfig.general.displayFont ?? "Titan One"
                 style: Text.Raised
                 styleColor: Colors.outline
                 weight: 600
@@ -129,18 +131,18 @@ Item{
 
             Item {
                 id: maskItem2
-                width: parent.width
-                height: parent.height
-                layer.enabled: true 
+                width: text2.implicitWidth
+                height: text2.implicitHeight
+                layer.enabled: true
                 visible: false
 
                 CustomText {
                     id: child2
                     content: minuteDigit2
                     size: root.fontSize + 10
-                    x: text2.width - root.fontX
+                    x: text2.implicitWidth - root.fontX
                     y: -5
-                    font.family: "Titan One"
+                    font.family: SettingsConfig.general.displayFont ?? "Titan One"
                     color: "white"
                     style: Text.Raised
                     styleColor: Colors.outline
@@ -150,10 +152,12 @@ Item{
 
             MultiEffect {
                 source: text2
-                anchors.fill: text2
+                x: 0; y: 0
+                width: text2.implicitWidth
+                height: text2.implicitHeight
                 maskEnabled: true
                 maskSource: maskItem2
-                maskInverted: true  
+                maskInverted: true
                 maskThresholdMin: 0.5
                 maskSpreadAtMin: 1.0
             }
@@ -162,7 +166,7 @@ Item{
             content: minuteDigit2
             size: root.fontSize
             color:Colors.primary
-            font.family: "Titan One"
+            font.family: SettingsConfig.general.displayFont ?? "Titan One"
             style: Text.Raised
             styleColor: Colors.outline
             weight: 600

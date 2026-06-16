@@ -8,35 +8,43 @@ import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
+import "../../MatrialShapes/" as MaterialShapes
+import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
-
-Item{
+Item {
     id: root
     anchors.fill: parent
     anchors.margins: 5
-    property bool infoCard: false
-    property var bluetooth: null
 
-    Loader{
-        anchors.fill: parent
-        active: root.infoCard
-        visible: active
-        z: 10
-
-        sourceComponent: BluetoothInfoCard{
-            bluetooth: root.bluetooth
-            onClose: root.infoCard = false
+    property bool hasConnectedDevices: {
+        const l = ServiceBluetooth.list ?? []
+        for (let i = 0; i < l.length; i++) if (l[i].state === 1) return true
+        return false
+    }
+    property bool hasPairedDevices: {
+        const l = ServiceBluetooth.list ?? []
+        for (let i = 0; i < l.length; i++) {
+            const d = l[i]
+            if ((d.paired ?? d.bonded ?? false) && d.state !== 1) return true
         }
+        return false
+    }
+    property bool hasNearbyDevices: {
+        const l = ServiceBluetooth.list ?? []
+        for (let i = 0; i < l.length; i++) {
+            const d = l[i]
+            if (!(d.paired ?? d.bonded ?? false) && d.state !== 1) return true
+        }
+        return false
     }
 
-
-    Flickable{
+    Flickable {
         anchors.fill: parent
         contentHeight: column.implicitHeight
         contentWidth: width
         clip: true
 
-        ColumnLayout{
+        ColumnLayout {
             id: column
             width: parent.width
             anchors.top: parent.top
@@ -47,238 +55,263 @@ Item{
             anchors.topMargin: 5
             spacing: 0
 
-            RowLayout{
+            // ── Page header ──────────────────────────────────────
+            RowLayout {
                 spacing: 10
-                MaterialIconSymbol{
-                    content: "bluetooth"
-                    iconSize: 20
-                }
-
-                CustomText{
-                    content: "Bluetooth"
-                    size: 20
-                    color: Colors.primary
-                }
+                MaterialIconSymbol { content: "bluetooth"; iconSize: 20 }
+                CustomText { content: "Bluetooth"; size: 20; customColor: Colors.primary }
             }
 
-            CustomText{
-                Layout.topMargin: 30
-                content: "Bluetooth"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText{
-                content: "Pair and manage Bluetooth devices"
-                size: 14
-                color: Colors.outline
-            }
+            // ── Adapter ──────────────────────────────────────────
+            CustomText { Layout.topMargin: 24; content: "Adapter"; size: 13; customColor: Colors.primary }
 
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 20
 
-            RowLayout{
-                Layout.fillWidth: true
-                Layout.topMargin: 10
-                spacing: 10
-                ColumnLayout{
-                    spacing: 0
-                    CustomText{
-                        content: "Bluetooth"
-                        size: 16
-                    }
-
-                    CustomText{
-                        content: "Enable or disable the Bluetooth adapter"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-
-                Item{
+                RowLayout {
                     Layout.fillWidth: true
-                }
-
-
-
-                CustomToogle{
-                    isToggleOn: Bluetooth.defaultAdapter?.enabled ?? false
-
-                    onToggled: function(state){
-                        const adapter = Bluetooth.defaultAdapter;
-                        if (adapter)
-                        adapter.discovering = state;                
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Bluetooth"; size: 14 }
+                        CustomText { content: "Enable or disable the Bluetooth adapter"; size: 12; customColor: Colors.outline }
                     }
-                }
-            }
-
-
-            Item{
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                Layout.preferredHeight: connectedList.implicitHeight
-                Layout.minimumHeight: 60
-                Layout.maximumHeight: 300
-                clip: true
-
-                ListView {
-                    id: connectedList
-                    anchors.fill: parent
-                    implicitHeight: contentHeight
-                    model: ServiceBluetooth.connectedDevicesList
-                    spacing: 10
-                    delegate: BluetoothPill {
-                        width: ListView.view.width
-                        bluetooth: modelData
-
-                        onClick: function (bluetooth){
-                            root.infoCard = true
-                            root.bluetooth = bluetooth
-                        }
-
-
-                    }
-                }
-
-            }
-
-
-            Rectangle{
-                Layout.topMargin: 10
-                Layout.bottomMargin: 10
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
-            }
-
-
-            RowLayout{
-                Layout.fillWidth: true
-                spacing: 10
-
-
-                CustomText{
-                    content: "Paired Devices"
-                    size: 16
-                    color: Colors.primary
-                }
-
-                Item{
-                    Layout.fillWidth: true
-                }
-            }
-
-
-            Item{
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                Layout.preferredHeight: wifiList.implicitHeight
-                Layout.minimumHeight: 60
-                Layout.maximumHeight: 300
-                clip: true
-
-
-
-                // Loader {
-                //     active: !ServiceBluetooth.pairedDevices || ServiceBluetooth.pairedDevices.length === 0
-                //     anchors.centerIn: parent
-                //
-                //     sourceComponent: CustomText {
-                //         anchors.centerIn: parent
-                //         content: "No Paired Devices"
-                //         size: 14
-                //     }
-                // }
-
-                // Loader {
-                //     active: ServiceBluetooth.pairedDevices && ServiceBluetooth.pairedDevices > 0
-                //     anchors.fill: parent
-                //     sourceComponent: ListView {
-                //         id: wifiList
-                //         anchors.fill: parent
-                //         implicitHeight: contentHeight
-                //         model: ServiceBluetooth.pairedDevices
-                //         spacing: 10
-                //         delegate: BluetoothPill {
-                //             width: ListView.view.width
-                //             bluetooth: modelData
-                //         }
-                //     }
-                // }
-
-                ListView {
-                    id: wifiList
-                    anchors.fill: parent
-                    implicitHeight: contentHeight
-                    model: ServiceBluetooth.pairedDevices
-                    spacing: 10
-                    delegate: BluetoothPill {
-                        width: ListView.view.width
-                        bluetooth: modelData
-
-                        onClick: function (bluetooth){
-                            root.infoCard = true
-                            root.bluetooth = bluetooth
+                    Item { Layout.fillWidth: true }
+                    CustomToogle {
+                        isToggleOn: Bluetooth.defaultAdapter?.enabled ?? false
+                        onToggled: function(state) {
+                            const adapter = Bluetooth.defaultAdapter
+                            if (adapter) adapter.discovering = state
                         }
                     }
                 }
-
             }
 
+            // ── Connected ────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Connected"; size: 13; customColor: Colors.primary }
 
-            Rectangle{
-                Layout.topMargin: 10
-                Layout.bottomMargin: 10
+            // Empty state — none connected
+            Rectangle {
+                Layout.topMargin: 6
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
+                implicitHeight: 90
+                visible: !root.hasConnectedDevices
+                color: Colors.surfaceContainerHigh
+                radius: 20
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 10
+
+                    Item {
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitWidth: 46; implicitHeight: 46
+
+                        MaterialShapes.ShapeCanvas {
+                            anchors.fill: parent
+                            roundedPolygon: MaterialShapeFn.getCookie6Sided()
+                            color: Colors.surfaceContainerHighest
+                        }
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: "bluetooth_disabled"; iconSize: 22; customColor: Colors.outline
+                        }
+                    }
+                    CustomText {
+                        Layout.alignment: Qt.AlignHCenter
+                        content: "No connected devices"; size: 13; customColor: Colors.outline
+                    }
+                }
             }
 
-            RowLayout{
+            ColumnLayout {
+                Layout.topMargin: 6
                 Layout.fillWidth: true
-                spacing: 10
-                CustomText{
-                    content: "Unpaired Devices"
-                    size: 16
-                    color: Colors.primary
-                }
-                Item{
-                    Layout.fillWidth: true
-                }
+                spacing: 3
+                visible: root.hasConnectedDevices
 
-                MaterialIconSymbol{
-                    content: "refresh"
-                    iconSize: 20
+                Repeater {
+                    model: ServiceBluetooth.list
+                    delegate: BluetoothPill {
+                        Layout.fillWidth: true
+                        bluetooth: (modelData?.state === 1) ? modelData : null
+                        topRadius: {
+                            const l = ServiceBluetooth.list ?? []
+                            for (let i = 0; i < l.length; i++) {
+                                if (l[i].state === 1) return (i === index) ? 20 : 5
+                            }
+                            return 20
+                        }
+                        bottomRadius: {
+                            const l = ServiceBluetooth.list ?? []
+                            let last = -1
+                            for (let i = 0; i < l.length; i++) {
+                                if (l[i].state === 1) last = i
+                            }
+                            return (last === index) ? 20 : 5
+                        }
+                    }
+                }
+            }
 
-                    MouseArea{
+            // ── Paired Devices ───────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Paired Devices"; size: 13; customColor: Colors.primary }
+
+            // Empty state — none paired
+            Rectangle {
+                Layout.topMargin: 6
+                Layout.fillWidth: true
+                implicitHeight: 90
+                visible: !root.hasPairedDevices
+                color: Colors.surfaceContainerHigh
+                radius: 20
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 10
+
+                    Item {
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitWidth: 46; implicitHeight: 46
+
+                        MaterialShapes.ShapeCanvas {
+                            anchors.fill: parent
+                            roundedPolygon: MaterialShapeFn.getCookie6Sided()
+                            color: Colors.surfaceContainerHighest
+                        }
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: "bluetooth_searching"; iconSize: 22; customColor: Colors.outline
+                        }
+                    }
+                    CustomText {
+                        Layout.alignment: Qt.AlignHCenter
+                        content: "No paired devices"; size: 13; customColor: Colors.outline
+                    }
+                }
+            }
+
+            ColumnLayout {
+                Layout.topMargin: 6
+                Layout.fillWidth: true
+                spacing: 3
+                visible: root.hasPairedDevices
+
+                Repeater {
+                    model: ServiceBluetooth.list
+                    delegate: BluetoothPill {
+                        Layout.fillWidth: true
+                        bluetooth: {
+                            const d = modelData
+                            return (d && (d.paired ?? d.bonded ?? false) && d.state !== 1) ? d : null
+                        }
+                        topRadius: {
+                            const l = ServiceBluetooth.list ?? []
+                            for (let i = 0; i < l.length; i++) {
+                                if ((l[i].paired ?? l[i].bonded ?? false) && l[i].state !== 1)
+                                    return (i === index) ? 20 : 5
+                            }
+                            return 20
+                        }
+                        bottomRadius: {
+                            const l = ServiceBluetooth.list ?? []
+                            let last = -1
+                            for (let i = 0; i < l.length; i++) {
+                                if ((l[i].paired ?? l[i].bonded ?? false) && l[i].state !== 1) last = i
+                            }
+                            return (last === index) ? 20 : 5
+                        }
+                    }
+                }
+            }
+
+            // ── Nearby Devices ───────────────────────────────────
+            RowLayout {
+                Layout.topMargin: 16
+                Layout.fillWidth: true
+                CustomText { content: "Nearby Devices"; size: 13; customColor: Colors.primary }
+                Item { Layout.fillWidth: true }
+                MaterialIconSymbol {
+                    content: "refresh"; iconSize: 18; customColor: Colors.outline
+                    MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            Bluetooth.defaultAdapter.discovering = true
+                            if (Bluetooth.defaultAdapter) Bluetooth.defaultAdapter.discovering = true
                         }
                     }
                 }
             }
 
-            Item{
-                Layout.topMargin: 10
+            // Empty state — none nearby
+            Rectangle {
+                Layout.topMargin: 6
                 Layout.fillWidth: true
-                Layout.preferredHeight: 300
-                clip: true
-                ListView{
-                    anchors.fill: parent
-                    orientation: Qt.Vertical
-                    model: ServiceBluetooth.unpairedDevices
+                implicitHeight: 90
+                visible: !root.hasNearbyDevices
+                color: Colors.surfaceContainerHigh
+                radius: 20
+
+                ColumnLayout {
+                    anchors.centerIn: parent
                     spacing: 10
-                    delegate: BluetoothPill{
-                        width: ListView.view.width
-                        bluetooth: modelData
 
+                    Item {
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitWidth: 46; implicitHeight: 46
 
-                        onClick: function (bluetooth){
-                            root.infoCard = true
-                            root.bluetooth = bluetooth
+                        MaterialShapes.ShapeCanvas {
+                            anchors.fill: parent
+                            roundedPolygon: MaterialShapeFn.getCookie6Sided()
+                            color: Colors.surfaceContainerHighest
+                        }
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: "bluetooth_searching"; iconSize: 22; customColor: Colors.outline
+                        }
+                    }
+                    CustomText {
+                        Layout.alignment: Qt.AlignHCenter
+                        content: "No nearby devices"; size: 13; customColor: Colors.outline
+                    }
+                }
+            }
+
+            ColumnLayout {
+                Layout.topMargin: 6
+                Layout.fillWidth: true
+                spacing: 3
+                visible: root.hasNearbyDevices
+
+                Repeater {
+                    model: ServiceBluetooth.list
+                    delegate: BluetoothPill {
+                        Layout.fillWidth: true
+                        bluetooth: {
+                            const d = modelData
+                            return (d && !(d.paired ?? d.bonded ?? false) && d.state !== 1) ? d : null
+                        }
+                        topRadius: {
+                            const l = ServiceBluetooth.list ?? []
+                            for (let i = 0; i < l.length; i++) {
+                                if (!(l[i].paired ?? l[i].bonded ?? false) && l[i].state !== 1)
+                                    return (i === index) ? 20 : 5
+                            }
+                            return 20
+                        }
+                        bottomRadius: {
+                            const l = ServiceBluetooth.list ?? []
+                            let last = -1
+                            for (let i = 0; i < l.length; i++) {
+                                if (!(l[i].paired ?? l[i].bonded ?? false) && l[i].state !== 1) last = i
+                            }
+                            return (last === index) ? 20 : 5
                         }
                     }
                 }
             }
+
+            Item { Layout.preferredHeight: 20 }
         }
     }
 }

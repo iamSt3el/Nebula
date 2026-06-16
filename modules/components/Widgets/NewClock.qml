@@ -87,7 +87,7 @@ Item{
                     color:Colors.surfaceText
                     layer.enabled: true
                     visible: false
-                    font.family: "Titan One"
+                    font.family: SettingsConfig.general.displayFont ?? "Titan One"
                     style: Text.Raised
                     styleColor: Colors.outline
                     weight: 600
@@ -105,7 +105,7 @@ Item{
                         content: hourDigit2
                         size: root.fontSize
                         x: text1.width - root.fontX
-                        font.family: "Titan One"
+                        font.family: SettingsConfig.general.displayFont ?? "Titan One"
                         color: "white"
                         style: Text.Raised
                         styleColor: Colors.outline
@@ -127,7 +127,7 @@ Item{
                 content: hourDigit2
                 size: root.fontSize
                 color:Colors.primary
-                font.family: "Titan One"
+                font.family: SettingsConfig.general.displayFont ?? "Titan One"
                 style: Text.Raised
                 styleColor: Colors.outline
                 weight: 600
@@ -138,7 +138,7 @@ Item{
                 Layout.rightMargin: 35
                 content: ":"
                 size: root.fontSize
-                font.family: "Titan One"
+                font.family: SettingsConfig.general.displayFont ?? "Titan One"
                 bottomPadding: 30
                 color: Colors.primary
                 style: Text.Raised
@@ -157,7 +157,7 @@ Item{
                     color:Colors.surfaceText
                     layer.enabled: true
                     visible: false
-                    font.family: "Titan One"
+                    font.family: SettingsConfig.general.displayFont ?? "Titan One"
                     renderType: Text.NativeRendering
                     style: Text.Raised
                     styleColor: Colors.outline
@@ -176,7 +176,7 @@ Item{
                         content: minuteDigit2
                         size: root.fontSize 
                         x: text2.width - root.fontX
-                        font.family: "Titan One"
+                        font.family: SettingsConfig.general.displayFont ?? "Titan One"
                         color: "white"
                         style: Text.Raised
                         styleColor: Colors.outline
@@ -198,7 +198,7 @@ Item{
                 content: minuteDigit2
                 size: root.fontSize
                 color:Colors.primary
-                font.family: "Titan One"
+                font.family: SettingsConfig.general.displayFont ?? "Titan One"
                 style: Text.Raised
                 styleColor: Colors.outline
                 weight: 600
@@ -211,7 +211,7 @@ Item{
             CustomText{
                 content: ServiceClock.day.slice(0, -3)
                 size: 100
-                font.family: "Titan One"
+                font.family: SettingsConfig.general.displayFont ?? "Titan One"
                 style: Text.Raised
                 styleColor: Colors.outline
                 weight: 600
@@ -220,7 +220,7 @@ Item{
             CustomText{
                 content: ServiceClock.day.slice(-3)
                 size: 100
-                font.family: "Titan One"
+                font.family: SettingsConfig.general.displayFont ?? "Titan One"
                 style: Text.Raised
                 styleColor: Colors.outline
                 weight: 600
@@ -235,7 +235,7 @@ Item{
                 Layout.alignment: Qt.AlignHCenter
                 content: ServiceClock.date
                 size: 40
-                font.family: "Titan One"
+                font.family: SettingsConfig.general.displayFont ?? "Titan One"
                 style: Text.Raised
                 styleColor: Colors.outline
                 weight: 600
@@ -246,7 +246,7 @@ Item{
                 content: ServiceClock.month
                 size: 40
                 color: Colors.primary
-                font.family: "Titan One"
+                font.family: SettingsConfig.general.displayFont ?? "Titan One"
                 style: Text.Raised
                 styleColor: Colors.outline
                 weight: 600
@@ -256,7 +256,7 @@ Item{
                 Layout.alignment: Qt.AlignHCenter
                 content: ServiceClock.year
                 size: 40
-                font.family: "Titan One"
+                font.family: SettingsConfig.general.displayFont ?? "Titan One"
                 style: Text.Raised
                 styleColor: Colors.outline
                 weight: 600

@@ -29,233 +29,148 @@ Item {
             anchors.topMargin: 5
             spacing: 0
 
-            // ── Header ───────────────────────────────────────────────────────
+            // ── Page header ──────────────────────────────────────
             RowLayout {
                 spacing: 10
-                MaterialIconSymbol {
-                    content: "menu_book"
-                    iconSize: 20
-                }
-                CustomText {
-                    content: "Manga Reader"
-                    size: 20
-                    color: Colors.primary
+                MaterialIconSymbol { content: "menu_book"; iconSize: 20 }
+                CustomText { content: "Manga Reader"; size: 20; customColor: Colors.primary }
+            }
+
+            // ── Content ──────────────────────────────────────────
+            CustomText { Layout.topMargin: 24; content: "Content"; size: 13; customColor: Colors.primary }
+
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 20
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Filter Adult Content"; size: 14 }
+                        CustomText { content: "Filters out 18+ titles from search results"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomToogle {
+                        isToggleOn: SettingsConfig.manga.filterAdult
+                        onToggled: (state) => SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, { filterAdult: state })
+                    }
                 }
             }
 
-            // ── Content ──────────────────────────────────────────────────────
-            CustomText {
-                Layout.topMargin: 30
-                content: "Content"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText {
-                content: "Control what types of content appear in search results"
-                size: 14
-                color: Colors.outline
-            }
+            // ── Reader ───────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Reader"; size: 13; customColor: Colors.primary }
 
-            // Filter Adult Content
-            RowLayout {
-                Layout.topMargin: 14
+            ColumnLayout {
+                Layout.topMargin: 6
                 Layout.fillWidth: true
-                ColumnLayout {
-                    spacing: 0
-                    CustomText {
-                        content: "Filter Adult Content"
-                        size: 16
-                    }
-                    CustomText {
-                        content: "Filters out 18+ titles from search results"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-                Item { Layout.fillWidth: true }
-                CustomToogle {
-                    isToggleOn: SettingsConfig.manga.filterAdult
-                    onToggled: (state) => SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, {filterAdult: state})
-                }
-            }
+                spacing: 3
 
-            Rectangle {
-                Layout.topMargin: 16
-                Layout.bottomMargin: 16
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
-            }
-
-            // ── Reader ───────────────────────────────────────────────────────
-            CustomText {
-                content: "Reader"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText {
-                content: "Tune scroll behavior, spacing, and image preloading"
-                size: 14
-                color: Colors.outline
-            }
-
-            // Scroll Speed
-            RowLayout {
-                Layout.topMargin: 14
-                Layout.fillWidth: true
-                ColumnLayout {
-                    spacing: 0
-                    CustomText {
-                        content: "Scroll Speed"
-                        size: 16
-                    }
-                    CustomText {
-                        content: "Higher values scroll faster per swipe"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-                Item { Layout.fillWidth: true }
-                CustomSpinBox {
-                    val: SettingsConfig.manga.scrollSpeed
-                    inc: 1
-                    limit: 30
-                    onValChanged: SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, {scrollSpeed: val})
-                }
-            }
-
-            // Page Spacing
-            RowLayout {
-                Layout.topMargin: 14
-                Layout.fillWidth: true
-                ColumnLayout {
-                    spacing: 0
-                    CustomText {
-                        content: "Page Spacing"
-                        size: 16
-                    }
-                    CustomText {
-                        content: "Vertical gap between consecutive pages"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-                Item { Layout.fillWidth: true }
-                CustomSpinBox {
-                    val: SettingsConfig.manga.pageSpacing
-                    inc: 2
-                    limit: 60
-                    onValChanged: SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, {pageSpacing: val})
-                }
-            }
-
-            // Preload Buffer
-            RowLayout {
-                Layout.topMargin: 14
-                Layout.fillWidth: true
-                ColumnLayout {
-                    spacing: 0
-                    CustomText {
-                        content: "Preload Buffer"
-                        size: 16
-                    }
-                    CustomText {
-                        content: "More pixels reduces load-in but uses more memory"
-                        size: 13
-                        color: Colors.outline
-                    }
-                }
-                Item { Layout.fillWidth: true }
-                CustomSpinBox {
-                    val: SettingsConfig.manga.preloadPages
-                    inc: 500
-                    limit: 8000
-                    onValChanged: SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, {preloadPages: val})
-                }
-            }
-
-            Rectangle {
-                Layout.topMargin: 16
-                Layout.bottomMargin: 16
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
-            }
-
-            // ── Source ───────────────────────────────────────────────────────
-            CustomText {
-                content: "Source"
-                size: 18
-                color: Colors.primary
-            }
-            CustomText {
-                content: "Sets the library searched when opening the reader"
-                size: 14
-                color: Colors.outline
-            }
-
-            RowLayout {
-                Layout.topMargin: 14
-                Layout.fillWidth: true
-
-                ButtonGroup {
-                    model: [
-                        { value: "comix",       label: "Comix.to",    icon: "public"   },
-                        { value: "weebcentral", label: "WEEBCentral", icon: "language" }
-                    ]
-                    activeCheck: function(v) { return SettingsConfig.manga.defaultSite === v }
-                    onSegmentClicked: function(v) {
-                        SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, { defaultSite: v })
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-            }
-
-            // Info note about default site
-            Rectangle {
-                Layout.topMargin: 12
-                Layout.fillWidth: true
-                Layout.preferredHeight: noteCol.implicitHeight + 16
-                radius: 10
-                color: Colors.surfaceContainer
-
-                ColumnLayout {
-                    id: noteCol
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 4
-
+                CustomCard {
+                    autoRadius: false; topRadius: 20; bottomRadius: 5
                     RowLayout {
-                        spacing: 6
-                        MaterialIconSymbol {
-                            content: "info"
-                            iconSize: 15
-                            color: Colors.outline
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Scroll Speed"; size: 14 }
+                            CustomText { content: "Higher values scroll faster per swipe"; size: 12; customColor: Colors.outline }
                         }
-                        CustomText {
-                            content: "Default site"
-                            size: 12
-                            color: Colors.outline
+                        Item { Layout.fillWidth: true }
+                        CustomSpinBox {
+                            color: Colors.surfaceContainerHighest
+                            val: SettingsConfig.manga.scrollSpeed
+                            inc: 1; limit: 30
+                            onValChanged: SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, { scrollSpeed: val })
                         }
                     }
-                    CustomText {
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    RowLayout {
                         Layout.fillWidth: true
-                        content: "This sets the active source the next time the app launches. Switch sources anytime from the manga panel."
-                        size: 12
-                        color: Colors.outline
-                        wrapMode: Text.WordWrap
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Page Spacing"; size: 14 }
+                            CustomText { content: "Vertical gap between consecutive pages"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomSpinBox {
+                            color: Colors.surfaceContainerHighest
+                            val: SettingsConfig.manga.pageSpacing
+                            inc: 2; limit: 60
+                            onValChanged: SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, { pageSpacing: val })
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Preload Buffer"; size: 14 }
+                            CustomText { content: "More pixels reduces load-in but uses more memory"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomSpinBox {
+                            color: Colors.surfaceContainerHighest
+                            val: SettingsConfig.manga.preloadPages
+                            inc: 500; limit: 8000
+                            onValChanged: SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, { preloadPages: val })
+                        }
                     }
                 }
             }
 
-            Rectangle {
-                Layout.topMargin: 16
-                Layout.bottomMargin: 10
+            // ── Source ───────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Source"; size: 13; customColor: Colors.primary }
+
+            ColumnLayout {
+                Layout.topMargin: 6
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Colors.outline
+                spacing: 3
+
+                CustomCard {
+                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Default Site"; size: 14 }
+                            CustomText { content: "Library searched when opening the reader"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        ButtonGroup {
+                            model: [
+                                { value: "comix",       label: "Comix.to",    icon: "public"   },
+                                { value: "weebcentral", label: "WEEBCentral", icon: "language" }
+                            ]
+                            activeCheck: function(v) { return SettingsConfig.manga.defaultSite === v }
+                            onSegmentClicked: function(v) {
+                                SettingsConfig.manga = Object.assign({}, SettingsConfig.manga, { defaultSite: v })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    RowLayout {
+                        spacing: 8
+                        MaterialIconSymbol { content: "info"; iconSize: 16; customColor: Colors.outline }
+                        CustomText {
+                            Layout.fillWidth: true
+                            content: "Switch sources anytime from the manga panel. This sets the default for the next launch."
+                            size: 12; customColor: Colors.outline
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
             }
+
+            Item { Layout.preferredHeight: 20 }
         }
     }
 }

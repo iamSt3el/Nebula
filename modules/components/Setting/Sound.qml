@@ -48,278 +48,279 @@ Item {
             anchors.topMargin: 5
             spacing: 0
 
-            // ── Header ────────────────────────────────────────────────────────
+            // ── Page header ──────────────────────────────────────────────
             RowLayout {
                 spacing: 10
                 MaterialIconSymbol { content: "volume_up"; iconSize: 20 }
-                CustomText { content: "Sound"; size: 20; color: Colors.primary }
+                CustomText { content: "Sound"; size: 20; customColor: Colors.primary }
             }
 
-            // ── Output ────────────────────────────────────────────────────────
-            CustomText { Layout.topMargin: 30; content: "Output"; size: 18; color: Colors.primary }
-            CustomText { content: "Adjust volume and choose your playback device"; size: 14; color: Colors.outline }
+            // ── Output ───────────────────────────────────────────────────
+            CustomText { Layout.topMargin: 24; content: "Output"; size: 13; customColor: Colors.primary }
 
-            // Output device row
-            RowLayout {
-                Layout.topMargin: 14
+            ColumnLayout {
                 Layout.fillWidth: true
-                ColumnLayout {
-                    spacing: 0
-                    CustomText { content: "Output Device"; size: 16 }
-                    CustomText { content: "Active output sink"; size: 13; color: Colors.outline }
-                }
-                Item { Layout.fillWidth: true }
-                CustomListNew {
-                    Layout.preferredWidth: 200
-                    Layout.preferredHeight: 30
-                    currentVal: ServicePipewire.sink?.description ?? ""
-                    list: root.sinkList
-                    onCurrentValChanged: {
-                        if (!currentVal) return
-                        for (let i = 0; i < ServicePipewire.sinks.length; i++) {
-                            if (ServicePipewire.sinks[i].description === currentVal) {
-                                ServicePipewire.setAudioSink(ServicePipewire.sinks[i])
-                                return
+                Layout.topMargin: 6
+                spacing: 3
+
+                // Output device
+                CustomCard {
+                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Output Device"; size: 14 }
+                            CustomText { content: "Active output sink"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomListNew {
+                            Layout.preferredWidth: 200
+                            Layout.preferredHeight: 30
+                            color: Colors.surfaceContainerHighest
+                            currentVal: ServicePipewire.sink?.description ?? ""
+                            list: root.sinkList
+                            onCurrentValChanged: {
+                                if (!currentVal) return
+                                for (let i = 0; i < ServicePipewire.sinks.length; i++) {
+                                    if (ServicePipewire.sinks[i].description === currentVal) {
+                                        ServicePipewire.setAudioSink(ServicePipewire.sinks[i])
+                                        return
+                                    }
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // Volume control row
-            RowLayout {
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                spacing: 6
+                // Volume
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
 
-                ButtonGroup {
-                    model: [
-                        { value: false, icon: "volume_up"  },
-                        { value: true,  icon: "volume_off" }
-                    ]
-                    activeCheck: function(v) { return ServicePipewire.muted === v }
-                    onSegmentClicked: function(v) {
-                        if (ServicePipewire.muted !== v) ServicePipewire.toggleMute()
-                    }
-                }
-
-                // Slider track
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    radius: 10
-                    color: Colors.surfaceContainerHigh
-
-                    CustomSliderNew {
-                        anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 10
-                        progress: ServicePipewire.volume
-                        peakLevel: outputPeak.peak
-                        showPeak: true
-                        onProgressChanged: {
-                            if (Math.abs(progress - ServicePipewire.volume) > 0.005)
-                                ServicePipewire.setVolume(progress)
-                        }
-                    }
-                }
-
-                // Volume percentage badge
-                Rectangle {
-                    implicitWidth: 50
-                    implicitHeight: 36
-                    radius: 10
-                    color: Colors.surfaceContainerHigh
-                    CustomText {
-                        anchors.centerIn: parent
-                        content: Math.round(ServicePipewire.volume * 100) + "%"
-                        size: 13
-                        weight: 600
-                    }
-                }
-            }
-
-            // ── Divider ───────────────────────────────────────────────────────
-            Rectangle {
-                Layout.topMargin: 20; Layout.bottomMargin: 20
-                Layout.fillWidth: true; Layout.preferredHeight: 1
-                color: Colors.outline
-            }
-
-            // ── Input ─────────────────────────────────────────────────────────
-            CustomText { content: "Input"; size: 18; color: Colors.primary }
-            CustomText { content: "Set mic levels and choose your input device"; size: 14; color: Colors.outline }
-
-            // Input device row
-            RowLayout {
-                Layout.topMargin: 14
-                Layout.fillWidth: true
-                ColumnLayout {
-                    spacing: 0
-                    CustomText { content: "Input Device"; size: 16 }
-                    CustomText { content: "Active input source"; size: 13; color: Colors.outline }
-                }
-                Item { Layout.fillWidth: true }
-                CustomListNew {
-                    Layout.preferredWidth: 200
-                    Layout.preferredHeight: 30
-                    currentVal: ServicePipewire.source?.description ?? ""
-                    list: root.sourceList
-                    onCurrentValChanged: {
-                        if (!currentVal) return
-                        for (let i = 0; i < ServicePipewire.sources.length; i++) {
-                            if (ServicePipewire.sources[i].description === currentVal) {
-                                ServicePipewire.setAudioSource(ServicePipewire.sources[i])
-                                return
+                        ButtonGroup {
+                            model: [
+                                { value: false, icon: "volume_up"  },
+                                { value: true,  icon: "volume_off" }
+                            ]
+                            activeCheck: function(v) { return ServicePipewire.muted === v }
+                            onSegmentClicked: function(v) {
+                                if (ServicePipewire.muted !== v) ServicePipewire.toggleMute()
                             }
                         }
-                    }
-                }
-            }
-
-            // Mic level row
-            RowLayout {
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                spacing: 6
-
-                ButtonGroup {
-                    model: [
-                        { value: false, icon: "mic"     },
-                        { value: true,  icon: "mic_off" }
-                    ]
-                    activeCheck: function(v) { return ServicePipewire.micMuted === v }
-                    onSegmentClicked: function(v) {
-                        if (ServicePipewire.micMuted !== v) ServicePipewire.toggleMicMute()
-                    }
-                }
-
-                // Mic peak bar
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    radius: 10
-                    color: Colors.surfaceContainerHigh
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 10
-                        anchors.right: parent.right
-                        anchors.rightMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 6
-                        radius: 10
-                        color: Colors.surfaceContainerHighest
 
                         Rectangle {
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            height: parent.height
-                            radius: parent.radius
-                            width: parent.width * inputPeak.peak
-                            color: inputPeak.peak > 0.85 ? Colors.error : Colors.primary
-                            Behavior on width { NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
-                            Behavior on color { ColorAnimation { duration: 100 } }
-                        }
-                    }
-                }
-
-                // Mic level percentage
-                Rectangle {
-                    implicitWidth: 50
-                    implicitHeight: 36
-                    radius: 10
-                    color: Colors.surfaceContainerHigh
-                    CustomText {
-                        anchors.centerIn: parent
-                        content: Math.round(inputPeak.peak * 100) + "%"
-                        size: 13
-                        weight: 600
-                    }
-                }
-            }
-
-            // ── Divider ───────────────────────────────────────────────────────
-            Rectangle {
-                Layout.topMargin: 20; Layout.bottomMargin: 20
-                Layout.fillWidth: true; Layout.preferredHeight: 1
-                color: Colors.outline
-            }
-
-            // ── Playbacks ─────────────────────────────────────────────────────
-            CustomText { content: "Playbacks"; size: 18; color: Colors.primary }
-            CustomText { content: "Per-app volume for currently running streams"; size: 14; color: Colors.outline }
-
-            Repeater {
-                model: ServicePipewire.playbacks
-
-                delegate: Rectangle {
-                    Layout.topMargin: index === 0 ? 14 : 4
-                    Layout.fillWidth: true
-                    implicitHeight: streamRow.implicitHeight + 24
-                    color: Colors.surfaceContainerHigh
-                    topLeftRadius:     index === 0 ? 15 : 5
-                    topRightRadius:    index === 0 ? 15 : 5
-                    bottomLeftRadius:  index === ServicePipewire.playbacks.length - 1 ? 15 : 5
-                    bottomRightRadius: index === ServicePipewire.playbacks.length - 1 ? 15 : 5
-
-                    RowLayout {
-                        id: streamRow
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 12
-
-                        // App icon
-                        Image {
-                            Layout.preferredWidth: 36
-                            Layout.preferredHeight: 36
-                            Layout.alignment: Qt.AlignVCenter
-                            source: IconUtil.getIconPath(modelData.name)
-                            sourceSize: Qt.size(width, height)
-                            fillMode: Image.PreserveAspectFit
-                        }
-
-                        // App name + media name + slider
-                        ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 4
+                            Layout.preferredHeight: 36
+                            radius: 10
+                            color: Colors.surfaceContainerHighest
 
-                            RowLayout {
+                            CustomSliderNew {
+                                anchors.fill: parent
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+                                progress: ServicePipewire.volume
+                                peakLevel: outputPeak.peak
+                                showPeak: true
+                                onProgressChanged: {
+                                    if (Math.abs(progress - ServicePipewire.volume) > 0.005)
+                                        ServicePipewire.setVolume(progress)
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            implicitWidth: 50
+                            implicitHeight: 36
+                            radius: 10
+                            color: Colors.surfaceContainerHighest
+                            CustomText {
+                                anchors.centerIn: parent
+                                content: Math.round(ServicePipewire.volume * 100) + "%"
+                                size: 13
+                                weight: 600
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Input ────────────────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Input"; size: 13; customColor: Colors.primary }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 6
+                spacing: 3
+
+                // Input device
+                CustomCard {
+                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Input Device"; size: 14 }
+                            CustomText { content: "Active input source"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomListNew {
+                            Layout.preferredWidth: 200
+                            Layout.preferredHeight: 30
+                            color: Colors.surfaceContainerHighest
+                            currentVal: ServicePipewire.source?.description ?? ""
+                            list: root.sourceList
+                            onCurrentValChanged: {
+                                if (!currentVal) return
+                                for (let i = 0; i < ServicePipewire.sources.length; i++) {
+                                    if (ServicePipewire.sources[i].description === currentVal) {
+                                        ServicePipewire.setAudioSource(ServicePipewire.sources[i])
+                                        return
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Mic level
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        ButtonGroup {
+                            model: [
+                                { value: false, icon: "mic"     },
+                                { value: true,  icon: "mic_off" }
+                            ]
+                            activeCheck: function(v) { return ServicePipewire.micMuted === v }
+                            onSegmentClicked: function(v) {
+                                if (ServicePipewire.micMuted !== v) ServicePipewire.toggleMicMute()
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+                            radius: 10
+                            color: Colors.surfaceContainerHighest
+
+                            Rectangle {
+                                anchors.left: parent.left; anchors.leftMargin: 10
+                                anchors.right: parent.right; anchors.rightMargin: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                height: 6
+                                radius: 10
+                                color: Colors.surfaceContainer
+
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    height: parent.height
+                                    radius: parent.radius
+                                    width: parent.width * inputPeak.peak
+                                    color: inputPeak.peak > 0.85 ? Colors.error : Colors.primary
+                                    Behavior on width { NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
+                                    Behavior on color { ColorAnimation { duration: 100 } }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            implicitWidth: 50
+                            implicitHeight: 36
+                            radius: 10
+                            color: Colors.surfaceContainerHighest
+                            CustomText {
+                                anchors.centerIn: parent
+                                content: Math.round(inputPeak.peak * 100) + "%"
+                                size: 13
+                                weight: 600
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Playbacks ─────────────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Playbacks"; size: 13; customColor: Colors.primary }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 6
+                spacing: 3
+
+                Repeater {
+                    model: ServicePipewire.playbacks
+
+                    delegate: Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: streamRow.implicitHeight + 24
+                        color: Colors.surfaceContainerHigh
+                        topLeftRadius:     index === 0 ? 20 : 5
+                        topRightRadius:    index === 0 ? 20 : 5
+                        bottomLeftRadius:  index === ServicePipewire.playbacks.length - 1 ? 20 : 5
+                        bottomRightRadius: index === ServicePipewire.playbacks.length - 1 ? 20 : 5
+
+                        RowLayout {
+                            id: streamRow
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 12
+
+                            Image {
+                                Layout.preferredWidth: 36
+                                Layout.preferredHeight: 36
+                                Layout.alignment: Qt.AlignVCenter
+                                source: IconUtil.getIconPath(modelData.name)
+                                sourceSize: Qt.size(width, height)
+                                fillMode: Image.PreserveAspectFit
+                            }
+
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 0
+                                spacing: 4
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+
+                                    CustomText {
+                                        Layout.fillWidth: true
+                                        content: modelData.properties?.["application.name"] || modelData.name
+                                        size: 14
+                                        customColor: Colors.primary
+                                    }
+
+                                    CustomText {
+                                        content: Math.round((modelData.audio?.volume ?? 0) * 100) + "%"
+                                        size: 12
+                                        customColor: Colors.outline
+                                    }
+                                }
 
                                 CustomText {
                                     Layout.fillWidth: true
-                                    content: modelData.properties?.["application.name"] || modelData.name
-                                    size: 14
-                                    color: Colors.primary
-                                }
-
-                                CustomText {
-                                    content: Math.round((modelData.audio?.volume ?? 0) * 100) + "%"
+                                    content: modelData.properties?.["media.name"] ?? ""
                                     size: 12
-                                    color: Colors.outline
+                                    customColor: Colors.outline
+                                    visible: (modelData.properties?.["media.name"] ?? "").length > 0
                                 }
-                            }
 
-                            CustomText {
-                                Layout.fillWidth: true
-                                content: modelData.properties?.["media.name"] ?? ""
-                                size: 12
-                                color: Colors.outline
-                                visible: (modelData.properties?.["media.name"] ?? "").length > 0
-                            }
-
-                            CustomSliderNew {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 18
-                                handleSize: 12
-                                trackHeight: 4
-                                progress: modelData.audio?.volume ?? 0
-                                onProgressChanged: {
-                                    const cur = modelData.audio?.volume ?? 0
-                                    if (Math.abs(progress - cur) > 0.005)
-                                        ServicePipewire.setSinkVolume(modelData, progress)
+                                CustomSliderNew {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 18
+                                    handleSize: 12
+                                    trackHeight: 4
+                                    progress: modelData.audio?.volume ?? 0
+                                    onProgressChanged: {
+                                        const cur = modelData.audio?.volume ?? 0
+                                        if (Math.abs(progress - cur) > 0.005)
+                                            ServicePipewire.setSinkVolume(modelData, progress)
+                                    }
                                 }
                             }
                         }
@@ -327,7 +328,7 @@ Item {
                 }
             }
 
-            Item { Layout.preferredHeight: 16 }
+            Item { Layout.preferredHeight: 20 }
         }
     }
 }

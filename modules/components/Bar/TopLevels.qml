@@ -16,17 +16,15 @@ Item{
         width: contentWidth
         height: parent.height
         orientation: Qt.Horizontal
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: 5
-        spacing: 5
+        spacing: 2
         interactive: false
+        anchors.centerIn: parent
         model: currentWorkspace && currentWorkspace.toplevels
-        
+
         delegate: Item{
             id: iconItem
-            height: 20
-            width: 20
+            height: 40
+            width: 25
             anchors.verticalCenter: parent?.verticalCenter
 
 

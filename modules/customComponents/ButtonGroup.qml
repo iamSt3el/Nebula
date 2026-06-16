@@ -25,16 +25,19 @@ Item {
     property color inactiveColor: Colors.surfaceContainerHighest
     property color inactiveTextColor: Colors.surfaceText
 
+    property bool fillWidth: false
+
     readonly property real fullRadius: height / 2
     readonly property real innerRadius: 4
     readonly property real gap: 2
 
     height: 30
-    implicitWidth: _row.implicitWidth
+    implicitWidth: fillWidth ? root.width : _row.implicitWidth
 
     Row {
         id: _row
         height: parent.height
+        width: root.fillWidth ? root.width : implicitWidth
         spacing: root.gap
 
         Repeater {
@@ -53,6 +56,9 @@ Item {
 
                 height: root.height
                 implicitWidth: _content.implicitWidth + 22
+                width: root.fillWidth
+                    ? (root.width - (root.model.length - 1) * root.gap) / Math.max(root.model.length, 1)
+                    : implicitWidth
 
                 // Fill
                 Rectangle {

@@ -5,66 +5,56 @@ import qs.modules.customComponents
 import qs.modules.services
 import qs.modules.utils
 
-Rectangle{
+RowLayout {
     id: root
-    implicitHeight: 25
-    implicitWidth: row.implicitWidth + 10
-    //implicitWidth: 40
-    color: Colors.surfaceContainerHigh
-    radius: 10
+    spacing: 2
 
     property bool menuClicked: false
     property QsMenuHandle menuData
 
-    Behavior on implicitWidth{
-        NumberAnimation{
-            duration: 100
-            easing.type: Easing.OutQuad
-        }
-    }
-
-
-
-    Loader{
-        active: root.menuClicked 
-        sourceComponent:SystemTrayMenu{
+    Loader {
+        active: root.menuClicked
+        sourceComponent: SystemTrayMenu {
             menuData: root.menuData
             onClose: root.menuClicked = false
         }
     }
 
-    RowLayout{
-        id: row
-        anchors.centerIn: parent
-        anchors.margins: 10
-        spacing: 10
-        Repeater{
-            model: ServiceSystemTray.items
-            delegate:CustomIconImage{
+    Repeater {
+        model: ServiceSystemTray.items
+
+        delegate: Rectangle {
+            id: trayItem
+            required property var modelData
+
+            implicitWidth: 30; implicitHeight: 30
+            radius: 15
+            color: iconArea.containsMouse ? Colors.primaryContainer : "transparent"
+            Behavior on color { ColorAnimation { duration: 150 } }
+
+            CustomIconImage {
+                anchors.centerIn: parent
                 isColor: false
-                source: modelData.icon
-                size: 16
+                source: trayItem.modelData.icon
+                size: 18
+            }
 
-                CustomMouseArea{
-                    radius: 0
-                    id: iconArea
-                    hoverEnabled: true
-                    acceptedButtons: Qt.RightButton | Qt.LeftButton
-                    cursorShape: Qt.PointingHandCursor
+            MouseArea {
+                id: iconArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                acceptedButtons: Qt.RightButton | Qt.LeftButton
 
-                    onClicked: function(mouse){
-                        if(mouse.button === Qt.RightButton && modelData.hasMenu){
-                            root.menuClicked = true
-                            root.menuData = modelData.menu
-                            //modelData.display(layout, utility.x, utility.height)
-                        }
-                        if(mouse.button === Qt.LeftButton){
-                            modelData.activate()
-                        }
+                onClicked: event => {
+                    if (event.button === Qt.RightButton && trayItem.modelData.hasMenu) {
+                        root.menuClicked = true
+                        root.menuData    = trayItem.modelData.menu
+                    } else if (event.button === Qt.LeftButton) {
+                        trayItem.modelData.activate()
                     }
                 }
             }
         }
     }
-
 }

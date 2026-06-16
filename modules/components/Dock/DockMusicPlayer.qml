@@ -8,69 +8,136 @@ import qs.modules.settings
 import qs.modules.customComponents
 import qs.modules.services
 
+Rectangle {
+    id: player
+    radius: 14
+    color: Colors.surfaceContainerHigh
 
-Rectangle{
-    radius: 10
-    color: Colors.surfaceContainerHighest
+    readonly property bool hasTrack: ServiceMusic.activeTrack !== null
 
-    RowLayout{
+    RowLayout {
         anchors.fill: parent
-        anchors.margins: 4
-        ClippingWrapperRectangle{
-            Layout.fillHeight: true
-            Layout.preferredWidth: height
-            radius: 10
-            color: Colors.surfaceContainerHigh
-            Image{
+        anchors.leftMargin: 8
+        anchors.rightMargin: 8
+        anchors.topMargin: 4
+        anchors.bottomMargin: 4
+        spacing: 6
+
+        // ── Album art ─────────────────────────────────────────────────────
+        ClippingWrapperRectangle {
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            radius: 8
+            color: Colors.surfaceContainerHighest
+
+            Item {
                 anchors.fill: parent
-                sourceSize: Qt.size(width, height)
-                source: ServiceMusic.activeTrack?.artUrl ?? ""
+
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: "music_note"
+                    iconSize: 18
+                    customColor: Colors.outline
+                    visible: !player.hasTrack || (ServiceMusic.activeTrack?.artUrl ?? "") === ""
+                }
+
+                Image {
+                    anchors.fill: parent
+                    sourceSize: Qt.size(width, height)
+                    source: ServiceMusic.activeTrack?.artUrl ?? ""
+                    fillMode: Image.PreserveAspectCrop
+                    visible: player.hasTrack && source !== ""
+                }
             }
         }
 
-        ColumnLayout{
-            Layout.fillHeight: true
-            spacing: 0
-            CustomText{
+        // ── Track info ────────────────────────────────────────────────────
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2
+
+            CustomText {
                 Layout.fillWidth: true
-                content: ServiceMusic.activeTrack?.title ?? "Unknown Title"
+                content: ServiceMusic.activeTrack?.title ?? "Nothing playing"
                 size: 12
+                weight: 600
+                elide: Text.ElideRight
+                customColor: player.hasTrack ? Colors.surfaceText : Colors.outline
             }
-            CustomText{
+
+            CustomText {
                 Layout.fillWidth: true
-                content: ServiceMusic.activeTrack?.artist ?? "Unknown Artist"
-                color: Colors.outline
+                content: ServiceMusic.activeTrack?.artist ?? ""
                 size: 10
+                customColor: Colors.outline
+                elide: Text.ElideRight
+                visible: (ServiceMusic.activeTrack?.artist ?? "").length > 0
             }
         }
 
-        MaterialIconSymbol{
-            content: ServiceMusic.isPlaying ? "pause" : "play_arrow"
-            iconSize: 18
+        // ── Controls ──────────────────────────────────────────────────────
 
-            CustomMouseArea{
-                radius: 0
-                id: loopArea
-                cursorShape: Qt.PointingHandCursor
-                hoverEnabled: true
-                onClicked:{
-                    ServiceMusic.togglePlaying()
-                }
+        // Previous
+        Rectangle {
+            implicitWidth: 24; implicitHeight: 24; radius: 7
+            color: prevArea.containsMouse ? Qt.alpha(Colors.primary, 0.12) : "transparent"
+            Behavior on color { ColorAnimation { duration: 120 } }
+
+            MaterialIconSymbol {
+                anchors.centerIn: parent
+                content: "skip_previous"; iconSize: 16
+                customColor: prevArea.containsMouse ? Colors.primary : Colors.outline
+                Behavior on customColor { ColorAnimation { duration: 120 } }
+            }
+
+            MouseArea {
+                id: prevArea
+                anchors.fill: parent
+                hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                onClicked: ServiceMusic.previous()
             }
         }
 
-        MaterialIconSymbol{
-            content: "skip_next"
-            iconSize: 18
+        // Play / Pause
+        Rectangle {
+            implicitWidth: 28; implicitHeight: 28; radius: 9
+            color: playArea.containsMouse ? Colors.primary : Colors.primaryContainer
+            Behavior on color { ColorAnimation { duration: 120 } }
 
-            CustomMouseArea{
-                radius: 0
-                id: nArea
-                cursorShape: Qt.PointingHandCursor
-                hoverEnabled: true
-                onClicked:{
-                    ServiceMusic.next()
-                }
+            MaterialIconSymbol {
+                anchors.centerIn: parent
+                content: ServiceMusic.isPlaying ? "pause" : "play_arrow"
+                iconSize: 17
+                customColor: playArea.containsMouse ? Colors.primaryText : Colors.primaryContainerText
+                Behavior on customColor { ColorAnimation { duration: 120 } }
+            }
+
+            MouseArea {
+                id: playArea
+                anchors.fill: parent
+                hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                onClicked: ServiceMusic.togglePlaying()
+            }
+        }
+
+        // Next
+        Rectangle {
+            implicitWidth: 24; implicitHeight: 24; radius: 7
+            color: nextArea.containsMouse ? Qt.alpha(Colors.primary, 0.12) : "transparent"
+            Behavior on color { ColorAnimation { duration: 120 } }
+
+            MaterialIconSymbol {
+                anchors.centerIn: parent
+                content: "skip_next"; iconSize: 16
+                customColor: nextArea.containsMouse ? Colors.primary : Colors.outline
+                Behavior on customColor { ColorAnimation { duration: 120 } }
+            }
+
+            MouseArea {
+                id: nextArea
+                anchors.fill: parent
+                hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                onClicked: ServiceMusic.next()
             }
         }
     }

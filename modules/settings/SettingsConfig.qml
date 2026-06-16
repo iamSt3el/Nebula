@@ -16,6 +16,7 @@ Singleton {
     property alias screenshot: settingsAdapter.screenshot
     property alias widgets: settingsAdapter.widgets
     property alias weather: settingsAdapter.weather
+    property alias notifications: settingsAdapter.notifications
 
     Timer {
         id: writeTimer
@@ -55,8 +56,13 @@ Singleton {
                 musicVisOn: true,
                 profile: "/home/steel/Downloads/DANDADAN.jpg",
                 defaultFont: "Rubik",
+                displayFont: "Titan One",
+                fontScale: "normal",
+                fontWeight: "extrabold",
                 musicVisBars: 60,
-                wallpaperDir: "/home/steel/wallpaper"
+                wallpaperDir: "/home/steel/wallpaper",
+                workspaceCount: 10,
+                showWorkspaceNumbers: false
             })
 
             property var general: ({
@@ -68,8 +74,13 @@ Singleton {
                 musicVisOn: true,
                 profile: "/home/steel/Downloads/DANDADAN.jpg",
                 defaultFont: "Rubik",
+                displayFont: "Titan One",
+                fontScale: "normal",
+                fontWeight: "extrabold",
                 musicVisBars: 60,
-                wallpaperDir: "/home/steel/wallpaper"
+                wallpaperDir: "/home/steel/wallpaper",
+                workspaceCount: 10,
+                showWorkspaceNumbers: false
             })
 
             onGeneralChanged: {
@@ -159,16 +170,33 @@ Singleton {
             property var widgets: ({
                 clockX: 100,
                 clockY: 100,
-                temperatureX: 600,
-                temperatureY: 100,
                 musicPlayerX: 200,
-                musicPlayerY: 200
+                musicPlayerY: 200,
+                dateWidgetX: 300,
+                dateWidgetY: 300,
+                analogClockX: 400,
+                analogClockY: 200,
+                showCircularMusicPlayer: true,
+                showClock: false,
+                showDateWidget: false,
+                showAnalogClock: false,
+                analogClockStyle: "classic",
+                dateWidgetStyle: "default"
             })
 
             property var weather: ({
                 location: "Chirawa",
                 useMetric: true,
                 refreshInterval: 15
+            })
+
+            property var notifications: ({
+                doNotDisturb: false,
+                showBanners: true,
+                popupTimeout: 5,
+                maxVisible: 3,
+                showInCenter: true,
+                playSound: false
             })
 
             property var toggles: ({

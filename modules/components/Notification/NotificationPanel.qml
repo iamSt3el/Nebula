@@ -108,18 +108,54 @@ Item {
 
                     // App icon
                     Rectangle {
+                        id: iconRect
                         Layout.preferredWidth: 44
                         Layout.preferredHeight: 44
                         Layout.alignment: Qt.AlignTop
                         radius: 12
-                        color: Qt.alpha(Colors.primary, 0.12)
+
+                        function resolveSymbol(appIcon, appName) {
+                            const ic = (appIcon || "").toLowerCase()
+                            const ap = (appName || "").toLowerCase()
+                            if (ic.includes("camera-photo") || ap.includes("screenshot")) return "photo_camera"
+                            if (ic.includes("camera-video") || ap.includes("record"))     return "screen_record"
+                            if (ic.includes("dialog-error") || ic.includes("error"))      return "error_outline"
+                            if (ic.includes("bluetooth"))                                  return "bluetooth"
+                            if (ic.includes("network") || ic.includes("wifi"))            return "wifi"
+                            if (ic.includes("battery"))                                    return "battery_std"
+                            if (ic.includes("volume") || ic.includes("audio"))            return "volume_up"
+                            return ""
+                        }
+
+                        readonly property string symbol: iconRect.resolveSymbol(popup.modelData.appIcon, popup.modelData.appName)
+                        readonly property bool usesSymbol: iconRect.symbol !== ""
+
+                        color: iconRect.usesSymbol ? Colors.primaryContainer : Qt.alpha(Colors.primary, 0.12)
+
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: iconRect.symbol
+                            iconSize: 22
+                            customColor: Colors.primaryContainerText
+                            visible: iconRect.usesSymbol
+                        }
 
                         Image {
+                            id: panelIcon
                             anchors.fill: parent
                             anchors.margins: 7
-                            source: IconUtil.getIconPath(popup.modelData.appIcon)
+                            source: iconRect.usesSymbol ? "" : IconUtil.getIconPath(popup.modelData.appIcon)
                             sourceSize: Qt.size(width, height)
                             fillMode: Image.PreserveAspectFit
+                            visible: !iconRect.usesSymbol && status === Image.Ready
+                        }
+
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: "notifications"
+                            iconSize: 20
+                            customColor: Colors.primaryContainerText
+                            visible: !iconRect.usesSymbol && panelIcon.status !== Image.Ready
                         }
                     }
 
@@ -128,13 +164,35 @@ Item {
                         Layout.fillWidth: true
                         spacing: 3
 
-                        // App name
-                        CustomText {
-                            content: popup.modelData.appName ?? ""
-                            size: 11
-                            weight: 600
-                            color: Colors.primary
+                        // App name · time inline
+                        RowLayout {
+                            spacing: 4
                             visible: (popup.modelData.appName ?? "").length > 0
+
+                            CustomText {
+                                content: popup.modelData.appName ?? ""
+                                size: 11
+                                weight: 600
+                                color: Colors.primary
+                            }
+
+                            CustomText {
+                                content: "·"
+                                size: 10
+                                color: Colors.outline
+                            }
+
+                            CustomText {
+                                content: {
+                                    var diff = Date.now() - (popup.modelData.arrivalTimestamp ?? Date.now())
+                                    var mins = Math.floor(diff / 60000)
+                                    if (mins < 1)  return "now"
+                                    if (mins < 60) return mins + "m ago"
+                                    return Math.floor(mins / 60) + "h ago"
+                                }
+                                size: 10
+                                color: Colors.outline
+                            }
                         }
 
                         // Summary
@@ -182,8 +240,6 @@ Item {
                     }
                 }
             }
-
-
         }
     }
 }

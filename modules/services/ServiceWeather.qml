@@ -13,6 +13,7 @@ Singleton {
     property int refreshInterval: (SettingsConfig.weather.refreshInterval ?? 15) * 60000
     property bool isLoading: false
     property bool hasError: false
+    property var lastUpdated: null
 
     // Weather data properties
     property var currentCondition: null
@@ -160,6 +161,7 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 root.isLoading = false
+                root.lastUpdated = new Date()
                 if (text.length === 0) {
                     root.hasError = true
                     return

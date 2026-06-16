@@ -23,12 +23,19 @@ Singleton{
     Connections {
         target: WfRecorder
         function onRecordingStopped(duration) {
-            ServiceNotification.sendNotification(
-                "Recording Stopped",
-                "Duration: " + Math.floor(duration / 60) + ":" + String(duration % 60).padStart(2, "0"),
-                "Recording",
-                "camera-video"
-            )
+            const path = root.lastFilename
+            const dur  = Math.floor(duration / 60) + ":" + String(duration % 60).padStart(2, "0")
+            const safe = "'" + path.replace(/'/g, "'\\''") + "'"
+            const dir  = "'" + path.replace(/'/g, "'\\''").replace(/\/[^/]*$/, "") + "'"
+            Quickshell.execDetached(["sh", "-c",
+                'A=$(notify-send "Recording Saved" "Duration: ' + dur + '" --app-icon=camera-video ' +
+                '--action="open=Open" --action="folder=Show in Folder" --action="delete=Delete" --wait); ' +
+                'case "$A" in ' +
+                'open)   xdg-open ' + safe + ' ;; ' +
+                'folder) xdg-open ' + dir  + ' ;; ' +
+                'delete) rm -- '    + safe + ' ;; ' +
+                'esac'
+            ])
         }
         function onRecordingError(message) {
             ServiceNotification.sendNotification(
@@ -55,30 +62,53 @@ Singleton{
             shutterSound.play()
     }
 
-    // Fires after sleep 0.5 + grimblast completes (~900 ms total)
-    Timer {
-        id: screenShotFeedbackTimer
-        interval: 900
-        repeat: false
-        onTriggered: {
+    // Captures the path grimblast prints to stdout, then sends a notification with actions
+    property string _screenshotPath: ""
+
+    Process {
+        id: screenshotProc
+        stdout: SplitParser {
+            onRead: line => {
+                const p = line.trim()
+                if (p !== "") root._screenshotPath = p
+            }
+        }
+        onExited: {
             root.playShutterSound()
-            ServiceNotification.sendNotification("Screenshot", "Screen captured", "Screenshot", "camera-photo")
+            root._sendScreenshotNotif(root._screenshotPath)
+            root._screenshotPath = ""
         }
     }
 
-    // Process-based area screenshot so onExited gives us a reliable callback
     Process {
         id: areaScreenshotProc
         onExited: {
             root.playShutterSound()
-            ServiceNotification.sendNotification("Screenshot", "Area screenshot saved", "Screenshot", "camera-photo")
+            root._sendScreenshotNotif(root._areaScreenshotPath)
         }
+    }
+
+    property string _areaScreenshotPath: ""
+
+    function _sendScreenshotNotif(path) {
+        if (path === "") return
+        const safe = "'" + path.replace(/'/g, "'\\''") + "'"
+        const dir  = "'" + path.replace(/'/g, "'\\''").replace(/\/[^/]*$/, "") + "'"
+        Quickshell.execDetached(["sh", "-c",
+            'A=$(notify-send "Screenshot" ' + safe + ' --app-icon=camera-photo ' +
+            '--action="open=Open" --action="folder=Show in Folder" --action="delete=Delete" --wait); ' +
+            'case "$A" in ' +
+            'open)   xdg-open ' + safe + ' ;; ' +
+            'folder) xdg-open ' + dir  + ' ;; ' +
+            'delete) rm -- '    + safe + ' ;; ' +
+            'esac'
+        ])
     }
 
     property var tools: [
         {
             name: "Record",
-            icon: "videocam",
+            icon: "screen_record",
             options:[
                 {
                     name: "Screen",
@@ -233,8 +263,8 @@ Singleton{
 
     function takeScreenshot(mode) {
         if (mode === "Screen") {
-            Quickshell.execDetached(["sh", "-c", "sleep 0.5 && grimblast copysave output"])
-            screenShotFeedbackTimer.restart()
+            screenshotProc.command = ["sh", "-c", "sleep 0.5 && grimblast copysave output"]
+            screenshotProc.running = true
         }
     }
 
@@ -249,6 +279,7 @@ Singleton{
                   String(now.getSeconds()).padStart(2, "0")
         var dir  = SettingsConfig.screenshot.outputPath.replace("~", Quickshell.env("HOME"))
         var path = dir + "/screenshot_" + ts + ".png"
+        root._areaScreenshotPath = path
         areaScreenshotProc.command = ["sh", "-c",
             "mkdir -p '" + dir + "' && grim -g '" + geo + "' '" + path + "' && wl-copy < '" + path + "'"]
         areaScreenshotProc.running = true
