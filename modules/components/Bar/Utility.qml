@@ -103,8 +103,8 @@ Item {
                     utility.isClicked          = false
                     dashboardLoader.visible    = false
                 }
-                onIsWifiClickedChanged:      utility.isWifiClicked      = dashboard.isWifiClicked
-                onIsBluetoothClickedChanged: utility.isBluetoothClicked = dashboard.isBluetoothClicked
+                onIsWifiClickedChanged:      utility.isWifiClicked      = isWifiClicked
+                onIsBluetoothClickedChanged: utility.isBluetoothClicked = isBluetoothClicked
             }
         }
 
