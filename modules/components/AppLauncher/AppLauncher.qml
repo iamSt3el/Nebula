@@ -14,7 +14,6 @@ Scope{
     Loader{
         id: loader
         active: false
-        property bool animation: false
         sourceComponent: PanelWindow{
             id: panelWindow
             implicitWidth: 380
@@ -142,13 +141,20 @@ Scope{
 
                 Item {
                     id: child
-                    implicitWidth: loader.animation ? 380 : 0
+                    width: 0
                     implicitHeight: 720
                     clip: true
 
-                    Behavior on implicitWidth {
+                    states: State {
+                        name: "open"
+                        when: GlobalStates.appLauncherOpen
+                        PropertyChanges { target: child; width: 380 }
+                    }
+
+                    transitions: Transition {
                         NumberAnimation {
-                            duration: 300
+                            properties: "width"
+                            duration:   300
                             easing.type: Easing.OutQuad
                         }
                     }
@@ -169,9 +175,7 @@ Scope{
         function onAppLauncherOpenChanged() {
             if (GlobalStates.appLauncherOpen) {
                 loader.active = true
-                loader.animation = true
             } else if (loader.active) {
-                loader.animation = false
                 animationTimer.start()
             }
         }

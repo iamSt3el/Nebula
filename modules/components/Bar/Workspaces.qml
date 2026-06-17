@@ -18,19 +18,24 @@ Item{
 
     readonly property int wsCount:   SettingsConfig.general.workspaceCount ?? 5
     readonly property bool wsNumbers: SettingsConfig.general.showWorkspaceNumbers ?? false
-    implicitWidth: root.active ? 500 : row.implicitWidth + 20//workspacesRow.width + 20
-    implicitHeight: root.active ? 1080 : 40
+    implicitWidth:  row.implicitWidth + 20
+    implicitHeight: 40
 
-    Behavior on implicitWidth{
-        NumberAnimation{
-            duration: 300
-            easing: Easing.OutQuad
+    states: State {
+        name: "expanded"
+        when: root.active
+        PropertyChanges {
+            target: root
+            implicitWidth:  500
+            implicitHeight: 1080
         }
     }
-    Behavior on implicitHeight{
-        NumberAnimation{
-            duration: 300
-            easing: Easing.OutQuad
+
+    transitions: Transition {
+        NumberAnimation {
+            properties: "implicitWidth,implicitHeight"
+            duration:   300
+            easing.type: Easing.OutQuad
         }
     }
     onActiveChanged:{

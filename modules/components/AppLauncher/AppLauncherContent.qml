@@ -14,7 +14,6 @@ Item {
     id: appLauncher
     implicitHeight: parent.height
 
-    Component.onCompleted: { searchInput.forceActiveFocus() }
     signal closed
 
     property bool isGrid: SettingsConfig.general.appGrid
@@ -62,6 +61,8 @@ Item {
 
     onClosed: {
         col.visible = false
+        col.opacity = 0
+        col.scale   = 0.92
         searchInput.text = ""
         ServiceApps.reset()
         appList.activeIndex = 0
@@ -77,17 +78,15 @@ Item {
     }
 
     Connections {
-        target: loader
-        function onAnimationChanged() {
-            if (loader.animation) timer.start()
-            else col.visible = false
+        target: GlobalStates
+        function onAppLauncherOpenChanged() {
+            if (!GlobalStates.appLauncherOpen) {
+                showTimer.stop()
+                col.visible = false
+                col.opacity = 0
+                col.scale   = 0.92
+            }
         }
-    }
-
-    Timer {
-        id: timer
-        interval: 300
-        onTriggered: col.visible = true
     }
 
     // ── Main content ──────────────────────────────────────────────────────
@@ -97,9 +96,35 @@ Item {
         anchors.margins: 10
         spacing: 8
         visible: false
+        opacity: 0
+        scale: 0.92
 
-        NumberAnimation on opacity { from: 0; to: 1; duration: 120; running: col.visible }
-        NumberAnimation on scale   { from: 0.92; to: 1; duration: 180; easing.type: Easing.OutCubic; running: col.visible }
+        // Wait for the panel slide to finish, then spring the content in
+        Timer {
+            id: showTimer
+            interval: 300
+            onTriggered: {
+                col.visible = true
+                entranceAnim.start()
+                searchInput.forceActiveFocus()
+            }
+        }
+
+        Component.onCompleted: showTimer.start()
+
+        ParallelAnimation {
+            id: entranceAnim
+            NumberAnimation {
+                target: col; property: "opacity"
+                from: 0; to: 1
+                duration: 200; easing.type: Easing.OutCubic
+            }
+            NumberAnimation {
+                target: col; property: "scale"
+                from: 0.92; to: 1
+                duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.5
+            }
+        }
 
         // ── Search bar ────────────────────────────────────────────────
         Rectangle {

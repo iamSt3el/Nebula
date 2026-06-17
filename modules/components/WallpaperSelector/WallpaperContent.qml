@@ -347,26 +347,30 @@ Rectangle {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
 
-                // Fetch / error overlay
+                // Fetch overlay — morphing shape loader while wallpapers load
+                Loader {
+                    anchors.centerIn: parent
+                    z: 1
+                    active: ServiceWallpaper.onlineMode
+                         && ServiceWallpaper.isFetchingOnline
+                         && ServiceWallpaper.onlineError.length === 0
+                    visible: active
+                    sourceComponent: CustomLoader { size: 80; color: Colors.primary }
+                }
+
+                // Error overlay
                 Rectangle {
                     anchors.centerIn: parent
-                    visible: ServiceWallpaper.onlineMode &&
-                             (ServiceWallpaper.isFetchingOnline || ServiceWallpaper.onlineError.length > 0)
+                    visible: ServiceWallpaper.onlineMode && ServiceWallpaper.onlineError.length > 0
                     z: 1
-                    implicitWidth: _overlayRow.implicitWidth + 32; implicitHeight: _overlayRow.implicitHeight + 20
+                    implicitWidth: _errRow.implicitWidth + 32; implicitHeight: _errRow.implicitHeight + 20
                     radius: 14; color: Colors.surfaceContainer
                     RowLayout {
-                        id: _overlayRow; anchors.centerIn: parent; spacing: 8
-                        MaterialIconSymbol {
-                            content: ServiceWallpaper.onlineError.length > 0 ? "error" : "downloading"
-                            iconSize: 20
-                            customColor: ServiceWallpaper.onlineError.length > 0 ? Colors.error : Colors.surfaceText
-                        }
+                        id: _errRow; anchors.centerIn: parent; spacing: 8
+                        MaterialIconSymbol { content: "error"; iconSize: 20; customColor: Colors.error }
                         CustomText {
-                            content: ServiceWallpaper.onlineError.length > 0
-                                ? ServiceWallpaper.onlineError : "Fetching wallpapers…"
-                            size: 13
-                            customColor: ServiceWallpaper.onlineError.length > 0 ? Colors.error : Colors.surfaceText
+                            content: ServiceWallpaper.onlineError
+                            size: 13; customColor: Colors.error
                         }
                     }
                 }
@@ -471,11 +475,11 @@ Rectangle {
                                     }
 
                                     // Loading spinner (online thumbnails)
-                                    Rectangle {
-                                        anchors.centerIn: parent; width: 28; height: 28; radius: 14
-                                        color: Colors.surfaceContainer
-                                        visible: ServiceWallpaper.onlineMode && thumbnail.status === Image.Loading
-                                        MaterialIconSymbol { anchors.centerIn: parent; content: "hourglass_empty"; iconSize: 16 }
+                                    Loader {
+                                        anchors.centerIn: parent
+                                        active: ServiceWallpaper.onlineMode && thumbnail.status === Image.Loading
+                                        visible: active
+                                        sourceComponent: CustomLoader { size: 52; color: Colors.primary }
                                     }
 
                                     HoverHandler { id: tileHover }
@@ -510,21 +514,11 @@ Rectangle {
                                             anchors.centerIn: parent; spacing: 8
                                             width: Math.min(parent.width - 16, 100)
 
-                                            Item {
+                                            Loader {
                                                 Layout.alignment: Qt.AlignHCenter
-                                                implicitWidth: 36; implicitHeight: 36
-
-                                                Rectangle { anchors.fill: parent; radius: 18; color: Qt.alpha(Colors.primary, 0.25) }
-
-                                                MaterialIconSymbol {
-                                                    anchors.centerIn: parent
-                                                    content: "download"; iconSize: 20; customColor: Colors.primaryText
-                                                    SequentialAnimation on opacity {
-                                                        running: wallpaperItem.isDownloading; loops: Animation.Infinite
-                                                        NumberAnimation { from: 1.0; to: 0.35; duration: 700; easing.type: Easing.InOutSine }
-                                                        NumberAnimation { from: 0.35; to: 1.0; duration: 700; easing.type: Easing.InOutSine }
-                                                    }
-                                                }
+                                                active: wallpaperItem.isDownloading
+                                                visible: active
+                                                sourceComponent: CustomLoader { size: 56; color: "white" }
                                             }
 
                                             Rectangle {

@@ -11,18 +11,10 @@ import qs.modules.customComponents
 
 Item {
     id: utility
-    implicitWidth: {
-        if (isClicked)             return Appearance.size.dashboardPanelWidth
-        if (isNotificationClicked) return Appearance.size.notificationPanelWidth
-        if (isWeatherPanelClicked) return Appearance.size.weatherPanelWidth
-        return row.implicitWidth + 20
-    }
-    implicitHeight: {
-        if (isClicked)             return Appearance.size.dashboardPanelHeight
-        if (isNotificationClicked) return Appearance.size.notificationPanelHeight
-        if (isWeatherPanelClicked) return Appearance.size.weatherPanelHeight
-        return Appearance.size.barHeight
-    }
+    // Bar-mode defaults — states override these for panels; content changes
+    // (systray icons, recording timer) update immediately without animation.
+    implicitWidth:  row.implicitWidth + 20
+    implicitHeight: Appearance.size.barHeight
     anchors.right: parent.right
     property alias container: container
 
@@ -35,8 +27,43 @@ Item {
     property bool isWeatherPanelClicked: false
     property bool isDashboard:           height > 900
 
-    Behavior on implicitWidth  { NumberAnimation { duration: Appearance.duration.normal; easing.type: Easing.OutQuad } }
-    Behavior on implicitHeight { NumberAnimation { duration: Appearance.duration.normal; easing.type: Easing.OutQuad } }
+    states: [
+        State {
+            name: "dashboard"
+            when: utility.isClicked
+            PropertyChanges {
+                target: utility
+                implicitWidth:  Appearance.size.dashboardPanelWidth
+                implicitHeight: Appearance.size.dashboardPanelHeight
+            }
+        },
+        State {
+            name: "notification"
+            when: utility.isNotificationClicked
+            PropertyChanges {
+                target: utility
+                implicitWidth:  Appearance.size.notificationPanelWidth
+                implicitHeight: Appearance.size.notificationPanelHeight
+            }
+        },
+        State {
+            name: "weather"
+            when: utility.isWeatherPanelClicked
+            PropertyChanges {
+                target: utility
+                implicitWidth:  Appearance.size.weatherPanelWidth
+                implicitHeight: Appearance.size.weatherPanelHeight
+            }
+        }
+    ]
+
+    transitions: Transition {
+        NumberAnimation {
+            properties: "implicitWidth,implicitHeight"
+            duration:   Appearance.duration.normal
+            easing.type: Easing.OutQuad
+        }
+    }
 
     // ── Sound panel ────────────────────────────────────────────────────────
     Loader {

@@ -7,278 +7,198 @@ import qs.modules.services
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MatrialSHapeFn
 
-ColumnLayout{
+ColumnLayout {
     id: root
     anchors.fill: parent
     anchors.margins: 10
-    spacing: 10
+    spacing: 8
 
-    property var currentYear: new Date().getFullYear()
-    property var currentMonth: new Date().getMonth()
-    // property var currentSelectedDate
+    property int currentYear:  new Date().getFullYear()
+    property int currentMonth: new Date().getMonth()
 
-    // Ensure holidays are loaded when year changes
-    onCurrentYearChanged: {
-        ServiceClock.ensureHolidaysForYear(currentYear);
-    }
+    onCurrentYearChanged:  ServiceClock.ensureHolidaysForYear(currentYear)
+    Component.onCompleted: ServiceClock.ensureHolidaysForYear(currentYear)
 
-    Component.onCompleted: {
-        ServiceClock.ensureHolidaysForYear(currentYear);
-
-        // // Set current date's holiday info by default
-        // const today = new Date();
-        // const todayInfo = ServiceClock.checkHoliday(
-        //     today.getDate(),
-        //     today.getFullYear(),
-        //     today.getMonth()
-        // );
-        // root.currentSelectedDate = todayInfo.info;
-    }
-
-    Rectangle{
+    // ── Header ───────────────────────────────────────────────────────────────
+    Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: 50
-        color: Colors.surfaceContainer
-        radius: 20
+        implicitHeight: 50
+        radius: 16
+        color: Colors.surfaceContainerHigh
 
-        RowLayout{
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 6
+            anchors.rightMargin: 6
+            spacing: 0
+
+            Rectangle {
+                width: 36; height: 36; radius: 18
+                color: prevHov.containsMouse ? Colors.surfaceContainerHighest : "transparent"
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: "chevron_left"
+                    iconSize: 20
+                    customColor: Colors.surfaceText
+                }
+                MouseArea {
+                    id: prevHov
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (--root.currentMonth < 0) { root.currentMonth = 11; root.currentYear-- }
+                    }
+                }
+            }
+
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 1
+
+                    CustomText {
+                        Layout.alignment: Qt.AlignHCenter
+                        content: ServiceClock.getMonthName(root.currentMonth)
+                        size: 16; weight: 700
+                    }
+                    CustomText {
+                        Layout.alignment: Qt.AlignHCenter
+                        content: root.currentYear.toString()
+                        size: 12
+                        customColor: Colors.outline
+                    }
+                }
+            }
+
+            Rectangle {
+                width: 36; height: 36; radius: 18
+                color: nextHov.containsMouse ? Colors.surfaceContainerHighest : "transparent"
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: "chevron_right"
+                    iconSize: 20
+                    customColor: Colors.surfaceText
+                }
+                MouseArea {
+                    id: nextHov
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (++root.currentMonth > 11) { root.currentMonth = 0; root.currentYear++ }
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Calendar grid card ───────────────────────────────────────────────────
+    Rectangle {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        radius: 16
+        color: Colors.surfaceContainer
+
+        ColumnLayout {
             anchors.fill: parent
             anchors.margins: 10
-            Rectangle{
-                Layout.preferredHeight: left.height + 5
-                Layout.preferredWidth: left.width + 10
-                radius: 8
-                //color: Colors.surfaceContainerHighest
-                color: leftArea.containsMouse ? Colors.surfaceContainerHighest : "transparent"
+            spacing: 0
 
-                MaterialIconSymbol{
-                    id: left
-                    anchors.centerIn: parent
-                    content: "chevron_backward"
-                    iconSize: 20
-                }
+            // Weekday headers — S M T W T F S, weekends in primary
+            GridLayout {
+                Layout.fillWidth: true
+                columns: 7
+                columnSpacing: 0
 
-                Behavior on color{
-                    ColorAnimation{
-                        duration: 200
-                    }
-                }
+                Repeater {
+                    model: ["S", "M", "T", "W", "T", "F", "S"]
+                    Item {
+                        Layout.fillWidth: true
+                        implicitHeight: 32
 
-                MouseArea{
-                    id: leftArea
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    hoverEnabled: true
-                    onClicked: {
-                        root.currentMonth--;
-                        if (root.currentMonth < 0) {
-                            root.currentMonth = 11;
-                            root.currentYear--;
+                        CustomText {
+                            anchors.centerIn: parent
+                            content: modelData
+                            size: 13; weight: 700
+                            customColor: (index === 0 || index === 6) ? Colors.primary : Colors.outline
                         }
                     }
                 }
             }
-            Item{
+
+            // Day grid
+            GridLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                CustomText{
-                    anchors.centerIn: parent
-                    content:  ServiceClock.getMonthName(root.currentMonth) + ", " + root.currentYear
-                    size: 16
-                }
-            }
-            Rectangle{
-                Layout.preferredHeight: right.height + 5
-                Layout.preferredWidth: right.width + 10
-                radius: 8
-                //color: Colors.surfaceContainerHighest
-                color: rightArea.containsMouse ? Colors.surfaceContainerHighest : "transparent"
+                columns: 7
+                columnSpacing: 0
+                rowSpacing: 0
 
-                MaterialIconSymbol{
-                    id: right
-                    anchors.centerIn: parent
-                    content: "chevron_forward"
-                    iconSize: 20
-                }
-                Behavior on color{
-                    ColorAnimation{
-                        duration: 200
-                    }
-                }
+                Repeater {
+                    model: ServiceClock.generateCalendarGrid(root.currentYear, root.currentMonth)
 
-                MouseArea{
-                    id: rightArea
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    hoverEnabled: true
-                    onClicked: {
-                        root.currentMonth++;
-                        if (root.currentMonth > 11) {
-                            root.currentMonth = 0;
-                            root.currentYear++;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Rectangle{
-        Layout.fillHeight: true
-        Layout.fillWidth: true
-        color: Colors.surfaceContainer
-        radius: 20
-        clip: true
-
-        ColumnLayout{
-            anchors.fill: parent
-
-            Rectangle{
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                color: Colors.surfaceContainer
-                radius: 20
-                clip: true
-
-                ColumnLayout{
-                    anchors.fill: parent
-                    anchors.margins: 10
-
-                    GridLayout{
-                        //Layout.fillWidth: true
-                        Layout.preferredHeight: 40
-                        columns: 7
-                        columnSpacing: 5
-
-                        Repeater{
-                            model: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-                            Item{
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 40
-                                CustomText{
-                                    anchors.centerIn: parent
-                                    weight: 600
-                                    content: modelData
-                                    size: 18
-                                }
-                            }
-                        }
-                    }
-
-                    GridLayout{
+                    Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        columns: 7
-                        columnSpacing: 5
-                        rowSpacing: 5
 
-                        Repeater{
-                            model: ServiceClock.generateCalendarGrid(root.currentYear, root.currentMonth)
+                        readonly property bool isWeekend: (index % 7 === 0) || (index % 7 === 6)
 
-                            Item{
-                                Layout.preferredHeight: 40
-                                Layout.fillWidth: true
-                               
-                                
-                                Loader{
-                                    height: 40
-                                    width: 40
-                                    anchors.centerIn: parent
-                                    active: true
-                                    sourceComponent:
-                                    MaterialShapes.ShapeCanvas{
-                                        anchors.fill: parent
-                                        roundedPolygon: MatrialSHapeFn.getGem()
-                                        color:{
-                                            if(modelData.isToday) return Colors.primary
-                                            if(dateArea.containsMouse) return Colors.tertiary
-                                            if(!modelData.isCurrentMonth) return "transparent"
-                                            return "transparent"
-                                        }
-                                    }
-                                }
+                        // Gem shape for today and hover
+                        MaterialShapes.ShapeCanvas {
+                            anchors.centerIn: parent
+                            width: 38; height: 38
+                            roundedPolygon: MatrialSHapeFn.getGem()
+                            color: modelData.isToday     ? Colors.primary
+                                 : dateHov.containsMouse ? Colors.surfaceContainerHighest
+                                 : "transparent"
+                        }
 
-                                Rectangle{
-                                    anchors.top: parent.top
-                                    anchors.topMargin: 2
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    visible: modelData.isHoliday
-                                    implicitHeight: 4
-                                    implicitWidth: 4
-                                    color: Colors.outline
-                                    radius: width
-                                }
-                                //
-                                // Behavior on color{
-                                //     ColorAnimation{
-                                //         duration: 200
-                                //     }
-                                // }
+                        // Date number
+                        CustomText {
+                            anchors.centerIn: parent
+                            content: modelData.day ? modelData.day.toString() : ""
+                            size: 14
+                            weight: modelData.isToday ? 800 : 500
+                            customColor: modelData.isToday         ? Colors.primaryText
+                                       : !modelData.isCurrentMonth ? Qt.alpha(Colors.surfaceText, 0.22)
+                                       : isWeekend                 ? Colors.primary
+                                       : Colors.surfaceText
+                            Behavior on customColor { ColorAnimation { duration: 150 } }
+                        }
 
-                                CustomText{
-                                    anchors.centerIn: parent
-                                    content: modelData.day || ''
-                                    size: 18    
-                                    weight: 600
-                                    color:{
-                                        if(dateArea.containsMouse) return Colors.tertiaryText
-                                        if(modelData.isToday) return Colors.primaryText
-                                        if(modelData.isCurrentMonth) return Colors.surfaceText
-                                        return Qt.alpha(Colors.surfaceText, 0.5)
-                                    }
-                                }
+                        // Holiday dot below the number
+                        Rectangle {
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 5
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: modelData.isHoliday && modelData.isCurrentMonth && !!modelData.day
+                            width: 4; height: 4; radius: 2
+                            color: modelData.isToday ? Colors.primaryText : Colors.primary
+                        }
 
-                                MouseArea{
-                                    id: dateArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    // onClicked:{
-                                    //     root.currentSelectedDate = modelData.info
-                                    // }
-                                }
+                        MouseArea {
+                            id: dateHov
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: modelData.day ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        }
 
-                                CustomToolTip{
-                                    content: {
-                                        if (modelData.isHoliday && modelData.info && modelData.info.length > 0) {
-                                            // Join all holiday names with newlines
-                                            return modelData.info.map(h => h.name).join("\n");
-                                        }
-                                        return "";
-                                    }
-                                    visible: modelData.isHoliday && dateArea.containsMouse
-                                }
-                            }
+                        CustomToolTip {
+                            content: (modelData.isHoliday && modelData.info?.length > 0)
+                                   ? modelData.info.map(h => h.name).join("\n") : ""
+                            visible: modelData.isHoliday && dateHov.containsMouse
                         }
                     }
                 }
             }
-
-
-            // ListView{
-            //     Layout.fillWidth: true
-            //     Layout.preferredHeight: 200
-            //     Layout.margins: 5
-            //     orientation: Qt.Vertical
-            //     spacing: 8
-            //     clip: true
-            //     model: root.currentSelectedDate
-            //
-            //     delegate: Rectangle{
-            //         width: ListView.view.width
-            //         height: 60
-            //         color: Colors.surfaceContainerHighest
-            //         radius: 20
-            //
-            //         CustomText{
-            //             anchors.centerIn: parent
-            //             content: modelData.name
-            //             size: 14
-            //         }
-            //     }
-            // }
         }
     }
-
-
 }

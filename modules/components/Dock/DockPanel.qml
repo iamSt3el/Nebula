@@ -17,9 +17,6 @@ import qs.modules.components.Osd
 
 Scope {
     id: root
-    property bool clipboardActive: GlobalStates.clipboardOpen
-    property bool wallpaperActive: GlobalStates.wallpaperOpen
-    property bool typingGameActive: GlobalStates.typingGameOpen
 
     PanelWindow {
         id: panelWindow
@@ -30,7 +27,7 @@ Scope {
         anchors.bottom: true
         WlrLayershell.layer: WlrLayer.Overlay
         exclusionMode: ExclusionMode.Normal
-        WlrLayershell.keyboardFocus: (root.clipboardActive || root.wallpaperActive || root.typingGameActive) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: (GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.typingGameOpen) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
 
         Loader {
@@ -154,7 +151,7 @@ Scope {
             implicitHeight: Math.max(20, child.implicitHeight)
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
-            property bool active: SettingsConfig.general.dockAutoHide ? hover.hovered || root.clipboardActive || root.wallpaperActive || root.typingGameActive || GlobalStates.osdOpen || contextMenuLoader.active || (dockLoder.item && dockLoder.item.showPreview) : true
+            property bool active: SettingsConfig.general.dockAutoHide ? hover.hovered || GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.typingGameOpen || GlobalStates.osdOpen || contextMenuLoader.active || (dockLoder.item && dockLoder.item.showPreview) : true
             property bool collapsed: false
 
             onActiveChanged: {
@@ -178,38 +175,59 @@ Scope {
 
                 property real dockWidth: dockLoder.item ? dockLoder.item.implicitWidth + 20 : dockWidth
 
-                implicitHeight: container.collapsed ? 0
-                : root.clipboardActive ? 600
-                : root.wallpaperActive ? Appearance.size.wallpaperPanelHeight
-                : root.typingGameActive ? Appearance.size.typingGameHeight
-                : GlobalStates.osdOpen ? 60
-                : SettingsConfig.general.dock ? 60: 0
-
-                implicitWidth: root.clipboardActive ? 400
-                : root.wallpaperActive ? Appearance.size.wallpaperPanelWidth
-                : root.typingGameActive ? Appearance.size.typingGameWidth
-                : GlobalStates.osdOpen ? 300
-                : dockWidth
+                implicitHeight: SettingsConfig.general.dock ? 60 : 0
+                implicitWidth:  dockWidth
 
                 anchors.bottom: parent.bottom
                 clip: true
 
-                Behavior on implicitHeight {
-                    NumberAnimation {
-                        duration: 300
-                        easing.type: Easing.OutQuad
+                states: [
+                    State {
+                        name: "collapsed"
+                        when: container.collapsed
+                        PropertyChanges { target: child; implicitHeight: 0 }
+                    },
+                    State {
+                        name: "clipboard"
+                        when: GlobalStates.clipboardOpen
+                        PropertyChanges { target: child; implicitHeight: 600; implicitWidth: 400 }
+                    },
+                    State {
+                        name: "wallpaper"
+                        when: GlobalStates.wallpaperOpen
+                        PropertyChanges {
+                            target: child
+                            implicitHeight: Appearance.size.wallpaperPanelHeight
+                            implicitWidth:  Appearance.size.wallpaperPanelWidth
+                        }
+                    },
+                    State {
+                        name: "typingGame"
+                        when: GlobalStates.typingGameOpen
+                        PropertyChanges {
+                            target: child
+                            implicitHeight: Appearance.size.typingGameHeight
+                            implicitWidth:  Appearance.size.typingGameWidth
+                        }
+                    },
+                    State {
+                        name: "osd"
+                        when: GlobalStates.osdOpen
+                        PropertyChanges { target: child; implicitHeight: 60; implicitWidth: 300 }
                     }
-                }
-                Behavior on implicitWidth {
+                ]
+
+                transitions: Transition {
                     NumberAnimation {
-                        duration: 300
+                        properties: "implicitWidth,implicitHeight"
+                        duration:   300
                         easing.type: Easing.OutQuad
                     }
                 }
 
                 // Loader {
                 //     id: typingGameLoader
-                //     active: root.typingGameActive
+                //     active: GlobalStates.typingGameOpen
                 //     anchors.fill: parent
                 //     sourceComponent: TypingGameContent {
                 //         onClosed: GlobalStates.typingGameOpen = false
@@ -227,14 +245,14 @@ Scope {
 
                 Loader {
                     id: dockLoder
-                    active: SettingsConfig.general.dock && !root.clipboardActive && !root.wallpaperActive && !root.typingGameActive && !container.collapsed && !GlobalStates.osdOpen && !GlobalStates.shutdownWindow
+                    active: SettingsConfig.general.dock && !GlobalStates.clipboardOpen && !GlobalStates.wallpaperOpen && !GlobalStates.typingGameOpen && !container.collapsed && !GlobalStates.osdOpen && !GlobalStates.shutdownWindow
                     anchors.fill: parent
                     sourceComponent: Dock {}
                 }
 
                 Loader {
                     id: clipLoader
-                    active: root.clipboardActive
+                    active: GlobalStates.clipboardOpen
                     anchors.fill: parent
                     sourceComponent: ClipboardContent {
                         onClosed: GlobalStates.clipboardOpen = false
@@ -243,7 +261,7 @@ Scope {
 
                 Loader {
                     id: wallpaperLoader
-                    active: root.wallpaperActive
+                    active: GlobalStates.wallpaperOpen
                     anchors.fill: parent
                     sourceComponent: WallpaperContent {}
                 }
