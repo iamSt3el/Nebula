@@ -20,15 +20,12 @@ Item {
     Behavior on _cs { NumberAnimation { duration: 360; easing.type: Easing.OutBack; easing.overshoot: 0.4 } }
     Behavior on _co { NumberAnimation { duration: 220; easing.type: Easing.OutQuad } }
 
-    Component.onCompleted: Qt.callLater(function() {
-        root._cs = 1.0
-        root._co = 1.0
-    })
+    Component.onCompleted: Qt.callLater(function() { root._cs = 1.0; root._co = 1.0 })
 
     // ── Elevation shadow ──────────────────────────────────────────────────
     Rectangle {
         anchors.centerIn: parent
-        width: 268; height: 232
+        width: 268; height: 246
         radius: 30
         color: Colors.shadow
         opacity: root._co * 0.08
@@ -40,7 +37,7 @@ Item {
     Rectangle {
         id: card
         anchors.centerIn: parent
-        width: 268; height: 228
+        width: 268; height: 246
         radius: 28
         color: Colors.surfaceContainerLow
         clip: true
@@ -49,9 +46,9 @@ Item {
 
         ColumnLayout {
             anchors { top: parent.top; left: parent.left; right: parent.right }
-            anchors.margins: 20
-            anchors.topMargin: 20
-            spacing: 14
+            anchors.margins: 16
+            anchors.topMargin: 16
+            spacing: 12
 
             // ── Header ────────────────────────────────────────────────────
             RowLayout {
@@ -76,17 +73,11 @@ Item {
                     size: 15; weight: 600; color: Colors.surfaceText
                 }
 
-                // M3 IconButton — close
                 Rectangle {
                     width: 32; height: 32; radius: 16
                     color: closeHov.containsMouse ? Qt.alpha(Colors.surfaceText, 0.08) : "transparent"
                     Behavior on color { ColorAnimation { duration: 120 } }
-
-                    MaterialIconSymbol {
-                        anchors.centerIn: parent
-                        content: "close"; iconSize: 17
-                        color: Colors.surfaceVariantText
-                    }
+                    MaterialIconSymbol { anchors.centerIn: parent; content: "close"; iconSize: 17; color: Colors.surfaceVariantText }
                     MouseArea {
                         id: closeHov
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -95,11 +86,11 @@ Item {
                 }
             }
 
-            // ── Segmented button ───────────────────────────────────────────
+            // ── Segmented tab switch ───────────────────────────────────────
             Rectangle {
                 Layout.fillWidth: true
-                height: 42
-                radius: 21
+                height: 40
+                radius: 20
                 color: Colors.surfaceContainer
                 border.color: Colors.outlineVariant
                 border.width: 1
@@ -109,37 +100,33 @@ Item {
                     anchors.margins: 3
                     spacing: 3
 
-                    SegBtn {
-                        width: (parent.width - 3) / 2; height: parent.height
-                        mode: "camera"; icon: "photo_camera"; label: "Camera"
-                    }
-                    SegBtn {
-                        width: (parent.width - 3) / 2; height: parent.height
-                        mode: "recording"; icon: "screen_record"; label: "Record"
-                    }
+                    SegBtn { width: (parent.width - 3) / 2; height: parent.height; mode: "camera";     icon: "photo_camera";  label: "Camera" }
+                    SegBtn { width: (parent.width - 3) / 2; height: parent.height; mode: "recording";  icon: "screen_record"; label: "Record" }
                 }
             }
 
-            // ── Options + Recording active ──────────────────────────────────
+            // ── Options area (+ recording-active overlay for rec tab) ─────
             Item {
                 Layout.fillWidth: true
-                height: 86
+                height: 108
 
-                // Three option cards (idle state)
+                // Option cards — hidden only on recording tab while actively recording
                 RowLayout {
                     anchors.fill: parent
                     spacing: 8
-                    opacity: ServiceTools.isRecording ? 0 : 1
+                    opacity: (ServiceTools.isRecording && root.toolMode === "recording") ? 0 : 1
                     Behavior on opacity { NumberAnimation { duration: 240 } }
 
                     OptionCard {
                         Layout.fillWidth: true; Layout.fillHeight: true
-                        icon: "screenshot_monitor"; label: "Screen"; delay: 0
+                        icon: root.toolMode === "camera" ? "screenshot_monitor" : "monitor"
+                        label: "Screen"; delay: 0
                         onTriggered: {
                             if (root.toolMode === "camera") {
                                 GlobalStates.toolsWidgetOpen = false
                                 ServiceTools.takeScreenshot("Screen")
                             } else {
+                                GlobalStates.toolsWidgetOpen = false
                                 ServiceTools.startDelayed("Screen", "")
                             }
                         }
@@ -164,21 +151,21 @@ Item {
                     }
                 }
 
-                // Recording active view
+                // Recording active view — only on recording tab
                 Item {
                     anchors.fill: parent
-                    opacity: ServiceTools.isRecording ? 1 : 0
+                    opacity: (ServiceTools.isRecording && root.toolMode === "recording") ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 280; easing.type: Easing.InOutQuad } }
                     visible: opacity > 0.01
 
                     Row {
                         anchors.centerIn: parent
-                        spacing: 20
+                        spacing: 22
 
                         // Timer + REC badge
                         Column {
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 5
+                            spacing: 8
 
                             CustomText {
                                 anchors.horizontalCenter: parent.horizontalCenter
@@ -186,25 +173,34 @@ Item {
                                     const s = ServiceTools.recordingSeconds
                                     return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0")
                                 }
-                                size: 34; weight: 700; color: Colors.surfaceText
+                                size: 36; weight: 700; color: Colors.surfaceText
                             }
 
                             Row {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 spacing: 5
 
-                                Rectangle {
-                                    width: 6; height: 6; radius: 3
+                                // Pulsing dot (scale-based)
+                                Item {
+                                    width: 7; height: 7
                                     anchors.verticalCenter: parent.verticalCenter
-                                    color: Colors.error
-                                    SequentialAnimation on opacity {
-                                        running: ServiceTools.isRecording; loops: Animation.Infinite
-                                        NumberAnimation { to: 0.15; duration: 600; easing.type: Easing.InOutSine }
-                                        NumberAnimation { to: 1.0;  duration: 600; easing.type: Easing.InOutSine }
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 7; height: 7; radius: 3.5
+                                        color: Colors.error
+                                        SequentialAnimation on scale {
+                                            running: ServiceTools.isRecording; loops: Animation.Infinite
+                                            NumberAnimation { to: 0.55; duration: 620; easing.type: Easing.InOutSine }
+                                            NumberAnimation { to: 1.0;  duration: 620; easing.type: Easing.InOutSine }
+                                        }
                                     }
                                 }
+
                                 CustomText { content: "REC"; size: 10; weight: 700; color: Colors.error }
-                                Rectangle { width: 1; height: 10; color: Colors.outlineVariant; anchors.verticalCenter: parent.verticalCenter }
+                                Rectangle {
+                                    width: 1; height: 10; color: Colors.outlineVariant
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
                                 CustomText {
                                     content: ServiceTools.recordingMode; size: 10; weight: 400; color: Colors.outline
                                     anchors.verticalCenter: parent.verticalCenter
@@ -212,25 +208,60 @@ Item {
                             }
                         }
 
-                        // Stop button
-                        Rectangle {
-                            width: 52; height: 52; radius: 26
+                        // Stop button with pulsing rings
+                        Item {
+                            width: 66; height: 66
                             anchors.verticalCenter: parent.verticalCenter
-                            color: stopHov.containsMouse ? Colors.errorContainer : Colors.error
-                            Behavior on color { ColorAnimation { duration: 130 } }
-                            scale: stopHov.pressed ? 0.88 : 1.0
-                            Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
 
+                            // Pulse ring 1
+                            Rectangle {
+                                anchors.centerIn: parent; width: 66; height: 66; radius: 33
+                                color: "transparent"
+                                border.width: 1.5; border.color: Qt.alpha(Colors.error, 0.30)
+                                SequentialAnimation on scale {
+                                    running: ServiceTools.isRecording; loops: Animation.Infinite
+                                    NumberAnimation { to: 1.22; duration: 900; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0;  duration: 900; easing.type: Easing.InOutSine }
+                                }
+                                SequentialAnimation on opacity {
+                                    running: ServiceTools.isRecording; loops: Animation.Infinite
+                                    NumberAnimation { to: 0.2; duration: 900; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0; duration: 900; easing.type: Easing.InOutSine }
+                                }
+                            }
+
+                            // Pulse ring 2 (offset phase)
+                            Rectangle {
+                                anchors.centerIn: parent; width: 66; height: 66; radius: 33
+                                color: "transparent"
+                                border.width: 1.5; border.color: Qt.alpha(Colors.error, 0.15)
+                                SequentialAnimation on scale {
+                                    running: ServiceTools.isRecording; loops: Animation.Infinite
+                                    PauseAnimation  { duration: 450 }
+                                    NumberAnimation { to: 1.28; duration: 900; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0;  duration: 900; easing.type: Easing.InOutSine }
+                                }
+                            }
+
+                            // Stop button
                             Rectangle {
                                 anchors.centerIn: parent
-                                width: 16; height: 16; radius: 3
-                                color: stopHov.containsMouse ? Colors.errorContainerText : Colors.errorText
+                                width: 48; height: 48; radius: 24
+                                color: stopMa.containsMouse ? Colors.errorContainer : Colors.error
                                 Behavior on color { ColorAnimation { duration: 130 } }
-                            }
-                            MouseArea {
-                                id: stopHov
-                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: ServiceTools.stopRecording()
+                                scale: stopMa.pressed ? 0.88 : 1.0
+                                Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
+
+                                Rectangle {
+                                    anchors.centerIn: parent; width: 15; height: 15; radius: 3
+                                    color: stopMa.containsMouse ? Colors.errorContainerText : Colors.errorText
+                                    Behavior on color { ColorAnimation { duration: 130 } }
+                                }
+                                MouseArea {
+                                    id: stopMa
+                                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    onClicked: ServiceTools.stopRecording()
+                                }
                             }
                         }
                     }
@@ -243,7 +274,7 @@ Item {
     // INLINE COMPONENTS
     // ════════════════════════════════════════════════════════════════════════
 
-    // ── M3 Segmented button segment ────────────────────────────────────────
+    // ── Segmented tab button ───────────────────────────────────────────────
     component SegBtn: Rectangle {
         id: sb
         radius: height / 2
@@ -252,7 +283,9 @@ Item {
         property string icon:  ""
         property string label: ""
 
-        color: root.toolMode === sb.mode ? Colors.secondaryContainer : "transparent"
+        readonly property bool active: root.toolMode === sb.mode
+
+        color: active ? Colors.secondaryContainer : "transparent"
         Behavior on color { ColorAnimation { duration: 200 } }
 
         Row {
@@ -261,14 +294,14 @@ Item {
 
             MaterialIconSymbol {
                 anchors.verticalCenter: parent.verticalCenter
-                content:  sb.icon; iconSize: 14
-                color: root.toolMode === sb.mode ? Colors.secondaryContainerText : Colors.surfaceVariantText
+                content: sb.icon; iconSize: 14
+                color: sb.active ? Colors.secondaryContainerText : Colors.surfaceVariantText
                 Behavior on color { ColorAnimation { duration: 200 } }
             }
             CustomText {
                 anchors.verticalCenter: parent.verticalCenter
                 content: sb.label; size: 12; weight: 500
-                color: root.toolMode === sb.mode ? Colors.secondaryContainerText : Colors.surfaceVariantText
+                color: sb.active ? Colors.secondaryContainerText : Colors.surfaceVariantText
                 Behavior on color { ColorAnimation { duration: 200 } }
             }
         }
@@ -279,10 +312,10 @@ Item {
         }
     }
 
-    // ── M3 Filled tonal option card ────────────────────────────────────────
+    // ── Option card ────────────────────────────────────────────────────────
     component OptionCard: Rectangle {
         id: oc
-        radius: 14
+        radius: 16
         color: Colors.surfaceContainer
         clip: true
 
@@ -291,7 +324,7 @@ Item {
         property int    delay: 0
         signal triggered()
 
-        // M3 state layer (hover 8%, press 12%)
+        // M3 state layer
         Rectangle {
             anchors.fill: parent; radius: parent.radius
             color: Colors.surfaceText
@@ -300,13 +333,9 @@ Item {
         }
 
         // Staggered entrance
-        property real _ey: 14
+        property real _ey: 16
         property real _eo: 0.0
-
-        Component.onCompleted: {
-            eyAnim.start()
-            eoAnim.start()
-        }
+        Component.onCompleted: { eyAnim.start(); eoAnim.start() }
 
         SequentialAnimation {
             id: eyAnim
@@ -321,27 +350,35 @@ Item {
 
         transform: Translate { y: oc._ey }
         opacity:   oc._eo
+        scale:     ocMa.pressed ? 0.93 : 1.0
+        Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
 
         Column {
             anchors.centerIn: parent
-            spacing: 7
+            spacing: 8
 
-            MaterialIconSymbol {
+            // Icon with tinted background pill
+            Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
-                content:  oc.icon; iconSize: 24
-                color: ocMa.containsMouse ? Colors.primary : Colors.surfaceText
+                width: 40; height: 40; radius: 14
+                color: ocMa.containsMouse ? Qt.alpha(Colors.primary, 0.15) : Qt.alpha(Colors.surfaceText, 0.06)
                 Behavior on color { ColorAnimation { duration: 150 } }
+
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: oc.icon; iconSize: 22
+                    color: ocMa.containsMouse ? Colors.primary : Colors.surfaceText
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                }
             }
+
             CustomText {
                 anchors.horizontalCenter: parent.horizontalCenter
-                content: oc.label; size: 10; weight: 500
+                content: oc.label; size: 10; weight: 600
                 color: ocMa.containsMouse ? Colors.primary : Colors.surfaceVariantText
                 Behavior on color { ColorAnimation { duration: 150 } }
             }
         }
-
-        scale: ocMa.pressed ? 0.93 : 1.0
-        Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
 
         MouseArea {
             id: ocMa

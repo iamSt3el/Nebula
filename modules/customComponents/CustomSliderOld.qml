@@ -11,6 +11,9 @@ Item {
     property string icon
     property bool isDragging: false
     property bool horizontal: false
+    signal change
+
+
 
     // vertical
     Column {
@@ -27,23 +30,45 @@ Item {
             color: "transparent"
             radius: 8
             anchors.horizontalCenter: parent.horizontalCenter
-            property var progress: 0.2
+            property var progress: 1
 
             Rectangle {
                 implicitWidth: parent.width
                 anchors.top: parent.top
                 implicitHeight: (parent.height - 14) * (1 - wrapper.progress)
-                color: Qt.alpha(Colors.primary, 0.5)
-                topLeftRadius: 8
-                topRightRadius: 8
+                color: Colors.surfaceContainerHigh
+                topLeftRadius: 12
+                topRightRadius: 12
+
+                MaterialIconSymbol{
+                    visible: lower.height < height + 5
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 5
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    content: root.icon
+                    iconSize: 24
+                    color: Colors.surfaceText
+                }
             }
             Rectangle {
+                id: lower
                 implicitHeight: (parent.height - 14) * wrapper.progress
                 implicitWidth: parent.width
                 anchors.bottom: parent.bottom
                 color: Colors.primary
-                bottomLeftRadius: 8
-                bottomRightRadius: 8
+                bottomLeftRadius: 12
+                bottomRightRadius: 12
+
+
+                MaterialIconSymbol{
+                    visible: parent.height > height + 5
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 5
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    content: root.icon
+                    iconSize: 24
+                    color: Colors.primaryText
+                }
             }
             Rectangle {
                 id: handler
@@ -63,6 +88,8 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onPositionChanged: {
                         if (drag.active) {
+                            root.change()
+
                             let pct = 1 - ((handler.y - 6 + handler.height / 2) / (wrapper.height - 14));
                             wrapper.progress = Math.max(0, Math.min(1, pct));
                         }
@@ -71,6 +98,8 @@ Item {
             }
         }
     }
+
+
 
     // horizontal — width plays the role height had, height plays the role width had
     Item {

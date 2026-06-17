@@ -66,7 +66,7 @@ Item {
         anchors.centerIn: parent
         width: root.clockSize
         height: root.clockSize
-        roundedPolygon: MaterialShapeFn.getCookie9Sided()
+        roundedPolygon: MaterialShapeFn.getCookie12Sided()
         color: Colors.surfaceContainerHigh
     }
 

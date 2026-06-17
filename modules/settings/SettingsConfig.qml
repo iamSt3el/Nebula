@@ -96,7 +96,7 @@ Singleton {
 
             readonly property var _themeDefaults: ({
                 matugenScheme: "scheme-content",
-                matugenTheme: "Light",
+                matugenTheme: "dark",
                 firstColor: "#ffffff",
                 secondColor: "#ffffff",
                 thirdColor: "#ffffff",
@@ -105,7 +105,7 @@ Singleton {
 
             property var theme: ({
                 matugenScheme: "scheme-content",
-                matugenTheme: "Light",
+                matugenTheme: "dark",
                 firstColor: "#ffffff",
                 secondColor: "#ffffff",
                 thirdColor: "#ffffff",
@@ -114,13 +114,29 @@ Singleton {
 
             onThemeChanged: {
                 const d = _themeDefaults
-                const cur = theme || {}
-                let needsPatch = false
+                let cur = theme || {}
+                let dirty = false
+
+                // fill in any missing keys from defaults
                 for (const k in d) {
-                    if (cur[k] === undefined) { needsPatch = true; break }
+                    if (cur[k] === undefined) { dirty = true; break }
                 }
-                if (needsPatch)
-                    theme = Object.assign({}, d, cur)
+                if (dirty) cur = Object.assign({}, d, cur)
+
+                // normalize legacy capitalized mode values ("Light" → "light")
+                const mode = cur.matugenTheme
+                if (mode && mode !== mode.toLowerCase()) {
+                    cur = Object.assign({}, cur, { matugenTheme: mode.toLowerCase() })
+                    dirty = true
+                }
+
+                // strip legacy gowall keys
+                const legacy = ["colorEngine", "gowallTheme"]
+                for (const k of legacy) {
+                    if (k in cur) { delete cur[k]; dirty = true }
+                }
+
+                if (dirty) theme = cur
             }
 
             property var wallhaven: ({

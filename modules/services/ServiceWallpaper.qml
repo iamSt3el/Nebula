@@ -30,6 +30,83 @@ Singleton {
     property string theme: SettingsConfig.theme.matugenTheme
     property string transitionType: SettingsConfig.theme.transitionType ?? "fade"
 
+    // ── Wallpaper application queue ────────────────────────────────────────
+    // awww (~0.16s) + matugen (~0.3s) = wallpaper.sh finishes in < 1s.
+    // We use execDetached (fire-and-forget) and reload colors after a fixed
+    // 1.5s window — no Process re-use state to get stuck.
+    // Rapid clicks: only the latest path within the 1.5s window is applied.
+    property string _pendingPath: ""
+    property bool   _applying: false
+
+    // Fired 3s after _startApply — awww (~0.16s) + gen_colors cold (~615ms) = well within 3s
+    Timer {
+        id: applyTimer
+        interval: 3000
+        repeat: false
+        onTriggered: {
+            const elapsed = (Date.now() - root._applyStartedAt).toFixed(0)
+            console.log("[ServiceWallpaper] applyTimer fired at", elapsed + "ms — calling reloadColors()")
+            WallpaperTheme.reloadColors()
+            root._applying = false
+            const next = root._pendingPath
+            root._pendingPath = ""
+            if (next) {
+                console.log("[ServiceWallpaper] Dequeuing pending wallpaper:", next)
+                root._startApply(next)
+            }
+        }
+    }
+
+    property double _applyStartedAt: 0
+
+    function _startApply(path) {
+        _applying = true
+        _pendingPath = ""
+        _applyStartedAt = Date.now()
+        console.log("[ServiceWallpaper] _startApply →", path, "| mode:", root.theme, "| t=0ms")
+        Quickshell.execDetached([wallpaperScript, path, root.scheme, root.theme, root.transitionType])
+        applyTimer.restart()
+    }
+
+    function _enqueue(path) {
+        if (!path || path.length === 0) return
+        if (_applying) {
+            console.log("[ServiceWallpaper] Queued (busy):", path)
+            _pendingPath = path
+        } else {
+            _startApply(path)
+        }
+    }
+
+    property string colorsScript: Quickshell.env("HOME") + "/.config/quickshell/scripts/gen_colors.py"
+
+    // Re-generates colors for the current wallpaper in the new mode.
+    // No awww — wallpaper image isn't changing, only the color scheme.
+    // gen_colors.py: ~615ms cold, ~44ms score-cached, ~2ms fully-cached.
+    function applyTheme() {
+        const wp = WallpaperTheme.wallpaper
+        if (!wp || wp.length === 0) {
+            console.warn("[ServiceWallpaper] applyTheme: no wallpaper loaded yet")
+            return
+        }
+        console.log("[ServiceWallpaper] applyTheme → mode:", root.theme, "wallpaper:", wp)
+        Quickshell.execDetached(["python3", colorsScript, wp, root.scheme, root.theme])
+        themeTimer.restart()
+        console.log("[ServiceWallpaper] execDetached done, timer started (fires in 2000ms)")
+    }
+
+    // 2s covers worst-case cold gen (~615ms) plus plenty of margin
+    Timer {
+        id: themeTimer
+        interval: 2000
+        repeat: false
+        onTriggered: {
+            console.log("[ServiceWallpaper] themeTimer fired — calling reloadColors()")
+            WallpaperTheme.reloadColors()
+        }
+    }
+    // ── End queue ──────────────────────────────────────────────────────────
+
     property list<string> wallpapers: []
     property var filteredWallpapers: []
     property string currentSearchText: ""
@@ -428,25 +505,12 @@ Singleton {
 
     function setWallpaper(cachePath: string) {
         const originalPath = getOriginalPath(cachePath)
-        if (originalPath) {
-            console.log("[ServiceWallpaper] Setting wallpaper:", originalPath)
-            wallpaperSetter.exec([wallpaperScript, originalPath, root.scheme, root.theme, root.transitionType])
-            wallpapersChanged()
-        } else {
+        if (!originalPath) {
             console.error("[ServiceWallpaper] Cannot find original path for:", cachePath)
+            return
         }
-    }
-
-    Process {
-        id: wallpaperSetter
-
-        onExited: (exitCode) => {
-            if (exitCode === 0) {
-                console.log("[ServiceWallpaper] Wallpaper set successfully")
-            } else {
-                console.error("[ServiceWallpaper] Failed to set wallpaper. Exit code:", exitCode)
-            }
-        }
+        console.log("[ServiceWallpaper] Setting wallpaper:", originalPath)
+        _enqueue(originalPath)
     }
 
     function refresh() {
@@ -496,7 +560,7 @@ Singleton {
                     thumbPath
                 ]
                 downloadedThumbGen.running = true
-                wallpaperSetter.exec([wallpaperScript, savePath, root.scheme, root.theme, root.transitionType])
+                root._enqueue(savePath)
             } else {
                 console.error("[ServiceWallpaper] Download failed for:", root._pendingDownloadPath)
                 ServiceNotification.sendNotification(
@@ -523,7 +587,8 @@ Singleton {
                     "Wallpaper Downloaded",
                     fileName,
                     "Wallpaper",
-                    "image-x-generic"
+                    "image-x-generic",
+                    thumbPath
                 )
                 root.refresh()
             } else {
@@ -600,4 +665,31 @@ Singleton {
         }
     }
     // ── End Favorites processes ─────────────────────────────────────────────
+
+    // ── File management ─────────────────────────────────────────────────────
+    function deleteWallpaper(cachePath) {
+        const orig = getOriginalPath(cachePath)
+        if (!orig) return
+        fileDeleter._cachePath = cachePath
+        fileDeleter._origPath  = orig
+        fileDeleter.command = ["rm", "-f", orig, cachePath]
+        fileDeleter.running = true
+        console.log("[ServiceWallpaper] Deleting wallpaper:", orig)
+    }
+
+    Process {
+        id: fileDeleter
+        property string _cachePath: ""
+        property string _origPath: ""
+        onExited: exitCode => {
+            if (exitCode === 0) {
+                delete root.wallpaperMap[_cachePath]
+                delete root.processedFiles[_origPath]
+                root.wallpapers = root.wallpapers.filter(w => w !== _cachePath)
+            } else {
+                console.error("[ServiceWallpaper] Delete failed for:", _origPath)
+            }
+        }
+    }
+    // ── End File management ──────────────────────────────────────────────────
 }

@@ -323,9 +323,9 @@ Item{
 
         Rectangle{
             id: controleRectangle
-            Layout.preferredHeight: root.isWifiClicked || root.isBluetoothClicked ? colu.implicitHeight + 20 : colu.implicitHeight + 20
+            Layout.preferredHeight: root.isWifiClicked || root.isBluetoothClicked ? colu.implicitHeight : colu.implicitHeight
             Layout.fillWidth: true
-            color: Colors.surfaceContainer
+            color: "transparent"//Colors.surfaceContainer
             radius: 20
 
             Behavior on Layout.preferredHeight{
@@ -338,7 +338,7 @@ Item{
             ColumnLayout{
                 id: colu
                 anchors.fill: parent
-                anchors.margins: 10
+                anchors.margins: 0
                 spacing: 10
 
                 RowLayout{
@@ -353,7 +353,7 @@ Item{
                             Layout.preferredHeight: 60
                             Layout.fillWidth: true
                             radius: 20
-                            color: Colors.surfaceContainerHighest
+                            color: Colors.surfaceContainerHigh
                             opacity: root.isWifiClicked ? 0 : 1
 
                             Behavior on opacity {
@@ -364,19 +364,6 @@ Item{
                                 anchors.fill: parent
                                 anchors.margins: 5
 
-                                // Rectangle{
-                                //     Layout.fillHeight: true
-                                //     Layout.preferredWidth: 60
-                                //     radius: 15
-                                //     color: Colors.primary
-                                //
-                                //     MaterialIconSymbol{
-                                //         anchors.centerIn: parent
-                                //         iconSize: 28
-                                //         content: ServiceWifi.icon
-                                //         color: ServiceWifi.wifiEnabled ? Colors.primaryText : Colors.surfaceText
-                                //     }
-                                // }
                                 MaterialShapes.ShapeCanvas{
                                     Layout.preferredHeight: 50
                                     Layout.preferredWidth: 50
@@ -399,16 +386,22 @@ Item{
                                     CustomText{
                                         Layout.fillWidth: true
                                         content: ServiceWifi.connectionType
-                                        size: 16
+                                        size: 14
                                         weight: 700
                                     }
 
                                     CustomText{
                                         Layout.fillWidth: true
                                         content: ServiceWifi.currentSSID || "no device"
-                                        size: 14
+                                        size: 12
                                         color: Colors.outline
                                     }
+                                }
+
+                                MaterialIconSymbol{
+                                    content: "chevron_right"
+                                    size: 14
+                                    color: Colors.outline
                                 }
                             }
 
@@ -429,26 +422,13 @@ Item{
                             Layout.preferredHeight: 60
                             Layout.fillWidth: true
                             radius: 20
-                            color: Colors.surfaceContainerHighest
+                            color: Colors.surfaceContainerHigh
 
                             RowLayout{
                                 anchors.fill: parent
                                 anchors.margins: 5
 
-                                // Rectangle{
-                                //     Layout.fillHeight: true
-                                //     Layout.preferredWidth: 60
-                                //     radius: 15
-                                //     color: Colors.primary
-                                //
-                                //
-                                //     MaterialIconSymbol{
-                                //         anchors.centerIn: parent
-                                //         iconSize: 28
-                                //         content: ServiceBluetooth.connectedDevices > 0 ? "bluetooth" : "bluetooth_disabled"
-                                //         color: Colors.primaryText
-                                //     }
-                                // }
+                   
 
                                 MaterialShapes.ShapeCanvas{
                                     Layout.preferredHeight: 50
@@ -472,15 +452,20 @@ Item{
                                     CustomText{
                                         Layout.fillWidth: true
                                         content: "Bluetooth"
-                                        size: 16
+                                        size: 14
                                     }
 
                                     CustomText{
                                         Layout.fillWidth: true
                                         content: ServiceBluetooth.connectedDevices + " connected"
-                                        size: 14
+                                        size: 12
                                         color: Colors.outline
                                     }
+                                }
+                                MaterialIconSymbol{
+                                    content: "chevron_right"
+                                    size: 14
+                                    color: Colors.outline
                                 }
                             }
                             MouseArea{
@@ -501,7 +486,7 @@ Item{
                             Layout.preferredHeight: 40
                             Layout.fillWidth: true
                             radius: 20
-                            color: Colors.surfaceContainerHighest
+                            color: Colors.surfaceContainerHigh
 
                             RowLayout{
                                 anchors.fill: parent
@@ -547,37 +532,47 @@ Item{
                         }
                     }
 
-                    CustomSlider{
+                    // CustomSlider{
+                    //     Layout.fillHeight: true
+                    //     icon: "volume_up"
+                    //     progress: ServicePipewire.volume
+                    //     onProgressChanged:{
+                    //         ServicePipewire.setVolume(progress)
+                    //     }
+                    //
+                    // }
+                    CustomSliderOld{
                         Layout.fillHeight: true
+                        Layout.preferredWidth: 50
                         icon: "volume_up"
                         progress: ServicePipewire.volume
                         onProgressChanged:{
                             ServicePipewire.setVolume(progress)
                         }
-
                     }
-                    // CustomSliderOld{
-                    //     Layout.fillHeight: true
-                    //     Layout.preferredWidth: 50
-                    //
-                    // }
-                    //
-                    // CustomSliderOld{
-                    //     Layout.fillHeight: true
-                    //     Layout.preferredWidth: 50
-                    //
-                    //
-                    // }
-                    CustomSlider{
+
+                    CustomSliderOld{
                         property var brightnessMonitor: ServiceBrightness.getMonitorForScreen(screen)
                         Layout.fillHeight: true
+                        Layout.preferredWidth: 50
                         icon: "brightness_7"
-                        progress: brightnessMonitor.brightness
+
+                        progress: ServiceBrightness.getMonitorForScreen(screen).brightness
                         onChange:{
                             brightnessMonitor.setBrightness(progress)
                         }
 
                     }
+                    // CustomSlider{
+                    //     property var brightnessMonitor: ServiceBrightness.getMonitorForScreen(screen)
+                    //     Layout.fillHeight: true
+                    //     icon: "brightness_7"
+                    //     progress: brightnessMonitor.brightness
+                    //     onChange:{
+                    //         brightnessMonitor.setBrightness(progress)
+                    //     }
+                    //
+                    // }
                 }
             }
         }
@@ -618,7 +613,7 @@ Item{
                             property bool isFirst: index === 0
                             property bool isLast:  index === Settings.quickIcons.length - 1
 
-                            color: active ? Colors.primary : Colors.surfaceContainerHighest
+                            color: active ? Colors.primary : Colors.surfaceContainerHigh
                             Behavior on color { ColorAnimation { duration: 150 } }
 
                             topLeftRadius:     (active || isFirst) ? height / 2 : 5

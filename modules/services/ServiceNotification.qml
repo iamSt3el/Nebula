@@ -166,14 +166,17 @@ Singleton {
         root.muted = !root.muted
     }
 
-function sendNotification(summary, body, appName, appIcon) {
-    notifSender.command = [
+function sendNotification(summary, body, appName, appIcon, imagePath) {
+    var cmd = [
         "notify-send",
         "--app-name", appName || "Quickshell",
         "--app-icon", appIcon || "dialog-information",
         summary,
         body || ""
     ]
+    if (imagePath && imagePath.length > 0)
+        cmd.splice(3, 0, "--icon", imagePath)
+    notifSender.command = cmd
     notifSender.running = true
 }
 

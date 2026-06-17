@@ -29,7 +29,7 @@ Item {
         width: parent.width
         height: root.trackHeight
         radius: 10
-        color: Colors.surfaceContainerHighest
+        color: Colors.surfaceContainerHigh
 
 
 

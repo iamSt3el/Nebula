@@ -3,8 +3,8 @@ import Quickshell
 import QtQuick
 import Quickshell.Io
 
-Item {
-    id: colorProvider
+Singleton {
+    id: root
 
     // Defaults — used on startup until the JSON cache loads
     property string primary: "#ffb2b8"
@@ -51,58 +51,87 @@ Item {
 
     property string wallpaper: "/home/steel/wallpaper/sunset-lookout.jpg"
 
+    property double _reloadRequestedAt: 0
+
+    function _apply(json) {
+        const elapsed = _reloadRequestedAt > 0
+            ? (Date.now() - _reloadRequestedAt).toFixed(0) + "ms"
+            : "startup"
+        try {
+            const c = JSON.parse(json)
+            if (c.primary)                  root.primary                  = c.primary
+            if (c.primaryText)              root.primaryText              = c.primaryText
+            if (c.primaryContainer)         root.primaryContainer         = c.primaryContainer
+            if (c.primaryContainerText)     root.primaryContainerText     = c.primaryContainerText
+            if (c.secondary)                root.secondary                = c.secondary
+            if (c.secondaryText)            root.secondaryText            = c.secondaryText
+            if (c.secondaryContainer)       root.secondaryContainer       = c.secondaryContainer
+            if (c.secondaryContainerText)   root.secondaryContainerText   = c.secondaryContainerText
+            if (c.tertiary)                 root.tertiary                 = c.tertiary
+            if (c.tertiaryText)             root.tertiaryText             = c.tertiaryText
+            if (c.tertiaryContainer)        root.tertiaryContainer        = c.tertiaryContainer
+            if (c.tertiaryContainerText)    root.tertiaryContainerText    = c.tertiaryContainerText
+            if (c.error)                    root.error                    = c.error
+            if (c.errorText)                root.errorText                = c.errorText
+            if (c.errorContainer)           root.errorContainer           = c.errorContainer
+            if (c.errorContainerText)       root.errorContainerText       = c.errorContainerText
+            if (c.surface)                  root.surface                  = c.surface
+            if (c.surfaceText)              root.surfaceText              = c.surfaceText
+            if (c.surfaceVariant)           root.surfaceVariant           = c.surfaceVariant
+            if (c.surfaceVariantText)       root.surfaceVariantText       = c.surfaceVariantText
+            if (c.outline)                  root.outline                  = c.outline
+            if (c.outlineVariant)           root.outlineVariant           = c.outlineVariant
+            if (c.shadow)                   root.shadow                   = c.shadow
+            if (c.scrim)                    root.scrim                    = c.scrim
+            if (c.inverseSurface)           root.inverseSurface           = c.inverseSurface
+            if (c.inverseSurfaceText)       root.inverseSurfaceText       = c.inverseSurfaceText
+            if (c.inversePrimary)           root.inversePrimary           = c.inversePrimary
+            if (c.surfaceDim)               root.surfaceDim               = c.surfaceDim
+            if (c.surfaceBright)            root.surfaceBright            = c.surfaceBright
+            if (c.surfaceContainerLowest)   root.surfaceContainerLowest   = c.surfaceContainerLowest
+            if (c.surfaceContainerLow)      root.surfaceContainerLow      = c.surfaceContainerLow
+            if (c.surfaceContainer)         root.surfaceContainer         = c.surfaceContainer
+            if (c.surfaceContainerHigh)     root.surfaceContainerHigh     = c.surfaceContainerHigh
+            if (c.surfaceContainerHighest)  root.surfaceContainerHighest  = c.surfaceContainerHighest
+            if (c.wallpaper)                root.wallpaper                = c.wallpaper
+            console.log("[WallpaperTheme] Colors applied (" + elapsed + ") — primary:", root.primary, "wallpaper:", root.wallpaper)
+        } catch (e) {
+            console.error("[WallpaperTheme] Failed to parse colors.json (" + elapsed + "):", e)
+        }
+        _reloadRequestedAt = 0
+    }
+
+    readonly property string _colorsPath: Quickshell.env("HOME") + "/.cache/quickshell/colors.json"
+
+    Component.onCompleted: {
+        console.log("[WallpaperTheme] Initialized — loading colors.json")
+        _forceReopen()
+    }
+
+    // reload() re-reads from the same open FD, which points to the OLD inode after
+    // matugen's atomic rename (rename changes the inode, FD stays on deleted file).
+    // Resetting path forces FileView to close the stale FD and re-open by path.
+    function reloadColors() {
+        _reloadRequestedAt = Date.now()
+        console.log("[WallpaperTheme] reloadColors() — forcing fresh open at", _reloadRequestedAt)
+        _forceReopen()
+    }
+
+    function _forceReopen() {
+        colorFile.path = ""
+        colorFile.path = root._colorsPath
+    }
+
     FileView {
         id: colorFile
-        path: Quickshell.env("HOME") + "/.cache/quickshell/colors.json"
         watchChanges: true
-
-        onFileChanged: reload()
-
-        onLoaded: {
-            try {
-                const c = JSON.parse(colorFile.text())
-                if (c.primary)                  colorProvider.primary                  = c.primary
-                if (c.primaryText)              colorProvider.primaryText              = c.primaryText
-                if (c.primaryContainer)         colorProvider.primaryContainer         = c.primaryContainer
-                if (c.primaryContainerText)     colorProvider.primaryContainerText     = c.primaryContainerText
-                if (c.secondary)                colorProvider.secondary                = c.secondary
-                if (c.secondaryText)            colorProvider.secondaryText            = c.secondaryText
-                if (c.secondaryContainer)       colorProvider.secondaryContainer       = c.secondaryContainer
-                if (c.secondaryContainerText)   colorProvider.secondaryContainerText   = c.secondaryContainerText
-                if (c.tertiary)                 colorProvider.tertiary                 = c.tertiary
-                if (c.tertiaryText)             colorProvider.tertiaryText             = c.tertiaryText
-                if (c.tertiaryContainer)        colorProvider.tertiaryContainer        = c.tertiaryContainer
-                if (c.tertiaryContainerText)    colorProvider.tertiaryContainerText    = c.tertiaryContainerText
-                if (c.error)                    colorProvider.error                    = c.error
-                if (c.errorText)                colorProvider.errorText                = c.errorText
-                if (c.errorContainer)           colorProvider.errorContainer           = c.errorContainer
-                if (c.errorContainerText)       colorProvider.errorContainerText       = c.errorContainerText
-                if (c.surface)                  colorProvider.surface                  = c.surface
-                if (c.surfaceText)              colorProvider.surfaceText              = c.surfaceText
-                if (c.surfaceVariant)           colorProvider.surfaceVariant           = c.surfaceVariant
-                if (c.surfaceVariantText)       colorProvider.surfaceVariantText       = c.surfaceVariantText
-                if (c.outline)                  colorProvider.outline                  = c.outline
-                if (c.outlineVariant)           colorProvider.outlineVariant           = c.outlineVariant
-                if (c.shadow)                   colorProvider.shadow                   = c.shadow
-                if (c.scrim)                    colorProvider.scrim                    = c.scrim
-                if (c.inverseSurface)           colorProvider.inverseSurface           = c.inverseSurface
-                if (c.inverseSurfaceText)       colorProvider.inverseSurfaceText       = c.inverseSurfaceText
-                if (c.inversePrimary)           colorProvider.inversePrimary           = c.inversePrimary
-                if (c.surfaceDim)               colorProvider.surfaceDim               = c.surfaceDim
-                if (c.surfaceBright)            colorProvider.surfaceBright            = c.surfaceBright
-                if (c.surfaceContainerLowest)   colorProvider.surfaceContainerLowest   = c.surfaceContainerLowest
-                if (c.surfaceContainerLow)      colorProvider.surfaceContainerLow      = c.surfaceContainerLow
-                if (c.surfaceContainer)         colorProvider.surfaceContainer         = c.surfaceContainer
-                if (c.surfaceContainerHigh)     colorProvider.surfaceContainerHigh     = c.surfaceContainerHigh
-                if (c.surfaceContainerHighest)  colorProvider.surfaceContainerHighest  = c.surfaceContainerHighest
-                if (c.wallpaper)                colorProvider.wallpaper                = c.wallpaper
-            } catch (e) {
-                console.error("[WallpaperTheme] Failed to parse colors.json:", e)
-            }
+        onFileChanged: {
+            // inotify IN_MOVED_TO fired — Qt already re-opened the FD here, so reload() is safe
+            console.log("[WallpaperTheme] FileView inotify change detected — reloading")
+            if (root._reloadRequestedAt === 0) root._reloadRequestedAt = Date.now()
+            reload()
         }
-
-        onLoadFailed: {
-            console.warn("[WallpaperTheme] Could not load colors.json from:", path)
-        }
+        onLoaded: root._apply(text())
+        onLoadFailed: console.warn("[WallpaperTheme] FileView could not load colors.json")
     }
 }

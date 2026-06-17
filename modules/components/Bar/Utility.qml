@@ -125,50 +125,84 @@ Item {
                 Layout.preferredWidth:  active ? implicitWidth : 0
 
                 sourceComponent: Rectangle {
-                    implicitWidth:  recRow.implicitWidth + 20
+                    id: recPill
+                    implicitWidth:  recRow.implicitWidth + 22
                     implicitHeight: 30
                     radius:         15
-                    color:          Colors.errorContainer
                     clip:           true
+                    color:          recHov.hovered ? Colors.error : Colors.errorContainer
+                    Behavior on color { ColorAnimation { duration: 180 } }
+
+                    NumberAnimation on opacity { from: 0; to: 1; duration: 220; running: true }
+
+                    // Ambient pulse on the bg (subtle red glow when not hovered)
+                    Rectangle {
+                        anchors.fill: parent; radius: parent.radius
+                        color: Colors.error; visible: !recHov.hovered
+                        SequentialAnimation on opacity {
+                            running: true; loops: Animation.Infinite
+                            NumberAnimation { to: 0.14; duration: 900; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 0;    duration: 900; easing.type: Easing.InOutSine }
+                        }
+                    }
 
                     RowLayout {
                         id: recRow
                         anchors.centerIn: parent
-                        spacing: 5
+                        spacing: 7
 
-                        Rectangle {
-                            width: 6; height: 6; radius: 3
-                            color: Colors.error
-                            SequentialAnimation on opacity {
-                                running: true; loops: Animation.Infinite
-                                NumberAnimation { to: 0.2; duration: 700; easing.type: Easing.InOutSine }
-                                NumberAnimation { to: 1.0; duration: 700; easing.type: Easing.InOutSine }
+                        // Pulsing dot (scale-based)
+                        Item {
+                            width: 8; height: 8
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 8; height: 8; radius: 4
+                                color: recHov.hovered ? "white" : Colors.error
+                                Behavior on color { ColorAnimation { duration: 180 } }
+                                SequentialAnimation on scale {
+                                    running: true; loops: Animation.Infinite
+                                    NumberAnimation { to: 0.6;  duration: 650; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0;  duration: 650; easing.type: Easing.InOutSine }
+                                }
                             }
                         }
 
-                        CustomText { content: "REC"; size: 11; weight: 700; customColor: Colors.errorContainerText }
+                        // Label — swaps to STOP on hover
+                        CustomText {
+                            content: recHov.hovered ? "STOP" : "REC"
+                            size: 11; weight: 700
+                            customColor: recHov.hovered ? "white" : Colors.errorContainerText
+                        }
 
-                        Rectangle { width: 1; height: 10; color: Qt.alpha(Colors.errorContainerText, 0.30) }
+                        Rectangle {
+                            width: 1; height: 10
+                            color: Qt.alpha(recHov.hovered ? "white" : Colors.errorContainerText, 0.30)
+                            Behavior on color { ColorAnimation { duration: 180 } }
+                        }
 
+                        // Timer
                         CustomText {
                             content: {
                                 const s = ServiceTools.recordingSeconds
                                 return String(Math.floor(s / 60)).padStart(2, "0") + ":" +
                                        String(s % 60).padStart(2, "0")
                             }
-                            size: 11; weight: 500; customColor: Colors.errorContainerText
+                            size: 11; weight: 500
+                            customColor: recHov.hovered ? "white" : Colors.errorContainerText
                         }
+
                     }
 
-                    MouseArea {
-                        id: recPillMa
+                    HoverHandler { id: recHov }
+
+                    CustomMouseArea {
                         anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape:  Qt.PointingHandCursor
-                        onClicked:    ServiceTools.stopRecording()
+                        radius: parent.radius
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: ServiceTools.stopRecording()
                     }
 
-                    CustomToolTip { content: "Stop recording"; visible: recPillMa.containsMouse }
+                    CustomToolTip { content: "Click to stop recording"; visible: recHov.hovered }
                 }
             }
 
@@ -234,7 +268,7 @@ Item {
                                : ServicePipewire.volume > 0.2 ? "volume_down"
                                : "volume_mute"
                         iconSize: 18
-                        customColor: volHov.containsMouse ? Colors.primaryContainerText : Colors.outline
+                        customColor: volHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
                         Behavior on customColor { ColorAnimation { duration: 150 } }
                     }
 
@@ -278,7 +312,7 @@ Item {
                             anchors.centerIn: parent
                             content:     ServiceWifi.wifiEnabled ? ServiceWifi.icon : "signal_wifi_off"
                             iconSize:    18
-                            customColor: wifiHov.containsMouse ? Colors.primaryContainerText : Colors.outline
+                            customColor: wifiHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
                             Behavior on customColor { ColorAnimation { duration: 150 } }
                         }
 
@@ -305,7 +339,7 @@ Item {
                             anchors.centerIn: parent
                             content:     ServiceBluetooth.state ? "bluetooth" : "bluetooth_disabled"
                             iconSize:    18
-                            customColor: btHov.containsMouse ? Colors.primaryContainerText : Colors.outline
+                            customColor: btHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
                             Behavior on customColor { ColorAnimation { duration: 150 } }
                         }
 
@@ -336,7 +370,7 @@ Item {
                             customColor: notifHov.containsMouse
                                          ? Colors.primaryContainerText
                                          : ServiceNotification.notificationsNumber > 0
-                                           ? Colors.primary : Colors.outline
+                                           ? Colors.primary : Colors.surfaceText
                             Behavior on customColor { ColorAnimation { duration: 150 } }
                         }
 
@@ -412,7 +446,7 @@ Item {
                         customColor: battHov.containsMouse
                                      ? Colors.primaryContainerText
                                      : ServiceUPower.powerLevel < 0.2 && !ServiceUPower.isCharging
-                                       ? Colors.error : Colors.outline
+                                       ? Colors.error : Colors.surfaceText
                         Behavior on customColor { ColorAnimation { duration: 150 } }
                     }
 

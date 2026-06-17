@@ -223,7 +223,7 @@ Rectangle{
                     Layout.preferredWidth: 50
                     Layout.fillHeight: true
                     radius: 20
-                    color: loopArea.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
+                    color: loopArea.containsMouse ? Colors.primary : Colors.surfaceContainerHigh
                     Behavior on color{
                         ColorAnimation{
                             duration: 200
@@ -257,7 +257,7 @@ Rectangle{
                     Layout.preferredWidth: 40
                     Layout.fillHeight: true
                     radius: 20
-                    color: sArea.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
+                    color: sArea.containsMouse ? Colors.primary : Colors.surfaceContainerHigh
                     Behavior on color{
                         ColorAnimation{
                             duration: 200
@@ -291,7 +291,7 @@ Rectangle{
                     Layout.preferredWidth: 50
                     Layout.fillHeight: true
                     radius: 20
-                    color: lArea.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
+                    color: lArea.containsMouse ? Colors.primary : Colors.surfaceContainerHigh
                     Behavior on color{
                         ColorAnimation{
                             duration: 200
@@ -323,7 +323,7 @@ Rectangle{
                     Layout.preferredWidth: 40
                     Layout.fillHeight: true
                     radius: 20
-                    color: pArea.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
+                    color: pArea.containsMouse ? Colors.primary : Colors.surfaceContainerHigh
                     Behavior on scale{
                         NumberAnimation{
                             duration: 100
@@ -358,7 +358,7 @@ Rectangle{
                     Layout.preferredWidth: 50
                     Layout.fillHeight: true
                     radius: 20
-                    color: nArea.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
+                    color: nArea.containsMouse ? Colors.primary : Colors.surfaceContainerHigh
                     Behavior on color{
                         ColorAnimation{
                             duration: 200

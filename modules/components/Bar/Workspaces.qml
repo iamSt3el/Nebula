@@ -67,7 +67,7 @@ Item{
     RowLayout {
         id: row
         anchors.centerIn: parent
-        spacing: 4
+        spacing: 6
 
         Repeater {
             model: ScriptModel {

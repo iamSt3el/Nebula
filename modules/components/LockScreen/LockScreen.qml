@@ -58,33 +58,14 @@ Scope {
                         width: parent.width
                         height: parent.height
                         context: lockContext
-                        //visible: root.screenLocked
-                        // NumberAnimation on opacity{
-                        //     from: 0
-                        //     to: 1
-                        //     running: true
-                        //     duration: 600
-                        // }
-                        // NumberAnimation on opacity{
-                        //     from: 1
-                        //     to: 0
-                        //     running: root.startAnimation
-                        //     duration: 600
-                        // }
-                        NumberAnimation on y {
-                            from: -1200
-                            to: 0
-                            running: true
-                            duration: 600
-                            easing.type: Easing.OutCubic
-                        }
 
                         NumberAnimation on y {
-                            from: 0
-                            to: -1200
-                            running: root.startAnimation
-                            duration: 600
-                            easing.type: Easing.InCubic
+                            from: -1200; to: 0; running: true
+                            duration: 600; easing.type: Easing.OutCubic
+                        }
+                        NumberAnimation on y {
+                            from: 0; to: -1200; running: root.startAnimation
+                            duration: 600; easing.type: Easing.InCubic
                         }
                     }
                 }

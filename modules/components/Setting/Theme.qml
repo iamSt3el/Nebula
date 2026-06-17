@@ -14,6 +14,7 @@ Item {
     anchors.fill: parent
     anchors.margins: 5
 
+
     FolderDialog {
         id: folderPicker
         title: "Select wallpaper directory"
@@ -115,7 +116,7 @@ Item {
                             activeCheck: function(v) { return SettingsConfig.theme.matugenTheme === v }
                             onSegmentClicked: function(v) {
                                 SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenTheme: v })
-                                Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, ServiceWallpaper.scheme, v, ServiceWallpaper.transitionType])
+                                ServiceWallpaper.applyTheme()
                             }
                         }
                     }
@@ -136,10 +137,10 @@ Item {
                             Layout.preferredWidth: 200
                             Layout.preferredHeight: 30
                             color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.theme.matugenScheme
                             list: Settings.matugen
+                            Component.onCompleted: currentVal = SettingsConfig.theme.matugenScheme
                             onCurrentValChanged: {
-                                if (currentVal) {
+                                if (currentVal && currentVal !== SettingsConfig.theme.matugenScheme) {
                                     SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenScheme: currentVal })
                                     Quickshell.execDetached([ServiceWallpaper.wallpaperScript, Colors.wallpaper, currentVal, SettingsConfig.theme.matugenTheme, ServiceWallpaper.transitionType])
                                 }
@@ -163,10 +164,10 @@ Item {
                             Layout.preferredWidth: 200
                             Layout.preferredHeight: 30
                             color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.theme.transitionType ?? "fade"
                             list: Settings.transitionTypes
+                            Component.onCompleted: currentVal = SettingsConfig.theme.transitionType ?? "fade"
                             onCurrentValChanged: {
-                                if (currentVal) {
+                                if (currentVal && currentVal !== SettingsConfig.theme.transitionType) {
                                     SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { transitionType: currentVal })
                                 }
                             }
