@@ -50,30 +50,25 @@ https://github.com/user-attachments/assets/30a3f633-4933-4bc3-8144-f51887c8eb0a
 
 ## Keybindings
 
-Nebula uses Hyprland's global shortcut system. Add bindings to your `hyprland.conf` (or keybindings file) pointing to the names below:
+Nebula registers global shortcuts that Hyprland dispatches to the shell. Add your own binds in your Lua keybindings file (e.g. `~/.config/hypr/lua/keybinds.lua`):
 
-```ini
-bind = <your key>, global, quickshell:lock
-bind = <your key>, global, quickshell:shutdown
-bind = <your key>, global, quickshell:appLauncher
-bind = <your key>, global, quickshell:toolsWidget
-bind = <your key>, global, quickshell:clipboard
-bind = <your key>, global, quickshell:wallpaperLauncher
-bind = <your key>, global, quickshell:settingOpen
-bind = <your key>, global, quickshell:mangaReader
-bind = <your key>, global, quickshell:dashboard
-bind = <your key>, global, quickshell:notification
-bind = <your key>, global, quickshell:weather
-bind = <your key>, global, quickshell:brightnessIncrease
-bind = <your key>, global, quickshell:brightnessDecrease
+```lua
+-- Pick whatever keys work for you
+hl.bind("SUPER + L",             hl.dsp.global("quickshell:lock"),             { locked = true })
+hl.bind("SUPER + SHIFT + S",     hl.dsp.global("quickshell:shutdown"),         { locked = true })
+hl.bind("SUPER + CTRL + RETURN", hl.dsp.global("quickshell:appLauncher"))
+hl.bind("SUPER + S",             hl.dsp.global("quickshell:toolsWidget"))
+hl.bind("SUPER + V",             hl.dsp.global("quickshell:clipboard"))
+hl.bind("SUPER + W",             hl.dsp.global("quickshell:wallpaperLauncher"))
+hl.bind("SUPER + CTRL + S",      hl.dsp.global("quickshell:settingOpen"))
+hl.bind("SUPER + A",             hl.dsp.global("quickshell:mangaReader"))
+-- optional extras
+hl.bind("SUPER + D",             hl.dsp.global("quickshell:dashboard"))
+hl.bind("SUPER + N",             hl.dsp.global("quickshell:notification"))
+hl.bind("SUPER + E",             hl.dsp.global("quickshell:weather"))
 ```
 
-Replace `<your key>` with whatever key combo you want. For example:
-
-```ini
-bind = SUPER, L, global, quickshell:lock
-bind = SUPER CTRL, S, global, quickshell:settingOpen
-```
+The `{ locked = true }` flag lets the bind fire even when the screen is locked.
 
 ---
 
