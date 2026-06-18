@@ -71,4 +71,48 @@ PanelWindow{
     Component { id: analogClassic; AnalogClockClassic {} }
     Component { id: analogMinimal; AnalogClockMinimal {} }
     Component { id: analogShape;   AnalogClockShape   {} }
+
+    Loader {
+        active: SettingsConfig.widgets.showWeatherSlanted ?? false
+        visible: active
+        sourceComponent: WeatherWidgetSlanted {}
+    }
+
+    Loader {
+        active: SettingsConfig.widgets.showWeatherForecast ?? false
+        visible: active
+        sourceComponent: WeatherWidgetForecast {}
+    }
+
+    Loader {
+        active: SettingsConfig.widgets.showWeatherDetails ?? false
+        visible: active
+        sourceComponent: WeatherWidgetDetails {}
+    }
+
+    Loader {
+        active: SettingsConfig.widgets.showPomodoro ?? false
+        visible: active
+        sourceComponent: PomodoroWidget {}
+    }
+
+    Loader {
+        active: SettingsConfig.widgets.showSystemMonitor ?? false
+        visible: active
+        sourceComponent: (SettingsConfig.widgets.systemMonitorStyle ?? "default") === "compact"
+            ? sysCompact : sysDefault
+    }
+
+    Component { id: sysDefault; SystemMonitorWidget  {} }
+    Component { id: sysCompact; SystemMonitorCompact {} }
+
+    Loader {
+        active: SettingsConfig.widgets.showBattery ?? false
+        visible: active
+        sourceComponent: (SettingsConfig.widgets.batteryStyle ?? "default") === "minimal"
+            ? battMinimal : battDefault
+    }
+
+    Component { id: battDefault; BatteryWidget        {} }
+    Component { id: battMinimal; BatteryWidgetMinimal {} }
 }

@@ -248,6 +248,34 @@ Rectangle {
                             }
                         }
 
+                        // Download progress pill — expands in when a download is active
+                        Rectangle {
+                            id: _headerDlPill
+                            height: 30; radius: 15; clip: true
+                            readonly property bool isActive: ServiceWallpaper.downloadingId !== ""
+                            implicitWidth: isActive ? (_dlPillRow.implicitWidth + 20) : 0
+                            Behavior on implicitWidth { NumberAnimation { duration: Appearance.duration.normal; easing.type: Easing.OutQuad } }
+                            color: Qt.alpha(Colors.primary, 0.15)
+
+                            RowLayout {
+                                id: _dlPillRow; anchors.centerIn: parent; spacing: 6
+                                MaterialIconSymbol { content: "download"; iconSize: 14; customColor: Colors.primary }
+                                CustomText {
+                                    content: Math.round(ServiceWallpaper.downloadProgress * 100) + "%"
+                                    size: 11; customColor: Colors.primary; weight: 600
+                                }
+                                Rectangle {
+                                    width: 18; height: 18; radius: 9
+                                    color: Qt.alpha(Colors.primary, 0.3)
+                                    MaterialIconSymbol { anchors.centerIn: parent; content: "close"; iconSize: 11; customColor: Colors.primary }
+                                    CustomMouseArea {
+                                        anchors.fill: parent; radius: parent.radius; cursorShape: Qt.PointingHandCursor
+                                        onClicked: ServiceWallpaper.cancelDownload()
+                                    }
+                                }
+                            }
+                        }
+
                         Rectangle {
                             width: 30; height: 30; radius: 15
                             color: ServiceWallpaper.isFetchingOnline ? Colors.surfaceContainerHighest : Colors.primary

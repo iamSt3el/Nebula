@@ -11,8 +11,9 @@ Item{
     property real progress: 0.0
     property real thickness: 2
     property real radius: Math.min(width, height) / 2 - thickness
-    property string baseColor: Colors.surfaceContainerHigh 
+    property string baseColor: Colors.surfaceContainerHigh
     property string lineColor: Colors.primary
+    property bool showText: true
     Canvas{
         id: canvas
         anchors.fill: parent
@@ -49,8 +50,9 @@ Item{
                 ctx.stroke();
             }
         }
-        RowLayout{ 
+        RowLayout{
             anchors.centerIn: parent
+            visible: root.showText
             CustomText{
                 content: Math.floor(root.progress * 100)
                 size: 24

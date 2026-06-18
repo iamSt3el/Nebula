@@ -67,7 +67,7 @@ Item {
         width: root.clockSize
         height: root.clockSize
         roundedPolygon: MaterialShapeFn.getCookie12Sided()
-        color: Colors.surfaceContainerHigh
+        color: Colors.surface
     }
 
     // Hour hand

@@ -28,6 +28,7 @@ Scope {
             anchors.right: true
             anchors.bottom: true
             WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
             exclusionMode: ExclusionMode.Normal
             color: "transparent"
 

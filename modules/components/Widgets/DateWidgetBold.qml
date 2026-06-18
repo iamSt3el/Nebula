@@ -61,7 +61,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 24
-        color: Colors.surfaceContainer
+        color: Colors.surface
 
         ColumnLayout {
             anchors.centerIn: parent

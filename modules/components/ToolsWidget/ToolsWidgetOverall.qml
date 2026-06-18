@@ -75,6 +75,22 @@ Item {
 
                 Rectangle {
                     width: 32; height: 32; radius: 16
+                    color: settingsHov.containsMouse ? Qt.alpha(Colors.surfaceText, 0.08) : "transparent"
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    MaterialIconSymbol { anchors.centerIn: parent; content: "settings"; iconSize: 17; color: Colors.surfaceVariantText }
+                    MouseArea {
+                        id: settingsHov
+                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            GlobalStates.toolsWidgetOpen = false
+                            GlobalStates.settingsPage = 10
+                            GlobalStates.settingsOpen = true
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: 32; height: 32; radius: 16
                     color: closeHov.containsMouse ? Qt.alpha(Colors.surfaceText, 0.08) : "transparent"
                     Behavior on color { ColorAnimation { duration: 120 } }
                     MaterialIconSymbol { anchors.centerIn: parent; content: "close"; iconSize: 17; color: Colors.surfaceVariantText }

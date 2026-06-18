@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.customComponents
 import qs.modules.services
+import qs.modules.settings
 import QtQuick.Effects
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MatrialShapeFn
@@ -350,6 +351,11 @@ ColumnLayout{
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    root.backClicked()
+                    GlobalStates.settingsPage = 6
+                    GlobalStates.settingsOpen = true
+                }
             }
         }
     }

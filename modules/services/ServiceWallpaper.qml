@@ -179,6 +179,7 @@ Singleton {
     property int downloadTotalBytes: 0
     readonly property real downloadProgress: downloadTotalBytes > 0
         ? Math.min(1.0, downloadedBytes / downloadTotalBytes) : 0
+    property bool _cancelingDownload: false
 
     onOnlineModeChanged: {
         if (onlineMode) {
@@ -288,6 +289,12 @@ Singleton {
             "curl -sL '" + wallpaper.fullUrl + "' -o '" + savePath + "'"
         ]
         wallhavenDownloader.running = true
+    }
+
+    function cancelDownload() {
+        if (!wallhavenDownloader.running) return
+        _cancelingDownload = true
+        wallhavenDownloader.running = false
     }
     // ── End Online ──────────────────────────────────────────────────────────
 
@@ -544,7 +551,11 @@ Singleton {
             downloadPoller.stop()
             root.downloadingId = ""
             root.downloadedBytes = 0
-            if (exitCode === 0) {
+            if (root._cancelingDownload) {
+                console.log("[ServiceWallpaper] Download canceled:", root._pendingDownloadPath)
+                Quickshell.execDetached(["rm", "-f", root._pendingDownloadPath])
+                root._cancelingDownload = false
+            } else if (exitCode === 0) {
                 console.log("[ServiceWallpaper] Download complete:", root._pendingDownloadPath)
                 const savePath = root._pendingDownloadPath
                 const thumbPath = root.cacheDir + "/" + Qt.md5(savePath) + ".jpg"

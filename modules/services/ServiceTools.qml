@@ -281,7 +281,7 @@ Singleton{
         var path = dir + "/screenshot_" + ts + ".png"
         root._areaScreenshotPath = path
         areaScreenshotProc.command = ["sh", "-c",
-            "mkdir -p '" + dir + "' && grim -g '" + geo + "' '" + path + "' && wl-copy < '" + path + "'"]
+            "mkdir -p '" + dir + "' && sleep 0.4 && grim -g '" + geo + "' '" + path + "' && wl-copy < '" + path + "'"]
         areaScreenshotProc.running = true
     }
 

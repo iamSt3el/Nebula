@@ -14,9 +14,7 @@ Item{
     id: root 
     anchors.fill: parent
     implicitHeight: col.implicitHeight
-    property bool isWifiClicked: false
-    property bool isBluetoothClicked: false
-    property bool isOverlayClicked: false
+    property string panelMode: ""   // "" | "wifi" | "bluetooth"
 
 
     property var parentPos
@@ -28,10 +26,7 @@ Item{
     Timer{
         id: rowTimer
         interval: 300
-        onTriggered:{
-            colu.visible = true
-            root.isOverlayClicked = false
-        }
+        onTriggered: colu.visible = true
     }
 
     opacity:0
@@ -82,111 +77,110 @@ Item{
 
 
 
-    Loader{
-        id: overlay
-        active: root.isOverlayClicked
+    // Overlay backdrop — fades in/out independently
+    Rectangle {
+        id: overlayBackdrop
         anchors.fill: parent
         z: 1
-        visible: active
-        sourceComponent: Item{
-            anchors.fill: parent
-            Rectangle{
-                anchors.fill: parent
-                radius: 20
-                color: Qt.alpha(Colors.surface, 0.7)
-                property bool active: root.isWifiClicked || root.isBluetoothClicked
+        radius: 20
+        color: Qt.alpha(Colors.surface, 0.7)
+        opacity: root.panelMode !== "" ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 300 } }
+    }
 
-                opacity: active ? 1 : 0
+    // Panel container — persistent so states/transitions actually animate
+    Rectangle {
+        id: container
+        z: 2
+        enabled: root.panelMode !== ""
 
-                Behavior on opacity{
-                    NumberAnimation{
-                        duration: 300
-                    }
+        // Default (closed) position — tracks the tile that was last clicked
+        x: root.pos ? root.pos.x : 0
+        y: root.pos ? root.pos.y : 0
+        width: wifi.width
+        height: 60
+        opacity: 0
+
+        color: Colors.surfaceContainerHigh
+        radius: 20
+        clip: true
+
+        states: [
+            State {
+                name: "wifi"
+                when: root.panelMode === "wifi"
+                PropertyChanges {
+                    target: container
+                    x: root.parentPos ? root.parentPos.x : 0
+                    y: root.parentPos ? root.parentPos.y : 0
+                    width: controleRectangle.width
+                    height: controleRectangle.height + 400
+                    opacity: 1
+                }
+            },
+            State {
+                name: "bluetooth"
+                when: root.panelMode === "bluetooth"
+                PropertyChanges {
+                    target: container
+                    x: root.parentPos ? root.parentPos.x : 0
+                    y: root.parentPos ? root.parentPos.y : 0
+                    width: controleRectangle.width
+                    height: controleRectangle.height + 400
+                    opacity: 1
                 }
             }
-            Rectangle{
-                id: container
-                property bool active: root.isWifiClicked || root.isBluetoothClicked
+        ]
 
-                x: active ? root.parentPos.x : root.pos.x
-                y: active ? root.parentPos.y : root.pos.y
+        transitions: Transition {
+            NumberAnimation {
+                properties: "x,y,width,height,opacity"
+                duration: 300
+                easing.type: Easing.InOutCirc
+            }
+        }
 
-                implicitWidth: active ? controleRectangle.width : wifi.width
-                implicitHeight: active ? controleRectangle.height + 400 : 60
-                color: Colors.surfaceContainerHigh
+        // Show content after open animation completes
+        Timer {
+            id: contentTimer
+            interval: 300
+            onTriggered: panelLoader.active = true
+        }
 
-                radius: 20
-                opacity: active ? 1 : 0.9
-                Behavior on opacity{
-                    PropertyAnimation{
-                        duration: 300
-                    }
+        Connections {
+            target: root
+            function onPanelModeChanged() {
+                panelLoader.active = false
+                if (root.panelMode !== "") contentTimer.start()
+            }
+        }
+
+        Loader {
+            id: panelLoader
+            active: false
+            anchors.fill: parent
+            visible: active
+            sourceComponent: root.panelMode === "wifi" ? wifiComponent : bluetoothComponent
+        }
+
+        Component {
+            id: wifiComponent
+            Wifi {
+                onBackClicked: {
+                    root.panelMode = ""
+                    panelLoader.active = false
+                    rowTimer.start()
                 }
+            }
+        }
 
-                Timer{
-                    interval: 300
-                    running: container.active
-                    onTriggered:{
-                        if(root.isWifiClicked){
-                            wifiLoader.active = true
-                        }else{
-                            bluetoothLoader.active = true
-                        }
-                    }
-                }
-
-                Behavior on x{
-                    NumberAnimation{
-                        duration: 300
-                        easing.type: Easing.InOutCirc
-                    }
-                }
-                Behavior on y{
-                    NumberAnimation{
-                        duration: 300
-                        easing.type: Easing.InOutCirc
-                    }
-                }
-
-                Behavior on implicitWidth{
-                    NumberAnimation{
-                        duration: 300
-                        easing.type: Easing.InOutCirc
-                    }
-                }
-                Behavior on implicitHeight{
-                    NumberAnimation{
-                        duration: 300
-                        easing.type: Easing.InOutCirc
-                    }
-                }
-
-                Loader{
-                    id: wifiLoader
-                    active: false
-                    anchors.fill: parent
-                    visible: active
-                    sourceComponent: Wifi{
-                        onBackClicked: {
-                            root.isWifiClicked = false
-                            wifiLoader.active = false
-                            rowTimer.start()
-                        }
-                    }
-                }
-
-                Loader{
-                    id: bluetoothLoader
-                    active: false
-                    anchors.fill: parent
-                    visible: active
-                    sourceComponent: Bluetooth{
-                        onBackClicked: {
-                            root.isBluetoothClicked = false
-                            bluetoothLoader.active = false
-                            rowTimer.start()
-                        }
-                    }
+        Component {
+            id: bluetoothComponent
+            Bluetooth {
+                onBackClicked: {
+                    root.panelMode = ""
+                    panelLoader.active = false
+                    rowTimer.start()
                 }
             }
         }
@@ -285,7 +279,11 @@ Item{
                     Layout.preferredHeight: 30
                     Layout.preferredWidth: 30
                     radius: 10
-                   
+                    onClicked: {
+                        root.toggleDashboard()
+                        GlobalStates.settingsPage = 0
+                        GlobalStates.settingsOpen = true
+                    }
                 }
 
                 CustomButton{
@@ -294,6 +292,10 @@ Item{
                     Layout.preferredHeight: 30
                     Layout.preferredWidth: 40
                     radius: 10
+                    onClicked: {
+                        root.toggleDashboard()
+                        GlobalStates.shutdownWindow = true
+                    }
                 }
                 CustomButton{
                     icon: "close"
@@ -323,7 +325,7 @@ Item{
 
         Rectangle{
             id: controleRectangle
-            Layout.preferredHeight: root.isWifiClicked || root.isBluetoothClicked ? colu.implicitHeight : colu.implicitHeight
+            Layout.preferredHeight: colu.implicitHeight
             Layout.fillWidth: true
             color: "transparent"//Colors.surfaceContainer
             radius: 20
@@ -354,7 +356,7 @@ Item{
                             Layout.fillWidth: true
                             radius: 20
                             color: Colors.surfaceContainerHigh
-                            opacity: root.isWifiClicked ? 0 : 1
+                            opacity: root.panelMode === "wifi" ? 0 : 1
 
                             Behavior on opacity {
                                 NumberAnimation { duration: 300 }
@@ -412,8 +414,7 @@ Item{
                                 onClicked:{
                                     root.parentPos = controleRectangle.mapToItem(root, 0, 0)
                                     root.pos = wifi.mapToItem(root, 0, 0)
-                                    root.isOverlayClicked = true
-                                    root.isWifiClicked = true
+                                    root.panelMode = "wifi"
                                 }
                             }
                         }
@@ -475,9 +476,7 @@ Item{
                                 onClicked:{
                                     root.parentPos = controleRectangle.mapToItem(root, 0, 0)
                                     root.pos = bluetooth.mapToItem(root, 0, 0)
-                                    root.isOverlayClicked = true
-                                    root.isBluetoothClicked = true
-                                    //colu.visible = false
+                                    root.panelMode = "bluetooth"
                                 }
                             }
                         }

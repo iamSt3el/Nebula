@@ -14,6 +14,11 @@ Item {
     property var currentPage: 0
     signal settingClosed
 
+    Connections {
+        target: GlobalStates
+        function onSettingsPageChanged() { root.currentPage = GlobalStates.settingsPage }
+    }
+
     opacity: 0
     scale: 0.7
 

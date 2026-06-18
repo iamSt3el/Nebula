@@ -394,6 +394,107 @@ def _apply_app_templates(our_colors: dict, wallpaper: str) -> None:
     print(f"[gen_colors] app templates done in {(time.time()-t0)*1000:.0f}ms", flush=True)
 
 
+# ── Papirus folder color sync ─────────────────────────────────────────────────
+
+_PAPIRUS_PATHS = [
+    Path("/usr/share/icons/Papirus"),
+    Path("/usr/share/icons/Papirus-Dark"),
+    Path("/usr/share/icons/Papirus-Light"),
+    Path.home() / ".local/share/icons/Papirus",
+    Path.home() / ".icons/Papirus",
+]
+
+
+def _determine_papirus_hue(r: int, g: int, b: int, brightness: int, use_pale: bool) -> str:
+    if b > r and b > g:
+        r_ratio = (r * 100) // b if b > 0 else 0
+        g_ratio = (g * 100) // b if b > 0 else 0
+        rg_diff = abs(r - g)
+        if r_ratio > 70 and g_ratio > 70:
+            if rg_diff < 15:
+                return "blue"
+            elif r > g:
+                return "violet"
+            else:
+                return "cyan"
+        elif r_ratio > 60 and r > g:
+            return "violet"
+        elif g_ratio > 60 and g > r:
+            return "cyan"
+        else:
+            return "blue"
+    elif r > g and r > b:
+        if g > b + 30:
+            rg_ratio = (g * 100) // r if r > 0 else 0
+            if use_pale:
+                return "palebrown" if rg_ratio > 70 and brightness < 220 else "paleorange"
+            else:
+                return "brown" if rg_ratio > 70 and brightness < 180 else "orange"
+        elif b > g + 20:
+            return "pink"
+        else:
+            return "pink" if use_pale else "red"
+    elif g > r and g > b:
+        return "yellow" if r > b + 30 else "green"
+    else:
+        return "grey"
+
+
+def _map_to_papirus_color(hex_color: str) -> str:
+    """Map a hex color (with or without #) to the nearest Papirus folder color name."""
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+    max_val = max(r, g, b)
+    min_val = min(r, g, b)
+    brightness = max_val
+    saturation = 0 if max_val == 0 else ((max_val - min_val) * 100) // max_val
+
+    if saturation < 20:
+        if brightness < 85:
+            return "black"
+        elif brightness < 170:
+            return "grey"
+        else:
+            return "white"
+    elif saturation < 60 and brightness > 180:
+        return _determine_papirus_hue(r, g, b, brightness, use_pale=True)
+    else:
+        return _determine_papirus_hue(r, g, b, brightness, use_pale=False)
+
+
+def _sync_papirus_colors(primary_hex: str, mode: str) -> None:
+    """Recolor Papirus folder icons and switch GTK icon theme to Papirus."""
+    if not any(p.exists() for p in _PAPIRUS_PATHS):
+        return
+
+    if subprocess.run(["which", "papirus-folders"], capture_output=True).returncode != 0:
+        print("[gen_colors] papirus-folders not found — skipping icon sync", flush=True)
+        return
+
+    color = _map_to_papirus_color(primary_hex)
+    icon_theme = "Papirus-Dark" if mode == "dark" else "Papirus-Light"
+    print(f"[gen_colors] papirus-folders → {color} ({icon_theme})", flush=True)
+
+    try:
+        for theme in ("Papirus", "Papirus-Dark", "Papirus-Light"):
+            if not any(p.name == theme and p.exists() for p in _PAPIRUS_PATHS):
+                continue
+            subprocess.Popen(
+                ["sudo", "-n", "papirus-folders", "-C", color, "--theme", theme, "-u"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        subprocess.Popen(
+            ["gsettings", "set", "org.gnome.desktop.interface", "icon-theme", icon_theme],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception as e:
+        print(f"[gen_colors] papirus-folders ERROR: {e}", file=sys.stderr)
+
+
 # ── Font sync ──────────────────────────────────────────────────────────────────
 
 # Body font → monospace equivalent (for terminal)
@@ -589,6 +690,7 @@ def main() -> None:
         print(f"[gen_colors] cache hit ({(time.time()-t_start)*1000:.0f}ms) — {img_hash[:8]}_{variant}_{mode}")
         _apply_app_templates(our_colors, wallpaper)
         _apply_fonts()
+        _sync_papirus_colors(our_colors.get("primary", ""), mode)
         return
 
     # ── Medium path: primary HCT cached ───────────────────────────────────
@@ -624,6 +726,7 @@ def main() -> None:
 
     _apply_app_templates(our_colors, image_path)
     _apply_fonts()
+    _sync_papirus_colors(our_colors.get("primary", ""), mode)
 
 
 if __name__ == "__main__":

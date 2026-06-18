@@ -26,6 +26,8 @@ Item {
     property color inactiveTextColor: Colors.surfaceText
 
     property bool fillWidth: false
+    property int iconSize: 14
+    property int textSize: 11
 
     readonly property real fullRadius: height / 2
     readonly property real innerRadius: 4
@@ -81,7 +83,7 @@ Item {
                         visible: seg.hasIcon
                         anchors.verticalCenter: parent.verticalCenter
                         content: seg.modelData.icon ?? ""
-                        iconSize: 14
+                        iconSize: root.iconSize
                         fill: seg.active ? 1 : 0
                         Behavior on fill { NumberAnimation { duration: 200 } }
                         customColor: seg.active ? root.activeTextColor : root.inactiveTextColor
@@ -91,7 +93,7 @@ Item {
                         visible: seg.hasLabel
                         anchors.verticalCenter: parent.verticalCenter
                         content: seg.modelData.label ?? ""
-                        size: 11
+                        size: root.textSize
                         customColor: seg.active ? root.activeTextColor : root.inactiveTextColor
                     }
                 }

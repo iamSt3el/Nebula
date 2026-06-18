@@ -153,7 +153,7 @@ Item {
                             CustomText { Layout.fillWidth: true; content: "Set as Wallpaper"; size: 12 }
                         }
                         RippleEffect {
-                            anchors.fill: parent
+                            anchors.fill: parent; radius: 6
                             onClicked: { ServiceWallpaper.setWallpaper(root.target); root.close() }
                         }
                     }
@@ -180,7 +180,7 @@ Item {
                             }
                         }
                         RippleEffect {
-                            anchors.fill: parent
+                            anchors.fill: parent; radius: 6
                             onClicked: { ServiceWallpaper.toggleFavorite(root.target); root.close() }
                         }
                     }
@@ -196,7 +196,7 @@ Item {
                             CustomText { Layout.fillWidth: true; content: "Copy Path"; size: 12 }
                         }
                         RippleEffect {
-                            anchors.fill: parent
+                            anchors.fill: parent; radius: 6
                             onClicked: {
                                 Quickshell.clipboardText = ServiceWallpaper.getOriginalPath(root.target)
                                 root.close()
@@ -215,7 +215,7 @@ Item {
                             MaterialIconSymbol { content: "delete"; iconSize: 16; customColor: Colors.error }
                             CustomText { Layout.fillWidth: true; content: "Delete File"; size: 12; customColor: Colors.error }
                         }
-                        RippleEffect { anchors.fill: parent; onClicked: root.deleteConfirm = true }
+                        RippleEffect { anchors.fill: parent; radius: 6; onClicked: root.deleteConfirm = true }
                     }
 
                     // Delete — confirm state
@@ -236,7 +236,7 @@ Item {
                             CustomText { Layout.fillWidth: true; content: "Yes, delete permanently"; size: 12; customColor: Colors.error }
                         }
                         RippleEffect {
-                            anchors.fill: parent
+                            anchors.fill: parent; radius: 6
                             onClicked: { ServiceWallpaper.deleteWallpaper(root.target); root.close() }
                         }
                     }
@@ -249,7 +249,7 @@ Item {
                             MaterialIconSymbol { content: "close"; iconSize: 16; customColor: Colors.outline }
                             CustomText { Layout.fillWidth: true; content: "Cancel"; size: 12 }
                         }
-                        RippleEffect { anchors.fill: parent; onClicked: root.deleteConfirm = false }
+                        RippleEffect { anchors.fill: parent; radius: 6; onClicked: root.deleteConfirm = false }
                     }
 
                     // ── ONLINE ─────────────────────────────────────────────
@@ -283,7 +283,7 @@ Item {
                             }
                         }
                         RippleEffect {
-                            anchors.fill: parent
+                            anchors.fill: parent; radius: 6
                             onClicked: {
                                 if (!dlRow.busy && root.target)
                                     ServiceWallpaper.downloadAndSetWallpaper(root.target)
@@ -303,7 +303,7 @@ Item {
                             CustomText { Layout.fillWidth: true; content: "Copy Image URL"; size: 12 }
                         }
                         RippleEffect {
-                            anchors.fill: parent
+                            anchors.fill: parent; radius: 6
                             onClicked: {
                                 if (root.target) Quickshell.clipboardText = root.target.fullUrl ?? ""
                                 root.close()
@@ -322,7 +322,7 @@ Item {
                             CustomText { Layout.fillWidth: true; content: "Open in Browser"; size: 12 }
                         }
                         RippleEffect {
-                            anchors.fill: parent
+                            anchors.fill: parent; radius: 6
                             onClicked: {
                                 if (root.target)
                                     Quickshell.execDetached(["xdg-open",

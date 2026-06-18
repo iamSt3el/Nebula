@@ -1,374 +1,362 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls.Fusion
+import QtQuick.Effects
+import Quickshell
 import Quickshell.Wayland
-import qs.modules.utils
-import Qt5Compat.GraphicalEffects
 import Quickshell.Widgets
+import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
 import qs.modules.services
-import QtQuick.Effects
 
-
-Rectangle {
+Item {
     id: root
-    required property var context  // GreeterContext
+    required property var context
+    focus: true
 
-    color: Colors.surface
-    focus: true  // Enable keyboard event capture
-    property bool inputExpanded: false  // Track expansion state
+    Keys.onPressed: event => { passInput.forceActiveFocus() }
 
+    readonly property string _font: SettingsConfig.general.displayFont ?? "Titan One"
 
+    readonly property int _h24: parseInt(ServiceClock.hour)
+    readonly property int _h12: { let h = _h24 % 12; return h === 0 ? 12 : h }
+    readonly property string _period: _h24 < 12 ? "AM" : "PM"
+    readonly property string h1: Math.floor(_h12 / 10).toString()
+    readonly property string h2: (_h12 % 10).toString()
+    readonly property string m1: ServiceClock.minute[0] ?? "0"
+    readonly property string m2: ServiceClock.minute[1] ?? "0"
 
-    Image{
-        id: background
-        source: WallpaperTheme.wallpaper
+    // ── Background ────────────────────────────────────────────────────────────
+    Image {
         anchors.fill: parent
+        source: WallpaperTheme.wallpaper
         fillMode: Image.PreserveAspectCrop
         sourceSize: Qt.size(width, height)
-
+        asynchronous: false
         layer.enabled: true
         layer.effect: MultiEffect {
-            blurEnabled: true
-            blur: 0.1
-            blurMax: 40
-            autoPaddingEnabled: false
+            blurEnabled: true; blur: 0.9; blurMax: 48; autoPaddingEnabled: false
         }
     }
 
-    ColumnLayout{
+    Rectangle {
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.22)
+    }
+
+    // ── Login panel ───────────────────────────────────────────────────────────
+    Rectangle {
+        id: panel
         anchors.centerIn: parent
-        spacing: 0
-        RowLayout{
-            id: clockRow
-            Layout.leftMargin: 20
-            Layout.rightMargin: 20
-            spacing:0
-            CustomText{
-                content: ServiceClock.hour
-                size: 160
-                style: Text.Raised
-                styleColor: Colors.outline
-                font.bold: false
-            }
+        width: 500
+        height: inner.implicitHeight + 56
+        radius: 28
+        color: Colors.surfaceContainer
+        opacity: 0
 
-            CustomText{
-                content: ":"
-                size: 120
-                bottomPadding: 32
-                style: Text.Raised
-                weight: 400
-                color: Colors.outline
-                styleColor: Colors.outline
-                font.bold: false
-            }
+        transform: Translate { id: entryTx; y: 60 }
 
-            CustomText{
-                content: ServiceClock.minute
-                size: 160
-                style: Text.Raised
-                styleColor: Colors.outline
-                font.bold: false
-            }
-
-            CustomText{
-                Layout.preferredWidth: 80
-                content: ServiceClock.seconds
-                size: 60
-                style: Text.Raised
-                weight: 400
-                color: Colors.outline
-                styleColor: Colors.outline
-                font.bold: false
-            }
+        NumberAnimation on opacity {
+            from: 0; to: 1; duration: 480; easing.type: Easing.OutCubic; running: true
+        }
+        NumberAnimation {
+            target: entryTx; property: "y"
+            from: 60; to: 0; duration: 520; easing.type: Easing.OutCubic; running: true
         }
 
-        RowLayout{
-            Layout.leftMargin: 20
-            Layout.rightMargin: 20
-            spacing: 10
-            CustomIconImage{
-                icon: "calender"
-                size: 30
+        ColumnLayout {
+            id: inner
+            anchors {
+                top: parent.top; left: parent.left; right: parent.right
+                topMargin: 28; leftMargin: 28; rightMargin: 28
             }
-            CustomText{
-                content: ServiceClock.day
-                size: 30
-                style: Text.Raised
-                weight: 400
-                styleColor: Colors.outline
-                font.bold: false
-            }
+            spacing: 0
 
-            CustomText{
-                content: "."
-                size: 40
-                style: Text.Raised
-                bottomPadding: 15
-                weight: 400
-                styleColor: Colors.outline
-                font.bold: false
-            }
+            // ── Avatar ────────────────────────────────────────────────────────
+            Item {
+                Layout.alignment: Qt.AlignHCenter
+                implicitWidth: 80; implicitHeight: 80
 
-            CustomText{
-                content: ServiceClock.month
-                size: 30
-                style: Text.Raised
-                weight: 400
-                styleColor: Colors.outline
-                font.bold: false
-            }
-
-            CustomText{
-                content: ServiceClock.date
-                size: 30
-                style: Text.Raised
-                weight: 400
-                styleColor: Colors.outline
-                font.bold: false
-            }
-
-            CustomText{
-                content: "."
-                size: 40
-                style: Text.Raised
-                bottomPadding: 15
-                weight: 400
-                styleColor: Colors.outline
-                font.bold: false
-            }
-
-            CustomText{
-                content: ServiceClock.year
-                size: 30
-                style: Text.Raised
-                weight: 400
-                styleColor: Colors.outline
-                font.bold: false
-            }
-        }
-    }
-
-
-
-    RowLayout{
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.margins: 20
-        spacing: 10
-        anchors{
-            bottom: parent.bottom
-            bottomMargin: 20
-        }
-
-        CustomRectangle{
-            Layout.preferredWidth: 160
-            Layout.preferredHeight: 80
-            radius: 20
-            background: background
-
-
-            RowLayout{
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 0
-                ClippingWrapperRectangle{
-                    Layout.preferredHeight: 50
-                    Layout.preferredWidth: 50
-                    radius: height
-
-                    border{
-                        width: 1
-                        color: Colors.outline
-                    }
-
-                    Image{
+                ClippingWrapperRectangle {
+                    anchors.fill: parent
+                    radius: parent.height
+                    color: Colors.primaryContainer
+                    Image {
                         anchors.fill: parent
-                        sourceSize: Qt.size(width, height)
                         source: SettingsConfig.general.profile
+                        fillMode: Image.PreserveAspectCrop
+                        sourceSize: Qt.size(width, height)
                     }
                 }
-
-                ColumnLayout{
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    spacing: 10
-                    Layout.margins: 10
-                    CustomText{
-                        Layout.fillHeight: true
-                        content: root.context.currentUser
-                        size: 18
-                    }
-                    CustomText{
-                        Layout.fillHeight: true
-                        content: "Hyprland"
-                        color: Colors.outline
-                        size: 14
-                    }
+                Rectangle {
+                    anchors.fill: parent; radius: height
+                    color: "transparent"
+                    border.width: 2.5; border.color: Colors.primary
                 }
             }
 
-        }
-        Item{
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-        }
+            Item { Layout.preferredHeight: 12 }
 
-        CustomRectangle{
-            Layout.preferredHeight: 80
-            Layout.preferredWidth: 500
-
-            
-
-            transform: Translate {
-                id: shakeTransform
-                x: 0
-            }
-            radius: 20
-
-            Behavior on radius {
-                NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+            CustomText {
+                Layout.alignment: Qt.AlignHCenter
+                content: root.context.currentUser
+                size: 19; weight: 700
             }
 
-            background: background
+            Item { Layout.preferredHeight: 3 }
 
-
-            // Shake animation
-            SequentialAnimation {
-                id: shakeAnimation
-                running: root.context.showFailure
-
-                NumberAnimation {
-                    target: shakeTransform
-                    property: "x"
-                    to: -10
-                    duration: 50
-                    easing.type: Easing.OutQuad
-                }
-                NumberAnimation {
-                    target: shakeTransform
-                    property: "x"
-                    to: 10
-                    duration: 100
-                    easing.type: Easing.InOutQuad
-                }
-                NumberAnimation {
-                    target: shakeTransform
-                    property: "x"
-                    to: -8
-                    duration: 100
-                    easing.type: Easing.InOutQuad
-                }
-                NumberAnimation {
-                    target: shakeTransform
-                    property: "x"
-                    to: 8
-                    duration: 100
-                    easing.type: Easing.InOutQuad
-                }
-                NumberAnimation {
-                    target: shakeTransform
-                    property: "x"
-                    to: -4
-                    duration: 100
-                    easing.type: Easing.InOutQuad
-                }
-                NumberAnimation {
-                    target: shakeTransform
-                    property: "x"
-                    to: 4
-                    duration: 100
-                    easing.type: Easing.InOutQuad
-                }
-                NumberAnimation {
-                    target: shakeTransform
-                    property: "x"
-                    to: 0
-                    duration: 50
-                    easing.type: Easing.InQuad
-                }
+            CustomText {
+                Layout.alignment: Qt.AlignHCenter
+                content: "Hyprland"; size: 12; customColor: Colors.outline
             }
 
-            RowLayout{
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 10
+            Item { Layout.preferredHeight: 24 }
 
-                Item{
-                    Layout.preferredWidth: 60
-                    Layout.preferredHeight: 60
-                    CustomIconImage{
-                        anchors.centerIn: parent
-                        icon: "lock"
-                        size: 26
-                    }
-                }
+            // ── AM/PM label ───────────────────────────────────────────────────
+            CustomText {
+                Layout.alignment: Qt.AlignHCenter
+                content: root._period; size: 11; weight: 700
+                customColor: Colors.outline
+                font.letterSpacing: 3
+            }
 
-                TextField{
-                    id: input
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    placeholderText: "Enter password"
-                    placeholderTextColor: Colors.outline
-                    inputMethodHints: Qt.ImhSensitiveData
-                    background: null
-                    clip: true
-                    text: ""
-                    font.pixelSize: 20
-                    font.weight: 600
-                    color: Colors.surfaceText
-                    echoMode: TextInput.Password
-                    verticalAlignment: TextInput.AlignVCenter
-                    enabled: !root.context.unlockInProgress
+            Item { Layout.preferredHeight: 8 }
 
+            // ── Digit-block clock ─────────────────────────────────────────────
+            Row {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 6
 
-                    onTextChanged: {
-                        root.context.currentText = this.text
-                    }
-                    onAccepted: root.context.tryUnlock()
-
-
-                    Connections {
-                        target: root.context
-
-                        function onCurrentTextChanged() {
-                            input.text = root.context.currentText
+                // Hours (surfaceContainerHighest)
+                Row {
+                    spacing: 4
+                    Repeater {
+                        model: [root.h1, root.h2]
+                        delegate: Rectangle {
+                            required property var modelData
+                            width: 72; height: 88; radius: 16
+                            color: Colors.surfaceContainerHighest
+                            CustomText {
+                                anchors.centerIn: parent
+                                content: modelData
+                                size: 56; weight: 700
+                                font.family: root._font
+                            }
                         }
                     }
                 }
 
-                
-            }
-        }
+                // Colon dots
+                Item {
+                    width: 18; height: 88
 
-        Item{
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-        }
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: 26; width: 7; height: 7; radius: 4
+                        color: Colors.primary
+                        SequentialAnimation on opacity {
+                            loops: Animation.Infinite; running: true
+                            NumberAnimation { to: 0.2; duration: 520; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.0; duration: 520; easing.type: Easing.InOutSine }
+                        }
+                    }
 
-        CustomRectangle{
-            Layout.preferredHeight: 50
-            Layout.preferredWidth: 50
-            radius: 10
-            background: background
-            CustomIconImage{
-                anchors.centerIn: parent
-                icon: "restart"
-                size: 20
-            }
-        }
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: 55; width: 7; height: 7; radius: 4
+                        color: Colors.primary
+                        SequentialAnimation on opacity {
+                            loops: Animation.Infinite; running: true
+                            NumberAnimation { to: 1.0; duration: 520; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 0.2; duration: 520; easing.type: Easing.InOutSine }
+                        }
+                    }
+                }
 
-        CustomRectangle{
-            Layout.preferredHeight: 50
-            Layout.preferredWidth: 50
-            radius: 10
-            background: background
-            CustomIconImage{
-                anchors.centerIn: parent
-                icon: "power"
-                size: 20
+                // Minutes (primary)
+                Row {
+                    spacing: 4
+                    Repeater {
+                        model: [root.m1, root.m2]
+                        delegate: Rectangle {
+                            required property var modelData
+                            width: 72; height: 88; radius: 16
+                            color: Colors.primary
+                            CustomText {
+                                anchors.centerIn: parent
+                                content: modelData
+                                size: 56; weight: 700
+                                font.family: root._font
+                                customColor: Colors.primaryText
+                            }
+                        }
+                    }
+                }
             }
+
+            Item { Layout.preferredHeight: 10 }
+
+            // Date
+            CustomText {
+                Layout.alignment: Qt.AlignHCenter
+                content: ServiceClock.day + "  ·  " + ServiceClock.month + " " + ServiceClock.date + ", " + ServiceClock.year
+                size: 13; customColor: Colors.outline
+            }
+
+            Item { Layout.preferredHeight: 24 }
+
+            // ── Password input ────────────────────────────────────────────────
+            Rectangle {
+                Layout.fillWidth: true
+                height: 52; radius: 16
+                color: Colors.surfaceContainerHighest
+
+                transform: Translate { id: shakeTx; x: 0 }
+                SequentialAnimation {
+                    running: root.context.showFailure
+                    NumberAnimation { target: shakeTx; property: "x"; to: -10; duration: 50 }
+                    NumberAnimation { target: shakeTx; property: "x"; to: 10;  duration: 90; easing.type: Easing.InOutQuad }
+                    NumberAnimation { target: shakeTx; property: "x"; to: -8;  duration: 90; easing.type: Easing.InOutQuad }
+                    NumberAnimation { target: shakeTx; property: "x"; to: 8;   duration: 90; easing.type: Easing.InOutQuad }
+                    NumberAnimation { target: shakeTx; property: "x"; to: 0;   duration: 50 }
+                }
+
+                RowLayout {
+                    anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
+                    spacing: 10
+
+                    Rectangle {
+                        width: 34; height: 34; radius: 10
+                        color: root.context.showFailure
+                            ? Qt.alpha(Colors.error, 0.15)
+                            : root.context.unlockInProgress
+                                ? Qt.alpha(Colors.primary, 0.15)
+                                : "transparent"
+                        Behavior on color { ColorAnimation { duration: 180 } }
+
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: root.context.unlockInProgress ? "lock_open" : "lock"
+                            iconSize: 20
+                            customColor: root.context.showFailure
+                                ? Colors.error
+                                : root.context.unlockInProgress ? Colors.primary : Colors.outline
+                            Behavior on customColor { ColorAnimation { duration: 180 } }
+                        }
+                    }
+
+                    CustomShapeInput {
+                        id: passInput
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        placeholderText: root.context.showFailure
+                            ? "Wrong password — try again"
+                            : "Enter password"
+                        placeholderColor: root.context.showFailure ? Colors.error : Colors.outline
+                        enabled: !root.context.unlockInProgress
+
+                        onTextChanged: root.context.currentText = text
+                        onAccepted:    root.context.tryUnlock()
+
+                        Connections {
+                            target: root.context
+                            function onCurrentTextChanged() {
+                                passInput.text = root.context.currentText
+                            }
+                        }
+                    }
+                }
+            }
+
+            Item { Layout.preferredHeight: 16 }
+
+            // ── Power buttons ─────────────────────────────────────────────────
+            Row {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 10
+
+                // Restart
+                Item {
+                    id: restartBtn
+                    width: restartInner.implicitWidth + 28; height: 40
+                    property bool hovered: false
+
+                    Rectangle {
+                        anchors.fill: parent; radius: 12
+                        color: restartBtn.hovered
+                            ? Qt.alpha(Colors.primary, 0.14)
+                            : Colors.surfaceContainerHighest
+                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                        Row {
+                            id: restartInner
+                            anchors.centerIn: parent; spacing: 6
+
+                            MaterialIconSymbol {
+                                anchors.verticalCenter: parent.verticalCenter
+                                content: "restart_alt"; iconSize: 18
+                                customColor: restartBtn.hovered ? Colors.primary : Colors.outline
+                                Behavior on customColor { ColorAnimation { duration: 150 } }
+                            }
+                            CustomText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                content: "Restart"; size: 13; weight: 600
+                                customColor: restartBtn.hovered ? Colors.primary : Colors.outline
+                            }
+                        }
+                    }
+
+                    CustomMouseArea {
+                        anchors.fill: parent; radius: 12; cursorShape: Qt.PointingHandCursor
+                        hoverEnabled: true
+                        onEntered: restartBtn.hovered = true
+                        onExited:  restartBtn.hovered = false
+                        onClicked: Quickshell.execDetached(["systemctl", "reboot"])
+                    }
+                }
+
+                // Shutdown
+                Item {
+                    id: shutdownBtn
+                    width: shutdownInner.implicitWidth + 28; height: 40
+                    property bool hovered: false
+
+                    Rectangle {
+                        anchors.fill: parent; radius: 12
+                        color: shutdownBtn.hovered
+                            ? Qt.alpha(Colors.error, 0.14)
+                            : Colors.surfaceContainerHighest
+                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                        Row {
+                            id: shutdownInner
+                            anchors.centerIn: parent; spacing: 6
+
+                            MaterialIconSymbol {
+                                anchors.verticalCenter: parent.verticalCenter
+                                content: "power_settings_new"; iconSize: 18
+                                customColor: shutdownBtn.hovered ? Colors.error : Colors.outline
+                                Behavior on customColor { ColorAnimation { duration: 150 } }
+                            }
+                            CustomText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                content: "Shut Down"; size: 13; weight: 600
+                                customColor: shutdownBtn.hovered ? Colors.error : Colors.outline
+                            }
+                        }
+                    }
+
+                    CustomMouseArea {
+                        anchors.fill: parent; radius: 12; cursorShape: Qt.PointingHandCursor
+                        hoverEnabled: true
+                        onEntered: shutdownBtn.hovered = true
+                        onExited:  shutdownBtn.hovered = false
+                        onClicked: Quickshell.execDetached(["systemctl", "poweroff"])
+                    }
+                }
+            }
+
+            Item { Layout.preferredHeight: 28 }
         }
     }
 }

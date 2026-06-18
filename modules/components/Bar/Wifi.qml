@@ -394,6 +394,11 @@ ColumnLayout{
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                root.backClicked()
+                GlobalStates.settingsPage = 5
+                GlobalStates.settingsOpen = true
+            }
         }
     }
 }

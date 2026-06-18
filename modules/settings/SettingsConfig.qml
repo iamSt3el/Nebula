@@ -62,7 +62,8 @@ Singleton {
                 musicVisBars: 60,
                 wallpaperDir: "/home/steel/wallpaper",
                 workspaceCount: 10,
-                showWorkspaceNumbers: false
+                showWorkspaceNumbers: false,
+                flatBarMode: true
             })
 
             property var general: ({
@@ -80,7 +81,8 @@ Singleton {
                 musicVisBars: 60,
                 wallpaperDir: "/home/steel/wallpaper",
                 workspaceCount: 10,
-                showWorkspaceNumbers: false
+                showWorkspaceNumbers: false,
+                flatBarMode: true
             })
 
             onGeneralChanged: {

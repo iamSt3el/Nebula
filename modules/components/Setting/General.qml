@@ -226,7 +226,7 @@ Item {
                 }
 
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
@@ -244,6 +244,25 @@ Item {
                             onStepChanged: step => {
                                 var val = ["thin", "regular", "medium", "semibold", "bold", "extrabold"][step]
                                 SettingsConfig.general = Object.assign({}, SettingsConfig.general, { fontWeight: val })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Flat Bar Mode"; size: 14 }
+                            CustomText { content: "Single-height bar without stepped sections"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.general.flatBarMode ?? true
+                            onToggled: function(state) {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { flatBarMode: state })
                             }
                         }
                     }

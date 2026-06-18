@@ -19,8 +19,6 @@ Item {
     property alias container: container
 
     property bool isClicked:             false
-    property bool isWifiClicked:         false
-    property bool isBluetoothClicked:    false
     property bool isNotificationClicked: false
     property bool isSoundPanelClicked:   false
     property bool isBatteryInfoClicked:  false
@@ -130,8 +128,6 @@ Item {
                     utility.isClicked          = false
                     dashboardLoader.visible    = false
                 }
-                onIsWifiClickedChanged:      utility.isWifiClicked      = isWifiClicked
-                onIsBluetoothClickedChanged: utility.isBluetoothClicked = isBluetoothClicked
             }
         }
 
