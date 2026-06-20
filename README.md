@@ -93,15 +93,34 @@ The `{ locked = true }` flag lets the bind fire even when the screen is locked.
 
 > `ddcutil` is optional — used for external monitor brightness via DDC/CI.
 
+#### Fonts
+
+These fonts are **not** in most distro repos and must be installed manually:
+
+| Font | Where to get it |
+|------|----------------|
+| [Rubik](https://fonts.google.com/specimen/Rubik) | Google Fonts / `ttf-rubik` (AUR) |
+| [Titan One](https://fonts.google.com/specimen/Titan+One) | Google Fonts / `ttf-titan-one` (AUR) |
+| [Material Symbols Rounded](https://fonts.google.com/icons) | `ttf-material-symbols-variable-git` (AUR) |
+
 ### Setup
 
 ```bash
 # Clone into your Quickshell config directory
 git clone https://github.com/iamSt3el/Nebula.git ~/.config/quickshell
 
+# Build and install the WfRecorder plugin
+bash ~/.config/quickshell/plugins/WfRecorder/build.sh
+
+# Make Qt find the plugin
+export QML_IMPORT_PATH="$HOME/.local/lib/qt6/qml:$QML_IMPORT_PATH"
+
 # Launch
 quickshell -p ~/.config/quickshell
 ```
+
+> [!NOTE]
+> Add the `QML_IMPORT_PATH` export to your shell profile (`.bashrc`, `.zshrc`, or equivalent) so it persists across sessions.
 
 > [!NOTE]
 > Make sure your Hyprland session is running before launching Nebula.
@@ -134,7 +153,7 @@ Settings are stored at `~/.cache/quickshell/settings.json` and edited through th
 
 | Person | Why |
 |--------|-----|
-| [end_4](https://github.com/end-4) | Inspiration and Quickshell patterns |
+| [end_4](https://github.com/end-4) | Inspiration, Quickshell patterns, and [rounded-polygon-qmljs](https://github.com/end-4/rounded-polygon-qmljs) (bundled in `modules/MatrialShapes`) |
 | [soramane](https://github.com/soramanew) | Design inspiration |
 | [outfoxxed](https://outfoxxed.me/) | Creator of [Quickshell](https://quickshell.outfoxxed.me) |
 
