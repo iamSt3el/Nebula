@@ -28,6 +28,11 @@ Singleton{
     property string powerProfileIcon: powerProfile === 0 ? "leaf" : "balance" 
     property real powerLevel: UPower.displayDevice.percentage
     property bool isCharging: UPowerDeviceState.Charging === UPower.displayDevice.state
+    property string batteryStatus: {
+        if (powerLevel >= 1.0) return "Fully Charged";
+        if (isCharging) return "Charging";
+        return "Discharging";
+    }
     property real health: 0
     property bool _lowNotified: false
     property bool _ready: false
@@ -59,7 +64,7 @@ Singleton{
 
     Process {
         id: healthProcess
-        command: ["bash", "-c", "awk 'NR==1{full=$1} NR==2{design=$1} END{printf \"%.1f\", full/design*100}' /sys/class/power_supply/BAT1/charge_full /sys/class/power_supply/BAT1/charge_full_design"]
+        command: ["bash", "-c", "awk 'NR==1{full=$1} NR==2{design=$1} END{printf \"%.1f\", full/design*100}' /sys/class/power_supply/BAT0/charge_full /sys/class/power_supply/BAT0/charge_full_design"]
         running: true
         stdout: SplitParser {
             onRead: data => root.health = parseFloat(data) / 100

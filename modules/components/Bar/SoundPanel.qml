@@ -9,7 +9,7 @@ import qs.modules.services
 
 PopupWindow {
     id: root
-    implicitWidth: 300
+    implicitWidth: 320
     implicitHeight: child.implicitHeight
     visible: true
     color: "transparent"
@@ -106,10 +106,13 @@ PopupWindow {
                 }
 
                 // Volume slider
-                VolSlider {
+                CustomSliderOld {
                     Layout.fillWidth: true
-                    value: ServicePipewire.volume
-                    onMoved: v => ServicePipewire.setVolume(v)
+                    Layout.preferredHeight: 22
+                    horizontal: true
+                    icon: "volume_up"
+                    progress: ServicePipewire.volume
+                    onProgressChanged: ServicePipewire.setVolume(progress)
                 }
 
                 // Output device list
@@ -191,13 +194,16 @@ PopupWindow {
                 }
 
                 // Mic volume slider
-                VolSlider {
+                CustomSliderOld {
                     Layout.fillWidth: true
-                    value: ServicePipewire.source?.audio?.volume ?? 0
-                    onMoved: v => {
+                    Layout.preferredHeight: 22
+                    horizontal: true
+                    icon: "mic"
+                    progress: ServicePipewire.source?.audio?.volume ?? 0
+                    onProgressChanged: {
                         if (ServicePipewire.source?.audio) {
                             ServicePipewire.source.audio.muted  = false
-                            ServicePipewire.source.audio.volume = v
+                            ServicePipewire.source.audio.volume = progress
                         }
                     }
                 }
@@ -216,69 +222,4 @@ PopupWindow {
         }
     }
 
-    // ── Continuous volume slider ───────────────────────────────────────────
-    component VolSlider: Item {
-        id: vs
-        implicitHeight: 28
-
-        property real value: 0
-        signal moved(real val)
-
-        property bool _drag: false
-        property real _dragVal: 0
-        readonly property real _shown: _drag ? _dragVal : value
-
-        readonly property real _tw: width - 28
-        readonly property real _tx: 14 + _tw * _shown
-
-        Rectangle {
-            anchors.left:           parent.left;  anchors.leftMargin:  14
-            anchors.verticalCenter: parent.verticalCenter
-            width:  Math.max(0, vs._tw * vs._shown)
-            height: 4; radius: 2
-            color:  Colors.primary
-        }
-
-        Rectangle {
-            anchors.right:          parent.right; anchors.rightMargin: 14
-            anchors.verticalCenter: parent.verticalCenter
-            width:  Math.max(0, vs._tw * (1 - vs._shown))
-            height: 4; radius: 2
-            color:  Qt.alpha(Colors.primary, 0.18)
-        }
-
-        Rectangle {
-            x: vs._tx - width / 2
-            anchors.verticalCenter: parent.verticalCenter
-            width: 14; height: 14; radius: 7
-            color: Colors.primary
-            scale: sliderArea.pressed ? 1.25 : sliderArea.containsMouse ? 1.1 : 1.0
-            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-
-            Rectangle {
-                anchors.centerIn: parent
-                width: 5; height: 5; radius: 3
-                color: Colors.primaryText
-                opacity: 0.5
-            }
-        }
-
-        MouseArea {
-            id: sliderArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape:  Qt.PointingHandCursor
-            preventStealing: true
-
-            function snap(mx) {
-                var v = Math.max(0, Math.min(1, (mx - 14) / vs._tw))
-                vs._dragVal = v
-                vs.moved(v)
-            }
-
-            onPressed:         event => { vs._drag = true;  snap(event.x) }
-            onPositionChanged: event => { if (pressed) snap(event.x) }
-            onReleased:        vs._drag = false
-        }
-    }
 }

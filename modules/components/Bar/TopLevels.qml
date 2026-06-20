@@ -95,7 +95,7 @@ Item{
                          if(currentWorkspace){
                              currentWorkspace.activate()
                          } else {
-                             Hyprland.dispatch(`workspace ${index + 1}`)
+                              Hyprland.dispatch(`hl.dsp.focus({ workspace = ${index + 1} })`)
                          }
                      }
                  }
@@ -126,7 +126,7 @@ Item{
 
                              if (targetWorkspaceId !== currentWorkspaceId) {
                                  console.log("Moving window to workspace " + targetWorkspaceId)
-                                 Hyprland.dispatch("movetoworkspacesilent " + targetWorkspaceId + ",address:0x" + modelData.address)
+                                  Hyprland.dispatch("hl.dsp.window.move({ workspace = " + targetWorkspaceId + ", address = 0x" + modelData.address + " })")
                              }
                          }
                      }

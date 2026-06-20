@@ -16,6 +16,10 @@ PanelWindow {
     exclusionMode: ExclusionMode.Normal
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
+    // Activate cava when music visualizer is visible
+    Component.onCompleted: ServiceCava.retain()
+    Component.onDestruction: ServiceCava.release()
+
     mask: Region{
         item: maskRect
         intersection: Intersection.Xor;

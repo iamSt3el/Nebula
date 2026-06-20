@@ -11,8 +11,13 @@ Singleton {
 
     property list<NotificationItem> allNotifications: []
     property var groupedNotifications: []         // list of NotificationGroup objects
-    property list<NotificationItem> popups: allNotifications.filter(n => n.popup)
-    property int notificationsNumber: allNotifications.length
+    property list<NotificationItem> popups: []
+    property int notificationsNumber: {
+        var count = 0
+        for (var i = 0; i < root.groupedNotifications.length; i++)
+            count += root.groupedNotifications[i].notifications.length
+        return count
+    }
     property bool muted: false
 
     Component.onCompleted: muted = SettingsConfig.toggles?.notificationMuted ?? false
@@ -20,7 +25,8 @@ Singleton {
 
     SoundEffect {
         id: notificationSound
-        source: "../../notification.wav"
+        source: Qt.resolvedUrl("file://" + Quickshell.env("HOME") + "/.config/quickshell/notification.wav")
+        volume: 0.7
     }
 
     NotificationServer {
@@ -35,15 +41,20 @@ Singleton {
 
         onNotification: notif => {
             notif.tracked = true
-            notificationSound.play()
+            if ((SettingsConfig.notifications?.playSound ?? false) && !root.muted)
+                notificationSound.play()
 
             var item = notifComp.createObject(root, {
-                popup: !root.muted,
                 notification: notif
             })
 
             root.allNotifications.push(item)
             root.allNotifications = root.allNotifications.slice()
+
+            if (!root.muted) {
+                root.popups.push(item)
+                root.popups = root.popups.slice()
+            }
 
             // Find existing group for this app
             var existingGroup = null
@@ -73,7 +84,7 @@ Singleton {
     component NotificationItem: QtObject {
         id: notifItem
 
-        property bool popup
+        property bool dismissing: false
         required property Notification notification
         readonly property string id: notification.id ?? null
         readonly property string summary: notification.summary ?? null
@@ -87,20 +98,6 @@ Singleton {
         readonly property bool isCritical: notification.urgency === NotificationUrgency.Critical
         readonly property var actions: notification.actions.filter(a => a.identifier !== "default")
         readonly property real arrivalTimestamp: Date.now()
-
-        property Timer timer: Timer {
-            running: true
-            interval: 5000
-            onTriggered: notifItem.popup = false
-        }
-
-        property real progress: 0
-        NumberAnimation on progress {
-            running: timer.running
-            from: 0
-            to: 1
-            duration: timer.interval
-        }
     }
 
     // One group per unique appName. `notifications` holds items newest-last
@@ -114,6 +111,29 @@ Singleton {
         // Latest notification (shown in collapsed header)
         readonly property var latest: notifications.length > 0
             ? notifications[notifications.length - 1] : null
+    }
+
+    function dismissPopup(notificationItem) {
+        if (notificationItem.dismissing) return
+        notificationItem.dismissing = true
+        removeTimer.item = notificationItem
+        removeTimer.restart()
+    }
+
+    Timer {
+        id: removeTimer
+        property var item: null
+        interval: 1300
+        onTriggered: {
+            if (item) {
+                var idx = root.popups.indexOf(item)
+                if (idx > -1) {
+                    root.popups.splice(idx, 1)
+                    root.popups = root.popups.slice()
+                }
+                item = null
+            }
+        }
     }
 
     function clear() {

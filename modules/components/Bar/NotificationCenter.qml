@@ -22,8 +22,24 @@ Item {
     opacity: 0
     scale: 0.8
 
-    NumberAnimation on opacity { from: 0; to: 1; duration: 400; running: true }
-    NumberAnimation on scale   { from: 0.8; to: 1; duration: 400; running: true }
+    Component.onCompleted: {
+        opacity = 0
+        scale = 0.8
+        fadeInAnim.restart()
+        scaleInAnim.restart()
+    }
+
+    SequentialAnimation {
+        id: fadeInAnim
+        PauseAnimation { duration: 50 }
+        NumberAnimation { target: root; property: "opacity"; to: 1; duration: 300; easing.type: Easing.OutCubic }
+    }
+
+    SequentialAnimation {
+        id: scaleInAnim
+        PauseAnimation { duration: 50 }
+        NumberAnimation { target: root; property: "scale"; to: 1; duration: 300; easing.type: Easing.OutCubic }
+    }
 
     ColumnLayout {
         anchors.fill: parent

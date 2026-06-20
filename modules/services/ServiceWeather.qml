@@ -135,10 +135,21 @@ Singleton {
     Timer {
         id: refreshTimer
         interval: root.refreshInterval
-        running: true
+        running: false  // Don't auto-start — weather components call start()
         repeat: true
         onTriggered: root.fetchWeather()
-        Component.onCompleted: root.fetchWeather()
+    }
+
+    // Call this when a weather UI component becomes visible
+    function start() {
+        if (!refreshTimer.running) {
+            refreshTimer.running = true
+            fetchWeather()
+        }
+    }
+
+    function stop() {
+        refreshTimer.running = false
     }
 
     function refresh() {

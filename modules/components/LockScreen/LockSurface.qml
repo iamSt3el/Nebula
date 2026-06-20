@@ -306,7 +306,7 @@ Item {
                             color: Colors.primary
                             Image {
                                 anchors.fill: parent
-                                source: SettingsConfig.general.profile
+                                source: SettingsConfig.profileImage
                                 fillMode: Image.PreserveAspectCrop
                                 sourceSize: Qt.size(width, height)
                             }

@@ -12,6 +12,11 @@ import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 Rectangle{
     radius: 20
     color: Colors.surfaceContainer
+
+    // Activate cava for the audio visualization in this component
+    Component.onCompleted: ServiceCava.retain()
+    Component.onDestruction: ServiceCava.release()
+
     ColumnLayout{
         anchors.fill: parent
         spacing: 0

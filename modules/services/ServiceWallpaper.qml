@@ -1,3 +1,5 @@
+pragma Singleton
+pragma ComponentBehavior: Bound
 import Quickshell
 import Quickshell.Io
 import Qt.labs.folderlistmodel
@@ -7,25 +9,22 @@ import qs.modules.settings
 import qs.modules.utils
 import qs.modules.services
 
-pragma Singleton
-pragma ComponentBehavior: Bound
-
 Singleton {
     id: root
 
-    property string wallpaperDir: SettingsConfig.general.wallpaperDir ?? "/home/steel/wallpaper"
+    property string wallpaperDir: SettingsConfig.general.wallpaperDir ?? (Quickshell.env("HOME") + "/Pictures/Wallpapers")
 
     onWallpaperDirChanged: {
         if (folderModel.folder.toString() !== "") {
-            processedFiles = {}
-            wallpaperMap = {}
-            wallpapers = []
-            folderModel.folder = "file://" + wallpaperDir
+            processedFiles = {};
+            wallpaperMap = {};
+            wallpapers = [];
+            folderModel.folder = "file://" + wallpaperDir;
         }
     }
     property string cacheDir: StandardPaths.writableLocation(StandardPaths.CacheLocation).toString().replace("file://", "") + "/wallpaper-thumbs"
     property int thumbSize: 256
-    property string wallpaperScript:"/home/steel/.config/quickshell/scripts/wallpaper.sh"
+    property string wallpaperScript: Quickshell.env("HOME") + "/.config/quickshell/scripts/wallpaper.sh"
     property string scheme: SettingsConfig.theme.matugenScheme
     property string theme: SettingsConfig.theme.matugenTheme
     property string transitionType: SettingsConfig.theme.transitionType ?? "fade"
@@ -36,7 +35,7 @@ Singleton {
     // 1.5s window — no Process re-use state to get stuck.
     // Rapid clicks: only the latest path within the 1.5s window is applied.
     property string _pendingPath: ""
-    property bool   _applying: false
+    property bool _applying: false
 
     // Fired 3s after _startApply — awww (~0.16s) + gen_colors cold (~615ms) = well within 3s
     Timer {
@@ -44,15 +43,15 @@ Singleton {
         interval: 3000
         repeat: false
         onTriggered: {
-            const elapsed = (Date.now() - root._applyStartedAt).toFixed(0)
-            console.log("[ServiceWallpaper] applyTimer fired at", elapsed + "ms — calling reloadColors()")
-            WallpaperTheme.reloadColors()
-            root._applying = false
-            const next = root._pendingPath
-            root._pendingPath = ""
+            const elapsed = (Date.now() - root._applyStartedAt).toFixed(0);
+            console.log("[ServiceWallpaper] applyTimer fired at", elapsed + "ms — calling reloadColors()");
+            WallpaperTheme.reloadColors();
+            root._applying = false;
+            const next = root._pendingPath;
+            root._pendingPath = "";
             if (next) {
-                console.log("[ServiceWallpaper] Dequeuing pending wallpaper:", next)
-                root._startApply(next)
+                console.log("[ServiceWallpaper] Dequeuing pending wallpaper:", next);
+                root._startApply(next);
             }
         }
     }
@@ -60,21 +59,22 @@ Singleton {
     property double _applyStartedAt: 0
 
     function _startApply(path) {
-        _applying = true
-        _pendingPath = ""
-        _applyStartedAt = Date.now()
-        console.log("[ServiceWallpaper] _startApply →", path, "| mode:", root.theme, "| t=0ms")
-        Quickshell.execDetached([wallpaperScript, path, root.scheme, root.theme, root.transitionType])
-        applyTimer.restart()
+        _applying = true;
+        _pendingPath = "";
+        _applyStartedAt = Date.now();
+        console.log("[ServiceWallpaper] _startApply →", path, "| mode:", root.theme, "| t=0ms");
+        Quickshell.execDetached([wallpaperScript, path, root.scheme, root.theme, root.transitionType]);
+        applyTimer.restart();
     }
 
     function _enqueue(path) {
-        if (!path || path.length === 0) return
+        if (!path || path.length === 0)
+            return;
         if (_applying) {
-            console.log("[ServiceWallpaper] Queued (busy):", path)
-            _pendingPath = path
+            console.log("[ServiceWallpaper] Queued (busy):", path);
+            _pendingPath = path;
         } else {
-            _startApply(path)
+            _startApply(path);
         }
     }
 
@@ -84,15 +84,15 @@ Singleton {
     // No awww — wallpaper image isn't changing, only the color scheme.
     // gen_colors.py: ~615ms cold, ~44ms score-cached, ~2ms fully-cached.
     function applyTheme() {
-        const wp = WallpaperTheme.wallpaper
+        const wp = WallpaperTheme.wallpaper;
         if (!wp || wp.length === 0) {
-            console.warn("[ServiceWallpaper] applyTheme: no wallpaper loaded yet")
-            return
+            console.warn("[ServiceWallpaper] applyTheme: no wallpaper loaded yet");
+            return;
         }
-        console.log("[ServiceWallpaper] applyTheme → mode:", root.theme, "wallpaper:", wp)
-        Quickshell.execDetached(["python3", colorsScript, wp, root.scheme, root.theme])
-        themeTimer.restart()
-        console.log("[ServiceWallpaper] execDetached done, timer started (fires in 2000ms)")
+        console.log("[ServiceWallpaper] applyTheme → mode:", root.theme, "wallpaper:", wp);
+        Quickshell.execDetached(["python3", colorsScript, wp, root.scheme, root.theme]);
+        themeTimer.restart();
+        console.log("[ServiceWallpaper] execDetached done, timer started (fires in 2000ms)");
     }
 
     // 2s covers worst-case cold gen (~615ms) plus plenty of margin
@@ -101,8 +101,8 @@ Singleton {
         interval: 2000
         repeat: false
         onTriggered: {
-            console.log("[ServiceWallpaper] themeTimer fired — calling reloadColors()")
-            WallpaperTheme.reloadColors()
+            console.log("[ServiceWallpaper] themeTimer fired — calling reloadColors()");
+            WallpaperTheme.reloadColors();
         }
     }
     // ── End queue ──────────────────────────────────────────────────────────
@@ -117,51 +117,48 @@ Singleton {
     onLocalSortByChanged: updateWallpapersList()
 
     // ── Favorites ──────────────────────────────────────────────────────────
-    property string favoritesPath: "/home/steel/.config/quickshell/favorites.json"
+    property string favoritesPath: Quickshell.env("HOME") + "/.config/quickshell/favorites.json"
     property var favorites: ({})
     property var favoritedWallpapers: []
 
     function isFavorite(cachePath) {
-        return !!favorites[getOriginalPath(cachePath)]
+        return !!favorites[getOriginalPath(cachePath)];
     }
 
     function toggleFavorite(cachePath) {
-        const orig = getOriginalPath(cachePath)
-        if (!orig) return
-        const copy = Object.assign({}, favorites)
-        if (copy[orig]) delete copy[orig]
-        else copy[orig] = true
-        favorites = copy
-        _updateFavoritedWallpapers()
-        saveFavorites()
+        const orig = getOriginalPath(cachePath);
+        if (!orig)
+            return;
+        const copy = Object.assign({}, favorites);
+        if (copy[orig])
+            delete copy[orig];
+        else
+            copy[orig] = true;
+        favorites = copy;
+        _updateFavoritedWallpapers();
+        saveFavorites();
     }
 
     function _updateFavoritedWallpapers() {
-        const favList = []
+        const favList = [];
         for (let i = 0; i < wallpapers.length; i++) {
-            const cp = wallpapers[i]
-            if (favorites[getOriginalPath(cp)]) favList.push(cp)
+            const cp = wallpapers[i];
+            if (favorites[getOriginalPath(cp)])
+                favList.push(cp);
         }
-        favoritedWallpapers = favList
+        favoritedWallpapers = favList;
     }
 
     function saveFavorites() {
-        const data = JSON.stringify(Object.keys(favorites))
-        favSaver.command = [
-            "python3", "-c",
-            "import sys,json; json.dump(json.loads(sys.argv[1]),open(sys.argv[2],'w'),indent=2)",
-            data, favoritesPath
-        ]
-        favSaver.running = true
+        const data = JSON.stringify(Object.keys(favorites));
+        favSaver.command = ["python3", "-c", "import sys,json; json.dump(json.loads(sys.argv[1]),open(sys.argv[2],'w'),indent=2)", data, favoritesPath];
+        favSaver.running = true;
     }
 
     function loadFavorites() {
-        favLoader._buffer = ""
-        favLoader.command = [
-            "bash", "-c",
-            "[ -f '" + favoritesPath + "' ] && cat '" + favoritesPath + "' || echo '[]'"
-        ]
-        favLoader.running = true
+        favLoader._buffer = "";
+        favLoader.command = ["bash", "-c", "[ -f '" + favoritesPath + "' ] && cat '" + favoritesPath + "' || echo '[]'"];
+        favLoader.running = true;
     }
     // ── End Favorites ──────────────────────────────────────────────────────
 
@@ -169,7 +166,7 @@ Singleton {
     property bool onlineMode: false
     property list<var> onlineWallpapers: []
     property bool isFetchingOnline: false
-    property int  onlinePage: 1
+    property int onlinePage: 1
     property bool hasMorePages: false
     property string _fetchBuffer: ""
     property string _pendingDownloadPath: ""
@@ -177,152 +174,150 @@ Singleton {
     property string downloadingId: ""
     property int downloadedBytes: 0
     property int downloadTotalBytes: 0
-    readonly property real downloadProgress: downloadTotalBytes > 0
-        ? Math.min(1.0, downloadedBytes / downloadTotalBytes) : 0
+    readonly property real downloadProgress: downloadTotalBytes > 0 ? Math.min(1.0, downloadedBytes / downloadTotalBytes) : 0
     property bool _cancelingDownload: false
 
     onOnlineModeChanged: {
         if (onlineMode) {
-            onlineWallpapers = []
-            onlinePage = 1
-            onlineError = ""
+            onlineWallpapers = [];
+            onlinePage = 1;
+            onlineError = "";
         }
     }
 
     function buildWallhavenUrl(page) {
-        const p = []
-        p.push("categories=" + SettingsConfig.wallhaven.categories)
-        p.push("purity="     + SettingsConfig.wallhaven.purity)
-        p.push("sorting="    + SettingsConfig.wallhaven.sorting)
-        p.push("order="      + SettingsConfig.wallhaven.order)
+        const p = [];
+        p.push("categories=" + SettingsConfig.wallhaven.categories);
+        p.push("purity=" + SettingsConfig.wallhaven.purity);
+        p.push("sorting=" + SettingsConfig.wallhaven.sorting);
+        p.push("order=" + SettingsConfig.wallhaven.order);
         if (SettingsConfig.wallhaven.sorting === "toplist")
-            p.push("topRange=" + SettingsConfig.wallhaven.topRange)
+            p.push("topRange=" + SettingsConfig.wallhaven.topRange);
         if (SettingsConfig.wallhaven.atleast.length > 0)
-            p.push("atleast=" + SettingsConfig.wallhaven.atleast)
+            p.push("atleast=" + SettingsConfig.wallhaven.atleast);
         if (SettingsConfig.wallhaven.ratios.length > 0)
-            p.push("ratios=" + SettingsConfig.wallhaven.ratios)
+            p.push("ratios=" + SettingsConfig.wallhaven.ratios);
         if (currentSearchText.length > 0)
-            p.push("q=" + encodeURIComponent(currentSearchText))
+            p.push("q=" + encodeURIComponent(currentSearchText));
         if (SettingsConfig.wallhaven.apiKey.length > 0)
-            p.push("apikey=" + SettingsConfig.wallhaven.apiKey)
-        p.push("page=" + page)
-        return "https://wallhaven.cc/api/v1/search?" + p.join("&")
+            p.push("apikey=" + SettingsConfig.wallhaven.apiKey);
+        p.push("page=" + page);
+        return "https://wallhaven.cc/api/v1/search?" + p.join("&");
     }
 
     function fetchWallhaven(resetPage) {
-        if (isFetchingOnline) return
+        if (isFetchingOnline)
+            return;
         if (resetPage) {
-            onlinePage = 1
-            onlineWallpapers = []
+            onlinePage = 1;
+            onlineWallpapers = [];
         }
-        isFetchingOnline = true
-        onlineError = ""
-        _fetchBuffer = ""
-        const url = buildWallhavenUrl(onlinePage)
-        console.log("[ServiceWallpaper] Fetching Wallhaven page", onlinePage, "–", url)
-        wallhavenFetcher.command = ["bash", "-c", "curl -s '" + url + "'"]
-        wallhavenFetcher.running = true
+        isFetchingOnline = true;
+        onlineError = "";
+        _fetchBuffer = "";
+        const url = buildWallhavenUrl(onlinePage);
+        console.log("[ServiceWallpaper] Fetching Wallhaven page", onlinePage, "–", url);
+        wallhavenFetcher.command = ["bash", "-c", "curl -s '" + url + "'"];
+        wallhavenFetcher.running = true;
     }
 
     function _parseWallhavenResults(json) {
         try {
-            const data = JSON.parse(json)
+            const data = JSON.parse(json);
 
             // API-level error (e.g. bad API key, invalid params)
             if (data.error) {
-                onlineError = data.error
-                console.error("[ServiceWallpaper] Wallhaven API error:", data.error)
-                isFetchingOnline = false
-                return
+                onlineError = data.error;
+                console.error("[ServiceWallpaper] Wallhaven API error:", data.error);
+                isFetchingOnline = false;
+                return;
             }
 
-            const items = data.data || []
-            const meta  = data.meta || {}
+            const items = data.data || [];
+            const meta = data.meta || {};
 
             const parsed = items.map(item => ({
-                id:         item.id,
-                thumbUrl:   item.thumbs.large,
-                fullUrl:    item.path,
-                resolution: item.resolution,
-                fileType:   item.file_type,
-                fileSize:   item.file_size || 0
-            }))
+                        id: item.id,
+                        thumbUrl: item.thumbs.large,
+                        fullUrl: item.path,
+                        resolution: item.resolution,
+                        fileType: item.file_type,
+                        fileSize: item.file_size || 0
+                    }));
 
-            onlineWallpapers = (onlinePage === 1)
-                ? parsed
-                : [...onlineWallpapers, ...parsed]
+            onlineWallpapers = (onlinePage === 1) ? parsed : [...onlineWallpapers, ...parsed];
 
-            hasMorePages = (meta.current_page || 1) < (meta.last_page || 1)
-            onlineError = ""
-            console.log("[ServiceWallpaper] Wallhaven: got", parsed.length,
-                        "wallpapers, page", meta.current_page, "/", meta.last_page)
+            hasMorePages = (meta.current_page || 1) < (meta.last_page || 1);
+            onlineError = "";
+            console.log("[ServiceWallpaper] Wallhaven: got", parsed.length, "wallpapers, page", meta.current_page, "/", meta.last_page);
         } catch (e) {
             // Non-JSON response — usually the rate-limit plain-text message
-            const msg = json.trim()
-            onlineError = msg.length > 0 ? msg : "Failed to parse response"
-            console.error("[ServiceWallpaper] Wallhaven parse error:", e, "| body:", msg)
+            const msg = json.trim();
+            onlineError = msg.length > 0 ? msg : "Failed to parse response";
+            console.error("[ServiceWallpaper] Wallhaven parse error:", e, "| body:", msg);
         }
-        isFetchingOnline = false
+        isFetchingOnline = false;
     }
 
     function fetchNextPage() {
-        if (!hasMorePages || isFetchingOnline) return
-        onlinePage++
-        fetchWallhaven(false)
+        if (!hasMorePages || isFetchingOnline)
+            return;
+        onlinePage++;
+        fetchWallhaven(false);
     }
 
     function downloadAndSetWallpaper(wallpaper) {
         if (_pendingDownloadPath.length > 0) {
-            console.warn("[ServiceWallpaper] Download already in progress")
-            return
+            console.warn("[ServiceWallpaper] Download already in progress");
+            return;
         }
-        const ext = wallpaper.fullUrl.split('.').pop().split('?')[0] || "jpg"
-        const savePath = root.wallpaperDir + "/" + wallpaper.id + "." + ext
-        _pendingDownloadPath = savePath
-        downloadingId = wallpaper.id
-        downloadedBytes = 0
-        downloadTotalBytes = wallpaper.fileSize || 0
-        downloadPoller.restart()
-        console.log("[ServiceWallpaper] Downloading wallpaper", wallpaper.id, "->", savePath)
-        wallhavenDownloader.command = [
-            "bash", "-c",
-            "curl -sL '" + wallpaper.fullUrl + "' -o '" + savePath + "'"
-        ]
-        wallhavenDownloader.running = true
+        const ext = wallpaper.fullUrl.split('.').pop().split('?')[0] || "jpg";
+        const savePath = root.wallpaperDir + "/" + wallpaper.id + "." + ext;
+        _pendingDownloadPath = savePath;
+        downloadingId = wallpaper.id;
+        downloadedBytes = 0;
+        downloadTotalBytes = wallpaper.fileSize || 0;
+        downloadPoller.restart();
+        console.log("[ServiceWallpaper] Downloading wallpaper", wallpaper.id, "->", savePath);
+        wallhavenDownloader.command = ["bash", "-c", "curl -sL '" + wallpaper.fullUrl + "' -o '" + savePath + "'"];
+        wallhavenDownloader.running = true;
     }
 
     function cancelDownload() {
-        if (!wallhavenDownloader.running) return
-        _cancelingDownload = true
-        wallhavenDownloader.running = false
+        if (!wallhavenDownloader.running)
+            return;
+        _cancelingDownload = true;
+        wallhavenDownloader.running = false;
     }
     // ── End Online ──────────────────────────────────────────────────────────
 
     onWallpapersChanged: {
-        updateSearch(currentSearchText)
-        _updateFavoritedWallpapers()
+        updateSearch(currentSearchText);
+        _updateFavoritedWallpapers();
     }
 
     function fuzzyQuery(search: string): var {
-        const existing = new Set(wallpapers)
-        const preps = []
+        const existing = new Set(wallpapers);
+        const preps = [];
         for (let i = 0; i < folderModel.count; i++) {
-            const orig = folderModel.get(i, "filePath")
-            const cachePath = root.cacheDir + "/" + Qt.md5(orig) + ".jpg"
+            const orig = folderModel.get(i, "filePath");
+            const cachePath = root.cacheDir + "/" + Qt.md5(orig) + ".jpg";
             if (existing.has(cachePath)) {
                 preps.push({
                     content: Fuzzy.prepare(orig.split("/").pop()),
                     cachePath: cachePath
-                })
+                });
             }
         }
-        return Fuzzy.go(search, preps, { all: true, key: "content" })
-            .map(r => r.obj.cachePath)
+        return Fuzzy.go(search, preps, {
+            all: true,
+            key: "content"
+        }).map(r => r.obj.cachePath);
     }
 
     function updateSearch(searchText) {
-        currentSearchText = searchText
-        filteredWallpapers = searchText.length > 0 ? fuzzyQuery(searchText) : [...wallpapers]
+        currentSearchText = searchText;
+        filteredWallpapers = searchText.length > 0 ? fuzzyQuery(searchText) : [...wallpapers];
     }
 
     property alias folderModel: folderModel
@@ -335,16 +330,16 @@ Singleton {
         id: createCacheDir
         command: ["sh", "-c", "mkdir -p '" + root.cacheDir + "' && ls '" + root.cacheDir + "' > /dev/null"]
         running: true
-        onExited: (exitCode) => {
+        onExited: exitCode => {
             if (exitCode === 0) {
-                console.log("[ServiceWallpaper] Cache directory ready:", root.cacheDir)
-                console.log("[ServiceWallpaper] Setting cache folder to:", "file://" + root.cacheDir)
-                console.log("[ServiceWallpaper] Setting wallpaper folder to:", "file://" + root.wallpaperDir)
-                cacheModel.folder = "file://" + root.cacheDir
-                folderModel.folder = "file://" + root.wallpaperDir
-                root.loadFavorites()
+                console.log("[ServiceWallpaper] Cache directory ready:", root.cacheDir);
+                console.log("[ServiceWallpaper] Setting cache folder to:", "file://" + root.cacheDir);
+                console.log("[ServiceWallpaper] Setting wallpaper folder to:", "file://" + root.wallpaperDir);
+                cacheModel.folder = "file://" + root.cacheDir;
+                folderModel.folder = "file://" + root.wallpaperDir;
+                root.loadFavorites();
             } else {
-                console.error("[ServiceWallpaper] Failed to create cache directory:", root.cacheDir)
+                console.error("[ServiceWallpaper] Failed to create cache directory:", root.cacheDir);
             }
         }
     }
@@ -358,22 +353,22 @@ Singleton {
         showOnlyReadable: true
 
         onFolderChanged: {
-            console.log("[ServiceWallpaper] Scanning wallpaper folder:", root.wallpaperDir)
+            console.log("[ServiceWallpaper] Scanning wallpaper folder:", root.wallpaperDir);
         }
 
         onCountChanged: {
-            console.log("[ServiceWallpaper] Found", count, "wallpapers in folder")
+            console.log("[ServiceWallpaper] Found", count, "wallpapers in folder");
             if (count === 0) {
-                console.warn("[ServiceWallpaper] No wallpapers found! Check if folder exists:", root.wallpaperDir)
+                console.warn("[ServiceWallpaper] No wallpapers found! Check if folder exists:", root.wallpaperDir);
             }
             if (count > 0 && !root.isProcessing) {
-                generateThumbnails()
+                generateThumbnails();
             }
         }
 
         onStatusChanged: {
             if (status === FolderListModel.Ready && count === 0) {
-                console.warn("[ServiceWallpaper] Folder is ready but empty. Path:", root.wallpaperDir)
+                console.warn("[ServiceWallpaper] Folder is ready but empty. Path:", root.wallpaperDir);
             }
         }
     }
@@ -387,51 +382,52 @@ Singleton {
         showOnlyReadable: true
 
         onFolderChanged: {
-            console.log("[ServiceWallpaper] Cache folder changed to:", folder)
+            console.log("[ServiceWallpaper] Cache folder changed to:", folder);
         }
 
         onCountChanged: {
-            console.log("[ServiceWallpaper] Cache contains", count, "thumbnails")
-            updateWallpapersList()
+            console.log("[ServiceWallpaper] Cache contains", count, "thumbnails");
+            updateWallpapersList();
         }
 
         onStatusChanged: {
-            console.log("[ServiceWallpaper] Cache model status:", status)
+            console.log("[ServiceWallpaper] Cache model status:", status);
         }
     }
 
     function generateThumbnails() {
-        if (folderModel.count === 0 || root.isProcessing) return
-        console.log("[ServiceWallpaper] Starting thumbnail generation for", folderModel.count, "wallpapers")
-        root.isProcessing = true
-        currentIndex = 0
-        processNextThumbnail()
+        if (folderModel.count === 0 || root.isProcessing)
+            return;
+        console.log("[ServiceWallpaper] Starting thumbnail generation for", folderModel.count, "wallpapers");
+        root.isProcessing = true;
+        currentIndex = 0;
+        processNextThumbnail();
     }
 
     function processNextThumbnail() {
         while (currentIndex < folderModel.count) {
-            const originalPath = folderModel.get(currentIndex, "filePath")
+            const originalPath = folderModel.get(currentIndex, "filePath");
 
             if (!root.processedFiles[originalPath]) {
-                const hash = Qt.md5(originalPath)
-                const thumbPath = root.cacheDir + "/" + hash + ".jpg"
+                const hash = Qt.md5(originalPath);
+                const thumbPath = root.cacheDir + "/" + hash + ".jpg";
 
-                root.processedFiles[originalPath] = true
+                root.processedFiles[originalPath] = true;
 
-                thumbChecker.originalPath = originalPath
-                thumbChecker.thumbPath = thumbPath
-                thumbChecker.command = ["test", "-f", thumbPath]
-                thumbChecker.running = true
-                return
+                thumbChecker.originalPath = originalPath;
+                thumbChecker.thumbPath = thumbPath;
+                thumbChecker.command = ["test", "-f", thumbPath];
+                thumbChecker.running = true;
+                return;
             }
 
-            currentIndex++
+            currentIndex++;
         }
 
         // All done
-        console.log("[ServiceWallpaper] Thumbnail generation completed. Updating wallpapers list...")
-        root.isProcessing = false
-        updateWallpapersList()
+        console.log("[ServiceWallpaper] Thumbnail generation completed. Updating wallpapers list...");
+        root.isProcessing = false;
+        updateWallpapersList();
     }
 
     Process {
@@ -439,27 +435,19 @@ Singleton {
         property string originalPath: ""
         property string thumbPath: ""
 
-        onExited: (exitCode) => {
+        onExited: exitCode => {
             if (exitCode === 0) {
-                console.log("[ServiceWallpaper] Thumbnail exists:", thumbPath)
-                root.wallpaperMap[thumbPath] = originalPath
-                currentIndex++
-                processNextThumbnail()
+                console.log("[ServiceWallpaper] Thumbnail exists:", thumbPath);
+                root.wallpaperMap[thumbPath] = originalPath;
+                currentIndex++;
+                processNextThumbnail();
             } else {
-                console.log("[ServiceWallpaper] Generating thumbnail for:", originalPath)
-                root.wallpaperMap[thumbPath] = originalPath
-                thumbGenerator.originalPath = originalPath
-                thumbGenerator.thumbPath = thumbPath
-                thumbGenerator.command = [
-                    "convert",
-                    originalPath,
-                    "-resize", root.thumbSize + "x" + root.thumbSize + "^",
-                    "-gravity", "center",
-                    "-extent", root.thumbSize + "x" + root.thumbSize,
-                    "-quality", "85",
-                    thumbPath
-                ]
-                thumbGenerator.running = true
+                console.log("[ServiceWallpaper] Generating thumbnail for:", originalPath);
+                root.wallpaperMap[thumbPath] = originalPath;
+                thumbGenerator.originalPath = originalPath;
+                thumbGenerator.thumbPath = thumbPath;
+                thumbGenerator.command = ["convert", originalPath, "-resize", root.thumbSize + "x" + root.thumbSize + "^", "-gravity", "center", "-extent", root.thumbSize + "x" + root.thumbSize, "-quality", "85", thumbPath];
+                thumbGenerator.running = true;
             }
         }
     }
@@ -469,119 +457,109 @@ Singleton {
         property string originalPath: ""
         property string thumbPath: ""
 
-        onExited: (exitCode) => {
+        onExited: exitCode => {
             if (exitCode === 0) {
-                console.log("[ServiceWallpaper] Thumbnail generated successfully:", thumbPath)
+                console.log("[ServiceWallpaper] Thumbnail generated successfully:", thumbPath);
             } else {
-                console.error("[ServiceWallpaper] Failed to generate thumbnail for:", originalPath)
-                delete root.wallpaperMap[thumbPath]
+                console.error("[ServiceWallpaper] Failed to generate thumbnail for:", originalPath);
+                delete root.wallpaperMap[thumbPath];
             }
-            currentIndex++
-            processNextThumbnail()
+            currentIndex++;
+            processNextThumbnail();
         }
     }
 
     function updateWallpapersList() {
-        const entries = []
+        const entries = [];
         for (let i = 0; i < folderModel.count; i++) {
-            const originalPath = folderModel.get(i, "filePath")
-            const cachePath = root.cacheDir + "/" + Qt.md5(originalPath) + ".jpg"
+            const originalPath = folderModel.get(i, "filePath");
+            const cachePath = root.cacheDir + "/" + Qt.md5(originalPath) + ".jpg";
             if (root.wallpaperMap[cachePath]) {
                 entries.push({
                     cachePath: cachePath,
                     modified: folderModel.get(i, "fileModified")
-                })
+                });
             }
         }
         if (localSortBy === "newest") {
-            entries.sort((a, b) => new Date(b.modified) - new Date(a.modified))
+            entries.sort((a, b) => new Date(b.modified) - new Date(a.modified));
         } else {
             entries.sort((a, b) => {
-                const nameA = root.wallpaperMap[a.cachePath].split("/").pop().toLowerCase()
-                const nameB = root.wallpaperMap[b.cachePath].split("/").pop().toLowerCase()
-                return nameA < nameB ? -1 : nameA > nameB ? 1 : 0
-            })
+                const nameA = root.wallpaperMap[a.cachePath].split("/").pop().toLowerCase();
+                const nameB = root.wallpaperMap[b.cachePath].split("/").pop().toLowerCase();
+                return nameA < nameB ? -1 : nameA > nameB ? 1 : 0;
+            });
         }
-        console.log("[ServiceWallpaper] Total wallpapers available:", entries.length)
-        root.wallpapers = entries.map(e => e.cachePath)
+        console.log("[ServiceWallpaper] Total wallpapers available:", entries.length);
+        root.wallpapers = entries.map(e => e.cachePath);
     }
 
     function getOriginalPath(cachePath: string): string {
-        return root.wallpaperMap[cachePath] || cachePath
+        return root.wallpaperMap[cachePath] || cachePath;
     }
 
     function setWallpaper(cachePath: string) {
-        const originalPath = getOriginalPath(cachePath)
+        const originalPath = getOriginalPath(cachePath);
         if (!originalPath) {
-            console.error("[ServiceWallpaper] Cannot find original path for:", cachePath)
-            return
+            console.error("[ServiceWallpaper] Cannot find original path for:", cachePath);
+            return;
         }
-        console.log("[ServiceWallpaper] Setting wallpaper:", originalPath)
-        _enqueue(originalPath)
+        console.log("[ServiceWallpaper] Setting wallpaper:", originalPath);
+        _enqueue(originalPath);
     }
 
     function refresh() {
-        console.log("[ServiceWallpaper] Refreshing wallpaper list")
-        const folder = folderModel.folder
-        folderModel.folder = ""
-        folderModel.folder = folder
+        console.log("[ServiceWallpaper] Refreshing wallpaper list");
+        const folder = folderModel.folder;
+        folderModel.folder = "";
+        folderModel.folder = folder;
     }
 
     // ── Wallhaven processes ─────────────────────────────────────────────────
     Process {
         id: wallhavenFetcher
         stdout: SplitParser {
-            onRead: line => { root._fetchBuffer += line }
-        }
-        onExited: (exitCode) => {
-            if (exitCode === 0) {
-                root._parseWallhavenResults(root._fetchBuffer)
-            } else {
-                root.onlineError = "Network error — check your connection (curl exit " + exitCode + ")"
-                console.error("[ServiceWallpaper] Wallhaven curl failed, exit:", exitCode)
-                root.isFetchingOnline = false
+            onRead: line => {
+                root._fetchBuffer += line;
             }
-            root._fetchBuffer = ""
+        }
+        onExited: exitCode => {
+            if (exitCode === 0) {
+                root._parseWallhavenResults(root._fetchBuffer);
+            } else {
+                root.onlineError = "Network error — check your connection (curl exit " + exitCode + ")";
+                console.error("[ServiceWallpaper] Wallhaven curl failed, exit:", exitCode);
+                root.isFetchingOnline = false;
+            }
+            root._fetchBuffer = "";
         }
     }
 
     Process {
         id: wallhavenDownloader
-        onExited: (exitCode) => {
-            downloadPoller.stop()
-            root.downloadingId = ""
-            root.downloadedBytes = 0
+        onExited: exitCode => {
+            downloadPoller.stop();
+            root.downloadingId = "";
+            root.downloadedBytes = 0;
             if (root._cancelingDownload) {
-                console.log("[ServiceWallpaper] Download canceled:", root._pendingDownloadPath)
-                Quickshell.execDetached(["rm", "-f", root._pendingDownloadPath])
-                root._cancelingDownload = false
+                console.log("[ServiceWallpaper] Download canceled:", root._pendingDownloadPath);
+                Quickshell.execDetached(["rm", "-f", root._pendingDownloadPath]);
+                root._cancelingDownload = false;
             } else if (exitCode === 0) {
-                console.log("[ServiceWallpaper] Download complete:", root._pendingDownloadPath)
-                const savePath = root._pendingDownloadPath
-                const thumbPath = root.cacheDir + "/" + Qt.md5(savePath) + ".jpg"
-                root.processedFiles[savePath] = true
-                downloadedThumbGen.savePath = savePath
-                downloadedThumbGen.thumbPath = thumbPath
-                downloadedThumbGen.command = [
-                    "convert", savePath,
-                    "-resize", root.thumbSize + "x" + root.thumbSize + "^",
-                    "-gravity", "center",
-                    "-extent", root.thumbSize + "x" + root.thumbSize,
-                    "-quality", "85",
-                    thumbPath
-                ]
-                downloadedThumbGen.running = true
-                root._enqueue(savePath)
+                console.log("[ServiceWallpaper] Download complete:", root._pendingDownloadPath);
+                const savePath = root._pendingDownloadPath;
+                const thumbPath = root.cacheDir + "/" + Qt.md5(savePath) + ".jpg";
+                root.processedFiles[savePath] = true;
+                downloadedThumbGen.savePath = savePath;
+                downloadedThumbGen.thumbPath = thumbPath;
+                downloadedThumbGen.command = ["convert", savePath, "-resize", root.thumbSize + "x" + root.thumbSize + "^", "-gravity", "center", "-extent", root.thumbSize + "x" + root.thumbSize, "-quality", "85", thumbPath];
+                downloadedThumbGen.running = true;
+                root._enqueue(savePath);
             } else {
-                console.error("[ServiceWallpaper] Download failed for:", root._pendingDownloadPath)
-                ServiceNotification.sendNotification(
-                    "Wallpaper Download Failed",
-                    root._pendingDownloadPath.split("/").pop(),
-                    "Wallpaper",
-                    "dialog-error"
-                )
+                console.error("[ServiceWallpaper] Download failed for:", root._pendingDownloadPath);
+                ServiceNotification.sendNotification("Wallpaper Download Failed", root._pendingDownloadPath.split("/").pop(), "Wallpaper", "dialog-error");
             }
-            root._pendingDownloadPath = ""
+            root._pendingDownloadPath = "";
         }
     }
 
@@ -589,27 +567,16 @@ Singleton {
         id: downloadedThumbGen
         property string savePath: ""
         property string thumbPath: ""
-        onExited: (exitCode) => {
+        onExited: exitCode => {
             if (exitCode === 0) {
-                console.log("[ServiceWallpaper] Download thumbnail ready:", thumbPath)
-                root.wallpaperMap[thumbPath] = savePath
-                const fileName = savePath.split("/").pop()
-                ServiceNotification.sendNotification(
-                    "Wallpaper Downloaded",
-                    fileName,
-                    "Wallpaper",
-                    "image-x-generic",
-                    thumbPath
-                )
-                root.refresh()
+                console.log("[ServiceWallpaper] Download thumbnail ready:", thumbPath);
+                root.wallpaperMap[thumbPath] = savePath;
+                const fileName = savePath.split("/").pop();
+                ServiceNotification.sendNotification("Wallpaper Downloaded", fileName, "Wallpaper", "image-x-generic", thumbPath);
+                root.refresh();
             } else {
-                console.error("[ServiceWallpaper] Failed to generate thumbnail for:", savePath)
-                ServiceNotification.sendNotification(
-                    "Wallpaper Download Failed",
-                    savePath.split("/").pop(),
-                    "Wallpaper",
-                    "dialog-error"
-                )
+                console.error("[ServiceWallpaper] Failed to generate thumbnail for:", savePath);
+                ServiceNotification.sendNotification("Wallpaper Download Failed", savePath.split("/").pop(), "Wallpaper", "dialog-error");
             }
         }
     }
@@ -621,9 +588,9 @@ Singleton {
         running: false
         onTriggered: {
             if (root._pendingDownloadPath.length > 0 && !fileSizeChecker.running) {
-                fileSizeChecker._buf = ""
-                fileSizeChecker.command = ["stat", "-c", "%s", root._pendingDownloadPath]
-                fileSizeChecker.running = true
+                fileSizeChecker._buf = "";
+                fileSizeChecker.command = ["stat", "-c", "%s", root._pendingDownloadPath];
+                fileSizeChecker.running = true;
             }
         }
     }
@@ -634,12 +601,13 @@ Singleton {
         stdout: SplitParser {
             onRead: line => fileSizeChecker._buf += line
         }
-        onExited: (exitCode) => {
+        onExited: exitCode => {
             if (exitCode === 0) {
-                const sz = parseInt(fileSizeChecker._buf.trim())
-                if (!isNaN(sz)) root.downloadedBytes = sz
+                const sz = parseInt(fileSizeChecker._buf.trim());
+                if (!isNaN(sz))
+                    root.downloadedBytes = sz;
             }
-            fileSizeChecker._buf = ""
+            fileSizeChecker._buf = "";
         }
     }
     // ── End Wallhaven processes ─────────────────────────────────────────────
@@ -649,43 +617,47 @@ Singleton {
         id: favLoader
         property string _buffer: ""
         stdout: SplitParser {
-            onRead: line => { favLoader._buffer += line }
+            onRead: line => {
+                favLoader._buffer += line;
+            }
         }
-        onExited: (exitCode) => {
+        onExited: exitCode => {
             if (exitCode === 0 && favLoader._buffer.length > 0) {
                 try {
-                    const keys = JSON.parse(favLoader._buffer)
-                    const set = {}
-                    for (let i = 0; i < keys.length; i++) set[keys[i]] = true
-                    root.favorites = set
-                    root._updateFavoritedWallpapers()
-                    console.log("[ServiceWallpaper] Loaded", keys.length, "favorites")
+                    const keys = JSON.parse(favLoader._buffer);
+                    const set = {};
+                    for (let i = 0; i < keys.length; i++)
+                        set[keys[i]] = true;
+                    root.favorites = set;
+                    root._updateFavoritedWallpapers();
+                    console.log("[ServiceWallpaper] Loaded", keys.length, "favorites");
                 } catch (e) {
-                    console.warn("[ServiceWallpaper] Failed to parse favorites:", e)
+                    console.warn("[ServiceWallpaper] Failed to parse favorites:", e);
                 }
             }
-            favLoader._buffer = ""
+            favLoader._buffer = "";
         }
     }
 
     Process {
         id: favSaver
-        onExited: (exitCode) => {
+        onExited: exitCode => {
             if (exitCode !== 0)
-                console.error("[ServiceWallpaper] Failed to save favorites, exit:", exitCode)
+                console.error("[ServiceWallpaper] Failed to save favorites, exit:", exitCode);
         }
     }
     // ── End Favorites processes ─────────────────────────────────────────────
 
     // ── File management ─────────────────────────────────────────────────────
     function deleteWallpaper(cachePath) {
-        const orig = getOriginalPath(cachePath)
-        if (!orig) return
-        fileDeleter._cachePath = cachePath
-        fileDeleter._origPath  = orig
-        fileDeleter.command = ["rm", "-f", orig, cachePath]
-        fileDeleter.running = true
-        console.log("[ServiceWallpaper] Deleting wallpaper:", orig)
+        const orig = getOriginalPath(cachePath);
+        if (!orig)
+            return;
+        fileDeleter._cachePath = cachePath;
+        fileDeleter._origPath = orig;
+        fileDeleter.command = ["rm", "-f", orig, cachePath];
+        fileDeleter.running = true;
+        console.log("[ServiceWallpaper] Deleting wallpaper:", orig);
     }
 
     Process {
@@ -694,11 +666,11 @@ Singleton {
         property string _origPath: ""
         onExited: exitCode => {
             if (exitCode === 0) {
-                delete root.wallpaperMap[_cachePath]
-                delete root.processedFiles[_origPath]
-                root.wallpapers = root.wallpapers.filter(w => w !== _cachePath)
+                delete root.wallpaperMap[_cachePath];
+                delete root.processedFiles[_origPath];
+                root.wallpapers = root.wallpapers.filter(w => w !== _cachePath);
             } else {
-                console.error("[ServiceWallpaper] Delete failed for:", _origPath)
+                console.error("[ServiceWallpaper] Delete failed for:", _origPath);
             }
         }
     }

@@ -7,7 +7,7 @@ import qs.modules.utils
 Singleton{
     id: settings
 
-    property string layoutColor: Colors.surface
+    property string layoutColor: "#000000"
     property string activeTheme: "Wallpaper"
     property int    dashboardHeight: 400
     property string wallpaper: Colors.wallpaper

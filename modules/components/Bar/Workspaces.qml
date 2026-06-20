@@ -127,7 +127,7 @@ Item{
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (currentWorkspace) currentWorkspace.activate()
-                        else Hyprland.dispatch(`workspace ${workspaceId}`)
+                        else Hyprland.dispatch(`hl.dsp.focus({ workspace = ${workspaceId} })`)
                     }
                 }
             }

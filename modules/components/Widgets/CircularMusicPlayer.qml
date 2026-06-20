@@ -20,10 +20,13 @@ Item {
 
     property bool editMode: false
 
+    // Activate cava for the audio visualization
     Component.onCompleted: {
+        ServiceCava.retain()
         root.x = SettingsConfig.widgets.musicPlayerX ?? 200
         root.y = SettingsConfig.widgets.musicPlayerY ?? 200
     }
+    Component.onDestruction: ServiceCava.release()
 
     // Settings load asynchronously via a 100ms timer in SettingsConfig,
     // so widgets.musicPlayerX may not be ready at Component.onCompleted time.

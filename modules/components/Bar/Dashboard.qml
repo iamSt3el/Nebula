@@ -10,42 +10,16 @@ import qs.modules.settings
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MatrialShapeFn
 
-Item{
-    id: root 
+Item {
+    id: root
     anchors.fill: parent
     implicitHeight: col.implicitHeight
     property string panelMode: ""   // "" | "wifi" | "bluetooth"
-
 
     property var parentPos
     property var wifiPos
     property var bluetoothPos
     property var pos
-
-
-    Timer{
-        id: rowTimer
-        interval: 300
-        onTriggered: colu.visible = true
-    }
-
-    opacity:0
-    scale: 0.8
-
-    NumberAnimation on opacity{
-        from: 0
-        to: 1
-        duration: 400
-        running: true
-    }
-
-
-    NumberAnimation on scale{
-        from: 0.8
-        to: 1
-        duration: 400
-        running: true
-    }
 
     property var downloadHistory: []
 
@@ -53,29 +27,32 @@ Item{
     Connections {
         target: ServiceSystemInfo
         function onNetDownloadBpsChanged() {
-            sparkline.addValue(ServiceSystemInfo.netDownloadBps)
+            sparkline.addValue(ServiceSystemInfo.netDownloadBps);
         }
     }
 
     Connections {
         target: ServiceWifi
         function onWifiEnabledChanged() {
-            SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, { airplaneMode: !ServiceWifi.wifiEnabled })
+            SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, {
+                airplaneMode: !ServiceWifi.wifiEnabled
+            });
         }
     }
 
     Connections {
         target: ServicePipewire
         function onMutedChanged() {
-            SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, { speakerMuted: ServicePipewire.muted })
+            SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, {
+                speakerMuted: ServicePipewire.muted
+            });
         }
         function onMicMutedChanged() {
-            SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, { micMuted: ServicePipewire.micMuted })
+            SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, {
+                micMuted: ServicePipewire.micMuted
+            });
         }
     }
-
-
-
 
     // Overlay backdrop — fades in/out independently
     Rectangle {
@@ -85,7 +62,11 @@ Item{
         radius: 20
         color: Qt.alpha(Colors.surface, 0.7)
         opacity: root.panelMode !== "" ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 300 } }
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 300
+            }
+        }
     }
 
     // Panel container — persistent so states/transitions actually animate
@@ -150,8 +131,9 @@ Item{
         Connections {
             target: root
             function onPanelModeChanged() {
-                panelLoader.active = false
-                if (root.panelMode !== "") contentTimer.start()
+                panelLoader.active = false;
+                if (root.panelMode !== "")
+                    contentTimer.start();
             }
         }
 
@@ -167,9 +149,9 @@ Item{
             id: wifiComponent
             Wifi {
                 onBackClicked: {
-                    root.panelMode = ""
-                    panelLoader.active = false
-                    rowTimer.start()
+                    root.panelMode = "";
+                    panelLoader.active = false;
+                    rowTimer.start();
                 }
             }
         }
@@ -178,80 +160,79 @@ Item{
             id: bluetoothComponent
             Bluetooth {
                 onBackClicked: {
-                    root.panelMode = ""
-                    panelLoader.active = false
-                    rowTimer.start()
+                    root.panelMode = "";
+                    panelLoader.active = false;
+                    rowTimer.start();
                 }
             }
         }
     }
 
-    NumberAnimation on opacity{
+    NumberAnimation on opacity {
         from: 0
         to: 1
         duration: 200
         running: true
     }
 
-
     signal toggleDashboard
     property bool active: false//hoverHandler.hovered
 
-    onActiveChanged:{
-        if(!active) root.toggleDashboard()
+    onActiveChanged: {
+        if (!active)
+            root.toggleDashboard();
     }
-
 
     // HoverHandler{
     //     id: hoverHandler
     // }
 
-    ColumnLayout{
+    ColumnLayout {
         id: col
         anchors.fill: parent
         spacing: 10
         anchors.margins: 10
 
-        Rectangle{
+        Rectangle {
             Layout.preferredHeight: 50
             Layout.fillWidth: true
             color: Colors.surfaceContainer
             radius: 20
-            RowLayout{
+            RowLayout {
                 anchors.fill: parent
                 anchors.margins: 10
                 anchors.rightMargin: 10
                 spacing: 5
 
-                ClippingWrapperRectangle{
+                ClippingWrapperRectangle {
                     Layout.preferredWidth: 30
                     Layout.preferredHeight: 30
                     radius: height
                     color: "transparent"
 
-                    border{
+                    border {
                         width: 1
                         color: Colors.outline
                     }
 
-                    Image{
+                    Image {
                         anchors.fill: parent
                         sourceSize: Qt.size(width, height)
-                        source: SettingsConfig.general.profile
+                        source: SettingsConfig.profileImage
                     }
                 }
 
-                ColumnLayout{
+                ColumnLayout {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
                     spacing: 0
-                    CustomText{
+                    CustomText {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         content: "St3el"
                         size: 14
                     }
-                    CustomText{
+                    CustomText {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         content: "uptime " + ServiceSystemInfo.getUptime()
@@ -263,7 +244,7 @@ Item{
 
                 // MaterialIconSymbol{
                 //     content: "settings"
-                //     iconSize: 20 
+                //     iconSize: 20
                 //     MouseArea{
                 //         cursorShape: Qt.PointingHandCursor
                 //         anchors.fill: parent
@@ -273,31 +254,31 @@ Item{
                 //         }
                 //     }
                 // }
-                CustomButton{
+                CustomButton {
                     icon: "settings"
                     iconSize: 18
                     Layout.preferredHeight: 30
                     Layout.preferredWidth: 30
                     radius: 10
                     onClicked: {
-                        root.toggleDashboard()
-                        GlobalStates.settingsPage = 0
-                        GlobalStates.settingsOpen = true
+                        root.toggleDashboard();
+                        GlobalStates.settingsPage = 0;
+                        GlobalStates.settingsOpen = true;
                     }
                 }
 
-                CustomButton{
+                CustomButton {
                     icon: "power_settings_new"
                     iconSize: 18
                     Layout.preferredHeight: 30
                     Layout.preferredWidth: 40
                     radius: 10
                     onClicked: {
-                        root.toggleDashboard()
-                        GlobalStates.shutdownWindow = true
+                        root.toggleDashboard();
+                        GlobalStates.shutdownWindow = true;
                     }
                 }
-                CustomButton{
+                CustomButton {
                     icon: "close"
                     iconSize: 18
                     Layout.preferredHeight: 30
@@ -305,10 +286,10 @@ Item{
                     radius: 10
 
                     onClicked: {
-                        root.toggleDashboard()
+                        root.toggleDashboard();
                     }
                 }
-               
+
                 // MaterialIconSymbol{
                 //     content: "close"
                 //     iconSize: 20
@@ -319,38 +300,37 @@ Item{
                 //     }
                 // }
 
-
             }
         }
 
-        Rectangle{
+        Rectangle {
             id: controleRectangle
             Layout.preferredHeight: colu.implicitHeight
             Layout.fillWidth: true
             color: "transparent"//Colors.surfaceContainer
             radius: 20
 
-            Behavior on Layout.preferredHeight{
-                NumberAnimation{
+            Behavior on Layout.preferredHeight {
+                NumberAnimation {
                     duration: 200
                     easing.type: Easing.OutQuad
                 }
             }
 
-            ColumnLayout{
+            ColumnLayout {
                 id: colu
                 anchors.fill: parent
                 anchors.margins: 0
                 spacing: 10
 
-                RowLayout{
+                RowLayout {
                     Layout.fillWidth: true
                     spacing: 10
 
-                    ColumnLayout{
+                    ColumnLayout {
                         Layout.fillHeight: true
                         spacing: 10
-                        Rectangle{
+                        Rectangle {
                             id: wifi
                             Layout.preferredHeight: 60
                             Layout.fillWidth: true
@@ -359,21 +339,22 @@ Item{
                             opacity: root.panelMode === "wifi" ? 0 : 1
 
                             Behavior on opacity {
-                                NumberAnimation { duration: 300 }
+                                NumberAnimation {
+                                    duration: 300
+                                }
                             }
 
-                            RowLayout{
+                            RowLayout {
                                 anchors.fill: parent
                                 anchors.margins: 5
 
-                                MaterialShapes.ShapeCanvas{
+                                MaterialShapes.ShapeCanvas {
                                     Layout.preferredHeight: 50
                                     Layout.preferredWidth: 50
                                     roundedPolygon: MatrialShapeFn.getCookie6Sided()
                                     color: Colors.primary
 
-
-                                    MaterialIconSymbol{
+                                    MaterialIconSymbol {
                                         anchors.centerIn: parent
                                         iconSize: 28
                                         content: ServiceWifi.icon
@@ -381,18 +362,18 @@ Item{
                                     }
                                 }
 
-                                ColumnLayout{
+                                ColumnLayout {
                                     Layout.fillHeight: true
                                     Layout.fillWidth: true
                                     spacing: 5
-                                    CustomText{
+                                    CustomText {
                                         Layout.fillWidth: true
                                         content: ServiceWifi.connectionType
                                         size: 14
                                         weight: 700
                                     }
 
-                                    CustomText{
+                                    CustomText {
                                         Layout.fillWidth: true
                                         content: ServiceWifi.currentSSID || "no device"
                                         size: 12
@@ -400,45 +381,42 @@ Item{
                                     }
                                 }
 
-                                MaterialIconSymbol{
+                                MaterialIconSymbol {
                                     content: "chevron_right"
                                     size: 14
                                     color: Colors.outline
                                 }
                             }
 
-                            MouseArea{
+                            MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
 
-                                onClicked:{
-                                    root.parentPos = controleRectangle.mapToItem(root, 0, 0)
-                                    root.pos = wifi.mapToItem(root, 0, 0)
-                                    root.panelMode = "wifi"
+                                onClicked: {
+                                    root.parentPos = controleRectangle.mapToItem(root, 0, 0);
+                                    root.pos = wifi.mapToItem(root, 0, 0);
+                                    root.panelMode = "wifi";
                                 }
                             }
                         }
-                        Rectangle{
+                        Rectangle {
                             id: bluetooth
                             Layout.preferredHeight: 60
                             Layout.fillWidth: true
                             radius: 20
                             color: Colors.surfaceContainerHigh
 
-                            RowLayout{
+                            RowLayout {
                                 anchors.fill: parent
                                 anchors.margins: 5
 
-                   
-
-                                MaterialShapes.ShapeCanvas{
+                                MaterialShapes.ShapeCanvas {
                                     Layout.preferredHeight: 50
                                     Layout.preferredWidth: 50
                                     roundedPolygon: MatrialShapeFn.getCookie6Sided()
                                     color: Colors.primary
 
-
-                                    MaterialIconSymbol{
+                                    MaterialIconSymbol {
                                         anchors.centerIn: parent
                                         iconSize: 28
                                         content: ServiceBluetooth.connectedDevices > 0 ? "bluetooth" : "bluetooth_disabled"
@@ -446,62 +424,62 @@ Item{
                                     }
                                 }
 
-                                ColumnLayout{
+                                ColumnLayout {
                                     Layout.fillHeight: true
                                     Layout.fillWidth: true
                                     spacing: 5
-                                    CustomText{
+                                    CustomText {
                                         Layout.fillWidth: true
                                         content: "Bluetooth"
                                         size: 14
                                     }
 
-                                    CustomText{
+                                    CustomText {
                                         Layout.fillWidth: true
                                         content: ServiceBluetooth.connectedDevices + " connected"
                                         size: 12
                                         color: Colors.outline
                                     }
                                 }
-                                MaterialIconSymbol{
+                                MaterialIconSymbol {
                                     content: "chevron_right"
                                     size: 14
                                     color: Colors.outline
                                 }
                             }
-                            MouseArea{
+                            MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
 
-                                onClicked:{
-                                    root.parentPos = controleRectangle.mapToItem(root, 0, 0)
-                                    root.pos = bluetooth.mapToItem(root, 0, 0)
-                                    root.panelMode = "bluetooth"
+                                onClicked: {
+                                    root.parentPos = controleRectangle.mapToItem(root, 0, 0);
+                                    root.pos = bluetooth.mapToItem(root, 0, 0);
+                                    root.panelMode = "bluetooth";
                                 }
                             }
                         }
 
-                        Rectangle{
+                        Rectangle {
                             Layout.preferredHeight: 40
                             Layout.fillWidth: true
                             radius: 20
                             color: Colors.surfaceContainerHigh
 
-                            RowLayout{
+                            RowLayout {
                                 anchors.fill: parent
                                 anchors.margins: 5
 
-                                Repeater{
+                                Repeater {
                                     model: ServiceUPower.powerProfiles
 
-                                    Rectangle{
+                                    Rectangle {
                                         property bool active: ServiceUPower.powerProfile === index
                                         Layout.fillHeight: true
                                         Layout.fillWidth: true
                                         radius: 20
-                                        color: active ? Colors.primary : profileArea.containsMouse ? Qt.alpha(Colors.primary, 0.5) :"transparent"
+                                        color: active ? Colors.primary : profileArea.containsMouse ? Qt.alpha(Colors.primary, 0.5) : "transparent"
 
-                                        MaterialIconSymbol{
+                                        MaterialIconSymbol {
                                             anchors.centerIn: parent
                                             iconSize: 20
                                             content: modelData.icon
@@ -509,24 +487,23 @@ Item{
                                             fill: 1
                                         }
 
-                                        Behavior on color{
+                                        Behavior on color {
                                             ColorAnimation {
                                                 duration: 200
                                             }
                                         }
 
-                                        MouseArea{
+                                        MouseArea {
                                             id: profileArea
                                             anchors.fill: parent
                                             cursorShape: Qt.PointingHandCursor
                                             hoverEnabled: true
-                                            onClicked:{
-                                                ServiceUPower.setPowerProfile(index)
+                                            onClicked: {
+                                                ServiceUPower.setPowerProfile(index);
                                             }
                                         }
                                     }
                                 }
-
                             }
                         }
                     }
@@ -540,27 +517,26 @@ Item{
                     //     }
                     //
                     // }
-                    CustomSliderOld{
+                    CustomSliderOld {
                         Layout.fillHeight: true
                         Layout.preferredWidth: 50
                         icon: "volume_up"
                         progress: ServicePipewire.volume
-                        onProgressChanged:{
-                            ServicePipewire.setVolume(progress)
+                        onProgressChanged: {
+                            ServicePipewire.setVolume(progress);
                         }
                     }
 
-                    CustomSliderOld{
+                    CustomSliderOld {
                         property var brightnessMonitor: ServiceBrightness.getMonitorForScreen(screen)
                         Layout.fillHeight: true
                         Layout.preferredWidth: 50
                         icon: "brightness_7"
 
                         progress: ServiceBrightness.getMonitorForScreen(screen).brightness
-                        onChange:{
-                            brightnessMonitor.setBrightness(progress)
+                        onChange: {
+                            brightnessMonitor.setBrightness(progress);
                         }
-
                     }
                     // CustomSlider{
                     //     property var brightnessMonitor: ServiceBrightness.getMonitorForScreen(screen)
@@ -576,25 +552,24 @@ Item{
             }
         }
 
-        Rectangle{
+        Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 50
             color: Colors.surfaceContainer
             radius: 20
 
-            ColumnLayout{
+            ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 10
                 spacing: 10
 
-
-                RowLayout{
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 40
                     spacing: 4
-                    Repeater{
+                    Repeater {
                         model: Settings.quickIcons
-                        delegate: Rectangle{
+                        delegate: Rectangle {
                             id: qBtn
                             required property int index
                             required property var modelData
@@ -603,53 +578,95 @@ Item{
                             Layout.fillWidth: true
 
                             property bool active: {
-                                if (index === 0) return !ServiceWifi.wifiEnabled
-                                if (index === 1) return ServiceNotification.muted
-                                if (index === 2) return ServicePipewire.muted
-                                if (index === 3) return ServicePipewire.micMuted
-                                return false
+                                if (index === 0)
+                                    return !ServiceWifi.wifiEnabled;
+                                if (index === 1)
+                                    return ServiceNotification.muted;
+                                if (index === 2)
+                                    return ServicePipewire.muted;
+                                if (index === 3)
+                                    return ServicePipewire.micMuted;
+                                return false;
                             }
                             property bool isFirst: index === 0
-                            property bool isLast:  index === Settings.quickIcons.length - 1
+                            property bool isLast: index === Settings.quickIcons.length - 1
 
                             color: active ? Colors.primary : Colors.surfaceContainerHigh
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: 150
+                                }
+                            }
 
-                            topLeftRadius:     (active || isFirst) ? height / 2 : 5
-                            topRightRadius:    (active || isLast)  ? height / 2 : 5
-                            bottomLeftRadius:  (active || isFirst) ? height / 2 : 5
-                            bottomRightRadius: (active || isLast)  ? height / 2 : 5
-                            Behavior on topLeftRadius     { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
-                            Behavior on topRightRadius    { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
-                            Behavior on bottomLeftRadius  { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
-                            Behavior on bottomRightRadius { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+                            topLeftRadius: (active || isFirst) ? height / 2 : 5
+                            topRightRadius: (active || isLast) ? height / 2 : 5
+                            bottomLeftRadius: (active || isFirst) ? height / 2 : 5
+                            bottomRightRadius: (active || isLast) ? height / 2 : 5
+                            Behavior on topLeftRadius {
+                                NumberAnimation {
+                                    duration: 150
+                                    easing.type: Easing.OutQuad
+                                }
+                            }
+                            Behavior on topRightRadius {
+                                NumberAnimation {
+                                    duration: 150
+                                    easing.type: Easing.OutQuad
+                                }
+                            }
+                            Behavior on bottomLeftRadius {
+                                NumberAnimation {
+                                    duration: 150
+                                    easing.type: Easing.OutQuad
+                                }
+                            }
+                            Behavior on bottomRightRadius {
+                                NumberAnimation {
+                                    duration: 150
+                                    easing.type: Easing.OutQuad
+                                }
+                            }
 
                             MaterialIconSymbol {
                                 anchors.centerIn: parent
                                 content: qBtn.active ? qBtn.modelData.iconActive : qBtn.modelData.icon
                                 iconSize: 20
                                 color: qBtn.active ? Colors.primaryText : Colors.surfaceText
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: 150
+                                    }
+                                }
                                 layer.enabled: true
                                 layer.smooth: true
                                 scale: qRipple.pressed ? 0.82 : 1.0
-                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack; easing.overshoot: 1.5 } }
+                                Behavior on scale {
+                                    NumberAnimation {
+                                        duration: 150
+                                        easing.type: Easing.OutBack
+                                        easing.overshoot: 1.5
+                                    }
+                                }
                             }
 
                             RippleEffect {
                                 id: qRipple
                                 anchors.fill: parent
-                                topLeftRadius:     qBtn.topLeftRadius
-                                topRightRadius:    qBtn.topRightRadius
-                                bottomLeftRadius:  qBtn.bottomLeftRadius
+                                topLeftRadius: qBtn.topLeftRadius
+                                topRightRadius: qBtn.topRightRadius
+                                bottomLeftRadius: qBtn.bottomLeftRadius
                                 bottomRightRadius: qBtn.bottomRightRadius
                                 hoverColor: Qt.alpha(qBtn.active ? Colors.primaryText : Colors.primary, 0.10)
                                 pressColor: Qt.alpha(qBtn.active ? Colors.primaryText : Colors.primary, 0.20)
                                 onClicked: {
-                                    if      (qBtn.index === 0) ServiceWifi.toggleWifi()
-                                    else if (qBtn.index === 1) ServiceNotification.toggleMute()
-                                    else if (qBtn.index === 2) ServicePipewire.toggleMute()
-                                    else if (qBtn.index === 3) ServicePipewire.toggleMicMute()
+                                    if (qBtn.index === 0)
+                                        ServiceWifi.toggleWifi();
+                                    else if (qBtn.index === 1)
+                                        ServiceNotification.toggleMute();
+                                    else if (qBtn.index === 2)
+                                        ServicePipewire.toggleMute();
+                                    else if (qBtn.index === 3)
+                                        ServicePipewire.toggleMicMute();
                                 }
                             }
                         }
@@ -658,7 +675,7 @@ Item{
             }
         }
 
-        MusicPlayer{
+        MusicPlayer {
             Layout.fillWidth: true
             Layout.preferredHeight: 150
         }
@@ -668,23 +685,22 @@ Item{
         //     Layout.fillHeight: true
         // }
 
-
-        Rectangle{
+        Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: cpu.implicitHeight + 20
             radius: 20
             color: Colors.surfaceContainer
 
-            ColumnLayout{
+            ColumnLayout {
                 id: cpu
                 anchors.fill: parent
                 anchors.margins: 10
                 spacing: 2
-                RowLayout{ 
+                RowLayout {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    CustomMatrialCircularProgress{
+                    CustomMatrialCircularProgress {
                         Layout.preferredWidth: 60
                         Layout.preferredHeight: 60
                         progress: ServiceSystemInfo.cpuUsage
@@ -695,30 +711,29 @@ Item{
                         sperm: false
                     }
 
-                    ColumnLayout{
+                    ColumnLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        CustomText{
+                        CustomText {
                             content: "CPU"
                             size: 16
                             color: Colors.primary
                         }
-                        CustomText{
+                        CustomText {
                             Layout.fillWidth: true
                             content: ServiceSystemInfo.cpuName
                             size: 14
-
                         }
                     }
 
-                    MaterialShapes.ShapeCanvas{
+                    MaterialShapes.ShapeCanvas {
                         Layout.preferredWidth: 50
                         Layout.preferredHeight: 50
 
                         roundedPolygon: MatrialShapeFn.getCookie4Sided()
                         color: Colors.primaryText
 
-                        CustomText{
+                        CustomText {
                             anchors.centerIn: parent
                             content: Math.round(ServiceSystemInfo.cpuUsage * 100) + "%"
                             size: 14
@@ -754,26 +769,25 @@ Item{
             }
         }
 
-        Rectangle{
+        Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: gpu.implicitHeight + 20
             radius: 20
             color: Colors.surfaceContainer
 
-            ColumnLayout{
+            ColumnLayout {
                 id: gpu
                 anchors.fill: parent
                 anchors.margins: 10
 
-
-                RowLayout{ 
+                RowLayout {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    CustomMatrialCircularProgress{
+                    CustomMatrialCircularProgress {
                         Layout.preferredWidth: 60
                         Layout.preferredHeight: 60
-                        progress: ServiceSystemInfo.gpuUsage
+                        progress: ServiceSystemInfo.gpuUsageAvailable ? ServiceSystemInfo.gpuUsage : 0
                         thickness: 4
                         gap: 0.6
                         icon: "desktop_windows"
@@ -781,32 +795,31 @@ Item{
                         sperm: false
                     }
 
-                    ColumnLayout{
+                    ColumnLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        CustomText{
+                        CustomText {
                             content: "GPU"
                             size: 16
                             color: Colors.primary
                         }
-                        CustomText{
+                        CustomText {
                             Layout.fillWidth: true
                             content: ServiceSystemInfo.gpuName
                             size: 14
-
                         }
                     }
 
-                    MaterialShapes.ShapeCanvas{
+                    MaterialShapes.ShapeCanvas {
                         Layout.preferredWidth: 50
                         Layout.preferredHeight: 50
 
                         roundedPolygon: MatrialShapeFn.getPill()
                         color: Colors.primaryText
 
-                        CustomText{
+                        CustomText {
                             anchors.centerIn: parent
-                            content: Math.round(ServiceSystemInfo.gpuUsage * 100) + "%"
+                            content: ServiceSystemInfo.gpuUsageAvailable ? Math.round(ServiceSystemInfo.gpuUsage * 100) + "%" : "--"
                             size: 14
                             color: Colors.primary
                         }
@@ -842,22 +855,22 @@ Item{
             }
         }
 
-        RowLayout{
+        RowLayout {
             Layout.fillHeight: true
             Layout.fillWidth: true
             spacing: 10
 
-            Rectangle{
+            Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: mem.implicitHeight + 20
                 radius: 20
                 color: Colors.surfaceContainer
 
-                ColumnLayout{
+                ColumnLayout {
                     id: mem
                     anchors.centerIn: parent
                     spacing: 0
-                    CustomGaugeProgress{
+                    CustomGaugeProgress {
                         Layout.preferredWidth: 120
                         Layout.preferredHeight: 120
                         progress: ServiceSystemInfo.memUsage
@@ -868,7 +881,7 @@ Item{
                         sperm: false
                     }
 
-                    CustomText{
+                    CustomText {
                         Layout.alignment: Qt.AlignCenter
                         content: ServiceSystemInfo.memUsedGb.toFixed(1) + " / " + ServiceSystemInfo.memTotalGb.toFixed(1) + " GB"
                         size: 14
@@ -876,17 +889,17 @@ Item{
                 }
             }
 
-            Rectangle{
+            Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: disk.implicitHeight + 20
                 radius: 20
                 color: Colors.surfaceContainer
 
-                ColumnLayout{
+                ColumnLayout {
                     id: disk
                     anchors.centerIn: parent
                     spacing: 0
-                    CustomGaugeProgress{
+                    CustomGaugeProgress {
                         Layout.preferredWidth: 120
                         Layout.preferredHeight: 120
                         progress: ServiceSystemInfo.diskUsage
@@ -897,7 +910,7 @@ Item{
                         sperm: false
                     }
 
-                    CustomText{
+                    CustomText {
                         Layout.alignment: Qt.AlignCenter
                         content: ServiceSystemInfo.diskUsedGb.toFixed(1) + " / " + ServiceSystemInfo.diskTotalGb.toFixed(1) + " GB"
                         size: 14
@@ -906,27 +919,27 @@ Item{
             }
         }
 
-        Rectangle{
+        Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             radius: 20
             color: Colors.surfaceContainer
 
-            ColumnLayout{
+            ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 15
-                RowLayout{
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     spacing: 10
 
-                    MaterialIconSymbol{
+                    MaterialIconSymbol {
                         content: "network_check"
                         iconSize: 20
                         color: Colors.primary
                     }
 
-                    CustomText{
+                    CustomText {
                         content: "Network"
                         size: 16
                     }
@@ -943,91 +956,87 @@ Item{
                     lineColor: Colors.primary
                 }
 
-
-                RowLayout{
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     spacing: 10
 
-                    MaterialIconSymbol{
+                    MaterialIconSymbol {
                         content: "download"
                         iconSize: 20
                         color: Colors.primary
                     }
 
-                    CustomText{
+                    CustomText {
                         content: "Download"
                         size: 16
                     }
 
-                    Item{
+                    Item {
                         Layout.fillWidth: true
                     }
 
-                    CustomText{
-                        content: ServiceSystemInfo.formatBytes(ServiceSystemInfo.netDownloadBps)
+                    CustomText {
+                        content: ServiceSystemInfo.formatNetSpeed(ServiceSystemInfo.netDownloadBps)
                         size: 16
                         color: Colors.primary
                     }
                 }
 
-
-                RowLayout{
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     spacing: 10
 
-                    MaterialIconSymbol{
+                    MaterialIconSymbol {
                         content: "upload"
                         iconSize: 20
                         color: Colors.primary
                     }
 
-                    CustomText{
+                    CustomText {
                         content: "Upload"
                         size: 16
                     }
 
-                    Item{
+                    Item {
                         Layout.fillWidth: true
                     }
 
-                    CustomText{
-                        content: ServiceSystemInfo.formatBytes(ServiceSystemInfo.netUploadBps)
+                    CustomText {
+                        content: ServiceSystemInfo.formatNetSpeed(ServiceSystemInfo.netUploadBps)
                         size: 16
                         color: Colors.primary
                     }
                 }
 
-
-                RowLayout{
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     spacing: 10
 
-                    MaterialIconSymbol{
+                    MaterialIconSymbol {
                         content: "history"
                         iconSize: 20
                         color: Colors.outline
                     }
 
-                    CustomText{
+                    CustomText {
                         content: "Total"
                         size: 16
                         color: Colors.outline
                     }
 
-                    Item{
+                    Item {
                         Layout.fillWidth: true
                     }
 
-                    CustomText{
-                        content: "↓" +ServiceSystemInfo.formatBytes(ServiceSystemInfo.netTotalRxBytes) + " ↑" + ServiceSystemInfo.formatBytes(ServiceSystemInfo.netTotalTxBytes) 
+                    CustomText {
+                        content: "↓" + ServiceSystemInfo.formatBytes(ServiceSystemInfo.netTotalRxBytes) + " ↑" + ServiceSystemInfo.formatBytes(ServiceSystemInfo.netTotalTxBytes)
                         size: 16
                         color: Colors.outline
                     }
                 }
-
             }
         }
     }

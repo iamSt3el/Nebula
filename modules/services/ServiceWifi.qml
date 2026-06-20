@@ -172,14 +172,22 @@ Singleton {
     }
 
     // Monitor network changes
+    Timer {
+        id: monitorDebounceTimer
+        interval: 2000
+        repeat: false
+        onTriggered: {
+            root.refresh()
+            root.scanNetworks()
+        }
+    }
     Process {
         id: subscriber
         running: true
         command: ["nmcli", "monitor"]
         stdout: SplitParser {
             onRead: {
-                root.refresh()
-                root.scanNetworks()  // Also refresh network list
+                monitorDebounceTimer.restart()
             }
         }
     }

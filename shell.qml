@@ -18,7 +18,6 @@ import qs.modules.components.Screenshot
 import qs.modules.customComponents
 import qs.modules.settings
 import qs.modules
-import qs.rubiksCube
 
 ShellRoot{
     DockPanel{}
@@ -50,11 +49,7 @@ ShellRoot{
     
     //InputTest{}
 
-
     WidgetScreen{}
-    
-
-    //CubeTest{}
 
 
 

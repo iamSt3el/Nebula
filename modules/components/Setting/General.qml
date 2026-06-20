@@ -23,8 +23,8 @@ Item {
         onAccepted: {
             SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
                 profile: imagePicker.file.toString().replace(/^file:\/\//, "")
-            })
-            GlobalStates.fileDialogOpen = false
+            });
+            GlobalStates.fileDialogOpen = false;
         }
         onRejected: GlobalStates.fileDialogOpen = false
     }
@@ -49,16 +49,30 @@ Item {
             // ── Page header ──────────────────────────────────────────────
             RowLayout {
                 spacing: 10
-                MaterialIconSymbol { content: "tune"; iconSize: 20 }
-                CustomText { content: "General"; size: 20; customColor: Colors.primary }
+                MaterialIconSymbol {
+                    content: "tune"
+                    iconSize: 20
+                }
+                CustomText {
+                    content: "General"
+                    size: 20
+                    customColor: Colors.primary
+                }
             }
 
             // ── Profile ──────────────────────────────────────────────────
-            CustomText { Layout.topMargin: 24; content: "Profile"; size: 13; customColor: Colors.primary }
+            CustomText {
+                Layout.topMargin: 24
+                content: "Profile"
+                size: 13
+                customColor: Colors.primary
+            }
 
             CustomCard {
                 Layout.topMargin: 6
-                autoRadius: false; topRadius: 20; bottomRadius: 20
+                autoRadius: false
+                topRadius: 20
+                bottomRadius: 20
 
                 RowLayout {
                     spacing: 16
@@ -78,7 +92,7 @@ Item {
                             id: profileArt
                             anchors.fill: parent
                             sourceSize: Qt.size(width, height)
-                            source: SettingsConfig.general.profile
+                            source: SettingsConfig.profileImage
                             fillMode: Image.PreserveAspectCrop
                             visible: false
                             layer.enabled: true
@@ -98,10 +112,15 @@ Item {
                         Layout.alignment: Qt.AlignVCenter
                         spacing: 6
 
-                        CustomText { content: "St3el"; size: 16; weight: 700 }
+                        CustomText {
+                            content: "St3el"
+                            size: 16
+                            weight: 700
+                        }
                         CustomText {
                             content: "Shown in overview and lock screen"
-                            size: 12; customColor: Colors.outline
+                            size: 12
+                            customColor: Colors.outline
                         }
 
                         RowLayout {
@@ -111,8 +130,10 @@ Item {
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 32
-                                topLeftRadius: 16; bottomLeftRadius: 16
-                                topRightRadius: 6;  bottomRightRadius: 6
+                                topLeftRadius: 16
+                                bottomLeftRadius: 16
+                                topRightRadius: 6
+                                bottomRightRadius: 6
                                 color: Colors.surfaceContainerHighest
                                 clip: true
 
@@ -131,13 +152,15 @@ Item {
                             CustomButton {
                                 Layout.preferredWidth: 42
                                 Layout.preferredHeight: 32
-                                topLeftRadius: 6;   bottomLeftRadius: 6
-                                topRightRadius: 16; bottomRightRadius: 16
+                                topLeftRadius: 6
+                                bottomLeftRadius: 6
+                                topRightRadius: 16
+                                bottomRightRadius: 16
                                 icon: "image"
                                 iconSize: 18
                                 onClicked: {
-                                    GlobalStates.fileDialogOpen = true
-                                    imagePicker.open()
+                                    GlobalStates.fileDialogOpen = true;
+                                    imagePicker.open();
                                 }
                             }
                         }
@@ -146,7 +169,12 @@ Item {
             }
 
             // ── Appearance ───────────────────────────────────────────────
-            CustomText { Layout.topMargin: 16; content: "Appearance"; size: 13; customColor: Colors.primary }
+            CustomText {
+                Layout.topMargin: 16
+                content: "Appearance"
+                size: 13
+                customColor: Colors.primary
+            }
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -154,15 +182,26 @@ Item {
                 spacing: 3
 
                 CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    autoRadius: false
+                    topRadius: 20
+                    bottomRadius: 5
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             spacing: 2
-                            CustomText { content: "Body Font"; size: 14 }
-                            CustomText { content: "Applied globally to all UI text"; size: 12; customColor: Colors.outline }
+                            CustomText {
+                                content: "Body Font"
+                                size: 14
+                            }
+                            CustomText {
+                                content: "Applied globally to all UI text"
+                                size: 12
+                                customColor: Colors.outline
+                            }
                         }
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
                         CustomListNew {
                             Layout.preferredHeight: 30
                             Layout.preferredWidth: 180
@@ -171,22 +210,35 @@ Item {
                             list: Settings.fonts
                             onCurrentValChanged: {
                                 if (currentVal && currentVal !== SettingsConfig.general.defaultFont)
-                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { defaultFont: currentVal })
+                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                                        defaultFont: currentVal
+                                    });
                             }
                         }
                     }
                 }
 
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    autoRadius: false
+                    topRadius: 5
+                    bottomRadius: 5
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             spacing: 2
-                            CustomText { content: "Display Font"; size: 14 }
-                            CustomText { content: "Used in clocks, date widgets, and headings"; size: 12; customColor: Colors.outline }
+                            CustomText {
+                                content: "Display Font"
+                                size: 14
+                            }
+                            CustomText {
+                                content: "Used in clocks, date widgets, and headings"
+                                size: 12
+                                customColor: Colors.outline
+                            }
                         }
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
                         CustomListNew {
                             Layout.preferredHeight: 30
                             Layout.preferredWidth: 180
@@ -195,74 +247,127 @@ Item {
                             list: Settings.displayFonts
                             onCurrentValChanged: {
                                 if (currentVal && currentVal !== (SettingsConfig.general.displayFont ?? "Titan One"))
-                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { displayFont: currentVal })
+                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                                        displayFont: currentVal
+                                    });
                             }
                         }
                     }
                 }
 
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    autoRadius: false
+                    topRadius: 5
+                    bottomRadius: 5
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             spacing: 2
-                            CustomText { content: "Font Size"; size: 14 }
-                            CustomText { content: "Scale applied to all text"; size: 12; customColor: Colors.outline }
+                            CustomText {
+                                content: "Font Size"
+                                size: 14
+                            }
+                            CustomText {
+                                content: "Scale applied to all text"
+                                size: 12
+                                customColor: Colors.outline
+                            }
                         }
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
                         M3Slider {
                             Layout.preferredWidth: 160
                             Layout.preferredHeight: 30
                             stepCount: 4
                             stepLabels: ["compact", "normal", "large", "xlarge"]
-                            currentStep: ({ "compact": 0, "normal": 1, "large": 2, "xlarge": 3 })[SettingsConfig.general.fontScale ?? "normal"] ?? 1
+                            currentStep: ({
+                                    "compact": 0,
+                                    "normal": 1,
+                                    "large": 2,
+                                    "xlarge": 3
+                                })[SettingsConfig.general.fontScale ?? "normal"] ?? 1
                             onStepChanged: step => {
-                                var val = ["compact", "normal", "large", "xlarge"][step]
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { fontScale: val })
+                                var val = ["compact", "normal", "large", "xlarge"][step];
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                                    fontScale: val
+                                });
                             }
                         }
                     }
                 }
 
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    autoRadius: false
+                    topRadius: 5
+                    bottomRadius: 5
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             spacing: 2
-                            CustomText { content: "Font Weight"; size: 14 }
-                            CustomText { content: "Default weight for body text"; size: 12; customColor: Colors.outline }
+                            CustomText {
+                                content: "Font Weight"
+                                size: 14
+                            }
+                            CustomText {
+                                content: "Default weight for body text"
+                                size: 12
+                                customColor: Colors.outline
+                            }
                         }
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
                         M3Slider {
                             Layout.preferredWidth: 160
                             Layout.preferredHeight: 30
                             stepCount: 6
                             stepLabels: ["thin", "regular", "medium", "semibold", "bold", "extrabold"]
-                            currentStep: ({ "thin": 0, "regular": 1, "medium": 2, "semibold": 3, "bold": 4, "extrabold": 5 })[SettingsConfig.general.fontWeight ?? "extrabold"] ?? 5
+                            currentStep: ({
+                                    "thin": 0,
+                                    "regular": 1,
+                                    "medium": 2,
+                                    "semibold": 3,
+                                    "bold": 4,
+                                    "extrabold": 5
+                                })[SettingsConfig.general.fontWeight ?? "extrabold"] ?? 5
                             onStepChanged: step => {
-                                var val = ["thin", "regular", "medium", "semibold", "bold", "extrabold"][step]
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { fontWeight: val })
+                                var val = ["thin", "regular", "medium", "semibold", "bold", "extrabold"][step];
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                                    fontWeight: val
+                                });
                             }
                         }
                     }
                 }
 
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    autoRadius: false
+                    topRadius: 5
+                    bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             spacing: 2
-                            CustomText { content: "Flat Bar Mode"; size: 14 }
-                            CustomText { content: "Single-height bar without stepped sections"; size: 12; customColor: Colors.outline }
+                            CustomText {
+                                content: "Flat Bar Mode"
+                                size: 14
+                            }
+                            CustomText {
+                                content: "Single-height bar without stepped sections"
+                                size: 12
+                                customColor: Colors.outline
+                            }
                         }
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
                         CustomToogle {
                             isToggleOn: SettingsConfig.general.flatBarMode ?? true
-                            onToggled: function(state) {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { flatBarMode: state })
+                            onToggled: function (state) {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                                    flatBarMode: state
+                                });
                             }
                         }
                     }
@@ -270,7 +375,12 @@ Item {
             }
 
             // ── Workspaces ───────────────────────────────────────────────
-            CustomText { Layout.topMargin: 16; content: "Workspaces"; size: 13; customColor: Colors.primary }
+            CustomText {
+                Layout.topMargin: 16
+                content: "Workspaces"
+                size: 13
+                customColor: Colors.primary
+            }
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -278,15 +388,26 @@ Item {
                 spacing: 3
 
                 CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    autoRadius: false
+                    topRadius: 20
+                    bottomRadius: 5
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             spacing: 2
-                            CustomText { content: "Workspace Count"; size: 14 }
-                            CustomText { content: "Number of workspaces shown in the bar"; size: 12; customColor: Colors.outline }
+                            CustomText {
+                                content: "Workspace Count"
+                                size: 14
+                            }
+                            CustomText {
+                                content: "Number of workspaces shown in the bar"
+                                size: 12
+                                customColor: Colors.outline
+                            }
                         }
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
                         CustomSpinBox {
                             color: Colors.surfaceContainerHighest
                             inc: 1
@@ -294,35 +415,54 @@ Item {
                             value: SettingsConfig.general.workspaceCount ?? 10
                             onValChanged: {
                                 if (val !== value)
-                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { workspaceCount: val })
+                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                                        workspaceCount: val
+                                    });
                             }
                         }
                     }
                 }
 
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    autoRadius: false
+                    topRadius: 5
+                    bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             spacing: 2
-                            CustomText { content: "Show Numbers"; size: 14 }
-                            CustomText { content: "Display index on each workspace indicator"; size: 12; customColor: Colors.outline }
+                            CustomText {
+                                content: "Show Numbers"
+                                size: 14
+                            }
+                            CustomText {
+                                content: "Display index on each workspace indicator"
+                                size: 12
+                                customColor: Colors.outline
+                            }
                         }
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
                         CustomToogle {
                             isToggleOn: SettingsConfig.general.showWorkspaceNumbers ?? false
-                            onToggled: function(state) {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { showWorkspaceNumbers: state })
+                            onToggled: function (state) {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                                    showWorkspaceNumbers: state
+                                });
                             }
                         }
                     }
                 }
-
             }
 
             // ── Dock ─────────────────────────────────────────────────────
-            CustomText { Layout.topMargin: 16; content: "Dock"; size: 13; customColor: Colors.primary }
+            CustomText {
+                Layout.topMargin: 16
+                content: "Dock"
+                size: 13
+                customColor: Colors.primary
+            }
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -330,64 +470,105 @@ Item {
                 spacing: 3
 
                 CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    autoRadius: false
+                    topRadius: 20
+                    bottomRadius: 5
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             spacing: 2
-                            CustomText { content: "Show Dock"; size: 14 }
-                            CustomText { content: "Show or hide the application dock"; size: 12; customColor: Colors.outline }
+                            CustomText {
+                                content: "Show Dock"
+                                size: 14
+                            }
+                            CustomText {
+                                content: "Show or hide the application dock"
+                                size: 12
+                                customColor: Colors.outline
+                            }
                         }
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
                         CustomToogle {
                             isToggleOn: SettingsConfig.general.dock
-                            onToggled: function(state) {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { dock: state })
+                            onToggled: function (state) {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                                    dock: state
+                                });
                             }
                         }
                     }
                 }
 
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    autoRadius: false
+                    topRadius: 5
+                    bottomRadius: 5
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             spacing: 2
-                            CustomText { content: "Auto-hide"; size: 14 }
-                            CustomText { content: "Dock hides when a window overlaps it"; size: 12; customColor: Colors.outline }
+                            CustomText {
+                                content: "Auto-hide"
+                                size: 14
+                            }
+                            CustomText {
+                                content: "Dock hides when a window overlaps it"
+                                size: 12
+                                customColor: Colors.outline
+                            }
                         }
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
                         CustomToogle {
                             isToggleOn: SettingsConfig.general.dockAutoHide
-                            onToggled: function(state) {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { dockAutoHide: state })
+                            onToggled: function (state) {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                                    dockAutoHide: state
+                                });
                             }
                         }
                     }
                 }
 
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    autoRadius: false
+                    topRadius: 5
+                    bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             spacing: 2
-                            CustomText { content: "Music Player"; size: 14 }
-                            CustomText { content: "Show the mini player in the dock"; size: 12; customColor: Colors.outline }
+                            CustomText {
+                                content: "Music Player"
+                                size: 14
+                            }
+                            CustomText {
+                                content: "Show the mini player in the dock"
+                                size: 12
+                                customColor: Colors.outline
+                            }
                         }
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
                         CustomToogle {
                             isToggleOn: SettingsConfig.general.dockMusicPlayer
-                            onToggled: function(state) {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { dockMusicPlayer: state })
+                            onToggled: function (state) {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                                    dockMusicPlayer: state
+                                });
                             }
                         }
                     }
                 }
             }
 
-            Item { Layout.preferredHeight: 20 }
+            Item {
+                Layout.preferredHeight: 20
+            }
         }
     }
 
@@ -396,17 +577,19 @@ Item {
         active: false
         visible: active
         onActiveChanged: {
-            if (active) grab.active = false
-            else        grab.active = true
+            if (active)
+                grab.active = false;
+            else
+                grab.active = true;
         }
         sourceComponent: CustomCircularColorPicker {
             onClose: colorPicker.active = false
             onColorsChanged: (first, second, third) => {
                 SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, {
-                    firstColor:  first.toString(),
+                    firstColor: first.toString(),
                     secondColor: second.toString(),
-                    thirdColor:  third.toString()
-                })
+                    thirdColor: third.toString()
+                });
             }
         }
     }

@@ -14,6 +14,9 @@ Rectangle{
     implicitWidth: row.implicitWidth + 20
     signal clicked
 
+    // Start weather service when this bar item becomes visible
+    Component.onCompleted: ServiceWeather.start()
+
     // Loader{
     //     active: root.isWeatherPanelClicked
     //     visible: active

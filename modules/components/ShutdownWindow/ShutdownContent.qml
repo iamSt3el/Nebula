@@ -20,28 +20,13 @@ Item {
 
     Keys.onEscapePressed: GlobalStates.shutdownWindow = false
 
-    readonly property var permanentShapeGetters: [
-        MatrialSHapeFn.getCircle,
-        MatrialSHapeFn.getCircle,
-        MatrialSHapeFn.getCircle,
-        MatrialSHapeFn.getCircle
-    ]
+    // Pre-compute shapes so hover doesn't trigger re-calculation
+    readonly property var permanentShapes: [MatrialSHapeFn.getCircle(), MatrialSHapeFn.getCircle(), MatrialSHapeFn.getCircle(), MatrialSHapeFn.getCircle()]
+    readonly property var hoverShapes: [MatrialSHapeFn.getArch(), MatrialSHapeFn.getCookie7Sided(), MatrialSHapeFn.getPill(), MatrialSHapeFn.getCookie12Sided()]
 
-    readonly property var hoverShapeGetters: [
-        MatrialSHapeFn.getArch,
-        MatrialSHapeFn.getCookie7Sided,
-        MatrialSHapeFn.getPill,
-        MatrialSHapeFn.getCookie12Sided
-    ]
-
-    readonly property var actionIcons:    ["power_settings_new", "refresh", "logout", "lock"]
-    readonly property var actionLabels:   ["Shut Down", "Restart", "Log Out", "Lock"]
-    readonly property var actionCommands: [
-        ["systemctl", "poweroff"],
-        ["systemctl", "reboot"],
-        ["hyprctl", "dispatch", "exit"],
-        ["loginctl", "lock-session"]
-    ]
+    readonly property var actionIcons: ["power_settings_new", "refresh", "logout", "lock"]
+    readonly property var actionLabels: ["Shut Down", "Restart", "Log Out", "Lock"]
+    readonly property var actionCommands: [["systemctl", "poweroff"], ["systemctl", "reboot"], ["bash", "-c", "hyprctl dispatch 'hl.dsp.exit()'"], ["bash", "-c", "hyprctl dispatch 'hl.dsp.global(\"quickshell:lock\")' "]]
 
     // ── Blurred wallpaper background ─────────────────────────────────────────
     Image {
@@ -55,7 +40,11 @@ Item {
             blurMax: 48
             autoPaddingEnabled: false
         }
-        NumberAnimation on opacity { from: 0; to: 1; duration: 400 }
+        NumberAnimation on opacity {
+            from: 0
+            to: 1
+            duration: 180
+        }
     }
 
     Rectangle {
@@ -81,7 +70,8 @@ Item {
 
             ClippingWrapperRectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 72; height: 72
+                width: 72
+                height: 72
                 radius: height
 
                 border.width: 2
@@ -89,24 +79,36 @@ Item {
 
                 Image {
                     anchors.fill: parent
-                    source: SettingsConfig.general.profile
+                    source: SettingsConfig.profileImage
                     sourceSize: Qt.size(width, height)
                     fillMode: Image.PreserveAspectCrop
                 }
 
                 NumberAnimation on scale {
-                    from: 0.3; to: 1; duration: 500
-                    easing.type: Easing.OutBack; easing.overshoot: 0.7
+                    from: 0.5
+                    to: 1
+                    duration: 220
+                    easing.type: Easing.OutBack
+                    easing.overshoot: 0.5
                 }
-                NumberAnimation on opacity { from: 0; to: 1; duration: 350 }
+                NumberAnimation on opacity {
+                    from: 0
+                    to: 1
+                    duration: 180
+                }
             }
 
             CustomText {
                 anchors.horizontalCenter: parent.horizontalCenter
                 content: Quickshell.env("USER") || "user"
-                size: 22; weight: 700
+                size: 22
+                weight: 700
                 color: Colors.surfaceText
-                NumberAnimation on opacity { from: 0; to: 1; duration: 450 }
+                NumberAnimation on opacity {
+                    from: 0
+                    to: 1
+                    duration: 180
+                }
             }
 
             CustomText {
@@ -114,7 +116,11 @@ Item {
                 content: Qt.formatDate(new Date(), "dddd, MMMM d")
                 size: 13
                 color: Colors.outline
-                NumberAnimation on opacity { from: 0; to: 1; duration: 550 }
+                NumberAnimation on opacity {
+                    from: 0
+                    to: 1
+                    duration: 200
+                }
             }
         }
 
@@ -130,26 +136,34 @@ Item {
                     id: btn
                     required property int index
                     property bool isHovered: false
-                    width: 148; height: 196
+                    width: 148
+                    height: 196
 
                     MaterialShapes.ShapeCanvas {
                         id: shape
-                        width: 148; height: 148
+                        width: 148
+                        height: 148
                         anchors.horizontalCenter: parent.horizontalCenter
 
                         color: btn.isHovered ? Colors.primary : Colors.surfaceContainerHigh
-                        roundedPolygon: btn.isHovered
-                            ? root.hoverShapeGetters[btn.index]()
-                            : root.permanentShapeGetters[btn.index]()
+                        roundedPolygon: btn.isHovered ? root.hoverShapes[btn.index] : root.permanentShapes[btn.index]
 
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: 150
+                            }
+                        }
 
                         MaterialIconSymbol {
                             anchors.centerIn: parent
                             content: root.actionIcons[btn.index]
                             iconSize: 62
                             color: btn.isHovered ? Colors.primaryText : Colors.surfaceText
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: 150
+                                }
+                            }
                         }
 
                         MouseArea {
@@ -157,21 +171,24 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onEntered: btn.isHovered = true
-                            onExited:  btn.isHovered = false
+                            onExited: btn.isHovered = false
                             onClicked: {
-                                GlobalStates.shutdownWindow = false
-                                Quickshell.execDetached(root.actionCommands[btn.index])
+                                GlobalStates.shutdownWindow = false;
+                                Quickshell.execDetached(root.actionCommands[btn.index]);
                             }
                         }
 
                         NumberAnimation on scale {
-                            from: 0.4; to: 1
-                            duration: 300 + btn.index * 55
-                            easing.type: Easing.OutBack; easing.overshoot: 0.55
+                            from: 0.6
+                            to: 1
+                            duration: 160 + btn.index * 25
+                            easing.type: Easing.OutBack
+                            easing.overshoot: 0.4
                         }
                         NumberAnimation on opacity {
-                            from: 0; to: 1
-                            duration: 220 + btn.index * 55
+                            from: 0
+                            to: 1
+                            duration: 140 + btn.index * 25
                         }
                     }
 
@@ -182,7 +199,8 @@ Item {
                             horizontalCenter: parent.horizontalCenter
                         }
                         content: root.actionLabels[btn.index]
-                        size: 12; weight: 600
+                        size: 12
+                        weight: 600
                         color: btn.isHovered ? Colors.primary : Colors.outline
                         horizontalAlignment: Text.AlignHCenter
                     }
@@ -197,19 +215,24 @@ Item {
 
             Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
-                width: 34; height: 22; radius: 6
+                width: 34
+                height: 22
+                radius: 6
                 color: Colors.surfaceContainerHigh
 
                 CustomText {
                     anchors.centerIn: parent
-                    content: "ESC"; size: 9; weight: 700
+                    content: "ESC"
+                    size: 9
+                    weight: 700
                     color: Colors.outline
                 }
             }
 
             CustomText {
                 anchors.verticalCenter: parent.verticalCenter
-                content: "to dismiss"; size: 12
+                content: "to dismiss"
+                size: 12
                 color: Qt.alpha(Colors.outline, 0.6)
             }
         }

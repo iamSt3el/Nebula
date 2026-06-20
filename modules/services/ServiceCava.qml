@@ -17,9 +17,28 @@ Singleton {
 
     readonly property real smoothFactor: 0.3
 
+    // Reference counting for cava subprocess activation.
+    // Multiple consumers (Vis, Bar/MusicPlayer, CircularMusicPlayer) each
+    // call retain() when visible and release() when hidden.
+    // Cava only stops when ALL consumers have released.
+    property int _activeCount: 0
+    readonly property bool active: _activeCount > 0
+
+    onActiveChanged: {
+        if (active) {
+            cavaProc.running = false
+            cavaProc.running = true
+        } else {
+            cavaProc.running = false
+        }
+    }
+
+    function retain() { _activeCount++ }
+    function release() { if (_activeCount > 0) _activeCount-- }
+
     Process {
         id: cavaProc
-        running: true
+        running: false  // Started manually via active property
         command: ["sh", "-c", `
 cava -p /dev/stdin <<'CAVAEOF'
 [general]

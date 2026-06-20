@@ -18,7 +18,7 @@ import qs.modules.components.Osd
 Scope {
     id: root
 
-    Loader{
+    Loader {
         id: loader
         active: false
         sourceComponent: PanelWindow {
@@ -32,27 +32,20 @@ Scope {
             exclusionMode: ExclusionMode.Normal
             color: "transparent"
 
-            Timer{
-                interval: 200
-                running: true
-                onTriggered: child.active = true
-            }
-            Loader{
+            Loader {
                 id: child
                 anchors.fill: parent
-                active: false
-                sourceComponent: ShutdownContent{
-                }
+                active: true
+                sourceComponent: ShutdownContent {}
             }
-
         }
-        Connections{
+        Connections {
             target: GlobalStates
-            function onShutdownWindowChanged(){
-                if(GlobalStates.shutdownWindow){
-                    loader.active = true
-                }else{
-                    loader.active = false
+            function onShutdownWindowChanged() {
+                if (GlobalStates.shutdownWindow) {
+                    loader.active = true;
+                } else {
+                    loader.active = false;
                 }
             }
         }
@@ -60,9 +53,9 @@ Scope {
             name: "shutdown"
             onPressed: {
                 if (GlobalStates.shutdownWindow) {
-                    GlobalStates.shutdownWindow = false
+                    GlobalStates.shutdownWindow = false;
                 } else {
-                    GlobalStates.shutdownWindow = true
+                    GlobalStates.shutdownWindow = true;
                 }
             }
         }

@@ -275,7 +275,7 @@ FloatingWindow {
             clearColor: "transparent"
             backgroundMode: SceneEnvironment.Transparent
             antialiasingMode: SceneEnvironment.MSAA
-            antialiasingQuality: SceneEnvironment.High
+            antialiasingQuality: SceneEnvironment.Low
         }
         PerspectiveCamera {
             id: camera

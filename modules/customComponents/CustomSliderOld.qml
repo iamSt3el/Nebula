@@ -70,6 +70,29 @@ Item {
                     color: Colors.primaryText
                 }
             }
+            // Track click area (full height)
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: mouse => {
+                    let pct = 1 - ((mouse.y - 7) / (parent.height - 14));
+                    wrapper.progress = Math.max(0, Math.min(1, pct));
+                    root.change();
+                }
+                onPressed: mouse => {
+                    let pct = 1 - ((mouse.y - 7) / (parent.height - 14));
+                    wrapper.progress = Math.max(0, Math.min(1, pct));
+                    root.change();
+                }
+                onPositionChanged: mouse => {
+                    if (pressed) {
+                        let pct = 1 - ((mouse.y - 7) / (parent.height - 14));
+                        wrapper.progress = Math.max(0, Math.min(1, pct));
+                        root.change();
+                    }
+                }
+            }
+
             Rectangle {
                 id: handler
                 implicitHeight: 6
@@ -86,6 +109,7 @@ Item {
                     drag.minimumY: 0
                     drag.maximumY: wrapper.height - 14
                     cursorShape: Qt.PointingHandCursor
+                    preventStealing: true
                     onPositionChanged: {
                         if (drag.active) {
                             root.change()
@@ -110,10 +134,10 @@ Item {
 
         Rectangle {
             id: wrapperH
-            implicitHeight: 40          // thin dimension (was implicitWidth: 40)
+            implicitHeight: 16          // thin dimension (was implicitWidth: 40)
             implicitWidth: parent.width // long dimension (was implicitHeight: parent.height)
             color: "transparent"
-            radius: 8
+            radius: 6
             anchors.centerIn: parent
             property var progress: wrapper.progress
 
@@ -123,8 +147,8 @@ Item {
                 anchors.right: parent.right
                 implicitWidth: (parent.width - 14) * (1 - wrapperH.progress)
                 color: Qt.alpha(Colors.primary, 0.5)
-                topRightRadius: 8
-                bottomRightRadius: 8
+                topRightRadius: 6
+                bottomRightRadius: 6
             }
             // active = left portion
             Rectangle {
@@ -132,16 +156,42 @@ Item {
                 implicitHeight: parent.height
                 anchors.left: parent.left
                 color: Colors.primary
-                topLeftRadius: 8
-                bottomLeftRadius: 8
+                topLeftRadius: 6
+                bottomLeftRadius: 6
             }
+            // Track click area (full width)
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: mouse => {
+                    let pct = (mouse.x - 7) / (parent.width - 14);
+                    wrapperH.progress = Math.max(0, Math.min(1, pct));
+                    wrapper.progress = wrapperH.progress;
+                    root.change();
+                }
+                onPressed: mouse => {
+                    let pct = (mouse.x - 7) / (parent.width - 14);
+                    wrapperH.progress = Math.max(0, Math.min(1, pct));
+                    wrapper.progress = wrapperH.progress;
+                    root.change();
+                }
+                onPositionChanged: mouse => {
+                    if (pressed) {
+                        let pct = (mouse.x - 7) / (parent.width - 14);
+                        wrapperH.progress = Math.max(0, Math.min(1, pct));
+                        wrapper.progress = wrapperH.progress;
+                        root.change();
+                    }
+                }
+            }
+
             // handler — tall and thin (inverted from vertical)
             Rectangle {
                 id: handlerH
-                implicitWidth: 6        // was implicitHeight: 6
-                implicitHeight: 48      // was implicitWidth: 48
+                implicitWidth: 8
+                implicitHeight: 22
                 color: Colors.primary
-                radius: 2
+                radius: 4
                 anchors.verticalCenter: parent.verticalCenter
                 x: (parent.width - 14) * wrapperH.progress + 7 - (width / 2)
 
@@ -152,11 +202,13 @@ Item {
                     drag.minimumX: 0
                     drag.maximumX: wrapperH.width - 14
                     cursorShape: Qt.PointingHandCursor
+                    preventStealing: true
                     onPositionChanged: {
                         if (drag.active) {
                             let pct = (handlerH.x - 6 + handlerH.width / 2) / (wrapperH.width - 14);
                             wrapperH.progress = Math.max(0, Math.min(1, pct));
                             wrapper.progress = wrapperH.progress;
+                            root.change();
                         }
                     }
                 }
