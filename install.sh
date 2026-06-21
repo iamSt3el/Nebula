@@ -189,9 +189,10 @@ PACMAN_PKGS=(
   hyprland pipewire wireplumber networkmanager
   bluez bluez-utils upower
   python grim wf-recorder swappy wl-clipboard
-  cava brightnessctl curl
+  cava brightnessctl curl unzip
   qt6-base qt6-declarative qt6-wayland qt6-svg qt6-multimedia
   libpipewire libqalculate
+  gcc cmake extra-cmake-modules
 )
 v sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
 
@@ -208,9 +209,9 @@ ok "uv: $(uv --version 2>/dev/null || echo 'installed')"
 # ── AUR packages ──────────────────────────────────────────────────────────────
 step "AUR packages"
 AUR_PKGS=(
-  quickshell-git awww-git grimblast-git cliphist
+  quickshell-git grimblast-git cliphist
   matugen-bin
-  ttf-material-symbols-variable-git ttf-rubik
+  ttf-material-symbols-variable-git
 )
 AUR_PKGS_OPT=(hyprlock hypridle)
 
@@ -225,6 +226,35 @@ if $ask; then
   for pkg in "${AUR_PKGS_OPT[@]}"; do v "$AUR_HELPER" -S --needed "$pkg" || true; done
 else
   "$AUR_HELPER" -S --needed --noconfirm "${AUR_PKGS_OPT[@]}" || warn "Some optional AUR packages failed (hyprlock, hypridle)"
+fi
+
+# awww-git is a Rust crate — limit parallel jobs to avoid OOM in low-RAM systems
+step "awww-git (Rust — limited parallelism)"
+info "Building awww-git with CARGO_BUILD_JOBS=2 to avoid OOM..."
+if $ask; then
+  v env CARGO_BUILD_JOBS=2 "$AUR_HELPER" -S --needed awww-git
+else
+  env CARGO_BUILD_JOBS=2 "$AUR_HELPER" -S --needed --noconfirm awww-git \
+    || warn "awww-git failed — retry manually: CARGO_BUILD_JOBS=1 $AUR_HELPER -S awww-git"
+fi
+
+# ttf-rubik AUR package is broken (bad PKGBUILD glob); download font directly instead
+step "Rubik font (direct download)"
+FONTS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
+mkdir -p "$FONTS_DIR"
+if fc-list | grep -qi "Rubik"; then
+  ok "Rubik font already installed"
+else
+  info "Downloading Rubik variable font from Google Fonts..."
+  curl -L --fail \
+    "https://github.com/googlefonts/rubik/releases/latest/download/Rubik.zip" \
+    -o /tmp/nebula-rubik.zip \
+    && unzip -o /tmp/nebula-rubik.zip "fonts/variable/*.ttf" -d /tmp/nebula-rubik/ \
+    && cp /tmp/nebula-rubik/fonts/variable/*.ttf "$FONTS_DIR/" \
+    && fc-cache -f "$FONTS_DIR" \
+    && ok "Rubik font installed to $FONTS_DIR" \
+    || warn "Rubik font download failed — install ttf-rubik manually later"
+  rm -rf /tmp/nebula-rubik.zip /tmp/nebula-rubik/
 fi
 
 # ── Python venv via uv ────────────────────────────────────────────────────────
@@ -361,25 +391,12 @@ if ! $SKIP_HYPRLAND; then
   HYPR_CONF="$HYPR_DIR/hyprland.conf"
 
   if [[ -f "$HYPR_LUA" ]]; then
-    # ── Lua-based Hyprland (>= 0.55) ─────────────────────────────────────────
+    # ── Lua-based Hyprland (>= 0.55) — config already exists ─────────────────
     ok "Detected Lua-based Hyprland config ($HYPR_LUA)"
-    echo ""
-    echo -e "  ${BOLD}Add these to your Lua config:${RESET}"
-    echo ""
-    echo -e "  ${CYAN}~/.config/hypr/lua/environment.lua${RESET} — add:"
-    echo -e "  ${YELLOW}$(cat "$INSTALL_DIR/config/hypr/nebula-environment.lua" | grep 'hl.env' | head -4 | sed 's/^/    /')${RESET}"
-    echo -e "  ${YELLOW}    ... (see $INSTALL_DIR/config/hypr/nebula-environment.lua)${RESET}"
-    echo ""
-    echo -e "  ${CYAN}~/.config/hypr/lua/autostart.lua${RESET} — add inside hl.on(\"hyprland.start\", ...):"
-    echo -e "  ${YELLOW}    hl.exec_cmd(\"awww-daemon\")${RESET}"
-    echo -e "  ${YELLOW}    hl.exec_cmd(\"wl-paste --watch cliphist store\")${RESET}"
-    echo -e "  ${YELLOW}    hl.exec_cmd(\"QSG_RENDER_LOOP=threaded quickshell\")${RESET}"
-    echo ""
-    echo -e "  Full snippets are in: ${CYAN}$INSTALL_DIR/config/hypr/${RESET}"
 
-    # Offer to append to existing files
+    # Offer to patch existing env + autostart files
     echo ""
-    echo -e "  Auto-append snippets to your existing lua files? [y/N]"
+    echo -e "  Auto-append Nebula env vars + autostart entries to your existing Lua files? [y/N]"
     read -rp "  ───> " lua_patch
     if [[ "${lua_patch,,}" == "y" ]]; then
       ENV_LUA="$HYPR_DIR/lua/environment.lua"
@@ -406,6 +423,21 @@ LUABLOCK
         ok "Quickshell already in $AUTO_LUA"
       fi
     fi
+    echo -e "  Full reference config is at: ${CYAN}$INSTALL_DIR/config/hypr/${RESET}"
+  elif [[ ! -f "$HYPR_LUA" ]] && [[ ! -f "$HYPR_CONF" ]]; then
+    # ── No Hyprland config yet — offer to copy the full Nebula Lua config ─────
+    warn "No existing Hyprland config found."
+    echo -e "  Copy the full Nebula Lua config to ${CYAN}$HYPR_DIR${RESET}? [y/N]"
+    read -rp "  ───> " copy_lua
+    if [[ "${copy_lua,,}" == "y" ]]; then
+      mkdir -p "$HYPR_DIR/lua"
+      rsync -a "$INSTALL_DIR/config/hypr/hyprland.lua" "$HYPR_DIR/"
+      rsync -a "$INSTALL_DIR/config/hypr/lua/"         "$HYPR_DIR/lua/"
+      ok "Copied Nebula Lua config to $HYPR_DIR"
+      warn "Edit $HYPR_DIR/lua/monitor.lua to match your display outputs."
+    else
+      info "Skipped. See $INSTALL_DIR/config/hypr/ for the reference config."
+    fi
 
   elif [[ -f "$HYPR_CONF" ]]; then
     # ── Classic .conf Hyprland ────────────────────────────────────────────────
@@ -423,9 +455,6 @@ LUABLOCK
         ok "Appended Nebula config to hyprland.conf"
       fi
     fi
-  else
-    warn "No hyprland.conf or hyprland.lua found."
-    warn "See $INSTALL_DIR/config/hypr/ for example snippets."
   fi
 fi
 
