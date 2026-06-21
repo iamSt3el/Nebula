@@ -200,7 +200,10 @@ v sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
 step "uv (Python toolchain)"
 if ! has uv; then
   info "Installing uv..."
-  v bash <(curl -LsSf https://astral.sh/uv/install.sh)
+  # Download to a temp file — process substitution <(...) doesn't work with v()
+  curl -LsSf https://astral.sh/uv/install.sh -o /tmp/uv-install.sh
+  v bash /tmp/uv-install.sh
+  rm -f /tmp/uv-install.sh
   # reload PATH so uv is findable
   source "$HOME/.local/bin/env" 2>/dev/null || export PATH="$HOME/.local/bin:$PATH"
 fi
