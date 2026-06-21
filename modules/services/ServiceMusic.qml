@@ -5,7 +5,6 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 import Quickshell.Services.Mpris
-import QtQml.Models
 import qs.modules.settings
 
 Singleton{
@@ -19,7 +18,7 @@ Singleton{
     property var activeTrack
     property string _lastArtUrl: ""
 
-    readonly property string _musicColorsScript: "/home/steel/.config/quickshell/scripts/music_colors.sh"
+    readonly property string _musicColorsScript: Quickshell.env("HOME") + "/.config/quickshell/scripts/music_colors.sh"
 
     Process {
         id: musicColorGen

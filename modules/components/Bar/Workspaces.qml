@@ -69,69 +69,70 @@ Item{
         sourceComponent: MangaContent{}
     }
 
-    RowLayout {
-        id: row
-        anchors.centerIn: parent
-        spacing: 6
 
-        Repeater {
-            model: ScriptModel {
-                values: Array.from({ length: root.wsCount }, (_, i) => i + 1)
-            }
+        RowLayout {
+            id: row
+            anchors.centerIn: parent
+            spacing: 5
 
-            delegate: Rectangle {
-                property int workspaceId: modelData
-                property var currentWorkspace: ServiceWorkspaces.getWorkspace(workspaceId)
-                readonly property bool isActive:   !!currentWorkspace && currentWorkspace.active
-                readonly property bool isOccupied: !!currentWorkspace
-                readonly property bool showNumbers: root.wsNumbers
-
-                Layout.alignment: Qt.AlignVCenter
-                Layout.preferredHeight: isOccupied ? 28 : 10
-                Layout.preferredWidth:  isOccupied
-                    ? Math.max(showNumbers ? 28 : 28, (topLevels.appList?.width ?? 0) + 12)
-                    : 10
-                radius: 15
-                color: isActive   ? Colors.primary
-                     : isOccupied ? Colors.surfaceContainerHighest
-                     : Qt.alpha(Colors.outline, 0.2)
-
-                border.width: isOccupied && !isActive ? 1 : 0
-                border.color: Qt.alpha(Colors.outline, 0.15)
-
-                Behavior on Layout.preferredHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-                Behavior on Layout.preferredWidth  { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-                Behavior on color                  { ColorAnimation  { duration: 200 } }
-
-                Loader {
-                    id: topLevels
-                    anchors.fill: parent
-                    active: isOccupied && !showNumbers
-                    visible: active
-                    sourceComponent: TopLevels {}
-                    property var appList: item ? item.appList : null
+            Repeater {
+                model: ScriptModel {
+                    values: Array.from({ length: root.wsCount }, (_, i) => i + 1)
                 }
 
-                CustomText {
-                    anchors.centerIn: parent
-                    visible: showNumbers && isOccupied
-                    content: workspaceId.toString()
-                    size: 10
-                    weight: isActive ? 800 : 600
-                    customColor: isActive ? Colors.primaryText : Colors.surfaceText
-                    Behavior on customColor { ColorAnimation { duration: 200 } }
-                }
+                delegate: Rectangle {
+                    property int workspaceId: modelData
+                    property var currentWorkspace: ServiceWorkspaces.getWorkspace(workspaceId)
+                    readonly property bool isActive:   !!currentWorkspace && currentWorkspace.active
+                    readonly property bool isOccupied: !!currentWorkspace
+                    readonly property bool showNumbers: root.wsNumbers
 
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (currentWorkspace) currentWorkspace.activate()
-                        else Hyprland.dispatch(`workspace ${workspaceId}`)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredHeight: isOccupied ? 25 : 8
+                    Layout.preferredWidth:  isOccupied
+                    ? Math.max(showNumbers ? 25 : 25, (topLevels.appList?.width ?? 0) + 12)
+                    : 8
+                    radius: 15
+                    color: isActive   ? Colors.primary
+                    : isOccupied ? Colors.surfaceContainerHighest
+                    : Qt.alpha(Colors.outline, 0.2)
+
+                    border.width: isOccupied && !isActive ? 1 : 0
+                    border.color: Qt.alpha(Colors.outline, 0.15)
+
+                    Behavior on Layout.preferredHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                    Behavior on Layout.preferredWidth  { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                    Behavior on color                  { ColorAnimation  { duration: 200 } }
+
+                    Loader {
+                        id: topLevels
+                        anchors.fill: parent
+                        active: isOccupied && !showNumbers
+                        visible: active
+                        sourceComponent: TopLevels {}
+                        property var appList: item ? item.appList : null
+                    }
+
+                    CustomText {
+                        anchors.centerIn: parent
+                        visible: showNumbers && isOccupied
+                        content: workspaceId.toString()
+                        size: 10
+                        weight: isActive ? 800 : 600
+                        customColor: isActive ? Colors.primaryText : Colors.surfaceText
+                        Behavior on customColor { ColorAnimation { duration: 200 } }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (currentWorkspace) currentWorkspace.activate()
+                            else Hyprland.dispatch(`workspace ${workspaceId}`)
+                        }
                     }
                 }
             }
-        }
     }
 
     GlobalShortcut{

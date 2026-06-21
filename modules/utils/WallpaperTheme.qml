@@ -49,7 +49,7 @@ Singleton {
     property string surfaceContainerHigh: "#382526"
     property string surfaceContainerHighest: "#443031"
 
-    property string wallpaper: "/home/steel/wallpaper/sunset-lookout.jpg"
+    property string wallpaper: Quickshell.env("HOME") + "/wallpaper/sunset-lookout.jpg"
 
     property double _reloadRequestedAt: 0
 

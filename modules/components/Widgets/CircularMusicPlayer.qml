@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell.Widgets
 import Quickshell
-import Quickshell.Io
 import QtQuick.Effects
 import qs.modules.utils
 import qs.modules.services
@@ -21,9 +20,11 @@ Item {
     property bool editMode: false
 
     Component.onCompleted: {
+        ServiceCava.retain()
         root.x = SettingsConfig.widgets.musicPlayerX ?? 200
         root.y = SettingsConfig.widgets.musicPlayerY ?? 200
     }
+    Component.onDestruction: ServiceCava.release()
 
     // Settings load asynchronously via a 100ms timer in SettingsConfig,
     // so widgets.musicPlayerX may not be ready at Component.onCompleted time.

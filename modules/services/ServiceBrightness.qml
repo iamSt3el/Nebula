@@ -80,7 +80,6 @@ Singleton {
         property bool ready: false
 
         onBrightnessChanged: {
-            console.log(brightness)
             if (monitor.ready) {
                 root.brightnessChanged();
             }

@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 
 import Quickshell
 import Quickshell.Io
-import QtQuick
 import qs.modules.settings
 
 Singleton {
@@ -17,9 +16,23 @@ Singleton {
 
     readonly property real smoothFactor: 0.3
 
+    property int _refCount: 0
+
+    function retain() {
+        _refCount++
+    }
+
+    function release() {
+        if (_refCount > 0) _refCount--
+        if (_refCount === 0) {
+            cavaData = []
+            cavaData12 = []
+        }
+    }
+
     Process {
         id: cavaProc
-        running: true
+        running: root._refCount > 0
         command: ["sh", "-c", `
 cava -p /dev/stdin <<'CAVAEOF'
 [general]

@@ -21,6 +21,18 @@ Item {
     property bool previewHovered: false
     property point previewPos: Qt.point(0, 0)
     property var hoveredAppEntry: null
+    property bool closing: false
+
+    states: State {
+        name: "closing"
+        when: root.closing
+        PropertyChanges { target: root; opacity: 0; scale: 0.85 }
+    }
+
+    transitions: Transition {
+        to: "closing"
+        NumberAnimation { properties: "opacity,scale"; duration: 260; easing.type: Easing.InCubic }
+    }
 
     Timer {
         id: hidePreviewTimer

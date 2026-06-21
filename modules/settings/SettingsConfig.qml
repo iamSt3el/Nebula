@@ -54,13 +54,13 @@ Singleton {
                 appGrid: false,
                 pinnedApps: [],
                 musicVisOn: true,
-                profile: "/home/steel/Downloads/DANDADAN.jpg",
+                profile: "",
                 defaultFont: "Rubik",
                 displayFont: "Titan One",
                 fontScale: "normal",
                 fontWeight: "medium",
                 musicVisBars: 60,
-                wallpaperDir: "/home/steel/wallpaper",
+                wallpaperDir: Quickshell.env("HOME") + "/wallpaper",
                 workspaceCount: 10,
                 showWorkspaceNumbers: false,
                 flatBarMode: true
@@ -73,13 +73,13 @@ Singleton {
                 appGrid: false,
                 pinnedApps: [],
                 musicVisOn: true,
-                profile: "/home/steel/Downloads/DANDADAN.jpg",
+                profile: "",
                 defaultFont: "Rubik",
                 displayFont: "Titan One",
                 fontScale: "normal",
                 fontWeight: "medium",
                 musicVisBars: 60,
-                wallpaperDir: "/home/steel/wallpaper",
+                wallpaperDir: Quickshell.env("HOME") + "/wallpaper",
                 workspaceCount: 10,
                 showWorkspaceNumbers: false,
                 flatBarMode: true
@@ -214,7 +214,8 @@ Singleton {
                 popupTimeout: 5,
                 maxVisible: 3,
                 showInCenter: true,
-                playSound: false
+                playSound: false,
+                soundPath: ""
             })
 
             property var toggles: ({

@@ -1,5 +1,4 @@
 import Quickshell
-import Quickshell.Widgets
 import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
@@ -17,7 +16,7 @@ Item{
     Process{
         id: readKeybinds
         running: true
-        command: ["cat", "/home/steel/.config/hypr/conf/keybindings/default.conf"]
+        command: ["cat", Quickshell.env("HOME") + "/.config/hypr/conf/keybindings/default.conf"]
         stdout: SplitParser{
             splitMarker: ""
             onRead: data => {

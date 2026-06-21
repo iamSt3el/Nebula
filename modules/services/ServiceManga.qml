@@ -84,7 +84,7 @@ Singleton {
 
     Process {
         id: serverProcess
-        command: ["bash", "-c", "fuser -k 5150/tcp 2>/dev/null; sleep 0.3; exec python3 /home/steel/.config/quickshell/scripts/manga_server.py"]
+        command: ["bash", "-c", "fuser -k 5150/tcp 2>/dev/null; sleep 0.3; exec python3 " + Quickshell.env("HOME") + "/.config/quickshell/scripts/manga_server.py"]
         running: true
         onExited: (code) => {
             if (code !== 0) {
@@ -104,7 +104,7 @@ Singleton {
 
     Process {
         id: comixProcess
-        command: ["bash", "-c", "fuser -k 5151/tcp 2>/dev/null; sleep 0.3; exec python3 /home/steel/.config/quickshell/scripts/comix_server.py"]
+        command: ["bash", "-c", "fuser -k 5151/tcp 2>/dev/null; sleep 0.3; exec python3 " + Quickshell.env("HOME") + "/.config/quickshell/scripts/comix_server.py"]
         running: true
         onExited: (code) => {
             if (code !== 0) {

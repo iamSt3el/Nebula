@@ -72,7 +72,6 @@ Singleton{
     }
 
     function setAudioSink(newSink: PwNode): void{
-        console.log("Sink: " + newSink)
         Pipewire.preferredDefaultAudioSink = newSink;
     }
 

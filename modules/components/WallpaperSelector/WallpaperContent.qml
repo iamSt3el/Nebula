@@ -403,6 +403,63 @@ Rectangle {
                     }
                 }
 
+                // Local loading overlay
+                Loader {
+                    anchors.centerIn: parent
+                    z: 1
+                    active: !ServiceWallpaper.onlineMode && ServiceWallpaper.isProcessing
+                    visible: active
+                    sourceComponent: ColumnLayout {
+                        spacing: 12
+                        CustomLoader { size: 60; color: Colors.primary; Layout.alignment: Qt.AlignHCenter }
+                        CustomText {
+                            content: "Loading wallpapers…"
+                            size: 13; customColor: Colors.outline
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                    }
+                }
+
+                // Local empty state
+                Rectangle {
+                    anchors.centerIn: parent
+                    z: 1
+                    visible: !ServiceWallpaper.onlineMode
+                          && !ServiceWallpaper.isProcessing
+                          && (col.activeTab === "favorites"
+                              ? ServiceWallpaper.favoritedWallpapers.length === 0
+                              : ServiceWallpaper.filteredWallpapers.length === 0)
+                    implicitWidth:  _emptyCol.implicitWidth  + 48
+                    implicitHeight: _emptyCol.implicitHeight + 32
+                    radius: 14; color: Colors.surfaceContainer
+
+                    ColumnLayout {
+                        id: _emptyCol
+                        anchors.centerIn: parent; spacing: 8
+
+                        MaterialIconSymbol {
+                            Layout.alignment: Qt.AlignHCenter
+                            content: col.activeTab === "favorites" ? "favorite_border" : "image_not_supported"
+                            iconSize: 32; customColor: Colors.outline
+                        }
+                        CustomText {
+                            Layout.alignment: Qt.AlignHCenter
+                            content: col.activeTab === "favorites"
+                                ? "No favourites yet"
+                                : ServiceWallpaper.wallpapers.length === 0
+                                  ? "No wallpapers in folder"
+                                  : "No wallpapers match search"
+                            size: 13; customColor: Colors.outline
+                        }
+                        CustomText {
+                            Layout.alignment: Qt.AlignHCenter
+                            visible: col.activeTab !== "favorites" && ServiceWallpaper.wallpapers.length === 0
+                            content: ServiceWallpaper.wallpaperDir
+                            size: 11; customColor: Qt.alpha(Colors.outline, 0.6)
+                        }
+                    }
+                }
+
                 // ── Wallpaper grid ─────────────────────────────────────────────
                 ListView {
                     id: grid

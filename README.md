@@ -74,41 +74,75 @@ The `{ locked = true }` flag lets the bind fire even when the screen is locked.
 
 ## Installation
 
+### One-line install
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/main/install.sh)
+```
+
+That's it. The script:
+
+1. Installs an AUR helper (`yay`) if you don't have one
+2. Installs all required pacman and AUR packages
+3. Clones Nebula to `~/.config/quickshell` (or updates it if already there)
+4. Sets up the Python venv and installs required packages
+5. Builds the WfRecorder screen-recording plugin
+6. Adds `QML_IMPORT_PATH` to your shell profile (bash / zsh / fish)
+7. Optionally adds the autostart line to your `hyprland.conf`
+
+> [!NOTE]
+> Requires Arch Linux (uses `pacman`). Start a Hyprland session before running
+> if you want the autostart step to detect your `hyprland.conf`.
+
+---
+
 ### Dependencies
+
+#### System packages
 
 | Package | Purpose |
 |---------|---------|
-| [Quickshell](https://quickshell.outfoxxed.me) | Shell framework |
-| [awww](https://github.com/danyspin97/awww) | Wallpaper setter with transitions |
-| `python-materialyoucolor` | Material You color extraction from wallpaper |
-| `cava` | Audio visualizer |
-| `cliphist` + `wl-copy` | Clipboard history |
-| `grimblast` | Screenshot capture |
+| [Quickshell](https://quickshell.outfoxxed.me) (`quickshell-git`) | Shell framework |
+| `hyprland` | Wayland compositor |
+| `pipewire` + `wireplumber` | Audio backend |
+| `networkmanager` (`nmcli`) | Network management |
+| `bluez` + `bluez-utils` | Bluetooth support |
+| `upower` | Battery info |
+| [awww](https://github.com/danyspin97/awww) (`awww-git`) | Wallpaper setter with transitions |
+| `grim` + `grimblast` | Screenshot capture |
 | `wf-recorder` | Screen recording |
-| `playerctl` | MPRIS media player control |
-| `brightnessctl` | Brightness control |
-| `nmcli` (NetworkManager) | Network management |
-| `bluez` / `bluetoothctl` | Bluetooth support |
-| `pipewire` | Audio backend |
+| `swappy` | Screenshot annotation |
+| `wl-clipboard` (`wl-copy` / `wl-paste`) | Clipboard operations |
+| `cliphist` | Clipboard history |
+| `cava` | Audio visualizer |
+| `brightnessctl` | Screen brightness |
+| `matugen` (`matugen-bin`) | Music color themes |
+| `curl` | Weather data |
+| `python3` | Color engine + manga servers |
 
-> `ddcutil` is optional — used for external monitor brightness via DDC/CI.
+> `ddcutil` is optional — external monitor brightness via DDC/CI.
+> `hyprlock` / `hypridle` are optional — lock screen and idle management.
+> `ollama` is optional — local AI assistant.
+
+#### Python packages
+
+Install into the project venv (the installer handles this automatically):
+
+```bash
+python3 -m venv ~/.config/quickshell/scripts/.venv
+~/.config/quickshell/scripts/.venv/bin/pip install materialyoucolor requests Pillow
+```
 
 #### Fonts
 
-These fonts are **not** in most distro repos and must be installed manually:
-
-| Font | Where to get it |
-|------|----------------|
-| [Rubik](https://fonts.google.com/specimen/Rubik) | Google Fonts / `ttf-rubik` (AUR) |
-| [Titan One](https://fonts.google.com/specimen/Titan+One) | Google Fonts / `ttf-titan-one` (AUR) |
-| [Material Symbols Rounded](https://fonts.google.com/icons) | `ttf-material-symbols-variable-git` (AUR) |
+| Font | AUR package |
+|------|-------------|
+| [Material Symbols Rounded](https://fonts.google.com/icons) | `ttf-material-symbols-variable-git` |
+| [Rubik](https://fonts.google.com/specimen/Rubik) | `ttf-rubik` |
 
 ### Setup
 
 ```bash
-# Clone into your Quickshell config directory
-git clone https://github.com/iamSt3el/Nebula.git ~/.config/quickshell
-
 # Build and install the WfRecorder plugin
 bash ~/.config/quickshell/plugins/WfRecorder/build.sh
 

@@ -58,75 +58,43 @@ Scope{
                 preferredRendererType: Shape.CurveRenderer
                 visible: child.width > 0
 
-                readonly property real w: child.width
-                readonly property real h: child.height
-                readonly property real bodyLeft: container.x
-                readonly property real bodyRight: container.x + w
-                readonly property real bodyTop: container.y
-                readonly property real bodyBottom: container.y + container.height
+                // Same arc parameters as the top bar (disX/disY/radX/radY = 18)
+                readonly property real dX: 18
+                readonly property real dY: 18
+                readonly property real rX: 18
+                readonly property real rY: 18
 
-                readonly property real rounding: Math.min(w / 3, 20)
-
-                readonly property real flareY: h / 18
-                readonly property bool flattenFlare: w < flareY * 2
-                readonly property real flareX: flattenFlare ? Math.max(0, w / 2) : flareY
-                readonly property real flareRadiusX: Math.min(flareY, Math.max(0, w))
+                // Mirrors buildFlatBarPath in Layout.qml but grows rightward from the left screen edge.
+                // effDX clamps the arc offset so arcs never self-intersect when w is very small.
+                function buildPath(dX, dY, rX, rY, left, right, top, bottom, w) {
+                    const effDX = Math.min(dX, w / 2)
+                    function A(sw, ex, ey) { return `A ${rX} ${rY} 0 0 ${sw} ${ex} ${ey} ` }
+                    function L(x,  y)      { return `L ${x} ${y} ` }
+                    const CW = 1, CCW = 0
+                    let p = `M ${left} ${top - dY} `
+                    p += A(CCW, left + effDX, top)      // top-left concave flare
+                    p += L(right - effDX,     top)       // top edge
+                    p += A(CW,  right, top    + effDX)  // top-right convex corner
+                    p += L(right,      bottom - effDX)  // right wall
+                    p += A(CW,  right - effDX, bottom)  // bottom-right convex corner
+                    p += L(left + effDX,       bottom)  // bottom edge
+                    p += A(CCW, left, bottom  + dY)     // bottom-left concave flare
+                    p += L(left,      top     - dY)     // close: left screen edge
+                    return p
+                }
 
                 ShapePath {
                     strokeWidth: -1
                     fillColor: Settings.layoutColor
-
-                    startX: bgShape.bodyLeft
-                    startY: bgShape.bodyTop - bgShape.flareY
-
-                    PathArc {
-                        x: bgShape.bodyLeft + bgShape.flareX
-                        y: bgShape.bodyTop
-                        radiusX: bgShape.flareRadiusX
-                        radiusY: bgShape.flareY
-                        direction: PathArc.Counterclockwise
-                    }
-
-                    PathLine {
-                        x: bgShape.bodyRight - bgShape.rounding
-                        y: bgShape.bodyTop
-                    }
-
-                    PathArc {
-                        x: bgShape.bodyRight
-                        y: bgShape.bodyTop + bgShape.rounding
-                        radiusX: bgShape.rounding
-                        radiusY: bgShape.rounding
-                    }
-
-                    PathLine {
-                        x: bgShape.bodyRight
-                        y: bgShape.bodyBottom - bgShape.rounding
-                    }
-
-                    PathArc {
-                        x: bgShape.bodyRight - bgShape.rounding
-                        y: bgShape.bodyBottom
-                        radiusX: bgShape.rounding
-                        radiusY: bgShape.rounding
-                    }
-
-                    PathLine {
-                        x: bgShape.bodyLeft + bgShape.flareX
-                        y: bgShape.bodyBottom
-                    }
-
-                    PathArc {
-                        x: bgShape.bodyLeft
-                        y: bgShape.bodyBottom + bgShape.flareY
-                        radiusX: bgShape.flareRadiusX
-                        radiusY: bgShape.flareY
-                        direction: PathArc.Counterclockwise
-                    }
-
-                    PathLine {
-                        x: bgShape.bodyLeft
-                        y: bgShape.bodyTop - bgShape.flareY
+                    PathSvg {
+                        path: bgShape.buildPath(
+                            bgShape.dX, bgShape.dY, bgShape.rX, bgShape.rY,
+                            container.x,
+                            container.x + child.width,
+                            container.y,
+                            container.y + container.height,
+                            child.width
+                        )
                     }
                 }
             }
@@ -154,7 +122,7 @@ Scope{
                     transitions: Transition {
                         NumberAnimation {
                             properties: "width"
-                            duration:   300
+                            duration:   Appearance.duration.large
                             easing.type: Easing.OutQuad
                         }
                     }
@@ -183,7 +151,7 @@ Scope{
 
     Timer{
         id: animationTimer
-        interval: 300
+        interval: Appearance.duration.large
         onTriggered:{
             loader.active = false
         }

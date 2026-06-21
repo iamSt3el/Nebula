@@ -1,10 +1,7 @@
 import Quickshell
 import Quickshell.Wayland
-import Quickshell.Hyprland
 import QtQuick
-import QtQuick.Effects
 import qs.modules.utils
-import qs.modules.settings
 import qs.modules.services
 
 PanelWindow {
@@ -15,6 +12,10 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Bottom
     exclusionMode: ExclusionMode.Normal
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+    // Activate cava when music visualizer is visible
+    Component.onCompleted: ServiceCava.retain()
+    Component.onDestruction: ServiceCava.release()
 
     mask: Region{
         item: maskRect

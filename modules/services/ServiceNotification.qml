@@ -20,7 +20,10 @@ Singleton {
 
     SoundEffect {
         id: notificationSound
-        source: "../../notification.wav"
+        source: {
+            const p = SettingsConfig.notifications?.soundPath ?? ""
+            return p !== "" ? ("file://" + p) : "../../notification.wav"
+        }
     }
 
     NotificationServer {
@@ -35,7 +38,8 @@ Singleton {
 
         onNotification: notif => {
             notif.tracked = true
-            notificationSound.play()
+            if (SettingsConfig.notifications?.playSound ?? false)
+                notificationSound.play()
 
             var item = notifComp.createObject(root, {
                 popup: !root.muted,

@@ -71,75 +71,43 @@ Scope {
             preferredRendererType: Shape.CurveRenderer
             visible: child.height > 0
 
-            readonly property real w: child.width
-            readonly property real h: child.height
-            readonly property real bodyLeft: container.x
-            readonly property real bodyRight: container.x + w
-            readonly property real bodyBottom: container.y + container.height
-            readonly property real bodyTop: bodyBottom - h
+            // Same arc parameters as the top bar (disX/disY/radX/radY = 18)
+            readonly property real dX: 18
+            readonly property real dY: 18
+            readonly property real rX: 18
+            readonly property real rY: 18
 
-            readonly property real rounding: GlobalStates.shutdownWindow ? 10 : Math.min(h / 3, w / 3)
-
-            readonly property real flareX: w / 18
-            readonly property bool flattenFlare: h < flareX * 2
-            readonly property real flareY: flattenFlare ? Math.max(0, h / 2) : flareX
-            readonly property real flareRadiusY: Math.min(flareX, Math.max(0, h))
+            // Mirrors buildFlatBarPath in Layout.qml but grows upward from the bottom.
+            // effDY clamps the arc offset so arcs never self-intersect when h is very small.
+            function buildPath(dX, dY, rX, rY, left, right, bottom, h) {
+                const effDY = Math.min(dY, h / 2)
+                const top   = bottom - h
+                function A(sw, ex, ey) { return `A ${rX} ${rY} 0 0 ${sw} ${ex} ${ey} ` }
+                function L(x,  y)      { return `L ${x} ${y} ` }
+                const CW = 1, CCW = 0
+                let p = `M ${left - dX} ${bottom} `
+                p += A(CCW, left,       bottom - effDY) // bottom-left concave flare
+                p += L(left,            top    + effDY) // left wall up
+                p += A(CW,  left  + dX, top)            // top-left convex corner
+                p += L(right - dX,      top)            // top edge
+                p += A(CW,  right,      top    + effDY) // top-right convex corner
+                p += L(right,           bottom - effDY) // right wall down
+                p += A(CCW, right + dX, bottom)         // bottom-right concave flare
+                p += L(left - dX,       bottom)         // close
+                return p
+            }
 
             ShapePath {
                 strokeWidth: -1
                 fillColor: Settings.layoutColor
-
-                startX: bgShape.bodyLeft - bgShape.flareX
-                startY: bgShape.bodyBottom
-
-                PathArc {
-                    x: bgShape.bodyLeft
-                    y: bgShape.bodyBottom - bgShape.flareY
-                    radiusX: bgShape.flareX
-                    radiusY: bgShape.flareRadiusY
-                    direction: PathArc.Counterclockwise
-                }
-
-                PathLine {
-                    x: bgShape.bodyLeft
-                    y: bgShape.bodyTop + bgShape.rounding
-                }
-
-                PathArc {
-                    x: bgShape.bodyLeft + bgShape.rounding
-                    y: bgShape.bodyTop
-                    radiusX: bgShape.rounding
-                    radiusY: Math.min(bgShape.rounding, bgShape.h)
-                }
-
-                PathLine {
-                    x: bgShape.bodyRight - bgShape.rounding
-                    y: bgShape.bodyTop
-                }
-
-                PathArc {
-                    x: bgShape.bodyRight
-                    y: bgShape.bodyTop + bgShape.rounding
-                    radiusX: bgShape.rounding
-                    radiusY: Math.min(bgShape.rounding, bgShape.h)
-                }
-
-                PathLine {
-                    x: bgShape.bodyRight
-                    y: bgShape.bodyBottom - bgShape.flareY
-                }
-
-                PathArc {
-                    x: bgShape.bodyRight + bgShape.flareX
-                    y: bgShape.bodyBottom
-                    radiusX: bgShape.flareX
-                    radiusY: bgShape.flareRadiusY
-                    direction: PathArc.Counterclockwise
-                }
-
-                PathLine {
-                    x: bgShape.bodyLeft - bgShape.flareX
-                    y: bgShape.bodyBottom
+                PathSvg {
+                    path: bgShape.buildPath(
+                        bgShape.dX, bgShape.dY, bgShape.rX, bgShape.rY,
+                        container.x,
+                        container.x + child.width,
+                        container.y + container.height,
+                        child.height
+                    )
                 }
             }
         }
@@ -181,6 +149,24 @@ Scope {
                 anchors.bottom: parent.bottom
                 clip: true
 
+                property bool wantDock: SettingsConfig.general.dock
+                    && !GlobalStates.clipboardOpen
+                    && !GlobalStates.wallpaperOpen
+                    && !GlobalStates.typingGameOpen
+                    && !container.collapsed
+                    && !GlobalStates.osdOpen
+                    && !GlobalStates.shutdownWindow
+
+                onWantDockChanged: {
+                    if (!wantDock) dockCloseTimer.restart()
+                    else           dockCloseTimer.stop()
+                }
+
+                Timer {
+                    id: dockCloseTimer
+                    interval: 280
+                }
+
                 states: [
                     State {
                         name: "collapsed"
@@ -220,7 +206,7 @@ Scope {
                 transitions: Transition {
                     NumberAnimation {
                         properties: "implicitWidth,implicitHeight"
-                        duration:   300
+                        duration:   Appearance.duration.large
                         easing.type: Easing.OutQuad
                     }
                 }
@@ -245,9 +231,9 @@ Scope {
 
                 Loader {
                     id: dockLoder
-                    active: SettingsConfig.general.dock && !GlobalStates.clipboardOpen && !GlobalStates.wallpaperOpen && !GlobalStates.typingGameOpen && !container.collapsed && !GlobalStates.osdOpen && !GlobalStates.shutdownWindow
+                    active: child.wantDock || dockCloseTimer.running
                     anchors.fill: parent
-                    sourceComponent: Dock {}
+                    sourceComponent: Dock { closing: !child.wantDock }
                 }
 
                 Loader {

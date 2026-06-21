@@ -11,8 +11,11 @@ import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MatrialShapeFn
 
 Item{
-    id: root 
+    id: root
     anchors.fill: parent
+
+    Component.onCompleted: ServiceSystemInfo.retain()
+    Component.onDestruction: ServiceSystemInfo.release()
     implicitHeight: col.implicitHeight
     property string panelMode: ""   // "" | "wifi" | "bluetooth"
 

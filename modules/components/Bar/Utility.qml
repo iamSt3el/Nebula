@@ -21,7 +21,6 @@ Item {
     property bool isClicked:             false
     property bool isNotificationClicked: false
     property bool isSoundPanelClicked:   false
-    property bool isBatteryInfoClicked:  false
     property bool isWeatherPanelClicked: false
     property bool isDashboard:           height > 900
 
@@ -69,6 +68,7 @@ Item {
         visible: active
         sourceComponent: SoundPanel { onClose: utility.isSoundPanelClicked = false }
     }
+
 
     Item {
         id: container

@@ -81,7 +81,7 @@ Item {
                                     anchors.left: parent.left; anchors.leftMargin: 12
                                     anchors.right: parent.right; anchors.rightMargin: 8
                                     anchors.verticalCenter: parent.verticalCenter
-                                    content: SettingsConfig.general.wallpaperDir ?? "/home/steel/wallpaper"
+                                    content: SettingsConfig.general.wallpaperDir ?? (Quickshell.env("HOME") + "/wallpaper")
                                     size: 11
                                     elide: Text.ElideLeft
                                 }

@@ -16,9 +16,11 @@ Item {
     property bool editMode: false
 
     Component.onCompleted: {
+        ServiceSystemInfo.retain()
         root.x = SettingsConfig.widgets.sysMonitorX ?? 120
         root.y = SettingsConfig.widgets.sysMonitorY ?? 120
     }
+    Component.onDestruction: ServiceSystemInfo.release()
 
     Connections {
         target: SettingsConfig

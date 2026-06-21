@@ -13,7 +13,7 @@ pragma ComponentBehavior: Bound
 Singleton {
     id: root
 
-    property string wallpaperDir: SettingsConfig.general.wallpaperDir ?? "/home/steel/wallpaper"
+    property string wallpaperDir: SettingsConfig.general.wallpaperDir ?? (Quickshell.env("HOME") + "/wallpaper")
 
     onWallpaperDirChanged: {
         if (folderModel.folder.toString() !== "") {
@@ -25,7 +25,7 @@ Singleton {
     }
     property string cacheDir: StandardPaths.writableLocation(StandardPaths.CacheLocation).toString().replace("file://", "") + "/wallpaper-thumbs"
     property int thumbSize: 256
-    property string wallpaperScript:"/home/steel/.config/quickshell/scripts/wallpaper.sh"
+    property string wallpaperScript: Quickshell.env("HOME") + "/.config/quickshell/scripts/wallpaper.sh"
     property string scheme: SettingsConfig.theme.matugenScheme
     property string theme: SettingsConfig.theme.matugenTheme
     property string transitionType: SettingsConfig.theme.transitionType ?? "fade"
@@ -117,7 +117,7 @@ Singleton {
     onLocalSortByChanged: updateWallpapersList()
 
     // ── Favorites ──────────────────────────────────────────────────────────
-    property string favoritesPath: "/home/steel/.config/quickshell/favorites.json"
+    property string favoritesPath: Quickshell.env("HOME") + "/.config/quickshell/favorites.json"
     property var favorites: ({})
     property var favoritedWallpapers: []
 

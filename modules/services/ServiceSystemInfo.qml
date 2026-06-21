@@ -30,6 +30,16 @@ Singleton {
     property real netTotalTxBytes: 0.0  // cumulative
     property var uptime
 
+    property int _refCount: 0
+
+    function retain() {
+        _refCount++
+    }
+
+    function release() {
+        if (_refCount > 0) _refCount--
+    }
+
     function formatNetSpeed(bps) {
         if (bps >= 1024 * 1024) return (bps / (1024 * 1024)).toFixed(1) + " MB/s"
         if (bps >= 1024)        return (bps / 1024).toFixed(1) + " KB/s"
@@ -208,7 +218,8 @@ Singleton {
     Timer {
         interval: 2000
         repeat: true
-        running: true
+        running: root._refCount > 0
+        triggeredOnStart: true
         onTriggered: {
             cpuFile.reload()
             memFile.reload()
@@ -249,7 +260,7 @@ Singleton {
     Timer {
         interval: 30000
         repeat: true
-        running: true
+        running: root._refCount > 0
         triggeredOnStart: true
         onTriggered: diskProc.running = true
     }

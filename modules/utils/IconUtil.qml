@@ -31,8 +31,7 @@ Item {
         return iconMap[lowerClass] || lowerClass || ""
     }
 
-    function getIconPath(windowClass, fallback = "application-x-executable") { 
-        console.log(windowClass)
+    function getIconPath(windowClass, fallback = "application-x-executable") {
         return Quickshell.iconPath(getIconName(windowClass), fallback)
     }
 

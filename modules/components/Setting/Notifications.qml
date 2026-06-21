@@ -1,6 +1,7 @@
 import Quickshell
 import QtQuick
 import QtQuick.Layouts
+import Qt.labs.platform
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
@@ -9,6 +10,18 @@ Item {
     id: root
     anchors.fill: parent
     anchors.margins: 5
+
+    FileDialog {
+        id: notifSoundPicker
+        title: "Select a notification sound file"
+        nameFilters: ["WAV files (*.wav)"]
+        onAccepted: {
+            const path = notifSoundPicker.file.toString().replace(/^file:\/\//, "")
+            SettingsConfig.notifications = Object.assign({}, SettingsConfig.notifications, { soundPath: path })
+            GlobalStates.fileDialogOpen = false
+        }
+        onRejected: GlobalStates.fileDialogOpen = false
+    }
 
     Flickable {
         anchors.fill: parent
@@ -160,7 +173,8 @@ Item {
                 }
 
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    autoRadius: false; topRadius: 5
+                    bottomRadius: (SettingsConfig.notifications?.playSound ?? false) ? 5 : 20
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
@@ -173,6 +187,51 @@ Item {
                             isToggleOn: SettingsConfig.notifications?.playSound ?? false
                             onToggled: function(state) {
                                 SettingsConfig.notifications = Object.assign({}, SettingsConfig.notifications, { playSound: state })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    visible: SettingsConfig.notifications?.playSound ?? false
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Sound File"; size: 14 }
+                            CustomText { content: "WAV file only (uncompressed PCM)"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        RowLayout {
+                            spacing: 4
+                            Rectangle {
+                                implicitHeight: 32; implicitWidth: 180
+                                topLeftRadius: 16; bottomLeftRadius: 16
+                                topRightRadius: 6;  bottomRightRadius: 6
+                                color: Colors.surfaceContainerHighest
+                                clip: true
+                                CustomText {
+                                    anchors.left: parent.left; anchors.leftMargin: 12
+                                    anchors.right: parent.right; anchors.rightMargin: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    content: (SettingsConfig.notifications?.soundPath ?? "") === ""
+                                             ? "No file selected"
+                                             : SettingsConfig.notifications.soundPath.split("/").pop()
+                                    size: 11
+                                    customColor: (SettingsConfig.notifications?.soundPath ?? "") === "" ? Colors.outline : Colors.surfaceText
+                                    elide: Text.ElideLeft
+                                }
+                            }
+                            CustomButton {
+                                implicitHeight: 32; implicitWidth: 40
+                                topLeftRadius: 6;   bottomLeftRadius: 6
+                                topRightRadius: 16; bottomRightRadius: 16
+                                icon: "audio_file"; iconSize: 18
+                                onClicked: {
+                                    GlobalStates.fileDialogOpen = true
+                                    notifSoundPicker.open()
+                                }
                             }
                         }
                     }

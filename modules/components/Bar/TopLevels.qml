@@ -76,7 +76,6 @@ Item{
                      iconItem.originalHeight = iconItem.height
                      iconItem.originalParent = iconItem.parent
                      if (!overlay) {
-                         console.log("Hello " + overlay)
                          var globalPos = iconItem.mapToItem(overlay, 0, 0)
                          iconItem.parent = overlay
                          iconItem.x = globalPos.x
@@ -101,9 +100,6 @@ Item{
                  }
 
                  onReleased: {
-                     console.log("Original Pos: " + iconItem.originalX + " " + iconItem.originalY)
-                     console.log("Current Pos: " + iconItem.x + " " + iconItem.y)
-
                      if (workspacesRow) {
                          var globalPos = iconItem.mapToItem(workspacesRow, iconItem.width/2, iconItem.height/2)
                          var targetWorkspaceIndex = -1
@@ -125,7 +121,6 @@ Item{
                              var currentWorkspaceId = currentWorkspace ? currentWorkspace.id : -1
 
                              if (targetWorkspaceId !== currentWorkspaceId) {
-                                 console.log("Moving window to workspace " + targetWorkspaceId)
                                  Hyprland.dispatch("movetoworkspacesilent " + targetWorkspaceId + ",address:0x" + modelData.address)
                              }
                          }
