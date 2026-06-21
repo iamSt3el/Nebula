@@ -199,14 +199,17 @@ v sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
 # ── uv (fast Python package manager) ─────────────────────────────────────────
 step "uv (Python toolchain)"
 if ! has uv; then
-  info "Installing uv..."
-  # UV_NO_MODIFY_PATH=1 stops the installer from touching shell profiles,
-  # which causes it to hang in non-interactive script contexts.
-  # We reload PATH manually below instead.
-  curl -LsSf https://astral.sh/uv/install.sh -o /tmp/uv-install.sh
-  v env UV_NO_MODIFY_PATH=1 bash /tmp/uv-install.sh
-  rm -f /tmp/uv-install.sh
-  # reload PATH so uv is findable in this session
+  info "Installing uv (direct binary download — avoids installer script hang)..."
+  _UV_ARCH="$(uname -m)-unknown-linux-gnu"
+  _UV_TMP="/tmp/uv-${_UV_ARCH}.tar.gz"
+  mkdir -p "$HOME/.local/bin"
+  curl -LsSf \
+    "https://github.com/astral-sh/uv/releases/latest/download/uv-${_UV_ARCH}.tar.gz" \
+    -o "$_UV_TMP"
+  tar -xzf "$_UV_TMP" -C /tmp/
+  install -m755 "/tmp/uv-${_UV_ARCH}/uv"  "$HOME/.local/bin/uv"
+  install -m755 "/tmp/uv-${_UV_ARCH}/uvx" "$HOME/.local/bin/uvx"
+  rm -rf "$_UV_TMP" "/tmp/uv-${_UV_ARCH}"
   export PATH="$HOME/.local/bin:$PATH"
 fi
 ok "uv: $(uv --version 2>/dev/null || echo 'installed')"
