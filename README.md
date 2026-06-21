@@ -77,7 +77,7 @@ The `{ locked = true }` flag lets the bind fire even when the screen is locked.
 ### One-line install
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/master/install.sh)
 ```
 
 That's it. The script:
