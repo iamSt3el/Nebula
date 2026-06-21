@@ -200,12 +200,14 @@ v sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
 step "uv (Python toolchain)"
 if ! has uv; then
   info "Installing uv..."
-  # Download to a temp file — process substitution <(...) doesn't work with v()
+  # UV_NO_MODIFY_PATH=1 stops the installer from touching shell profiles,
+  # which causes it to hang in non-interactive script contexts.
+  # We reload PATH manually below instead.
   curl -LsSf https://astral.sh/uv/install.sh -o /tmp/uv-install.sh
-  v bash /tmp/uv-install.sh
+  v env UV_NO_MODIFY_PATH=1 bash /tmp/uv-install.sh
   rm -f /tmp/uv-install.sh
-  # reload PATH so uv is findable
-  source "$HOME/.local/bin/env" 2>/dev/null || export PATH="$HOME/.local/bin:$PATH"
+  # reload PATH so uv is findable in this session
+  export PATH="$HOME/.local/bin:$PATH"
 fi
 ok "uv: $(uv --version 2>/dev/null || echo 'installed')"
 
