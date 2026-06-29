@@ -11,7 +11,6 @@ Singleton {
     property alias theme: settingsAdapter.theme
     property alias wallhaven: settingsAdapter.wallhaven
     property alias ai: settingsAdapter.ai
-    property alias manga: settingsAdapter.manga
     property alias recording: settingsAdapter.recording
     property alias screenshot: settingsAdapter.screenshot
     property alias widgets: settingsAdapter.widgets
@@ -63,7 +62,9 @@ Singleton {
                 wallpaperDir: Quickshell.env("HOME") + "/wallpaper",
                 workspaceCount: 10,
                 showWorkspaceNumbers: false,
-                flatBarMode: true
+                flatBarMode: true,
+                primaryMonitor: "",
+                perMonitorWorkspaces: false
             })
 
             property var general: ({
@@ -82,7 +83,9 @@ Singleton {
                 wallpaperDir: Quickshell.env("HOME") + "/wallpaper",
                 workspaceCount: 10,
                 showWorkspaceNumbers: false,
-                flatBarMode: true
+                flatBarMode: true,
+                primaryMonitor: "",
+                perMonitorWorkspaces: false
             })
 
             onGeneralChanged: {
@@ -156,14 +159,6 @@ Singleton {
                 googleApiKey: "",
                 backend: "ollama",
                 ollamaModel: "deepseek-r1:1.5b"
-            })
-
-            property var manga: ({
-                scrollSpeed: 5,
-                pageSpacing: 4,
-                defaultSite: "comix",
-                preloadPages: 1500,
-                filterAdult: true
             })
 
             property var recording: ({

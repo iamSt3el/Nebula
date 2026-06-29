@@ -16,9 +16,29 @@ Item{
     property bool active: false
     property bool showArc: height > 1000 ? true : false
 
-    readonly property int wsCount:   SettingsConfig.general.workspaceCount ?? 5
+    readonly property int wsCount:    SettingsConfig.general.workspaceCount ?? 5
     readonly property bool wsNumbers: SettingsConfig.general.showWorkspaceNumbers ?? false
-    implicitWidth:  row.implicitWidth + 20
+    readonly property bool perMonitorMode: SettingsConfig.general.perMonitorWorkspaces ?? false
+
+    readonly property int otherOccupied: {
+        if (!perMonitorMode) return 0
+        var count = 0
+        var vals = Hyprland.workspaces.values
+        for (var i = 0; i < vals.length; i++) {
+            if (vals[i].monitor?.name !== layout.screen.name) count++
+        }
+        return count
+    }
+    readonly property int otherActive: {
+        if (!perMonitorMode) return 0
+        var count = 0
+        var vals = Hyprland.workspaces.values
+        for (var i = 0; i < vals.length; i++) {
+            if (vals[i].monitor?.name !== layout.screen.name && vals[i].active) count++
+        }
+        return count
+    }
+    implicitWidth:  outerRow.implicitWidth + 20
     implicitHeight: 40
 
     states: State {
@@ -65,78 +85,143 @@ Item{
         active: false
         visible: active
         anchors.fill: parent
-        //sourceComponent: AiContent{}
-        sourceComponent: MangaContent{}
+        sourceComponent: AiContent{}
     }
+    RowLayout{
+        id: outerRow
+        anchors.centerIn: parent
+        spacing: 5
+        Rectangle{
+            Layout.preferredWidth: row.implicitWidth + 6
+            Layout.preferredHeight: 30
+            radius: 15
+            color: Colors.surfaceContainer
+            RowLayout {
+                id: row
+                anchors.centerIn: parent
+                spacing: 6
 
-
-        RowLayout {
-            id: row
-            anchors.centerIn: parent
-            spacing: 5
-
-            Repeater {
-                model: ScriptModel {
-                    values: Array.from({ length: root.wsCount }, (_, i) => i + 1)
-                }
-
-                delegate: Rectangle {
-                    property int workspaceId: modelData
-                    property var currentWorkspace: ServiceWorkspaces.getWorkspace(workspaceId)
-                    readonly property bool isActive:   !!currentWorkspace && currentWorkspace.active
-                    readonly property bool isOccupied: !!currentWorkspace
-                    readonly property bool showNumbers: root.wsNumbers
-
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredHeight: isOccupied ? 25 : 8
-                    Layout.preferredWidth:  isOccupied
-                    ? Math.max(showNumbers ? 25 : 25, (topLevels.appList?.width ?? 0) + 12)
-                    : 8
-                    radius: 15
-                    color: isActive   ? Colors.primary
-                    : isOccupied ? Colors.surfaceContainerHighest
-                    : Qt.alpha(Colors.outline, 0.2)
-
-                    border.width: isOccupied && !isActive ? 1 : 0
-                    border.color: Qt.alpha(Colors.outline, 0.15)
-
-                    Behavior on Layout.preferredHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-                    Behavior on Layout.preferredWidth  { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-                    Behavior on color                  { ColorAnimation  { duration: 200 } }
-
-                    Loader {
-                        id: topLevels
-                        anchors.fill: parent
-                        active: isOccupied && !showNumbers
-                        visible: active
-                        sourceComponent: TopLevels {}
-                        property var appList: item ? item.appList : null
+                Repeater {
+                    model: ScriptModel {
+                        values: Array.from({ length: root.wsCount }, (_, i) => i + 1)
                     }
 
-                    CustomText {
-                        anchors.centerIn: parent
-                        visible: showNumbers && isOccupied
-                        content: workspaceId.toString()
-                        size: 10
-                        weight: isActive ? 800 : 600
-                        customColor: isActive ? Colors.primaryText : Colors.surfaceText
-                        Behavior on customColor { ColorAnimation { duration: 200 } }
-                    }
+                    delegate: Rectangle {
+                        property int workspaceId: modelData
+                        property var currentWorkspace: ServiceWorkspaces.getWorkspace(workspaceId)
+                        readonly property bool isActive:   !!currentWorkspace && currentWorkspace.active
+                        readonly property bool isOccupied: !!currentWorkspace
+                        readonly property bool showNumbers: root.wsNumbers
+                        // In per-monitor mode, hide occupied workspaces that live on other monitors
+                        readonly property bool isForThisMonitor: !root.perMonitorMode
+                            || !currentWorkspace
+                            || currentWorkspace.monitor?.name === layout.screen.name
 
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (currentWorkspace) currentWorkspace.activate()
-                            else Hyprland.dispatch(`workspace ${workspaceId}`)
+                        visible: isForThisMonitor
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.preferredHeight: 25
+                        Layout.preferredWidth: isForThisMonitor
+                            ? (isOccupied ? Math.max(showNumbers ? 25 : 25, (topLevels.appList?.width ?? 0) + 12) : 25)
+                            : 0
+                        radius: 15
+                        color: isActive   ? Colors.primary
+                        : isOccupied ? Colors.surfaceContainerHighest
+                        : "transparent"
+
+                        border.width: isOccupied && !isActive ? 1 : 0
+                        border.color: Qt.alpha(Colors.outline, 0.15)
+
+                        Behavior on Layout.preferredHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                        Behavior on Layout.preferredWidth  { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                        Behavior on color                  { ColorAnimation  { duration: 200 } }
+
+                        Rectangle{
+                            visible: !isOccupied
+                            implicitWidth: 5
+                            implicitHeight: 5
+                            color: Colors.outline
+                            radius: width / 2
+                            anchors.centerIn: parent
+                        }
+
+                        Loader {
+                            id: topLevels
+                            anchors.fill: parent
+                            active: isOccupied && !showNumbers
+                            visible: active
+                            sourceComponent: TopLevels {}
+                            property var appList: item ? item.appList : null
+                        }
+
+                        CustomText {
+                            anchors.centerIn: parent
+                            visible: showNumbers && isOccupied
+                            content: workspaceId.toString()
+                            size: 10
+                            weight: isActive ? 800 : 600
+                            customColor: isActive ? Colors.primaryText : Colors.surfaceText
+                            Behavior on customColor { ColorAnimation { duration: 200 } }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (currentWorkspace) currentWorkspace.activate()
+                                else Hyprland.dispatch(`hl.dsp.focus({ workspace = '${workspaceId}' })`)
+                            }
                         }
                     }
                 }
+
+                // Other-monitors indicator: shows when per-monitor mode is on and other monitors have workspaces
+                Rectangle {
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredHeight: 25
+                    Layout.preferredWidth: root.perMonitorMode && root.otherOccupied > 0 ? 25 : 0
+                    opacity: root.perMonitorMode && root.otherOccupied > 0 ? 1 : 0
+                    visible: Layout.preferredWidth > 0
+                    radius: 12
+                    color: root.otherActive > 0 ? Colors.primary : "transparent"
+                    border.width: root.otherActive > 0 ? 0 : 1
+                    border.color: Qt.alpha(Colors.outline, 0.35)
+
+                    Behavior on color                 { ColorAnimation  { duration: 200 } }
+                    Behavior on Layout.preferredWidth { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                    Behavior on opacity               { NumberAnimation { duration: 180 } }
+
+                    MaterialIconSymbol {
+                        anchors.centerIn: parent
+                        content: "tv_displays"
+                        iconSize: 12
+                        customColor: root.otherActive > 0 ? Colors.primaryText : Colors.outline
+                        Behavior on customColor { ColorAnimation { duration: 200 } }
+                    }
+
+                    CustomToolTip {
+                        content: root.otherOccupied + " workspace" + (root.otherOccupied !== 1 ? "s" : "") + " on other monitor" + (root.otherActive > 0 ? " (active)" : "")
+                        visible: otherMonHov.containsMouse
+                    }
+                    MouseArea { id: otherMonHov; anchors.fill: parent; hoverEnabled: true }
+                }
             }
+        }
+        MaterialIconSymbol{
+            Layout.leftMargin: 10
+            content: "ad"
+            iconSize: 20
+        } 
+        CustomText{
+            Layout.maximumWidth: 200
+            content: Hyprland.activeToplevel.title
+            size: 14
+        }
     }
 
+
+
     GlobalShortcut{
-        name: "mangaReader"
+        name: "aiPanel"
         onPressed:{
             if(root.active){
                 root.active = false

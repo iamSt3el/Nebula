@@ -28,6 +28,14 @@ ShellRoot{
             required property var modelData
             Layout{
                 screen: modelData
+                isPrimary: {
+                    const pm = SettingsConfig.general.primaryMonitor ?? ""
+                    if (pm === "") return true
+                    // Failover: if the configured primary is disconnected, first screen takes over
+                    const primaryExists = Quickshell.screens.some(s => s.name === pm)
+                    if (!primaryExists) return modelData === Quickshell.screens[0]
+                    return modelData.name === pm
+                }
             }
         }
     }
