@@ -23,11 +23,15 @@ Item {
     property bool isSoundPanelClicked:   false
     property bool isWeatherPanelClicked: false
     property bool isDashboard:           height > 900
+    property real soundPanelCenterX: 0
+    readonly property real dashBtnCenterX: dashBtnRect.mapToItem(null, dashBtnRect.width / 2, 0).x
+    readonly property bool isPill: SettingsConfig.general.barMode === "pill"
 
     states: [
         State {
             name: "dashboard"
-            when: utility.isClicked
+            // In pill mode the bar stays compact — dashboard renders in Layout.qml
+            when: utility.isClicked && !utility.isPill
             PropertyChanges {
                 target: utility
                 implicitWidth:  Appearance.size.dashboardPanelWidth
@@ -36,7 +40,7 @@ Item {
         },
         State {
             name: "notification"
-            when: utility.isNotificationClicked
+            when: utility.isNotificationClicked && !utility.isPill
             PropertyChanges {
                 target: utility
                 implicitWidth:  Appearance.size.notificationPanelWidth
@@ -45,7 +49,7 @@ Item {
         },
         State {
             name: "weather"
-            when: utility.isWeatherPanelClicked
+            when: utility.isWeatherPanelClicked && !utility.isPill
             PropertyChanges {
                 target: utility
                 implicitWidth:  Appearance.size.weatherPanelWidth
@@ -69,39 +73,38 @@ Item {
         sourceComponent: SoundPanel { onClose: utility.isSoundPanelClicked = false }
     }
 
-
     Item {
         id: container
         anchors.fill: parent
 
-        // ── Notification panel ─────────────────────────────────────────────
+        // ── Notification panel (non-pill — expands bar) ───────────────────
         Loader {
             id: notificationLoader
-            active:      utility.isNotificationClicked
-            anchors.fill: parent
-            visible:     false
-            Timer {
-                interval: Appearance.duration.normal
-                running:  utility.isNotificationClicked
-                onTriggered: notificationLoader.visible = true
-            }
-            sourceComponent: NotificationCenter {
-                onNotificationCenterClosed: {
-                    utility.isNotificationClicked    = false
-                    notificationLoader.visible       = false
-                }
-            }
-        }
-
-        // ── Weather panel ──────────────────────────────────────────────────
-        Loader {
-            id: weatherLoader
-            active:       utility.isWeatherPanelClicked
+            active:       utility.isNotificationClicked && !utility.isPill
             anchors.fill: parent
             visible:      false
             Timer {
                 interval: Appearance.duration.normal
-                running:  utility.isWeatherPanelClicked
+                running:  utility.isNotificationClicked && !utility.isPill
+                onTriggered: notificationLoader.visible = true
+            }
+            sourceComponent: NotificationCenter {
+                onNotificationCenterClosed: {
+                    utility.isNotificationClicked = false
+                    notificationLoader.visible    = false
+                }
+            }
+        }
+
+        // ── Weather panel (non-pill — expands bar) ────────────────────────
+        Loader {
+            id: weatherLoader
+            active:       utility.isWeatherPanelClicked && !utility.isPill
+            anchors.fill: parent
+            visible:      false
+            Timer {
+                interval: Appearance.duration.normal
+                running:  utility.isWeatherPanelClicked && !utility.isPill
                 onTriggered: weatherLoader.visible = true
             }
             sourceComponent: WeatherPanel {
@@ -112,21 +115,21 @@ Item {
             }
         }
 
-        // ── Dashboard panel ────────────────────────────────────────────────
+        // ── Dashboard panel (non-pill modes — expands bar) ────────────────
         Loader {
             id: dashboardLoader
-            active:       utility.isClicked
+            active:       utility.isClicked && !utility.isPill
             anchors.fill: parent
             visible:      false
             Timer {
                 interval: Appearance.duration.normal
-                running:  utility.isClicked
+                running:  utility.isClicked && !utility.isPill
                 onTriggered: dashboardLoader.visible = true
             }
             sourceComponent: Dashboard {
                 onToggleDashboard: {
-                    utility.isClicked          = false
-                    dashboardLoader.visible    = false
+                    utility.isClicked       = false
+                    dashboardLoader.visible = false
                 }
             }
         }
@@ -134,8 +137,8 @@ Item {
         // ── Utility row ────────────────────────────────────────────────────
         RowLayout {
             id: row
-            visible:             !utility.isClicked && utility.height === Appearance.size.barHeight
-            spacing:             6
+            visible:             (!utility.isClicked || utility.isPill) && (!utility.isNotificationClicked || utility.isPill) && (!utility.isWeatherPanelClicked || utility.isPill) && utility.height === Appearance.size.barHeight
+            spacing:             10
             anchors.verticalCenter: parent.verticalCenter
             anchors.right:          parent.right
             anchors.rightMargin:    10
@@ -144,85 +147,83 @@ Item {
             Loader {
                 active:  ServiceTools.isRecording
                 visible: active
-                Layout.preferredHeight: 30
+                Layout.preferredHeight: 28
                 Layout.preferredWidth:  active ? implicitWidth : 0
 
                 sourceComponent: Rectangle {
                     id: recPill
-                    implicitWidth:  recRow.implicitWidth + 22
-                    implicitHeight: 30
-                    radius:         15
+                    implicitWidth:  recRow.implicitWidth + 16
+                    implicitHeight: 28
+                    radius:         14
                     clip:           true
-                    color:          recHov.hovered ? Colors.error : Colors.errorContainer
-                    Behavior on color { ColorAnimation { duration: 180 } }
+                    color:          recHov.hovered
+                                    ? Qt.alpha(Colors.error, 0.22)
+                                    : Qt.alpha(Colors.error, 0.10)
+                    Behavior on color         { ColorAnimation  { duration: 180 } }
+                    Behavior on implicitWidth { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+
+                    border.color: Qt.alpha(Colors.error, recHov.hovered ? 0.65 : 0.35)
+                    border.width: 1
+                    Behavior on border.color { ColorAnimation { duration: 180 } }
 
                     NumberAnimation on opacity { from: 0; to: 1; duration: 220; running: true }
-
-                    // Ambient pulse on the bg (subtle red glow when not hovered)
-                    Rectangle {
-                        anchors.fill: parent; radius: parent.radius
-                        color: Colors.error; visible: !recHov.hovered
-                        SequentialAnimation on opacity {
-                            running: true; loops: Animation.Infinite
-                            NumberAnimation { to: 0.14; duration: 900; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 0;    duration: 900; easing.type: Easing.InOutSine }
-                        }
-                    }
 
                     RowLayout {
                         id: recRow
                         anchors.centerIn: parent
-                        spacing: 7
+                        spacing: 6
 
-                        // Pulsing dot (scale-based)
+                        // Icon with layered red glow rings
                         Item {
-                            width: 8; height: 8
+                            width: 20; height: 20
+
+                            // Outer glow ring — pulses in opacity
                             Rectangle {
                                 anchors.centerIn: parent
-                                width: 8; height: 8; radius: 4
-                                color: recHov.hovered ? "white" : Colors.error
-                                Behavior on color { ColorAnimation { duration: 180 } }
-                                SequentialAnimation on scale {
+                                width: 20; height: 20; radius: 10
+                                color: Colors.error
+                                SequentialAnimation on opacity {
                                     running: true; loops: Animation.Infinite
-                                    NumberAnimation { to: 0.6;  duration: 650; easing.type: Easing.InOutSine }
-                                    NumberAnimation { to: 1.0;  duration: 650; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 0.20; duration: 850; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 0.04; duration: 850; easing.type: Easing.InOutSine }
                                 }
+                            }
+
+                            // Inner ambient glow
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 13; height: 13; radius: 6.5
+                                color: Colors.error; opacity: 0.18
+                            }
+
+                            MaterialIconSymbol {
+                                anchors.centerIn: parent
+                                content:     "screen_record"
+                                iconSize:    16
+                                customColor: Colors.error
                             }
                         }
 
-                        // Label — swaps to STOP on hover
+                        // Timer — revealed on hover
                         CustomText {
-                            content: recHov.hovered ? "STOP" : "REC"
-                            size: 11; weight: 700
-                            customColor: recHov.hovered ? "white" : Colors.errorContainerText
-                        }
-
-                        Rectangle {
-                            width: 1; height: 10
-                            color: Qt.alpha(recHov.hovered ? "white" : Colors.errorContainerText, 0.30)
-                            Behavior on color { ColorAnimation { duration: 180 } }
-                        }
-
-                        // Timer
-                        CustomText {
+                            visible: recHov.hovered
                             content: {
                                 const s = ServiceTools.recordingSeconds
                                 return String(Math.floor(s / 60)).padStart(2, "0") + ":" +
                                        String(s % 60).padStart(2, "0")
                             }
                             size: 11; weight: 500
-                            customColor: recHov.hovered ? "white" : Colors.errorContainerText
+                            customColor: Colors.errorContainerText
                         }
-
                     }
 
                     HoverHandler { id: recHov }
 
                     CustomMouseArea {
                         anchors.fill: parent
-                        radius: parent.radius
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: ServiceTools.stopRecording()
+                        radius:       parent.radius
+                        cursorShape:  Qt.PointingHandCursor
+                        onClicked:    ServiceTools.stopRecording()
                     }
 
                     CustomToolTip { content: "Click to stop recording"; visible: recHov.hovered }
@@ -236,89 +237,108 @@ Item {
                 sourceComponent: SystemTray {}
             }
 
-            // ── Weather pill ───────────────────────────────────────────────
+            // ── Info pill: Weather + Volume ────────────────────────────────
             Rectangle {
                 Layout.preferredHeight: 30
-                implicitWidth:          weatherRow.implicitWidth + 22
+                implicitWidth:          infoRow.implicitWidth + 8
                 radius:                 15
-                color:                  weatherHov.containsMouse ? Colors.primaryContainer : Colors.surfaceContainerHigh
-                Behavior on color { ColorAnimation { duration: 150 } }
+                color:                  "transparent"//Colors.surfaceContainerHigh
 
                 RowLayout {
-                    id: weatherRow
+                    id: infoRow
                     anchors.centerIn: parent
-                    spacing: 7
+                    spacing: 0
 
-                    Image {
-                        width: 16; height: 16
-                        sourceSize: Qt.size(width, height)
-                        source: IconUtil.getSystemIcon(ServiceWeather.weatherIconPath.svg)
+                    // Weather zone
+                    Rectangle {
+                        implicitWidth:  weatherRow.implicitWidth + 18
+                        implicitHeight: 26
+                        radius:         13
+                        color:          weatherHov.containsMouse ? Colors.primaryContainer : "transparent"
+                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                        RowLayout {
+                            id: weatherRow
+                            anchors.centerIn: parent
+                            spacing: 7
+
+                            Image {
+                                width: 16; height: 16
+                                sourceSize: Qt.size(width, height)
+                                source: IconUtil.getSystemIcon(ServiceWeather.weatherIconPath.svg)
+                            }
+
+                            CustomText {
+                                content: ServiceWeather.temperature
+                                size: 13; weight: 500
+                                customColor: weatherHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
+                                Behavior on customColor { ColorAnimation { duration: 150 } }
+                            }
+                        }
+
+                        MouseArea {
+                            id: weatherHov
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape:  Qt.PointingHandCursor
+                            onClicked:    utility.isWeatherPanelClicked = true
+                        }
                     }
 
-                    CustomText {
-                        content: ServiceWeather.temperature
-                        size: 13; weight: 500
-                        customColor: weatherHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
-                        Behavior on customColor { ColorAnimation { duration: 150 } }
-                    }
-                }
 
-                MouseArea {
-                    id: weatherHov
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape:  Qt.PointingHandCursor
-                    onClicked:    utility.isWeatherPanelClicked = true
+                    // Volume zone
+                    Rectangle {
+                        id: volPill
+                        implicitWidth:  volRow.implicitWidth + 18
+                        implicitHeight: 26
+                        radius:         13
+                        color:          volHov.containsMouse ? Colors.primaryContainer : "transparent"
+                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                        RowLayout {
+                            id: volRow
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            MaterialIconSymbol {
+                                content: ServicePipewire.muted ? "volume_off"
+                                : ServicePipewire.volume > 0.6 ? "volume_up"
+                                : ServicePipewire.volume > 0.2 ? "volume_down"
+                                : "volume_mute"
+                                iconSize: 18
+                                customColor: volHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
+                                Behavior on customColor { ColorAnimation { duration: 150 } }
+                            }
+
+                            CustomText {
+                                content: ServicePipewire.muted ? "Muted"
+                                : Math.round(ServicePipewire.volume * 100) + "%"
+                                size: 13; weight: 700
+                                customColor: volHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
+                                Behavior on customColor { ColorAnimation { duration: 150 } }
+                            }
+                        }
+
+                        MouseArea {
+                            id: volHov
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape:  Qt.PointingHandCursor
+                            onClicked: {
+                                utility.soundPanelCenterX = volPill.mapToItem(null, volPill.width / 2, 0).x
+                                utility.isSoundPanelClicked = true
+                            }
+                        }
+                    }
                 }
             }
 
-            // ── Volume pill ────────────────────────────────────────────────
-            Rectangle {
-                Layout.preferredHeight: 30
-                implicitWidth:          volRow.implicitWidth + 22
-                radius:                 15
-                color:                  volHov.containsMouse ? Colors.primaryContainer : Colors.surfaceContainerHigh
-                Behavior on color { ColorAnimation { duration: 150 } }
-
-                RowLayout {
-                    id: volRow
-                    anchors.centerIn: parent
-                    spacing: 6
-
-                    MaterialIconSymbol {
-                        content: ServicePipewire.muted ? "volume_off"
-                               : ServicePipewire.volume > 0.6 ? "volume_up"
-                               : ServicePipewire.volume > 0.2 ? "volume_down"
-                               : "volume_mute"
-                        iconSize: 18
-                        customColor: volHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
-                        Behavior on customColor { ColorAnimation { duration: 150 } }
-                    }
-
-                    CustomText {
-                        content: ServicePipewire.muted ? "Muted"
-                               : Math.round(ServicePipewire.volume * 100) + "%"
-                        size: 13; weight: 500
-                        customColor: volHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
-                        Behavior on customColor { ColorAnimation { duration: 150 } }
-                    }
-                }
-
-                MouseArea {
-                    id: volHov
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape:  Qt.PointingHandCursor
-                    onClicked:    utility.isSoundPanelClicked = true
-                }
-            }
-
-            // ── Network / BT / Notification group ─────────────────────────
+            // ── Status pill: Network / BT / Notification / Battery ─────────
             Rectangle {
                 Layout.preferredHeight: 30
                 implicitWidth:          groupRow.implicitWidth + 8
                 radius:                 15
-                color:                  Colors.surfaceContainerHigh
+                color:                  "transparent"//Colors.surfaceContainerHigh
 
                 RowLayout {
                     id: groupRow
@@ -333,7 +353,7 @@ Item {
 
                         MaterialIconSymbol {
                             anchors.centerIn: parent
-                            content:     ServiceWifi.wifiEnabled ? ServiceWifi.icon : "signal_wifi_off"
+                            content:     ServiceNetwork.wifiEnabled ? ServiceNetwork.icon : "signal_wifi_off"
                             iconSize:    18
                             customColor: wifiHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
                             Behavior on customColor { ColorAnimation { duration: 150 } }
@@ -347,7 +367,7 @@ Item {
                         }
 
                         CustomToolTip {
-                            content: ServiceWifi.currentSSID.length > 0 ? ServiceWifi.currentSSID : "No network"
+                            content: ServiceNetwork.currentSSID.length > 0 ? ServiceNetwork.currentSSID : "No network"
                             visible: wifiHov.containsMouse
                         }
                     }
@@ -388,20 +408,20 @@ Item {
                         MaterialIconSymbol {
                             anchors.centerIn: parent
                             content:     ServiceNotification.notificationsNumber > 0
-                                         ? "notifications_active" : "notifications"
+                            ? "notifications_active" : "notifications"
                             iconSize:    18
                             customColor: notifHov.containsMouse
-                                         ? Colors.primaryContainerText
-                                         : ServiceNotification.notificationsNumber > 0
-                                           ? Colors.primary : Colors.surfaceText
+                            ? Colors.primaryContainerText
+                            : ServiceNotification.notificationsNumber > 0
+                            ? Colors.primary : Colors.surfaceText
                             Behavior on customColor { ColorAnimation { duration: 150 } }
                         }
 
                         // Count badge
                         Rectangle {
-                            visible:        ServiceNotification.notificationsNumber > 0
-                            anchors.right:  parent.right
-                            anchors.top:    parent.top
+                            visible:             ServiceNotification.notificationsNumber > 0
+                            anchors.right:       parent.right
+                            anchors.top:         parent.top
                             anchors.topMargin:   -1
                             anchors.rightMargin: -1
                             width:  badgeText.implicitWidth + 4
@@ -413,7 +433,7 @@ Item {
                                 id: badgeText
                                 anchors.centerIn: parent
                                 content:     ServiceNotification.notificationsNumber > 9
-                                             ? "9+" : String(ServiceNotification.notificationsNumber)
+                                ? "9+" : String(ServiceNotification.notificationsNumber)
                                 size:        8; weight: 700
                                 customColor: Colors.primaryText
                             }
@@ -432,89 +452,66 @@ Item {
                             visible: notifHov.containsMouse
                         }
                     }
-                }
-            }
 
-            // ── Battery pill ───────────────────────────────────────────────
-            Rectangle {
-                Layout.preferredHeight: 30
-                implicitWidth:          battRow.implicitWidth + 22
-                radius:                 15
-                color:                  battHov.containsMouse
-                                        ? Colors.primaryContainer
-                                        : ServiceUPower.powerLevel < 0.2 && !ServiceUPower.isCharging
-                                          ? Qt.alpha(Colors.error, 0.15)
-                                          : Colors.surfaceContainerHigh
-                Behavior on color { ColorAnimation { duration: 150 } }
+                    // Battery (icon only)
+                    Rectangle {
+                        implicitWidth:  28; implicitHeight: 28; radius: 14
+                        color:          battHov.containsMouse ? Colors.primaryContainer
+                        : ServiceUPower.powerLevel < 0.2 && !ServiceUPower.isCharging
+                        ? Qt.alpha(Colors.error, 0.15) : "transparent"
+                        Behavior on color { ColorAnimation { duration: 150 } }
 
-                RowLayout {
-                    id: battRow
-                    anchors.centerIn: parent
-                    spacing: 4
-
-                    MaterialIconSymbol {
-                        content: {
-                            if (ServiceUPower.isCharging)                  return "battery_android_bolt"
-                            const l = ServiceUPower.powerLevel
-                            if (l === 1)                                   return "battery_android_full"
-                            if (l > 0.9)                                   return "battery_android_6"
-                            if (l > 0.7)                                   return "battery_android_5"
-                            if (l > 0.5)                                   return "battery_android_4"
-                            if (l > 0.3)                                   return "battery_android_3"
-                            if (l > 0.2)                                   return "battery_android_2"
-                            if (l > 0.0)                                   return "battery_android_1"
-                            return "battery_android_0"
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: {
+                                if (ServiceUPower.isCharging)  return "battery_android_bolt"
+                                const l = ServiceUPower.powerLevel
+                                if (l === 1)                   return "battery_android_full"
+                                if (l > 0.9)                   return "battery_android_6"
+                                if (l > 0.7)                   return "battery_android_5"
+                                if (l > 0.5)                   return "battery_android_4"
+                                if (l > 0.3)                   return "battery_android_3"
+                                if (l > 0.2)                   return "battery_android_2"
+                                if (l > 0.0)                   return "battery_android_1"
+                                return "battery_android_0"
+                            }
+                            iconSize: 18
+                            customColor: battHov.containsMouse ? Colors.primaryContainerText
+                            : ServiceUPower.powerLevel < 0.2 && !ServiceUPower.isCharging
+                            ? Colors.error : Colors.surfaceText
+                            Behavior on customColor { ColorAnimation { duration: 150 } }
                         }
-                        iconSize: 18
-                        customColor: battHov.containsMouse
-                                     ? Colors.primaryContainerText
-                                     : ServiceUPower.powerLevel < 0.2 && !ServiceUPower.isCharging
-                                       ? Colors.error : Colors.surfaceText
-                        Behavior on customColor { ColorAnimation { duration: 150 } }
+
+                        MouseArea {
+                            id: battHov
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape:  Qt.PointingHandCursor
+                        }
+
+                        CustomToolTip {
+                            content: (ServiceUPower.isCharging ? "Charging · " : "")
+                            + Math.round(ServiceUPower.powerLevel * 100) + "%"
+                            visible: battHov.containsMouse
+                        }
                     }
-
-                    CustomText {
-                        content: Math.round(ServiceUPower.powerLevel * 100) + "%"
-                        size: 13; weight: 500
-                        customColor: battHov.containsMouse
-                                     ? Colors.primaryContainerText
-                                     : ServiceUPower.powerLevel < 0.2 && !ServiceUPower.isCharging
-                                       ? Colors.error : Colors.surfaceText
-                        Behavior on customColor { ColorAnimation { duration: 150 } }
-                    }
-                }
-
-                MouseArea {
-                    id: battHov
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape:  Qt.PointingHandCursor
-                }
-
-                CustomToolTip {
-                    content: ServiceUPower.isCharging ? "Charging" : "Battery"
-                    visible: battHov.containsMouse
                 }
             }
 
             // ── Dashboard button ───────────────────────────────────────────
             Rectangle {
+                id: dashBtnRect
                 Layout.preferredHeight: 30
                 Layout.preferredWidth:  30
                 radius:                 15
-                color:                  dashHov.containsMouse ? Colors.primary : Colors.primaryContainer
+                color:                  dashHov.containsMouse ? Colors.primary : "transparent"
                 Behavior on color { ColorAnimation { duration: 150 } }
-
-                scale: dashHov.containsMouse ? 1.1 : 1.0
-                Behavior on scale {
-                    NumberAnimation { duration: 200; easing.type: Easing.OutBack; easing.overshoot: 0.5 }
-                }
 
                 MaterialIconSymbol {
                     anchors.centerIn: parent
                     content:     "dashboard"
                     iconSize:    18
-                    customColor: dashHov.containsMouse ? Colors.primaryText : Colors.primaryContainerText
+                    customColor: dashHov.containsMouse ? Colors.primaryContainer : Colors.surfaceText
                     Behavior on customColor { ColorAnimation { duration: 150 } }
                 }
 

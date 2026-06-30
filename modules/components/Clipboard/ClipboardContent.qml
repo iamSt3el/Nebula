@@ -218,26 +218,7 @@ Rectangle {
 
                 add: Transition {
                     enabled: clipboardList.animationsEnabled
-                    ParallelAnimation {
-                        NumberAnimation { property: "x";       from: 60;  to: 0; duration: 320; easing.type: Easing.OutCubic }
-                        NumberAnimation { property: "opacity"; from: 0;   to: 1; duration: 220; easing.type: Easing.OutQuad }
-                        NumberAnimation { property: "scale";   from: 0.9; to: 1; duration: 300; easing.type: Easing.OutBack; easing.overshoot: 0.4 }
-                    }
-                }
-                move: Transition {
-                    NumberAnimation { property: "y"; duration: 380; easing.type: Easing.OutBack; easing.overshoot: 0.3 }
-                }
-                addDisplaced: Transition {
-                    ParallelAnimation {
-                        NumberAnimation { property: "y";       duration: 380; easing.type: Easing.OutBack; easing.overshoot: 0.3 }
-                        NumberAnimation { property: "opacity"; to: 1;         duration: 120 }
-                    }
-                }
-                displaced: Transition {
-                    ParallelAnimation {
-                        NumberAnimation { property: "y";       duration: 380; easing.type: Easing.OutBack; easing.overshoot: 0.3 }
-                        NumberAnimation { property: "opacity"; to: 1;         duration: 120 }
-                    }
+                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 120 }
                 }
 
                 delegate: Rectangle {
@@ -348,18 +329,7 @@ Rectangle {
                         }
                     }
 
-                    // ── Remove animation ──────────────────────────────────
-                    SequentialAnimation {
-                        id: removeAnim
-                        PropertyAction  { target: clipItem; property: "ListView.delayRemove"; value: true }
-                        ParallelAnimation {
-                            NumberAnimation { target: clipItem; property: "x";       to: clipboardList.width + 24; duration: 220; easing.type: Easing.InCubic }
-                            NumberAnimation { target: clipItem; property: "opacity"; to: 0;                        duration: 180; easing.type: Easing.InQuad  }
-                        }
-                        NumberAnimation  { target: clipItem; property: "height";    to: 0; duration: 160; easing.type: Easing.InCubic }
-                        PropertyAction  { target: clipItem; property: "ListView.delayRemove"; value: false }
-                    }
-                    ListView.onRemove: removeAnim.start()
+                    ListView.onRemove: clipItem.opacity = 0
                 }
             }
         }

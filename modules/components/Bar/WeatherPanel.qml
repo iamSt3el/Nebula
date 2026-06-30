@@ -16,25 +16,14 @@ Item{
     id: root
     anchors.fill: parent
     signal closed
+    property bool compact: false
 
+    opacity: 0
+    property real _slideX: 400
+    transform: Translate { x: root._slideX }
 
-    opacity:0
-    scale: 0.8
-
-    NumberAnimation on opacity{
-        from: 0
-        to: 1
-        duration: 400
-        running: true
-    }
-
-
-    NumberAnimation on scale{
-        from: 0.8
-        to: 1
-        duration: 400
-        running: true
-    }
+    NumberAnimation on opacity { from: 0; to: 1; duration: 300; easing.type: Easing.OutQuad;   running: true }
+    NumberAnimation on _slideX { from: 400; to: 0; duration: 300; easing.type: Easing.OutCubic; running: true }
 
     ColumnLayout{
         anchors.fill: parent
@@ -44,7 +33,7 @@ Item{
         // ── Header bar ───────────────────────────────────────────────────
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 60
+            Layout.preferredHeight: root.compact ? 50 : 60
             radius: 20
             color: Colors.surfaceContainer
 
@@ -57,7 +46,7 @@ Item{
                 MaterialIconSymbol {
                     Layout.alignment: Qt.AlignVCenter
                     content: "location_on"
-                    iconSize: 20
+                    iconSize: root.compact ? 16 : 20
                     customColor: Colors.primary
                 }
 
@@ -69,12 +58,12 @@ Item{
                         content: ServiceWeather.cityName !== "Unknown"
                             ? ServiceWeather.cityName
                             : ServiceWeather.location
-                        size: 14
+                        size: root.compact ? 12 : 14
                         weight: 700
                     }
                     CustomText {
                         content: Qt.formatDate(new Date(), "dddd, MMMM d")
-                        size: 11
+                        size: root.compact ? 10 : 11
                         customColor: Colors.outline
                     }
                 }
@@ -91,9 +80,9 @@ Item{
 
                 Rectangle {
                     Layout.alignment: Qt.AlignVCenter
-                    implicitHeight: 36
+                    implicitHeight: root.compact ? 28 : 36
                     implicitWidth: refreshRow.implicitWidth + 20
-                    radius: 18
+                    radius: implicitHeight / 2
                     color: refreshRipple.containsMouse ? Colors.surfaceContainerHigh : Colors.surfaceContainerHighest
 
                     RowLayout {
@@ -104,7 +93,7 @@ Item{
                         MaterialIconSymbol {
                             Layout.alignment: Qt.AlignVCenter
                             content: "refresh"
-                            iconSize: 16
+                            iconSize: root.compact ? 13 : 16
                             customColor: ServiceWeather.isLoading ? Colors.primary : Colors.outline
                         }
 
@@ -119,7 +108,7 @@ Item{
                                 if (mins < 60) return mins + "m ago"
                                 return Math.floor(mins / 60) + "h ago"
                             }
-                            size: 11
+                            size: root.compact ? 10 : 11
                             customColor: Colors.outline
                         }
                     }
@@ -127,39 +116,40 @@ Item{
                     RippleEffect {
                         id: refreshRipple
                         anchors.fill: parent
-                        radius: 18
+                        radius: parent.implicitHeight / 2
                         onClicked: ServiceWeather.refresh()
                     }
                 }
 
                 Rectangle {
                     Layout.alignment: Qt.AlignVCenter
-                    width: 36; height: 36; radius: 18
+                    width: root.compact ? 28 : 36
+                    height: root.compact ? 28 : 36
+                    radius: width / 2
                     color: closeRipple.containsMouse ? Colors.surfaceContainerHigh : "transparent"
 
                     MaterialIconSymbol {
                         anchors.centerIn: parent
                         content: "close"
-                        iconSize: 18
+                        iconSize: root.compact ? 14 : 18
                     }
                     RippleEffect {
                         id: closeRipple
                         anchors.fill: parent
-                        radius: 18
+                        radius: parent.width / 2
                         onClicked: root.closed()
                     }
                 }
             }
         }
 
-        // ── Hero card (temp + stats combined) ───────────────────────────
+        // ── Hero card ────────────────────────────────────────────────────
         ClippingWrapperRectangleInternal {
             Layout.fillWidth: true
             implicitHeight: heroColumn.implicitHeight + 40
             radius: 20
             color: Colors.surfaceContainer
 
-            // Decorative burst — clipped to rounded corners by ClippingWrapper
             MaterialShapes.ShapeCanvas {
                 anchors.right: parent.right
                 anchors.top: parent.top
@@ -176,18 +166,16 @@ Item{
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
-                anchors.margins: 20
+                anchors.margins:  20
                 spacing: 16
 
-                // Icon + temperature block
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 16
 
-                    // Weather icon in shaped badge
                     Item {
-                        Layout.preferredWidth: 80
-                        Layout.preferredHeight: 80
+                        Layout.preferredWidth:  80
+                        Layout.preferredHeight:  80
                         Layout.alignment: Qt.AlignVCenter
 
                         MaterialShapes.ShapeCanvas {
@@ -197,7 +185,8 @@ Item{
                         }
                         Image {
                             anchors.centerIn: parent
-                            width: 52; height: 52
+                            width:  52
+                            height:  52
                             source: IconUtil.getSystemIcon(ServiceWeather.weatherIconPath.svg)
                             sourceSize: Qt.size(width, height)
                         }
@@ -209,7 +198,7 @@ Item{
 
                         CustomText {
                             content: ServiceWeather.temperature
-                            size: 50
+                            size:  50
                             color: Colors.primary
                             weight: 900
                         }
@@ -220,14 +209,14 @@ Item{
                                 content: "↑ " + (ServiceWeather.useMetric
                                     ? (ServiceWeather.forecastDays[0]?.maxtempC ?? "--") + "°"
                                     : (ServiceWeather.forecastDays[0]?.maxtempF ?? "--") + "°")
-                                size: 13
+                                size:  13
                                 color: Colors.inverseSurface
                             }
                             CustomText {
                                 content: "↓ " + (ServiceWeather.useMetric
                                     ? (ServiceWeather.forecastDays[0]?.mintempC ?? "--") + "°"
                                     : (ServiceWeather.forecastDays[0]?.mintempF ?? "--") + "°")
-                                size: 13
+                                size:  13
                                 color: Colors.outline
                             }
                         }
@@ -235,19 +224,18 @@ Item{
                         CustomText {
                             Layout.fillWidth: true
                             content: ServiceWeather.description
-                            size: 14
+                            size:  14
                             color: Colors.inverseSurface
                         }
 
                         CustomText {
                             content: "Feels like " + ServiceWeather.feelsLike
-                            size: 12
+                            size:  12
                             color: Colors.outline
                         }
                     }
                 }
 
-                // Divider
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
@@ -255,23 +243,22 @@ Item{
                     opacity: 0.25
                 }
 
-                // Four stat mini-cards
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.bottomMargin: 4
+                    Layout.bottomMargin: root.compact ? 0 : 4
                     spacing: 8
 
                     Repeater {
                         model: [
-                            { icon: "wb_sunny",   label: "UV Index", val: ServiceWeather.uvindex             },
-                            { icon: "cloud",      label: "Cloud",    val: ServiceWeather.cloudcover           },
-                            { icon: "visibility", label: "Visibility", val: ServiceWeather.visibility + " km" },
-                            { icon: "water_drop", label: "Rain",     val: ServiceWeather.precipitation + " in"}
+                            { icon: "wb_sunny",   label: "UV Index",   val: ServiceWeather.uvindex              },
+                            { icon: "cloud",      label: "Cloud",      val: ServiceWeather.cloudcover            },
+                            { icon: "visibility", label: "Visibility", val: ServiceWeather.visibility + " km"   },
+                            { icon: "water_drop", label: "Rain",       val: ServiceWeather.precipitation + " in"}
                         ]
 
                         delegate: Item {
                             Layout.fillWidth: true
-                            implicitHeight: 58
+                            implicitHeight: root.compact ? 48 : 58
 
                             ColumnLayout {
                                 anchors.centerIn: parent
@@ -286,14 +273,14 @@ Item{
                                 CustomText {
                                     Layout.alignment: Qt.AlignHCenter
                                     content: modelData.val
-                                    size: 12
+                                    size:  12
                                     weight: 700
                                     color: Colors.inverseSurface
                                 }
                                 CustomText {
                                     Layout.alignment: Qt.AlignHCenter
                                     content: modelData.label
-                                    size: 10
+                                    size:  10
                                     color: Colors.outline
                                 }
                             }
@@ -302,9 +289,11 @@ Item{
                 }
             }
         }
+
+        // ── Hourly forecast ──────────────────────────────────────────────
         Rectangle{
             Layout.fillWidth: true
-            Layout.preferredHeight: 200
+            Layout.preferredHeight: root.compact ? 200 : 200
             color: Colors.surfaceContainer
             radius: 20
             clip: true
@@ -312,16 +301,11 @@ Item{
             ColumnLayout{
                 anchors.fill: parent
                 anchors.margins: 10
-                spacing: 10
+                spacing: root.compact ? 6 : 10
+
                 RowLayout{
-                    MaterialIconSymbol{
-                        content: "schedule"
-                        iconSize: 20
-                    }
-                    CustomText{
-                        content: "Hourly forecast"
-                        size: 14
-                    }
+                    MaterialIconSymbol{ content: "schedule"; iconSize: root.compact ? 16 : 20 }
+                    CustomText{ content: "Hourly forecast"; size: root.compact ? 12 : 14 }
                 }
 
                 ListView{
@@ -342,15 +326,14 @@ Item{
 
                             Item{
                                 Layout.alignment: Qt.AlignCenter
-                                Layout.preferredWidth: 40
-                                Layout.preferredHeight: 40
-
+                                Layout.preferredWidth:   40
+                                Layout.preferredHeight:  40
 
                                 Loader{
                                     active: index === 0
                                     visible: active
                                     anchors.fill: parent
-                                    sourceComponent:MaterialShapes.ShapeCanvas{
+                                    sourceComponent: MaterialShapes.ShapeCanvas{
                                         anchors.fill: parent
                                         roundedPolygon: MaterialShapeFn.getCookie4Sided()
                                         color: Colors.primary
@@ -361,17 +344,15 @@ Item{
                                     anchors.centerIn: parent
                                     content: modelData.tempC
                                     size: 16
-                                    color:index === 0 ? Colors.primaryText : Colors.surfaceText
+                                    color: index === 0 ? Colors.primaryText : Colors.surfaceText
                                 }
                             }
-                            Item{
-                                Layout.fillHeight: true
-                            }
+                            Item{ Layout.fillHeight: true }
 
                             Image{
                                 Layout.alignment: Qt.AlignCenter
                                 source: IconUtil.getSystemIcon(ServiceWeather.getWeatherIcon(modelData.weatherCode).svg)
-                                width: 20
+                                width:   20
                                 height: 20
                                 sourceSize: Qt.size(width, height)
                             }
@@ -379,33 +360,29 @@ Item{
                             CustomText{
                                 Layout.alignment: Qt.AlignCenter
                                 content: modelData.chanceofrain + "%"
-                                size: 14
+                                size:  14
                                 color: Colors.primary
                             }
-                            Item{
-                                Layout.fillHeight: true
-                            }
+                            Item{ Layout.fillHeight: true }
                             CustomText{
                                 Layout.alignment: Qt.AlignCenter
                                 content: modelData.time
                                 size: 14
                                 color: Colors.outline
                             }
-
                         }
                     }
                 }
-
             }
         }
 
-
+        // ── Precipitation + Wind ─────────────────────────────────────────
         RowLayout{
-            Layout.fillWidth: true 
+            Layout.fillWidth: true
             spacing: 10
 
             Rectangle{
-                Layout.preferredHeight: 160
+                Layout.fillHeight: true
                 Layout.fillWidth: true
                 radius: 20
                 color: Colors.surfaceContainer
@@ -413,33 +390,20 @@ Item{
                 ColumnLayout{
                     anchors.fill: parent
                     anchors.margins: 10
-                    spacing: 10
+                    spacing: root.compact ? 6 : 10
 
                     RowLayout{
-
-                        MaterialIconSymbol{
-                            content: "rainy_heavy"
-                            iconSize: 20
-                        }
-
-                        CustomText{
-                            content: "Precipitation"
-                            size: 16
-                        }
+                        MaterialIconSymbol{ content: "rainy_heavy"; iconSize: root.compact ? 16 : 20 }
+                        CustomText{ content: "Precipitation"; size: root.compact ? 14 : 16 }
                     }
                     RowLayout{
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        CustomText{
-                            content: ServiceWeather.precipitation
-                            size: 28
-                            color: Colors.primary
-                        }
+                        CustomText{ content: ServiceWeather.precipitation; size: root.compact ? 24 : 28; color: Colors.primary }
                         CustomText{
                             Layout.alignment: Qt.AlignBottom
-                            Layout.bottomMargin: 5
-                            content: "in"
-                            size: 16
+                            Layout.bottomMargin: root.compact ? 3 : 5
+                            content: "in"; size: root.compact ? 13 : 16
                         }
                     }
 
@@ -448,86 +412,69 @@ Item{
                         CustomText{
                             Layout.preferredWidth: 80
                             content: "Total rain for the day"
-                            size: 14
+                            size: root.compact ? 12 : 14
                             elide: Text.ElideNone
                             wrapMode: Text.WordWrap
-
                         }
-                        Item{
-                            Layout.fillWidth: true
-                        }
-
-                        // MaterialIconSymbol{
-                        //     content: "rainy"
-                        //     iconSize: 40
-                        // }
+                        Item{ Layout.fillWidth: true }
                         Image{
-                            width: 40
-                            height: 40
+                            width:  root.compact ? 34 : 40
+                            height: root.compact ? 34 : 40
                             sourceSize: Qt.size(width, height)
                             source: IconUtil.getSystemIcon("heavy_rain")
                         }
                     }
-
                 }
             }
 
             Rectangle{
-                Layout.preferredHeight: 160
-                Layout.preferredWidth: 160
+                Layout.fillHeight: true
+                Layout.fillWidth: true
                 radius: width / 2
                 color: Colors.surfaceContainer
-
 
                 MaterialShapes.ShapeCanvas{
                     rotation: ServiceWeather.windDegree
                     anchors.centerIn: parent
-                    implicitHeight: 150
-                    implicitWidth: 135
+                    implicitHeight: root.compact ? 145 : 150
+                    implicitWidth:  root.compact ? 117 : 135
                     roundedPolygon: MaterialShapeFn.getArrow()
                     color: Qt.alpha(Colors.primary, 0.5)
                 }
 
                 ColumnLayout{
                     anchors.centerIn: parent
-                    spacing: 20
+                    spacing: root.compact ? 14 : 20
 
                     RowLayout{
                         Layout.alignment: Qt.AlignCenter
-
-                        MaterialIconSymbol{
-                            content: "air"
-                            iconSize: 20
-                        }
-
-                        CustomText{
-                            content: "Wind"
-                            size: 16
-                        }
+                        MaterialIconSymbol{ content: "air"; iconSize: root.compact ? 16 : 20 }
+                        CustomText{ content: "Wind"; size: root.compact ? 14 : 16 }
                     }
 
                     CustomText{
                         Layout.alignment: Qt.AlignCenter
                         content: ServiceWeather.windSpeed
-                        size: 20
+                        size: root.compact ? 18 : 20
                         color: Colors.primaryText
                     }
 
                     CustomText{
                         Layout.alignment: Qt.AlignCenter
                         content: "From " + ServiceWeather.windDirection
-                        size: 14
+                        size: root.compact ? 12 : 14
                     }
                 }
             }
         }
 
+        // ── Sunrise/Sunset + Visibility ──────────────────────────────────
         RowLayout{
-            Layout.fillWidth: true 
+            Layout.fillWidth: true
             spacing: 10
 
             Rectangle{
-                Layout.preferredHeight: 160
+                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 radius: 20
                 color: Colors.surfaceContainer
@@ -535,29 +482,22 @@ Item{
                 ColumnLayout{
                     anchors.fill: parent
                     anchors.margins: 10
-                    spacing: 10
+                    spacing: root.compact ? 6 : 10
 
                     RowLayout{
                         Layout.alignment: Qt.AlignCenter
-                        spacing: 20
+                        spacing: root.compact ? 14 : 20
+
                         Rectangle{
-                            Layout.preferredWidth: 50
-                            Layout.preferredHeight: 50
+                            Layout.preferredWidth:  root.compact ? 40 : 50
+                            Layout.preferredHeight: root.compact ? 40 : 50
                             radius: width / 2
                             color: "#FFE97D"
                         }
-
                         ColumnLayout{
                             spacing: 0
-                            CustomText{
-                                content: "Sunrise"
-                                size: 16
-                            }
-                            CustomText{
-                                content: ServiceWeather.astronomy.sunrise
-                                size: 14
-                                color: Colors.outline
-                            }
+                            CustomText{ content: "Sunrise"; size: root.compact ? 14 : 16 }
+                            CustomText{ content: ServiceWeather.astronomy.sunrise; size: root.compact ? 12 : 14; color: Colors.outline }
                         }
                     }
 
@@ -570,37 +510,26 @@ Item{
 
                     RowLayout{
                         Layout.alignment: Qt.AlignCenter
-                        spacing: 20
-
+                        spacing: root.compact ? 14 : 20
 
                         ColumnLayout{
                             spacing: 0
-                            CustomText{
-                                content: "Sunset"
-                                size: 16
-                            }
-                            CustomText{
-                                content: ServiceWeather.astronomy.sunset
-                                size: 14
-                                color: Colors.outline
-                            }
+                            CustomText{ content: "Sunset"; size: root.compact ? 14 : 16 }
+                            CustomText{ content: ServiceWeather.astronomy.sunset; size: root.compact ? 12 : 14; color: Colors.outline }
                         }
-
                         Rectangle{
-                            Layout.preferredWidth: 50
-                            Layout.preferredHeight: 50
+                            Layout.preferredWidth:  root.compact ? 40 : 50
+                            Layout.preferredHeight: root.compact ? 40 : 50
                             radius: width / 2
                             color: "#D51C39"
                         }
                     }
-
-
                 }
             }
 
             Rectangle{
-                Layout.preferredWidth: 160
-                Layout.preferredHeight: 160
+                Layout.fillHeight: true
+                Layout.fillWidth: true
                 radius: width / 2
                 color: Colors.surfaceContainer
 
@@ -613,17 +542,12 @@ Item{
 
                 ColumnLayout{
                     anchors.centerIn: parent
-                    spacing: 10
+                    spacing: root.compact ? 6 : 10
+
                     RowLayout{
                         spacing: 2
-                        MaterialIconSymbol{
-                            content: "visibility"
-                            iconSize: 20
-                        }
-                        CustomText{
-                            content: "Visibility"
-                            size: 14
-                        }
+                        MaterialIconSymbol{ content: "visibility"; iconSize: root.compact ? 16 : 20 }
+                        CustomText{ content: "Visibility"; size: root.compact ? 13 : 14 }
                     }
 
                     RowLayout{
@@ -631,36 +555,31 @@ Item{
                         spacing: 5
                         CustomText{
                             content: ServiceWeather.visibility
-                            size: 40
+                            size: root.compact ? 36 : 40
                             color: Colors.primaryText
                         }
                         CustomText{
                             Layout.alignment: Qt.AlignBottom
-                            Layout.bottomMargin: 10
-                            content: "km"
-                            size: 16
+                            Layout.bottomMargin: root.compact ? 7 : 10
+                            content: "km"; size: root.compact ? 13 : 16
                         }
                     }
 
-                    Item{
-                        Layout.fillHeight: true
-                    }
-
+                    Item{ Layout.fillHeight: true }
                 }
             }
-
         }
 
+        // ── Humidity + Pressure ──────────────────────────────────────────
         RowLayout{
-            Layout.fillWidth: true 
+            Layout.fillWidth: true
             spacing: 10
 
             ClippingWrapperRectangleInternal{
-                Layout.preferredHeight: 160
+                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 radius: 20
                 color: Colors.surfaceContainer
-
 
                 Canvas {
                     id: wave
@@ -675,77 +594,52 @@ Item{
                     onPaint: {
                         var ctx = getContext("2d")
                         ctx.clearRect(0, 0, width, height)
-
                         var waveY
-
-                        // --- draw the filled wavy rectangle ---
                         ctx.beginPath()
-
-                        // 1. trace the wave across the top
                         for (var x = 0; x <= width; x += 1) {
                             waveY = amplitude + amplitude * Math.sin(frequency * 2 * Math.PI * x / width)
-                            if (x === 0)
-                            ctx.moveTo(x, waveY)
-                            else
-                            ctx.lineTo(x, waveY)
+                            if (x === 0) ctx.moveTo(x, waveY)
+                            else         ctx.lineTo(x, waveY)
                         }
-
-                        // 2. go down to bottom-right
                         ctx.lineTo(width, height)
-
-                        // 3. go to bottom-left
                         ctx.lineTo(0, height)
-
-                        // 4. close back to wave start
                         ctx.closePath()
-
                         ctx.fillStyle = wave.color
                         ctx.fill()
-
-
                     }
                 }
 
                 ColumnLayout{
                     anchors.fill: parent
                     anchors.margins: 10
-                    spacing: 30
+                    spacing: root.compact ? 20 : 30
 
                     RowLayout{
-                        MaterialIconSymbol{
-                            content: "humidity_low"
-                            iconSize: 20
-                        }
-
-                        CustomText{
-                            content: "Humidity"
-                            size: 16
-                        }
+                        MaterialIconSymbol{ content: "humidity_low"; iconSize: root.compact ? 16 : 20 }
+                        CustomText{ content: "Humidity"; size: root.compact ? 14 : 16 }
                     }
 
                     CustomText{
                         content: ServiceWeather.humidity + "%"
-                        size: 40
+                        size: root.compact ? 36 : 40
                         color: Colors.primary
                         weight: 700
                     }
 
-                    Item{
-                        Layout.fillHeight: true
-                    }
+                    Item{ Layout.fillHeight: true }
                 }
             }
 
             Rectangle{
-                Layout.preferredHeight: 160
-                Layout.preferredWidth: 160
+                  Layout.fillHeight: true
+                Layout.fillWidth: true
                 radius: width / 2
                 color: Colors.surfaceContainer
 
                 CustomGaugeProgress {
                     anchors.centerIn: parent
-                    width: 150
-                    height: 150
+                    width:  root.compact ? 145 : 150
+                    height: root.compact ? 145 : 150
                     progress: ServiceWeather.pressure
                     thickness: 8
                     gap: 0.1
@@ -754,40 +648,30 @@ Item{
 
                     ColumnLayout{
                         anchors.centerIn: parent
-                        spacing: 4
+                        spacing: root.compact ? 3 : 4
 
                         RowLayout{
                             spacing: 2
-                            MaterialIconSymbol{
-                                content: "compress"
-                                iconSize: 20
-                            }
-                            CustomText{
-                                content: "Pressure"
-                                size: 14
-                            }
+                            MaterialIconSymbol{ content: "compress"; iconSize: root.compact ? 16 : 20 }
+                            CustomText{ content: "Pressure"; size: root.compact ? 12 : 14 }
                         }
 
                         CustomText{
                             Layout.alignment: Qt.AlignCenter
                             content: ServiceWeather.pressureInches
-                            size: 30
+                            size: root.compact ? 26 : 30
                             color: Colors.primary
                             weight: 700
                         }
 
                         CustomText{
                             Layout.alignment: Qt.AlignCenter
-                            content: "in"
-                            size: 18
+                            content: "in"; size: root.compact ? 15 : 18
                         }
                     }
                 }
             }
         }
 
-
     }
 }
-
-

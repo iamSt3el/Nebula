@@ -5,7 +5,6 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import QtQuick
-import QtMultimedia
 import qs.modules.settings
 import WfRecorder
 
@@ -48,18 +47,10 @@ Singleton{
     }
 
     // ── Screenshot sound ──────────────────────────────────────────────────────
-    SoundEffect {
-        id: shutterSound
-        source: {
-            var p = SettingsConfig.screenshot.soundPath || ""
-            if (p === "") return ""
-            return "file://" + p.replace("~", Quickshell.env("HOME"))
-        }
-    }
-
     function playShutterSound() {
-        if (SettingsConfig.screenshot.soundEnabled && shutterSound.source.toString() !== "")
-            shutterSound.play()
+        const p = SettingsConfig.screenshot.soundPath || ""
+        if (SettingsConfig.screenshot.soundEnabled && p !== "")
+            Quickshell.execDetached(["paplay", p.replace("~", Quickshell.env("HOME"))])
     }
 
     // Captures the path grimblast prints to stdout, then sends a notification with actions

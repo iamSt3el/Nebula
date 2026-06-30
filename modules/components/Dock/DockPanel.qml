@@ -123,8 +123,7 @@ Scope {
             property bool collapsed: false
 
             onActiveChanged: {
-                if (active)
-                collapsed = false
+                if (active) collapsed = false
             }
 
             HoverHandler {
@@ -135,7 +134,7 @@ Scope {
                 id: collapseTimer
                 interval: 1000
                 running: SettingsConfig.general.dockAutoHide && !container.active
-                onTriggered: container.collapsed = true
+                onTriggered: child.startCollapse()
             }
 
             Item {
@@ -149,11 +148,38 @@ Scope {
                 anchors.bottom: parent.bottom
                 clip: true
 
+                // Two-step collapse: content animates out first, then height collapses
+                property bool collapsing: false
+
+                function startCollapse() {
+                    collapsing = true
+                    collapseHeightTimer.restart()
+                }
+
+                // Cancel pending collapse when dock becomes active again
+                Connections {
+                    target: container
+                    function onActiveChanged() {
+                        if (container.active) {
+                            collapseHeightTimer.stop()
+                            child.collapsing = false
+                        }
+                    }
+                }
+
+                // Fires after content close animation completes (260ms + small buffer)
+                Timer {
+                    id: collapseHeightTimer
+                    interval: 300
+                    onTriggered: container.collapsed = true
+                }
+
                 property bool wantDock: SettingsConfig.general.dock
                     && !GlobalStates.clipboardOpen
                     && !GlobalStates.wallpaperOpen
                     && !GlobalStates.typingGameOpen
                     && !container.collapsed
+                    && !child.collapsing
                     && !GlobalStates.osdOpen
                     && !GlobalStates.shutdownWindow
 
@@ -164,7 +190,7 @@ Scope {
 
                 Timer {
                     id: dockCloseTimer
-                    interval: 280
+                    interval: 320
                 }
 
                 states: [
@@ -203,13 +229,35 @@ Scope {
                     }
                 ]
 
-                transitions: Transition {
-                    NumberAnimation {
-                        properties: "implicitWidth,implicitHeight"
-                        duration:   Appearance.duration.large
-                        easing.type: Easing.OutQuad
+                transitions: [
+                    // Height collapses after content is already hidden — snappy InCubic
+                    Transition {
+                        to: "collapsed"
+                        NumberAnimation {
+                            properties: "implicitWidth,implicitHeight"
+                            duration: 220
+                            easing.type: Easing.InCubic
+                        }
+                    },
+                    // Dock reappears — slight overshoot like the dock intro animation
+                    Transition {
+                        from: "collapsed"; to: ""
+                        NumberAnimation {
+                            properties: "implicitWidth,implicitHeight"
+                            duration: Appearance.duration.large
+                            easing.type: Easing.OutBack
+                            easing.overshoot: 0.2
+                        }
+                    },
+                    // All other state changes (clipboard, wallpaper, osd, etc.)
+                    Transition {
+                        NumberAnimation {
+                            properties: "implicitWidth,implicitHeight"
+                            duration: Appearance.duration.large
+                            easing.type: Easing.OutQuad
+                        }
                     }
-                }
+                ]
 
                 // Loader {
                 //     id: typingGameLoader

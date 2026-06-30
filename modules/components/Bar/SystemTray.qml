@@ -11,11 +11,13 @@ RowLayout {
 
     property bool menuClicked: false
     property QsMenuHandle menuData
+    property real menuIconCenterX: 0
 
     Loader {
         active: root.menuClicked
         sourceComponent: SystemTrayMenu {
             menuData: root.menuData
+            iconCenterX: root.menuIconCenterX
             onClose: root.menuClicked = false
         }
     }
@@ -48,6 +50,7 @@ RowLayout {
 
                 onClicked: event => {
                     if (event.button === Qt.RightButton && trayItem.modelData.hasMenu) {
+                        root.menuIconCenterX = trayItem.mapToItem(null, trayItem.width / 2, 0).x
                         root.menuClicked = true
                         root.menuData    = trayItem.modelData.menu
                     } else if (event.button === Qt.LeftButton) {

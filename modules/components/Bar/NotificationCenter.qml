@@ -20,10 +20,11 @@ Item {
     }
 
     opacity: 0
-    scale: 0.8
+    property real _slideX: 360
+    transform: Translate { x: root._slideX }
 
-    NumberAnimation on opacity { from: 0; to: 1; duration: 400; running: true }
-    NumberAnimation on scale   { from: 0.8; to: 1; duration: 400; running: true }
+    NumberAnimation on opacity { from: 0; to: 1; duration: 300; easing.type: Easing.OutQuad;   running: true }
+    NumberAnimation on _slideX { from: 360; to: 0; duration: 300; easing.type: Easing.OutCubic; running: true }
 
     ColumnLayout {
         anchors.fill: parent

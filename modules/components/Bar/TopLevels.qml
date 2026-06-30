@@ -47,7 +47,7 @@ Item{
             IconImage{
                 id: icon
                 anchors.centerIn: parent
-                implicitSize: 18
+                implicitSize: 16
                 //source: modelData && modelData.lastIpcObject ? IconUtil.getIconPath(modelData.lastIpcObject.class) : ""
                 source: Quickshell.iconPath(DesktopEntries.heuristicLookup(modelData.wayland?.appId)?.icon, "image-missing")
 

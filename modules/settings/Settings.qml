@@ -103,10 +103,6 @@ Singleton{
             icon: "neurology"
         },
         {
-            name: "Manga",
-            icon: "menu_book"
-        },
-        {
             name: "Weather",
             icon: "partly_cloudy_day"
         },
@@ -117,8 +113,15 @@ Singleton{
         {
             name: "About",
             icon: 'info'
+        },
+        {
+            name: "Display",
+            icon: "monitor"
+        },
+        {
+            name: "Appearance",
+            icon: "style"
         }
-
     ]
 
     property var displayModes:[

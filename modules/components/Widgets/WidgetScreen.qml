@@ -115,4 +115,5 @@ PanelWindow{
 
     Component { id: battDefault; BatteryWidget        {} }
     Component { id: battMinimal; BatteryWidgetMinimal {} }
+
 }

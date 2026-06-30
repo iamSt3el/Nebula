@@ -37,7 +37,7 @@ Singleton {
 cava -p /dev/stdin <<'CAVAEOF'
 [general]
 bars = ${SettingsConfig.general.musicVisBars ?? 60}
-framerate = 60
+framerate = 30
 autosens = 1
 
 [input]

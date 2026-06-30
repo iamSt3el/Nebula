@@ -27,10 +27,10 @@ Item {
 
     // Section → page-index mapping
     readonly property var navSections: [
-        { label: "System",  indices: [0, 1, 2, 3, 4] },
+        { label: "System",  indices: [0, 12, 1, 2, 3, 4, 11] },
         { label: "Connect", indices: [5, 6] },
-        { label: "Apps",    indices: [7, 8, 9, 10] },
-        { label: "Info",    indices: [11] }
+        { label: "Apps",    indices: [7, 8, 9] },
+        { label: "Info",    indices: [10] }
     ]
 
     Rectangle {
@@ -203,10 +203,11 @@ Item {
                     Loader { anchors.fill: parent; active: root.currentPage === 5;  visible: active; sourceComponent: Networking{} }
                     Loader { anchors.fill: parent; active: root.currentPage === 6;  visible: active; sourceComponent: Bluetooth{} }
                     Loader { anchors.fill: parent; active: root.currentPage === 7;  visible: active; sourceComponent: Ai{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 8;  visible: active; sourceComponent: MangaReader{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 9;  visible: active; sourceComponent: WeatherSettings{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 10; visible: active; sourceComponent: MediaSettings{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 11; visible: active; sourceComponent: About{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 8;  visible: active; sourceComponent: WeatherSettings{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 9;  visible: active; sourceComponent: MediaSettings{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 10; visible: active; sourceComponent: About{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 11; visible: active; sourceComponent: Display{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 12; visible: active; sourceComponent: AppearanceSettings{} }
 
                 }
             }

@@ -216,7 +216,7 @@ Singleton {
 
     // inotify doesn't work on /proc or /sys, so poll manually
     Timer {
-        interval: 2000
+        interval: 4000
         repeat: true
         running: root._refCount > 0
         triggeredOnStart: true

@@ -24,6 +24,29 @@ Singleton {
 
 
 
+    property bool wifiEnabled: Networking.wifiEnabled
+
+    property string currentSSID: connectedNetwork?.name ?? ""
+
+    property string connectionType: {
+        if (!Networking.wifiEnabled) return "disconnected"
+        if (connectedNetwork) return "wifi"
+        return "disconnected"
+    }
+
+    property string icon: {
+        const sig = (connectedNetwork?.signalStrength ?? 0) * 100
+        if (!Networking.wifiEnabled || !connectedNetwork) return "signal_wifi_off"
+        if (sig >= 90) return "signal_wifi_4_bar"
+        if (sig >= 60) return "network_wifi_3_bar"
+        if (sig >= 30) return "network_wifi_2_bar"
+        return "network_wifi_1_bar"
+    }
+
+    function toggleWifi() {
+        Networking.wifiEnabled = !Networking.wifiEnabled
+    }
+
     property string qrImagePath: "/tmp/wifi_qr.png"
     signal qrGenerated(string path)
     signal qrFailed()

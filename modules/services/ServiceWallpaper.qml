@@ -338,8 +338,6 @@ Singleton {
         onExited: (exitCode) => {
             if (exitCode === 0) {
                 console.log("[ServiceWallpaper] Cache directory ready:", root.cacheDir)
-                console.log("[ServiceWallpaper] Setting cache folder to:", "file://" + root.cacheDir)
-                console.log("[ServiceWallpaper] Setting wallpaper folder to:", "file://" + root.wallpaperDir)
                 cacheModel.folder = "file://" + root.cacheDir
                 folderModel.folder = "file://" + root.wallpaperDir
                 root.loadFavorites()

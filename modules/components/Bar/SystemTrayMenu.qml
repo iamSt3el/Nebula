@@ -16,10 +16,11 @@ PopupWindow{
     signal close
     color: "transparent"
     property QsMenuHandle menuData
+    property real iconCenterX: 0
     anchor{
         window: layout
-        rect.x: utility.x
-        rect.y: utility.y + utility.height
+        rect.x: iconCenterX - root.implicitWidth / 2
+        rect.y: sectionsRow.y + utility.y + utility.height + (SettingsConfig.general.barMode === "pill" ? 8 : 4)
     }
 
     HyprlandFocusGrab {

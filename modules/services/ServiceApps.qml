@@ -47,17 +47,24 @@ Singleton{
     property int selectedIndex: 0
 
 
-    readonly property var preppedNames: list.map(a => ({
-        name: Fuzzy.prepare(`${a.name} `),
-        entry: a
-    }))
+    // Computed on first fuzzy search rather than at singleton creation (229 apps × Fuzzy.prepare)
+    property var _preppedNames: null
+
+    function _ensurePrepared() {
+        if (!_preppedNames)
+            _preppedNames = list.map(a => ({ name: Fuzzy.prepare(`${a.name} `), entry: a }))
+        return _preppedNames
+    }
+
+    // Invalidate cache when app list changes
+    onListChanged: _preppedNames = null
 
     function reset(): void{
         filteredApps = [...list]
     }
 
 
-    function fuzzyQuery(search: string): var { 
+    function fuzzyQuery(search: string): var {
         if (root.sloppySearch) {
             const results = list.map(obj => ({
                 entry: obj,
@@ -68,7 +75,7 @@ Singleton{
             .map(item => item.entry)
         }
 
-        return Fuzzy.go(search, preppedNames, {
+        return Fuzzy.go(search, _ensurePrepared(), {
             all: true,
             key: "name"
         }).map(r => {

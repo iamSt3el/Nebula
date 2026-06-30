@@ -3,7 +3,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Notifications
-import QtMultimedia
 import qs.modules.settings
 
 Singleton {
@@ -18,12 +17,10 @@ Singleton {
     Component.onCompleted: muted = SettingsConfig.toggles?.notificationMuted ?? false
     onMutedChanged: SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, { notificationMuted: muted })
 
-    SoundEffect {
-        id: notificationSound
-        source: {
-            const p = SettingsConfig.notifications?.soundPath ?? ""
-            return p !== "" ? ("file://" + p) : "../../notification.wav"
-        }
+    function _playNotificationSound() {
+        const p = SettingsConfig.notifications?.soundPath ?? ""
+        const resolved = p !== "" ? p : Qt.resolvedUrl("../../notification.wav").toString().replace("file://", "")
+        Quickshell.execDetached(["paplay", resolved])
     }
 
     NotificationServer {
@@ -39,7 +36,7 @@ Singleton {
         onNotification: notif => {
             notif.tracked = true
             if (SettingsConfig.notifications?.playSound ?? false)
-                notificationSound.play()
+                root._playNotificationSound()
 
             var item = notifComp.createObject(root, {
                 popup: !root.muted,
@@ -47,6 +44,9 @@ Singleton {
             })
 
             root.allNotifications.push(item)
+            // Keep at most 100 notifications; drop oldest when exceeded
+            if (root.allNotifications.length > 100)
+                root.allNotifications.splice(0, root.allNotifications.length - 100)
             root.allNotifications = root.allNotifications.slice()
 
             // Find existing group for this app

@@ -21,7 +21,7 @@ Singleton{
         property int lineWidth: 4
         property int notificationPanelWidth: 340
         property int notificationPanelHeight: 1080
-        property int weatherPanelWidth: 380
+        property int weatherPanelWidth: 340
         property int weatherPanelHeight: 1080
         property int dashboardPanelWidth: 320
         property int dashboardPanelHeight: 1080

@@ -26,20 +26,11 @@ GridView {
 
     add: Transition {
         enabled: appList.animationsEnabled
-        NumberAnimation { properties: "opacity,scale"; from: 0; to: 1; duration: 300; easing.type: Easing.OutCubic }
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 120 }
     }
     remove: Transition {
         enabled: appList.animationsEnabled
-        NumberAnimation { properties: "opacity,scale"; from: 1; to: 0; duration: 250; easing.type: Easing.InCubic }
-    }
-    move: Transition {
-        NumberAnimation { properties: "x,y"; duration: 300; easing.type: Easing.OutCubic }
-    }
-    addDisplaced: Transition {
-        NumberAnimation { properties: "x,y"; duration: 300; easing.type: Easing.OutCubic }
-    }
-    displaced: Transition {
-        NumberAnimation { properties: "x,y"; duration: 300; easing.type: Easing.OutCubic }
+        NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 100 }
     }
 
     delegate: Item {

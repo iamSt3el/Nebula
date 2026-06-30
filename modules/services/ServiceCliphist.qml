@@ -20,12 +20,17 @@ Singleton {
     property var filteredEntries: [...entries]
     property string currentSearchText: ""
 
-    readonly property var preppedEntries: entries.map(a => ({
-        content: Fuzzy.prepare(`${getEntryText(a)}`),
-        entry: a
-    }))
+    // Computed lazily on first search, invalidated when entries change (1500+ entries × Fuzzy.prepare is expensive)
+    property var _preppedEntries: null
+    onEntriesChanged: _preppedEntries = null
 
-    function fuzzyQuery(search: string): var { 
+    function _ensurePrepared() {
+        if (!_preppedEntries)
+            _preppedEntries = entries.map(a => ({ content: Fuzzy.prepare(`${getEntryText(a)}`), entry: a }))
+        return _preppedEntries
+    }
+
+    function fuzzyQuery(search: string): var {
         if (root.sloppySearch) {
             const results = entries.map(obj => ({
                 entry: obj,
@@ -36,7 +41,7 @@ Singleton {
             .map(item => item.entry)
         }
 
-        return Fuzzy.go(search, preppedEntries, {
+        return Fuzzy.go(search, _ensurePrepared(), {
             all: true,
             key: "content"
         }).map(r => {

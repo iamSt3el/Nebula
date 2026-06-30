@@ -1,5 +1,6 @@
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Io
 import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Shapes
@@ -23,45 +24,75 @@ PanelWindow{
     id: layout
     color: "transparent"
     anchors{
-        top: true 
+        top: true
         left: true
         right: true
         bottom: true
     }
 
-    WlrLayershell.keyboardFocus: (workspaces.active || utility.isTodoClicked) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    // true = full bar; false = secondary monitor minimal bar
+    property bool isPrimary: true
 
-
+    WlrLayershell.keyboardFocus: isPrimary && (workspaces.active || utility.isTodoClicked)
+                                 ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     mask: Region{
         item: maskRect;
         intersection: Intersection.Xor;
+
+        // Primary bar clickable regions (zeroed out on secondary monitors)
         Region{
-            x: workspaces.x;
-            y: workspaces.y;
-            width: workspaces.width;
-            height: workspaces.height;
+            x: sectionsRow.x + workspaces.x;
+            y: sectionsRow.y + workspaces.y;
+            width:  isPrimary ? workspaces.width  : 0
+            height: isPrimary ? workspaces.height : 0
             intersection: Intersection.Subtract
-        } 
-
-
+        }
         Region{
-            x: utility.x
-            y: utility.y
-            width: utility.container.width
-            height: utility.container.height
+            x: sectionsRow.x + utility.x
+            y: sectionsRow.y + utility.y
+            width:  isPrimary ? utility.container.width  : 0
+            height: isPrimary ? utility.container.height : 0
+            intersection: Intersection.Subtract
+        }
+        Region{
+            x: sectionsRow.x + clock.x
+            y: sectionsRow.y + clock.y
+            width:  isPrimary ? clock.width  : 0
+            height: isPrimary ? clock.height : 0
             intersection: Intersection.Subtract
         }
 
-
+        // Secondary bar strip (full-width top strip on secondary monitors)
         Region{
-            x: clock.x
-            y: clock.y
-            width: clock.width
-            height: clock.height
+            x: 0; y: 0
+            width:  isPrimary ? 0 : layout.width
+            height: isPrimary ? 0 : Appearance.size.barHeight
             intersection: Intersection.Subtract
-        } 
+        }
 
+        // Pill floating panels (dashboard / notification / weather)
+        Region {
+            x:      pillDashPanel.x
+            y:      pillDashPanel.y
+            width:  pillDashPanel.visible ? pillDashPanel.width  : 0
+            height: pillDashPanel.visible ? pillDashPanel.height : 0
+            intersection: Intersection.Subtract
+        }
+        Region {
+            x:      pillNotifPanel.x
+            y:      pillNotifPanel.y
+            width:  pillNotifPanel.visible ? pillNotifPanel.width  : 0
+            height: pillNotifPanel.visible ? pillNotifPanel.height : 0
+            intersection: Intersection.Subtract
+        }
+        Region {
+            x:      pillWeatherPanel.x
+            y:      pillWeatherPanel.y
+            width:  pillWeatherPanel.visible ? pillWeatherPanel.width  : 0
+            height: pillWeatherPanel.visible ? pillWeatherPanel.height : 0
+            intersection: Intersection.Subtract
+        }
     }
     Rectangle{
         id: maskRect
@@ -73,9 +104,15 @@ PanelWindow{
 
 
 
+    // ── Secondary bar (shown on non-primary monitors) ──────────────────────
+    SecondaryBar {
+        visible: !isPrimary
+    }
+
     Item{
         id: root
         anchors.fill: parent
+        visible: isPrimary
         property real disX: 18
         property real disY: 18
         property real radX: 18
@@ -85,7 +122,11 @@ PanelWindow{
         property real clockWidth: clock.width
         property real workspaceWidth: 100
         property real utilityWidth: 100
-        property bool flatBarMode: SettingsConfig.general.flatBarMode ?? true
+        property string barMode: SettingsConfig.general.barMode
+                                  ?? (SettingsConfig.general.flatBarMode === false ? "stepped" : "flat")
+        property real pillMargin:      SettingsConfig.general.pillMargin      ?? 6
+        property real pillLeftMargin:  SettingsConfig.general.pillLeftMargin  ?? 6
+        property real pillRightMargin: SettingsConfig.general.pillRightMargin ?? 6
 
         // ── Flat bar path ───────────────────────────────────────────────────────
         // Truly flat bar (no stepped bridges). Sections expand downward when open:
@@ -226,6 +267,87 @@ PanelWindow{
             return p
         }
 
+        // ── Pill bar path ────────────────────────────────────────────────────
+        // Single floating pill — same structure as buildFlatBarPath but:
+        //   • all y coords offset by margin (so the bar floats)
+        //   • left/right ends use full pill caps (capR = wH/2) instead of rX corners
+        // Clock/utility expansion works identically to flat mode.
+        // xOff = sectionsRow.x — all section x coords are relative to sectionsRow,
+        // but the Shape is drawn in root space, so every x needs this offset.
+        function buildPillBarPath(dX, dY, rX, rY, margin, xOff,
+                                  wH, wW, showArc,
+                                  cX, cW, cH,
+                                  uX, uW, uH, isDashboard) {
+            function A(sw, ex, ey) { return `A ${rX} ${rY} 0 0 ${sw} ${ex} ${ey} ` }
+            function L(x,  y)      { return `L ${x} ${y} ` }
+            const CW = 1, CCW = 0
+            const capR = wH / 2
+            // All section x values are in sectionsRow-space; shift to root space
+            cX += xOff;  uX += xOff
+            const right = uX + uW
+
+            // Start on the bottom edge just past the left pill cap
+            let p = `M ${xOff + capR} ${margin + wH} `
+
+            if (showArc) {
+                p += L(xOff + wW + dX, margin + wH)
+                p += A(CW,  xOff + wW,  margin + wH - dY)
+                p += L(uX - dX,         margin + wH - dY)
+                p += A(CCW, uX,         margin + wH)
+                if (uH > wH + 2 * dY) {
+                    p += L(uX, margin + uH - dY)
+                    if (isDashboard) {
+                        p += A(CW,  uX - dX, margin + uH)
+                        p += L(right, margin + uH)
+                    } else {
+                        p += A(CCW, uX + dX, margin + uH)
+                        p += L(right - dX, margin + uH)
+                    }
+                    p += A(CW, right, margin + uH + dY)
+                    p += L(right, margin + capR)
+                } else {
+                    p += L(right - capR, margin + wH)
+                }
+            } else {
+                if (cH > wH + 2 * dY) {
+                    p += L(cX - dX,            margin + wH)
+                    p += A(CW,  cX,            margin + wH + dY)
+                    p += L(cX,                 margin + cH - dY)
+                    p += A(CCW, cX + dX,       margin + cH)
+                    p += L(cX + cW - dX,       margin + cH)
+                    p += A(CCW, cX + cW,       margin + cH - dY)
+                    p += L(cX + cW,            margin + wH + dY)
+                    p += A(CW,  cX + cW + dX,  margin + wH)
+                }
+
+                if (uH > wH + 2 * dY) {
+                    p += L(uX - dX, margin + wH)
+                    p += A(CW,  uX, margin + wH + dY)
+                    p += L(uX,  margin + uH - dY)
+                    if (isDashboard) {
+                        p += A(CW,  uX - dX, margin + uH)
+                        p += L(right, margin + uH)
+                    } else {
+                        p += A(CCW, uX + dX, margin + uH)
+                        p += L(right - dX, margin + uH)
+                    }
+                    p += A(CW, right, margin + uH + dY)
+                    p += L(right, margin + capR)
+                } else {
+                    p += L(right - capR, margin + wH)
+                }
+            }
+
+            // Right pill cap — CCW sweep (bottom→rightmost→top, bulges outward)
+            p += `A ${capR} ${capR} 0 0 0 ${right - capR} ${margin} `
+            // Top edge right-to-left
+            p += L(xOff + capR, margin)
+            // Left pill cap — CCW sweep (top→leftmost→bottom, bulges outward)
+            p += `A ${capR} ${capR} 0 0 0 ${xOff + capR} ${margin + wH} `
+            p += `Z `
+            return p
+        }
+
         Shape{
             preferredRendererType: Shape.CurveRenderer
             ShapePath{
@@ -233,33 +355,165 @@ PanelWindow{
                 strokeColor: "transparent"
                 fillColor: Colors.surface
                 PathSvg {
-                    path: root.flatBarMode
-                        ? root.buildFlatBarPath(
-                            root.disX, root.disY, root.radX, root.radY,
+                    path: root.barMode === "pill"
+                        ? root.buildPillBarPath(
+                            root.disX, root.disY, root.radX, root.radY, root.pillMargin, sectionsRow.x,
                             workspaces.height, workspaces.width, workspaces.showArc,
                             clock.x, clock.width, clock.height,
                             utility.x, utility.width, utility.height, utility.isDashboard)
-                        : root.buildBarPath(
-                            root.disX, root.disY, root.radX, root.radY, root.lineDis,
-                            workspaces.height, workspaces.width, workspaces.showArc,
-                            clock.x, clock.width, clock.height,
-                            utility.x, utility.width, utility.height, utility.isDashboard)
+                        : root.barMode === "stepped"
+                            ? root.buildBarPath(
+                                root.disX, root.disY, root.radX, root.radY, root.lineDis,
+                                workspaces.height, workspaces.width, workspaces.showArc,
+                                clock.x, clock.width, clock.height,
+                                utility.x, utility.width, utility.height, utility.isDashboard)
+                            : root.buildFlatBarPath(
+                                root.disX, root.disY, root.radX, root.radY,
+                                workspaces.height, workspaces.width, workspaces.showArc,
+                                clock.x, clock.width, clock.height,
+                                utility.x, utility.width, utility.height, utility.isDashboard)
                 }
             }
         }
 
 
 
-        Workspaces{
-            id: workspaces
+        Item {
+            id: sectionsRow
+            anchors.left:   parent.left
+            anchors.right:  parent.right
+            anchors.top:    parent.top
+            anchors.bottom: parent.bottom
+            anchors.topMargin:   root.barMode === "pill" ? root.pillMargin      : 0
+            anchors.leftMargin:  root.barMode === "pill" ? root.pillLeftMargin  : 0
+            anchors.rightMargin: root.barMode === "pill" ? root.pillRightMargin : 0
+
+            Behavior on anchors.topMargin   { NumberAnimation { duration: Appearance.duration.normal; easing.type: Easing.OutQuad } }
+            Behavior on anchors.leftMargin  { NumberAnimation { duration: Appearance.duration.normal; easing.type: Easing.OutQuad } }
+            Behavior on anchors.rightMargin { NumberAnimation { duration: Appearance.duration.normal; easing.type: Easing.OutQuad } }
+
+            Workspaces{
+                id: workspaces
+            }
+
+            Clock{
+                id: clock
+            }
+
+            Utility{
+                id: utility
+            }
         }
 
-        Clock{
-            id: clock
+        // ── Pill dashboard panel ──────────────────────────────────────────
+        // Floats below the pill bar as an independent rectangle; the pill
+        // SVG shape stays compact because utility never enters dashboard state.
+        Rectangle {
+            id: pillDashPanel
+            visible: isPrimary && root.barMode === "pill" && utility.isClicked
+
+            x:      parent.width - width - root.pillRightMargin
+            y:      root.pillMargin + Appearance.size.barHeight + 8
+            width:  300
+            height: parent.height - y - root.pillMargin - 8
+            radius: 20
+            color:  Colors.surface
+            clip:   true
+
+            opacity: 0
+            property real _slideX: 340
+            transform: Translate { x: pillDashPanel._slideX }
+
+            NumberAnimation on opacity { from: 0; to: 1; duration: 300; easing.type: Easing.OutQuad;  running: pillDashPanel.visible }
+            NumberAnimation on _slideX { from: 340; to: 0; duration: 300; easing.type: Easing.OutCubic; running: pillDashPanel.visible }
+
+            Loader {
+                id: pillDashLoader
+                anchors.fill: parent
+                active:  pillDashPanel.visible
+                visible: false
+                Timer {
+                    interval: 250
+                    running:  pillDashPanel.visible
+                    onTriggered: pillDashLoader.visible = true
+                }
+                sourceComponent: Dashboard {
+                    onToggleDashboard: utility.isClicked = false
+                }
+            }
         }
 
-        Utility{
-            id: utility
+        // ── Pill notification panel ───────────────────────────────────────
+        Rectangle {
+            id: pillNotifPanel
+            visible: isPrimary && root.barMode === "pill" && utility.isNotificationClicked
+
+            x:      parent.width - width - root.pillRightMargin
+            y:      root.pillMargin + Appearance.size.barHeight + 8
+            width:  Appearance.size.notificationPanelWidth
+            height: parent.height - y - root.pillMargin - 8
+            radius: 20
+            color:  Colors.surface
+            clip:   true
+
+            opacity: 0
+            property real _slideX: Appearance.size.notificationPanelWidth + 20
+            transform: Translate { x: pillNotifPanel._slideX }
+
+            NumberAnimation on opacity { from: 0; to: 1; duration: 300; easing.type: Easing.OutQuad;   running: pillNotifPanel.visible }
+            NumberAnimation on _slideX { from: Appearance.size.notificationPanelWidth + 20; to: 0; duration: 300; easing.type: Easing.OutCubic; running: pillNotifPanel.visible }
+
+            Loader {
+                id: pillNotifLoader
+                anchors.fill: parent
+                active:  pillNotifPanel.visible
+                visible: false
+                Timer {
+                    interval: 250
+                    running:  pillNotifPanel.visible
+                    onTriggered: pillNotifLoader.visible = true
+                }
+                sourceComponent: NotificationCenter {
+                    onNotificationCenterClosed: utility.isNotificationClicked = false
+                }
+            }
+        }
+
+        // ── Pill weather panel ────────────────────────────────────────────
+        Rectangle {
+            id: pillWeatherPanel
+            visible: isPrimary && root.barMode === "pill" && utility.isWeatherPanelClicked
+
+            x:      parent.width - width - root.pillRightMargin
+            y:      root.pillMargin + Appearance.size.barHeight + 8
+            width:  Appearance.size.weatherPanelWidth
+            height: parent.height - y - root.pillMargin - 8
+            radius: 20
+            color:  Colors.surface
+            clip:   true
+
+            opacity: 0
+            property real _slideX: Appearance.size.weatherPanelWidth + 20
+            transform: Translate { x: pillWeatherPanel._slideX }
+
+            NumberAnimation on opacity { from: 0; to: 1; duration: 300; easing.type: Easing.OutQuad;   running: pillWeatherPanel.visible }
+            NumberAnimation on _slideX { from: Appearance.size.weatherPanelWidth + 20; to: 0; duration: 300; easing.type: Easing.OutCubic; running: pillWeatherPanel.visible }
+
+            Loader {
+                id: pillWeatherLoader
+                anchors.fill: parent
+                active:  pillWeatherPanel.visible
+                visible: false
+                Timer {
+                    interval: 250
+                    running:  pillWeatherPanel.visible
+                    onTriggered: pillWeatherLoader.visible = true
+                }
+                sourceComponent: WeatherPanel {
+                    compact: true
+                    onClosed: utility.isWeatherPanelClicked = false
+                }
+            }
         }
     }
 
@@ -278,6 +532,9 @@ PanelWindow{
 
 
     NotificationPanel{
-   
+        visible: isPrimary
     }
+
+    // Reference ServiceGaps here so the singleton initializes on startup
+    readonly property int _topGap: ServiceGaps.topFinal
 }

@@ -6,6 +6,7 @@ import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
 import Quickshell.Hyprland
+import Quickshell.Wayland
 import Quickshell.Widgets
 
 
@@ -206,15 +207,46 @@ Item{
                 }
             }
         }
-        MaterialIconSymbol{
+        Rectangle {
             Layout.leftMargin: 10
-            content: "ad"
-            iconSize: 20
-        } 
-        CustomText{
-            Layout.maximumWidth: 200
-            content: Hyprland.activeToplevel.title
-            size: 14
+            Layout.alignment: Qt.AlignVCenter
+            implicitWidth: 32
+            implicitHeight: 32
+            radius: 10
+            color: Colors.surfaceContainer
+
+            MaterialIconSymbol {
+                anchors.centerIn: parent
+                content: Hyprland.activeToplevel ? "ad" : "desktop_windows"
+                iconSize: 18
+                customColor: Colors.surfaceText
+                Behavior on customColor { ColorAnimation { duration: 150 } }
+            }
+        }
+
+        ColumnLayout {
+            spacing: 0
+
+            CustomText {
+                Layout.maximumWidth: 200
+                content: ToplevelManager.activeToplevel
+                         ? (ToplevelManager.activeToplevel.appId ?? "")
+                         : "Desktop"
+                size: 10
+                weight: 700
+                customColor: Colors.outline
+                elide: Text.ElideRight
+            }
+            CustomText {
+                Layout.maximumWidth: 200
+                content: ToplevelManager.activeToplevel
+                         ? (ToplevelManager.activeToplevel.title ?? "")
+                         : "Workspace " + (Hyprland.focusedMonitor?.activeWorkspace?.id ?? "")
+
+                size: 13
+                weight: 800
+                elide: Text.ElideRight
+            }
         }
     }
 

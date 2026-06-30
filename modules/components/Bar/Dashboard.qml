@@ -18,7 +18,7 @@ Item{
     Component.onDestruction: ServiceSystemInfo.release()
     implicitHeight: col.implicitHeight
     property string panelMode: ""   // "" | "wifi" | "bluetooth"
-
+    property bool   compact:   false
 
     property var parentPos
     property var wifiPos
@@ -32,19 +32,17 @@ Item{
         onTriggered: colu.visible = true
     }
 
-    opacity:0
-    scale: 0.8
+    readonly property bool isPill: SettingsConfig.general.barMode === "pill"
 
-    NumberAnimation on opacity{
-        from: 0
-        to: 1
-        duration: 400
-        running: true
+    opacity: 0
+    scale: root.isPill ? 1 : 0.8
+
+    NumberAnimation on opacity {
+        from: 0; to: 1; duration: 400; running: true
     }
 
-
-    NumberAnimation on scale{
-        from: 0.8
+    NumberAnimation on scale {
+        from: root.isPill ? 1 : 0.8
         to: 1
         duration: 400
         running: true
@@ -61,9 +59,9 @@ Item{
     }
 
     Connections {
-        target: ServiceWifi
+        target: ServiceNetwork
         function onWifiEnabledChanged() {
-            SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, { airplaneMode: !ServiceWifi.wifiEnabled })
+            SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, { airplaneMode: !ServiceNetwork.wifiEnabled })
         }
     }
 
@@ -212,11 +210,11 @@ Item{
     ColumnLayout{
         id: col
         anchors.fill: parent
-        spacing: 10
-        anchors.margins: 10
+        spacing:         root.compact ? 7 : 10
+        anchors.margins: root.compact ? 7 : 10
 
         Rectangle{
-            Layout.preferredHeight: 50
+            Layout.preferredHeight: root.compact ? 42 : 50
             Layout.fillWidth: true
             color: Colors.surfaceContainer
             radius: 20
@@ -344,18 +342,18 @@ Item{
                 id: colu
                 anchors.fill: parent
                 anchors.margins: 0
-                spacing: 10
+                spacing: root.compact ? 7 : 10
 
                 RowLayout{
                     Layout.fillWidth: true
-                    spacing: 10
+                    spacing: root.compact ? 7 : 10
 
                     ColumnLayout{
                         Layout.fillHeight: true
-                        spacing: 10
+                        spacing: root.compact ? 7 : 10
                         Rectangle{
                             id: wifi
-                            Layout.preferredHeight: 60
+                            Layout.preferredHeight: root.compact ? 50 : 60
                             Layout.fillWidth: true
                             radius: 20
                             color: Colors.surfaceContainerHigh
@@ -370,17 +368,17 @@ Item{
                                 anchors.margins: 5
 
                                 MaterialShapes.ShapeCanvas{
-                                    Layout.preferredHeight: 50
-                                    Layout.preferredWidth: 50
+                                    Layout.preferredHeight: root.compact ? 42 : 50
+                                    Layout.preferredWidth:  root.compact ? 42 : 50
                                     roundedPolygon: MatrialShapeFn.getCookie6Sided()
                                     color: Colors.primary
 
 
                                     MaterialIconSymbol{
                                         anchors.centerIn: parent
-                                        iconSize: 28
-                                        content: ServiceWifi.icon
-                                        color: ServiceWifi.wifiEnabled ? Colors.primaryText : Colors.surfaceText
+                                        iconSize: root.compact ? 22 : 28
+                                        content: ServiceNetwork.icon
+                                        color: ServiceNetwork.wifiEnabled ? Colors.primaryText : Colors.surfaceText
                                     }
                                 }
 
@@ -390,14 +388,14 @@ Item{
                                     spacing: 5
                                     CustomText{
                                         Layout.fillWidth: true
-                                        content: ServiceWifi.connectionType
+                                        content: ServiceNetwork.connectionType
                                         size: 14
                                         weight: 700
                                     }
 
                                     CustomText{
                                         Layout.fillWidth: true
-                                        content: ServiceWifi.currentSSID || "no device"
+                                        content: ServiceNetwork.currentSSID || "no device"
                                         size: 12
                                         color: Colors.outline
                                     }
@@ -423,7 +421,7 @@ Item{
                         }
                         Rectangle{
                             id: bluetooth
-                            Layout.preferredHeight: 60
+                            Layout.preferredHeight: root.compact ? 50 : 60
                             Layout.fillWidth: true
                             radius: 20
                             color: Colors.surfaceContainerHigh
@@ -432,18 +430,18 @@ Item{
                                 anchors.fill: parent
                                 anchors.margins: 5
 
-                   
+
 
                                 MaterialShapes.ShapeCanvas{
-                                    Layout.preferredHeight: 50
-                                    Layout.preferredWidth: 50
+                                    Layout.preferredHeight: root.compact ? 42 : 50
+                                    Layout.preferredWidth:  root.compact ? 42 : 50
                                     roundedPolygon: MatrialShapeFn.getCookie6Sided()
                                     color: Colors.primary
 
 
                                     MaterialIconSymbol{
                                         anchors.centerIn: parent
-                                        iconSize: 28
+                                        iconSize: root.compact ? 22 : 28
                                         content: ServiceBluetooth.connectedDevices > 0 ? "bluetooth" : "bluetooth_disabled"
                                         color: Colors.primaryText
                                     }
@@ -485,7 +483,7 @@ Item{
                         }
 
                         Rectangle{
-                            Layout.preferredHeight: 40
+                            Layout.preferredHeight: root.compact ? 32 : 40
                             Layout.fillWidth: true
                             radius: 20
                             color: Colors.surfaceContainerHigh
@@ -581,19 +579,19 @@ Item{
 
         Rectangle{
             Layout.fillWidth: true
-            Layout.preferredHeight: 50
+            Layout.preferredHeight: root.compact ? 42 : 50
             color: Colors.surfaceContainer
             radius: 20
 
             ColumnLayout{
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 10
+                anchors.margins: root.compact ? 7 : 10
+                spacing: root.compact ? 7 : 10
 
 
                 RowLayout{
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
+                    Layout.preferredHeight: root.compact ? 32 : 40
                     spacing: 4
                     Repeater{
                         model: Settings.quickIcons
@@ -606,7 +604,7 @@ Item{
                             Layout.fillWidth: true
 
                             property bool active: {
-                                if (index === 0) return !ServiceWifi.wifiEnabled
+                                if (index === 0) return !ServiceNetwork.wifiEnabled
                                 if (index === 1) return ServiceNotification.muted
                                 if (index === 2) return ServicePipewire.muted
                                 if (index === 3) return ServicePipewire.micMuted
@@ -649,7 +647,7 @@ Item{
                                 hoverColor: Qt.alpha(qBtn.active ? Colors.primaryText : Colors.primary, 0.10)
                                 pressColor: Qt.alpha(qBtn.active ? Colors.primaryText : Colors.primary, 0.20)
                                 onClicked: {
-                                    if      (qBtn.index === 0) ServiceWifi.toggleWifi()
+                                    if      (qBtn.index === 0) ServiceNetwork.toggleWifi()
                                     else if (qBtn.index === 1) ServiceNotification.toggleMute()
                                     else if (qBtn.index === 2) ServicePipewire.toggleMute()
                                     else if (qBtn.index === 3) ServicePipewire.toggleMicMute()
@@ -663,7 +661,7 @@ Item{
 
         MusicPlayer{
             Layout.fillWidth: true
-            Layout.preferredHeight: 150
+            Layout.preferredHeight: root.compact ? 120 : 150
         }
 
         // Item{
@@ -688,13 +686,13 @@ Item{
                     Layout.fillWidth: true
 
                     CustomMatrialCircularProgress{
-                        Layout.preferredWidth: 60
-                        Layout.preferredHeight: 60
+                        Layout.preferredWidth:  root.compact ? 50 : 60
+                        Layout.preferredHeight: root.compact ? 50 : 60
                         progress: ServiceSystemInfo.cpuUsage
                         thickness: 4
                         gap: 0.6
                         icon: "memory"
-                        iconSize: 30
+                        iconSize: root.compact ? 22 : 30
                         sperm: false
                     }
 
@@ -774,13 +772,13 @@ Item{
                     Layout.fillWidth: true
 
                     CustomMatrialCircularProgress{
-                        Layout.preferredWidth: 60
-                        Layout.preferredHeight: 60
+                        Layout.preferredWidth:  root.compact ? 50 : 60
+                        Layout.preferredHeight: root.compact ? 50 : 60
                         progress: ServiceSystemInfo.gpuUsage
                         thickness: 4
                         gap: 0.6
                         icon: "desktop_windows"
-                        iconSize: 24
+                        iconSize: root.compact ? 20 : 24
                         sperm: false
                     }
 
@@ -861,8 +859,8 @@ Item{
                     anchors.centerIn: parent
                     spacing: 0
                     CustomGaugeProgress{
-                        Layout.preferredWidth: 120
-                        Layout.preferredHeight: 120
+                        Layout.preferredWidth:  root.compact ? 100 : 120
+                        Layout.preferredHeight: root.compact ? 100 : 120
                         progress: ServiceSystemInfo.memUsage
                         thickness: 8
                         gap: 0.2
@@ -890,8 +888,8 @@ Item{
                     anchors.centerIn: parent
                     spacing: 0
                     CustomGaugeProgress{
-                        Layout.preferredWidth: 120
-                        Layout.preferredHeight: 120
+                        Layout.preferredWidth:  root.compact ? 100 : 120
+                        Layout.preferredHeight: root.compact ? 100 : 120
                         progress: ServiceSystemInfo.diskUsage
                         thickness: 8
                         gap: 0.2
@@ -910,6 +908,7 @@ Item{
         }
 
         Rectangle{
+            visible: !root.compact
             Layout.fillWidth: true
             Layout.fillHeight: true
             radius: 20
