@@ -41,15 +41,22 @@ Item {
                 autoRadius: false; topRadius: 20; bottomRadius: 20
 
                 RowLayout {
-                    spacing: 14
+                    spacing: 16
 
-                    Image {
-                        Layout.preferredWidth: 44
-                        Layout.preferredHeight: 44
+                    Rectangle {
+                        Layout.preferredWidth: 60
+                        Layout.preferredHeight: 60
                         Layout.alignment: Qt.AlignVCenter
-                        sourceSize: Qt.size(width, height)
-                        source: IconUtil.getSystemIconPng("nebula")
-                        fillMode: Image.PreserveAspectFit
+                        radius: 18
+                        color: Colors.primaryContainer
+
+                        Image {
+                            anchors.centerIn: parent
+                            width: 36; height: 36
+                            sourceSize: Qt.size(width, height)
+                            source: IconUtil.getSystemIconPng("nebula")
+                            fillMode: Image.PreserveAspectFit
+                        }
                     }
 
                     ColumnLayout {
@@ -108,9 +115,9 @@ Item {
 
                 Repeater {
                     model: [
-                        { icon: "code",       label: "GitHub",          desc: "github.com/St3el",          first: true,  last: false },
-                        { icon: "bug_report", label: "Report Issue",    desc: "Open a bug report on GitHub", first: false, last: false },
-                        { icon: "star",       label: "Star the Project", desc: "Show your support",          first: false, last: true  }
+                        { icon: "code",       label: "GitHub",          desc: "github.com/iamSt3el/Nebula", url: "https://github.com/iamSt3el/Nebula",          first: true,  last: false },
+                        { icon: "bug_report", label: "Report Issue",    desc: "Open a bug report on GitHub", url: "https://github.com/iamSt3el/Nebula/issues/new", first: false, last: false },
+                        { icon: "star",       label: "Star the Project", desc: "Show your support",         url: "https://github.com/iamSt3el/Nebula",          first: false, last: true  }
                     ]
 
                     delegate: Rectangle {
@@ -129,8 +136,16 @@ Item {
                             anchors.leftMargin: 14; anchors.rightMargin: 14
                             spacing: 12
 
-                            MaterialIconSymbol {
-                                content: modelData.icon; iconSize: 18; customColor: Colors.primary
+                            Rectangle {
+                                Layout.preferredWidth: 32
+                                Layout.preferredHeight: 32
+                                radius: 10
+                                color: Colors.surfaceContainerHighest
+
+                                MaterialIconSymbol {
+                                    anchors.centerIn: parent
+                                    content: modelData.icon; iconSize: 17; customColor: Colors.primary
+                                }
                             }
 
                             ColumnLayout {
@@ -151,6 +166,7 @@ Item {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             hoverEnabled: true
+                            onClicked: Quickshell.execDetached(["xdg-open", modelData.url])
                         }
                     }
                 }

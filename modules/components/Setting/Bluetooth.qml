@@ -16,6 +16,17 @@ Item {
     anchors.fill: parent
     anchors.margins: 5
 
+    property bool scanning: false
+
+    Timer {
+        id: scanTimer
+        interval: 8000
+        onTriggered: {
+            root.scanning = false
+            if (Bluetooth.defaultAdapter) Bluetooth.defaultAdapter.discovering = false
+        }
+    }
+
     property bool hasConnectedDevices: {
         const l = ServiceBluetooth.list ?? []
         for (let i = 0; i < l.length; i++) if (l[i].state === 1) return true
@@ -231,13 +242,27 @@ Item {
                 Layout.fillWidth: true
                 CustomText { content: "Nearby Devices"; size: 13; customColor: Colors.primary }
                 Item { Layout.fillWidth: true }
+
+                Loader {
+                    active: root.scanning
+                    visible: active
+                    sourceComponent: CustomCircularLoader {
+                        size: 18; trackWidth: 2
+                        waveAmplitude: 0
+                        highlightColor: Colors.outline
+                    }
+                }
+
                 MaterialIconSymbol {
+                    visible: !root.scanning
                     content: "refresh"; iconSize: 18; customColor: Colors.outline
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (Bluetooth.defaultAdapter) Bluetooth.defaultAdapter.discovering = true
+                            root.scanning = true
+                            scanTimer.restart()
                         }
                     }
                 }

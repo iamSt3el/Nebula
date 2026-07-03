@@ -18,12 +18,16 @@ ClippingRectangle{
 
     property bool editMode: false
 
+    scale: musicRoot.editMode ? 1.05 : 1.0
+    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+    layer.enabled: musicRoot.editMode
+    layer.smooth: true
+    layer.textureSize: musicRoot.editMode ? Qt.size(width * 1.05, height * 1.05) : Qt.size(width, height)
+
     // Overlay — only active in edit mode; blocks buttons and handles drag + exit
     Rectangle {
         anchors.fill: parent
         color: "transparent"
-        border.color: "#aaffffff"
-        border.width: 2
         radius: musicRoot.radius
         visible: musicRoot.editMode
         z: 10
@@ -32,7 +36,7 @@ ClippingRectangle{
             anchors.fill: parent
             drag.target: musicRoot
             cursorShape: Qt.SizeAllCursor
-            onDoubleClicked: musicRoot.editMode = false
+            onReleased: if (musicRoot.editMode) musicRoot.editMode = false
         }
     }
 

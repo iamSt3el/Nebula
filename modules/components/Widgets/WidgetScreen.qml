@@ -29,8 +29,17 @@ PanelWindow{
     Loader {
         active: SettingsConfig.widgets.showClock ?? false
         visible: active
-        sourceComponent: NewClock {}
+        sourceComponent: {
+            var style = SettingsConfig.widgets.digitalClockStyle ?? "classic"
+            if (style === "minimal") return digitalMinimal
+            if (style === "stacked") return digitalStacked
+            return digitalClassic
+        }
     }
+
+    Component { id: digitalClassic; NewClock            {} }
+    Component { id: digitalMinimal; DigitalClockMinimal {} }
+    Component { id: digitalStacked; DigitalClockStacked {} }
 
     Loader {
         active: SettingsConfig.widgets.showDateWidget ?? false

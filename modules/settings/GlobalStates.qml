@@ -10,7 +10,7 @@ Singleton{
     property bool appLauncherOpen: false
     property bool clipboardOpen: false
     property bool settingsOpen: false
-    property int  settingsPage: 0
+    property int  settingsPage: 9
     property bool osdOpen: false
     property bool wallpaperOpen: false
     property bool typingGameOpen: false

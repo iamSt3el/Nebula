@@ -194,7 +194,8 @@ Singleton {
                 showDateWidget: false,
                 showAnalogClock: false,
                 analogClockStyle: "classic",
-                dateWidgetStyle: "default"
+                dateWidgetStyle: "default",
+                digitalClockStyle: "classic"
             })
 
             property var weather: ({

@@ -270,7 +270,7 @@ Item {
 
                             CustomText {
                                 content: ServiceWeather.temperature
-                                size: 13; weight: 500
+                                size: 13; weight: 700
                                 customColor: weatherHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
                                 Behavior on customColor { ColorAnimation { duration: 150 } }
                             }

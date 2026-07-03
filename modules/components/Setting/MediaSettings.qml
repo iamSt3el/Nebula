@@ -134,60 +134,49 @@ Item {
                     autoRadius: false; topRadius: 20; bottomRadius: 5
                     RowLayout {
                         Layout.fillWidth: true
-                        ColumnLayout { spacing: 2
-                            CustomText { content: "Codec"; size: 14 }
-                            CustomText { content: "Video encoding format"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.recording.codec; list: root.videoCodecs
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== SettingsConfig.recording.codec)
-                                    SettingsConfig.recording = Object.assign({}, SettingsConfig.recording, { codec: currentVal })
+                        spacing: 24
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170
+                                Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Codec"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Video encoding format"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredHeight: 30; Layout.preferredWidth: 160
+                                color: Colors.surfaceContainerHighest
+                                currentVal: SettingsConfig.recording.codec; list: root.videoCodecs
+                                onCurrentValChanged: {
+                                    if (currentVal && currentVal !== SettingsConfig.recording.codec)
+                                        SettingsConfig.recording = Object.assign({}, SettingsConfig.recording, { codec: currentVal })
+                                }
                             }
                         }
-                    }
-                }
 
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout { spacing: 2
-                            CustomText { content: "Container"; size: 14 }
-                            CustomText { content: "Output file format"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.recording.muxer; list: root.muxers
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== SettingsConfig.recording.muxer)
-                                    SettingsConfig.recording = Object.assign({}, SettingsConfig.recording, { muxer: currentVal })
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170
+                                Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Container"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Output file format"; size: 12; customColor: Colors.outline }
                             }
-                        }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout { spacing: 2
-                            CustomText { content: "Framerate"; size: 14 }
-                            CustomText { content: "Frames per second"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.recording.framerate; list: root.framerates
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== SettingsConfig.recording.framerate)
-                                    SettingsConfig.recording = Object.assign({}, SettingsConfig.recording, { framerate: currentVal })
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredHeight: 30; Layout.preferredWidth: 160
+                                color: Colors.surfaceContainerHighest
+                                currentVal: SettingsConfig.recording.muxer; list: root.muxers
+                                onCurrentValChanged: {
+                                    if (currentVal && currentVal !== SettingsConfig.recording.muxer)
+                                        SettingsConfig.recording = Object.assign({}, SettingsConfig.recording, { muxer: currentVal })
+                                }
                             }
                         }
                     }
@@ -197,18 +186,49 @@ Item {
                     autoRadius: false; topRadius: 5; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
-                        ColumnLayout { spacing: 2
-                            CustomText { content: "Pixel Format"; size: 14 }
-                            CustomText { content: "Color space encoding"; size: 12; customColor: Colors.outline }
+                        spacing: 24
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170
+                                Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Framerate"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Frames per second"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredHeight: 30; Layout.preferredWidth: 160
+                                color: Colors.surfaceContainerHighest
+                                currentVal: SettingsConfig.recording.framerate; list: root.framerates
+                                onCurrentValChanged: {
+                                    if (currentVal && currentVal !== SettingsConfig.recording.framerate)
+                                        SettingsConfig.recording = Object.assign({}, SettingsConfig.recording, { framerate: currentVal })
+                                }
+                            }
                         }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.recording.pixelFormat; list: root.pixelFormats
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== SettingsConfig.recording.pixelFormat)
-                                    SettingsConfig.recording = Object.assign({}, SettingsConfig.recording, { pixelFormat: currentVal })
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170
+                                Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Pixel Format"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Color space encoding"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredHeight: 30; Layout.preferredWidth: 160
+                                color: Colors.surfaceContainerHighest
+                                currentVal: SettingsConfig.recording.pixelFormat; list: root.pixelFormats
+                                onCurrentValChanged: {
+                                    if (currentVal && currentVal !== SettingsConfig.recording.pixelFormat)
+                                        SettingsConfig.recording = Object.assign({}, SettingsConfig.recording, { pixelFormat: currentVal })
+                                }
                             }
                         }
                     }
@@ -265,40 +285,49 @@ Item {
                     visible: SettingsConfig.recording.audioEnabled
                     RowLayout {
                         Layout.fillWidth: true
-                        ColumnLayout { spacing: 2
-                            CustomText { content: "Audio Codec"; size: 14 }
-                            CustomText { content: "Audio encoding format"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.recording.audioCodec; list: root.audioCodecs
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== SettingsConfig.recording.audioCodec)
-                                    SettingsConfig.recording = Object.assign({}, SettingsConfig.recording, { audioCodec: currentVal })
+                        spacing: 24
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170
+                                Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Audio Codec"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Audio encoding format"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredHeight: 30; Layout.preferredWidth: 160
+                                color: Colors.surfaceContainerHighest
+                                currentVal: SettingsConfig.recording.audioCodec; list: root.audioCodecs
+                                onCurrentValChanged: {
+                                    if (currentVal && currentVal !== SettingsConfig.recording.audioCodec)
+                                        SettingsConfig.recording = Object.assign({}, SettingsConfig.recording, { audioCodec: currentVal })
+                                }
                             }
                         }
-                    }
-                }
 
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    visible: SettingsConfig.recording.audioEnabled
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout { spacing: 2
-                            CustomText { content: "Bitrate"; size: 14 }
-                            CustomText { content: "Audio quality vs file size"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.recording.audioBitrate; list: root.audioBitrates
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== SettingsConfig.recording.audioBitrate)
-                                    SettingsConfig.recording = Object.assign({}, SettingsConfig.recording, { audioBitrate: currentVal })
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170
+                                Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Bitrate"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Audio quality vs file size"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredHeight: 30; Layout.preferredWidth: 160
+                                color: Colors.surfaceContainerHighest
+                                currentVal: SettingsConfig.recording.audioBitrate; list: root.audioBitrates
+                                onCurrentValChanged: {
+                                    if (currentVal && currentVal !== SettingsConfig.recording.audioBitrate)
+                                        SettingsConfig.recording = Object.assign({}, SettingsConfig.recording, { audioBitrate: currentVal })
+                                }
                             }
                         }
                     }

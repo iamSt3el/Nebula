@@ -27,10 +27,9 @@ Item {
 
     // Section → page-index mapping
     readonly property var navSections: [
-        { label: "System",  indices: [0, 12, 1, 2, 3, 4, 11] },
-        { label: "Connect", indices: [5, 6] },
-        { label: "Apps",    indices: [7, 8, 9] },
-        { label: "Info",    indices: [10] }
+        { label: "System",  indices: [9, 0, 1, 2, 3] },
+        { label: "Connect", indices: [4, 5] },
+        { label: "Apps",    indices: [6, 7, 8] }
     ]
 
     Rectangle {
@@ -195,19 +194,16 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    Loader { anchors.fill: parent; active: root.currentPage === 0;  visible: active; sourceComponent: General{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 1;  visible: active; sourceComponent: Theme{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 2;  visible: active; sourceComponent: Sound{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 3;  visible: active; sourceComponent: Notifications{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 4;  visible: active; sourceComponent: Widgets{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 5;  visible: active; sourceComponent: Networking{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 6;  visible: active; sourceComponent: Bluetooth{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 7;  visible: active; sourceComponent: Ai{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 8;  visible: active; sourceComponent: WeatherSettings{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 9;  visible: active; sourceComponent: MediaSettings{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 10; visible: active; sourceComponent: About{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 11; visible: active; sourceComponent: Display{} }
-                    Loader { anchors.fill: parent; active: root.currentPage === 12; visible: active; sourceComponent: AppearanceSettings{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 0; visible: active; sourceComponent: Theme{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 1; visible: active; sourceComponent: Sound{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 2; visible: active; sourceComponent: Notifications{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 3; visible: active; sourceComponent: Widgets{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 4; visible: active; sourceComponent: Networking{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 5; visible: active; sourceComponent: Bluetooth{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 6; visible: active; sourceComponent: WeatherSettings{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 7; visible: active; sourceComponent: MediaSettings{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 8; visible: active; sourceComponent: About{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 9; visible: active; sourceComponent: AppearanceSettings{} }
 
                 }
             }

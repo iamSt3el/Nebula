@@ -282,7 +282,7 @@ Item{
                     radius: 10
                     onClicked: {
                         root.toggleDashboard()
-                        GlobalStates.settingsPage = 0
+                        GlobalStates.settingsPage = 9
                         GlobalStates.settingsOpen = true
                     }
                 }

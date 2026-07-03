@@ -95,43 +95,48 @@ Item {
                 }
 
 
-                // Visualizer
+                // Visualizer + bar count
                 CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    autoRadius: false; topRadius: 20; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Cava Visualizer"; size: 14 }
-                            CustomText { content: "Audio bar overlay alongside the circular player"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.general.musicVisOn
-                            onToggled: function(state) {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { musicVisOn: state })
+                        spacing: 24
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Cava Visualizer"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Audio bar overlay alongside the circular player"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomToogle {
+                                isToggleOn: SettingsConfig.general.musicVisOn
+                                onToggled: function(state) {
+                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { musicVisOn: state })
+                                }
                             }
                         }
-                    }
-                }
 
-                // Visualizer bar count
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Visualizer Bars"; size: 14 }
-                            CustomText { content: "Number of frequency bands to render"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomSpinBox {
-                            color: Colors.surfaceContainerHighest
-                            value: SettingsConfig.general.musicVisBars ?? 60
-                            onValChanged: {
-                                if (val !== value)
-                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { musicVisBars: val })
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Visualizer Bars"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Number of frequency bands to render"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomSpinBox {
+                                color: Colors.surfaceContainerHighest
+                                value: SettingsConfig.general.musicVisBars ?? 60
+                                onValChanged: {
+                                    if (val !== value)
+                                        SettingsConfig.general = Object.assign({}, SettingsConfig.general, { musicVisBars: val })
+                                }
                             }
                         }
                     }
@@ -146,65 +151,99 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true; Layout.topMargin: 6; spacing: 3
 
-                // Digital clock
+                // Digital clock + style
                 CustomCard {
                     autoRadius: false; topRadius: 20; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Digital Clock"; size: 14 }
-                            CustomText { content: "Large digital clock widget on the desktop"; size: 12; customColor: Colors.outline }
+                        spacing: 24
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Digital Clock"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Large digital clock widget on the desktop"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomToogle {
+                                isToggleOn: SettingsConfig.widgets.showClock ?? false
+                                onToggled: function(state) {
+                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showClock: state })
+                                }
+                            }
                         }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.widgets.showClock ?? false
-                            onToggled: function(state) {
-                                SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showClock: state })
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Digital Style"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Classic · Minimal · Stacked"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredHeight: 30; Layout.preferredWidth: 120
+                                color: Colors.surfaceContainerHighest
+                                currentVal: SettingsConfig.widgets.digitalClockStyle ?? "classic"
+                                list: [{ name: "classic" }, { name: "minimal" }, { name: "stacked" }]
+                                onCurrentValChanged: {
+                                    if (currentVal && currentVal !== (SettingsConfig.widgets.digitalClockStyle ?? "classic"))
+                                        SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { digitalClockStyle: currentVal })
+                                }
                             }
                         }
                     }
                 }
 
-                // Analog clock toggle
+                // Analog clock + style
                 CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    autoRadius: false; topRadius: 20; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Analog Clock"; size: 14 }
-                            CustomText { content: "Classic, minimal, or material-shape clock"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.widgets.showAnalogClock ?? false
-                            onToggled: function(state) {
-                                SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showAnalogClock: state })
+                        spacing: 24
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Analog Clock"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Classic, minimal, or material-shape clock"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomToogle {
+                                isToggleOn: SettingsConfig.widgets.showAnalogClock ?? false
+                                onToggled: function(state) {
+                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showAnalogClock: state })
+                                }
                             }
                         }
-                    }
-                }
 
-                // Analog clock style
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Analog Style"; size: 14 }
-                            CustomText { content: "Classic · Minimal · Shape"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 120
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.widgets.analogClockStyle ?? "classic"
-                            list: [{ name: "classic" }, { name: "minimal" }, { name: "shape" }]
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== (SettingsConfig.widgets.analogClockStyle ?? "classic"))
-                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { analogClockStyle: currentVal })
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Analog Style"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Classic · Minimal · Shape"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredHeight: 30; Layout.preferredWidth: 120
+                                color: Colors.surfaceContainerHighest
+                                currentVal: SettingsConfig.widgets.analogClockStyle ?? "classic"
+                                list: [{ name: "classic" }, { name: "minimal" }, { name: "shape" }]
+                                onCurrentValChanged: {
+                                    if (currentVal && currentVal !== (SettingsConfig.widgets.analogClockStyle ?? "classic"))
+                                        SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { analogClockStyle: currentVal })
+                                }
                             }
                         }
                     }
@@ -220,42 +259,48 @@ Item {
                 Layout.fillWidth: true; Layout.topMargin: 6; spacing: 3
 
                 CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    autoRadius: false; topRadius: 20; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Date Widget"; size: 14 }
-                            CustomText { content: "Compact date card with week indicator"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.widgets.showDateWidget ?? false
-                            onToggled: function(state) {
-                                SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showDateWidget: state })
+                        spacing: 24
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Date Widget"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Compact date card with week indicator"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomToogle {
+                                isToggleOn: SettingsConfig.widgets.showDateWidget ?? false
+                                onToggled: function(state) {
+                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showDateWidget: state })
+                                }
                             }
                         }
-                    }
-                }
 
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Date Style"; size: 14 }
-                            CustomText { content: "Default · Calendar · Pill · Split · Bold · Ghost · Accent · Inline"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 140
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.widgets.dateWidgetStyle ?? "default"
-                            list: [{ name: "default" }, { name: "calendar" }, { name: "pill" }, { name: "split" }, { name: "bold" }, { name: "ghost" }, { name: "accent" }, { name: "inline" }]
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== (SettingsConfig.widgets.dateWidgetStyle ?? "default"))
-                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { dateWidgetStyle: currentVal })
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Date Style"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Default · Calendar · Pill · Split · Bold · Ghost · Accent · Inline"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredHeight: 30; Layout.preferredWidth: 140
+                                color: Colors.surfaceContainerHighest
+                                currentVal: SettingsConfig.widgets.dateWidgetStyle ?? "default"
+                                list: [{ name: "default" }, { name: "calendar" }, { name: "pill" }, { name: "split" }, { name: "bold" }, { name: "ghost" }, { name: "accent" }, { name: "inline" }]
+                                onCurrentValChanged: {
+                                    if (currentVal && currentVal !== (SettingsConfig.widgets.dateWidgetStyle ?? "default"))
+                                        SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { dateWidgetStyle: currentVal })
+                                }
                             }
                         }
                     }
@@ -274,35 +319,41 @@ Item {
                     autoRadius: false; topRadius: 20; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Slanted Card"; size: 14 }
-                            CustomText { content: "Primary-color slanted shape with temperature"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.widgets.showWeatherSlanted ?? false
-                            onToggled: function(state) {
-                                SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showWeatherSlanted: state })
+                        spacing: 24
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Slanted Card"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Primary-color slanted shape with temperature"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomToogle {
+                                isToggleOn: SettingsConfig.widgets.showWeatherSlanted ?? false
+                                onToggled: function(state) {
+                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showWeatherSlanted: state })
+                                }
                             }
                         }
-                    }
-                }
 
-                CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 20
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "3-Day Forecast"; size: 14 }
-                            CustomText { content: "Compact card showing today + next 2 days"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.widgets.showWeatherForecast ?? false
-                            onToggled: function(state) {
-                                SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showWeatherForecast: state })
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "3-Day Forecast"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Compact card showing today + next 2 days"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomToogle {
+                                isToggleOn: SettingsConfig.widgets.showWeatherForecast ?? false
+                                onToggled: function(state) {
+                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showWeatherForecast: state })
+                                }
                             }
                         }
                     }
@@ -364,89 +415,99 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true; Layout.topMargin: 6; spacing: 3
 
-                // System monitor toggle
+                // System monitor + style
                 CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    autoRadius: false; topRadius: 20; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "System Monitor"; size: 14 }
-                            CustomText { content: "CPU · RAM · GPU with network and disk"; size: 12; customColor: Colors.outline }
+                        spacing: 24
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "System Monitor"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "CPU · RAM · GPU with network and disk"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomToogle {
+                                isToggleOn: SettingsConfig.widgets.showSystemMonitor ?? false
+                                onToggled: function(state) {
+                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showSystemMonitor: state })
+                                }
+                            }
                         }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.widgets.showSystemMonitor ?? false
-                            onToggled: function(state) {
-                                SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showSystemMonitor: state })
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Monitor Style"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Default · Compact"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredHeight: 30; Layout.preferredWidth: 120
+                                color: Colors.surfaceContainerHighest
+                                currentVal: SettingsConfig.widgets.systemMonitorStyle ?? "default"
+                                list: [{ name: "default" }, { name: "compact" }]
+                                onCurrentValChanged: {
+                                    if (currentVal && currentVal !== (SettingsConfig.widgets.systemMonitorStyle ?? "default"))
+                                        SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { systemMonitorStyle: currentVal })
+                                }
                             }
                         }
                     }
                 }
 
-                // System monitor style
+                // Battery + style
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    autoRadius: false; topRadius: 20; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Monitor Style"; size: 14 }
-                            CustomText { content: "Default · Compact"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 120
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.widgets.systemMonitorStyle ?? "default"
-                            list: [{ name: "default" }, { name: "compact" }]
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== (SettingsConfig.widgets.systemMonitorStyle ?? "default"))
-                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { systemMonitorStyle: currentVal })
+                        spacing: 24
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Battery Widget"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Wave fill with charging animation"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomToogle {
+                                isToggleOn: SettingsConfig.widgets.showBattery ?? false
+                                onToggled: function(state) {
+                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showBattery: state })
+                                }
                             }
                         }
-                    }
-                }
 
-                // Battery toggle
-                CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Battery Widget"; size: 14 }
-                            CustomText { content: "Wave fill with charging animation"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.widgets.showBattery ?? false
-                            onToggled: function(state) {
-                                SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showBattery: state })
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+                            ColumnLayout {
+                                Layout.preferredWidth: 170; Layout.maximumWidth: 170
+                                spacing: 2
+                                CustomText { content: "Battery Style"; size: 14 }
+                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Default · Minimal"; size: 12; customColor: Colors.outline }
                             }
-                        }
-                    }
-                }
-
-                // Battery style
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Battery Style"; size: 14 }
-                            CustomText { content: "Default · Minimal"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 120
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.widgets.batteryStyle ?? "default"
-                            list: [{ name: "default" }, { name: "minimal" }]
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== (SettingsConfig.widgets.batteryStyle ?? "default"))
-                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { batteryStyle: currentVal })
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredHeight: 30; Layout.preferredWidth: 120
+                                color: Colors.surfaceContainerHighest
+                                currentVal: SettingsConfig.widgets.batteryStyle ?? "default"
+                                list: [{ name: "default" }, { name: "minimal" }]
+                                onCurrentValChanged: {
+                                    if (currentVal && currentVal !== (SettingsConfig.widgets.batteryStyle ?? "default"))
+                                        SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { batteryStyle: currentVal })
+                                }
                             }
                         }
                     }

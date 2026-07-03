@@ -71,10 +71,6 @@ Singleton{
 
     property var pages:[
         {
-            name: "General",
-            icon: "tune",
-        },
-        {
             name: "Theme",
             icon: "palette",
         },
@@ -99,10 +95,6 @@ Singleton{
             icon: "bluetooth"
         },
         {
-            name: "Ai",
-            icon: "neurology"
-        },
-        {
             name: "Weather",
             icon: "partly_cloudy_day"
         },
@@ -113,10 +105,6 @@ Singleton{
         {
             name: "About",
             icon: 'info'
-        },
-        {
-            name: "Display",
-            icon: "monitor"
         },
         {
             name: "Appearance",

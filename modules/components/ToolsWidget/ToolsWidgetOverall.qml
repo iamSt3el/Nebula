@@ -83,7 +83,7 @@ Item {
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             GlobalStates.toolsWidgetOpen = false
-                            GlobalStates.settingsPage = 10
+                            GlobalStates.settingsPage = 9
                             GlobalStates.settingsOpen = true
                         }
                     }

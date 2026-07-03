@@ -81,13 +81,7 @@ Item{
             row.visible = true
         }
     }
-    Loader{
-        id: loader
-        active: false
-        visible: active
-        anchors.fill: parent
-        sourceComponent: AiContent{}
-    }
+
     RowLayout{
         id: outerRow
         anchors.centerIn: parent
@@ -252,18 +246,5 @@ Item{
 
 
 
-    GlobalShortcut{
-        name: "aiPanel"
-        onPressed:{
-            if(root.active){
-                root.active = false
-                rowTimer.start()
-            }
-            else if(Hyprland.focusedMonitor.name === layout.screen.name){
-                root.active = true
-                row.visible = false
-            }
-        }
-    }
 
 }

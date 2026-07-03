@@ -19,6 +19,13 @@ Item {
     property bool qrCode: false
     property bool passwordPrompt: false
     property var network: null
+    property bool scanning: false
+
+    Timer {
+        id: scanTimer
+        interval: 5000
+        onTriggered: root.scanning = false
+    }
 
     property bool hasSavedNetworks: {
         const ns = ServiceNetwork.networks ?? []
@@ -311,12 +318,29 @@ Item {
                 Layout.fillWidth: true
                 CustomText { content: "Available Networks"; size: 13; customColor: Colors.primary }
                 Item { Layout.fillWidth: true }
+
+                Loader {
+                    active: root.scanning
+                    visible: active
+                    sourceComponent: CustomCircularLoader {
+                        size: 18; trackWidth: 2
+                        waveAmplitude: 0
+                        highlightColor: Colors.outline
+                    }
+                }
+
                 MaterialIconSymbol {
+                    visible: !root.scanning
                     content: "refresh"; iconSize: 18; customColor: Colors.outline
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: ServiceNetwork.currentNetwork.scannerEnabled = true
+                        onClicked: {
+                            if (!ServiceNetwork.currentNetwork) return
+                            ServiceNetwork.currentNetwork.scannerEnabled = true
+                            root.scanning = true
+                            scanTimer.restart()
+                        }
                     }
                 }
             }

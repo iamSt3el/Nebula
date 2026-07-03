@@ -396,7 +396,7 @@ ColumnLayout{
             cursorShape: Qt.PointingHandCursor
             onClicked: {
                 root.backClicked()
-                GlobalStates.settingsPage = 5
+                GlobalStates.settingsPage = 4
                 GlobalStates.settingsOpen = true
             }
         }

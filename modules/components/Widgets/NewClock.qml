@@ -17,6 +17,12 @@ Item{
 
     property bool editMode: false
 
+    scale: root.editMode ? 1.05 : 1.0
+    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+    layer.enabled: root.editMode
+    layer.smooth: true
+    layer.textureSize: root.editMode ? Qt.size(width * 1.05, height * 1.05) : Qt.size(width, height)
+
     Component.onCompleted: {
         root.x = SettingsConfig.widgets.clockX
         root.y = SettingsConfig.widgets.clockY
@@ -34,20 +40,12 @@ Item{
         }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: "transparent"
-        border.color: root.editMode ? "#aaffffff" : "transparent"
-        border.width: 2
-        radius: 12
-        visible: root.editMode
-    }
-
     MouseArea {
         anchors.fill: parent
         drag.target: root.editMode ? root : undefined
         cursorShape: root.editMode ? Qt.SizeAllCursor : Qt.ArrowCursor
-        onDoubleClicked: root.editMode = !root.editMode
+        onDoubleClicked: root.editMode = true
+        onReleased: if (root.editMode) root.editMode = false
     }
 
     property string hourDigit1: {
