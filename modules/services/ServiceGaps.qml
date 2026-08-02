@@ -14,14 +14,18 @@ Singleton {
     readonly property bool   isPill:     barMode === "pill"
     readonly property real   pillMargin: SettingsConfig.general.pillMargin ?? 6
 
+    // Game mode hides the bar, so the gap reserved for it has to go too —
+    // otherwise a fullscreen game keeps a dead strip along the top.
+    readonly property bool zeroed: ServiceGameMode.hideBar
+
     // topGap: bar height + pill floating margin + 10px breathing room (pill only)
     readonly property int topAuto:  Appearance.size.barHeight + (isPill ? Math.round(pillMargin) + 10 : 0)
     readonly property int topExtra: SettingsConfig.general.gapTop    ?? 0
-    readonly property int topFinal: topAuto + topExtra
+    readonly property int topFinal: zeroed ? 0 : topAuto + topExtra
 
-    readonly property int rightGap:  SettingsConfig.general.gapRight  ?? 5
-    readonly property int bottomGap: SettingsConfig.general.gapBottom ?? 5
-    readonly property int leftGap:   SettingsConfig.general.gapLeft   ?? 5
+    readonly property int rightGap:  zeroed ? 0 : (SettingsConfig.general.gapRight  ?? 5)
+    readonly property int bottomGap: zeroed ? 0 : (SettingsConfig.general.gapBottom ?? 5)
+    readonly property int leftGap:   zeroed ? 0 : (SettingsConfig.general.gapLeft   ?? 5)
 
     // ── Apply ───────────────────────────────────────────────────────────
     function exec() {

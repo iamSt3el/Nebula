@@ -8,56 +8,14 @@ import qs.modules.customComponents
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
-Item {
+WidgetHost {
     id: root
+    configKey: "analogClock"
+    defaultPos: Qt.point(400, 200)
     implicitWidth: 200
     implicitHeight: 200
 
-    property bool editMode: false
-
-    scale: root.editMode ? 1.05 : 1.0
-    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-    layer.enabled: root.editMode
-    layer.smooth: true
-    layer.textureSize: root.editMode ? Qt.size(width * 1.05, height * 1.05) : Qt.size(width, height)
     property real clockSize: 200
-
-    Component.onCompleted: {
-        root.x = SettingsConfig.widgets.analogClockX ?? 400
-        root.y = SettingsConfig.widgets.analogClockY ?? 200
-    }
-
-    Connections {
-        target: SettingsConfig
-        function onWidgetsChanged() {
-            if (!root.editMode) {
-                root.x = SettingsConfig.widgets.analogClockX ?? 400
-                root.y = SettingsConfig.widgets.analogClockY ?? 200
-            }
-        }
-    }
-
-    onXChanged: if (editMode) saveTimer.restart()
-    onYChanged: if (editMode) saveTimer.restart()
-
-    Timer {
-        id: saveTimer
-        interval: 500
-        repeat: false
-        onTriggered: {
-            SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, {
-                analogClockX: root.x, analogClockY: root.y
-            })
-        }
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        drag.target: root.editMode ? root : undefined
-        cursorShape: root.editMode ? Qt.SizeAllCursor : Qt.ArrowCursor
-        onDoubleClicked: root.editMode = true
-        onReleased: if (root.editMode) root.editMode = false
-    }
 
     // Clock face
     MaterialShapes.ShapeCanvas {
@@ -65,7 +23,7 @@ Item {
         width: root.clockSize
         height: root.clockSize
         roundedPolygon: MaterialShapeFn.getCircle()
-        color: Colors.surfaceContainerHigh
+        color: Colors.surface
     }
 
     // 12 o'clock dot — absolute y so it's independent of ShapeCanvas geometry

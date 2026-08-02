@@ -8,18 +8,12 @@ import qs.modules.customComponents
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
-Item {
+WidgetHost {
     id: root
-    width: 190
-    height: 68
-
-    property bool editMode: false
-
-    scale: root.editMode ? 1.05 : 1.0
-    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-    layer.enabled: root.editMode
-    layer.smooth: true
-    layer.textureSize: root.editMode ? Qt.size(width * 1.05, height * 1.05) : Qt.size(width, height)
+    configKey: "battery"
+    defaultPos: Qt.point(600, 200)
+    implicitWidth: 190
+    implicitHeight: 68
 
     readonly property real pct: ServiceUPower.powerLevel
     readonly property bool charging: ServiceUPower.isCharging
@@ -29,55 +23,22 @@ Item {
         return Qt.color(Colors.primary)
     }
 
-    Component.onCompleted: {
-        root.x = SettingsConfig.widgets.batteryX ?? 600
-        root.y = SettingsConfig.widgets.batteryY ?? 200
-    }
-
-    Connections {
-        target: SettingsConfig
-        function onWidgetsChanged() {
-            if (!root.editMode) {
-                root.x = SettingsConfig.widgets.batteryX ?? 600
-                root.y = SettingsConfig.widgets.batteryY ?? 200
-            }
-        }
-    }
-
-    onXChanged: if (editMode) saveTimer.restart()
-    onYChanged: if (editMode) saveTimer.restart()
-
-    Timer {
-        id: saveTimer; interval: 500; repeat: false
-        onTriggered: {
-            SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, {
-                batteryX: root.x, batteryY: root.y
-            })
-        }
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        drag.target: root.editMode ? root : undefined
-        cursorShape: root.editMode ? Qt.SizeAllCursor : Qt.ArrowCursor
-        onDoubleClicked: root.editMode = true
-        onReleased: if (root.editMode) root.editMode = false
-    }
-
     // ── Background card ────────────────────────────────────────────────
     Rectangle {
         anchors.fill: parent
-        radius: 20
+        radius: WidgetSizes.radius
         color: Colors.surface
 
-        // Subtle level fill — tinted from left edge
+        // Subtle level fill — tinted from left edge. Kept light: at 100% it
+        // covers the whole card, and with a near-white primary a heavier tint
+        // reads as a different surface colour rather than a fill.
         Rectangle {
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             width: parent.width * root.pct
             radius: parent.radius
-            color: Qt.rgba(root.levelColor.r, root.levelColor.g, root.levelColor.b, 0.14)
+            color: Qt.rgba(root.levelColor.r, root.levelColor.g, root.levelColor.b, 0.09)
             Behavior on width { NumberAnimation { duration: 700; easing.type: Easing.OutCubic } }
         }
     }

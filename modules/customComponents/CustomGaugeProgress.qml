@@ -66,7 +66,11 @@ Item {
             }
 
             if (root.progress > 0) {
-                const end = progressEnd - effectiveGap
+                // The gap belongs to the background track only — pushing bgStart
+                // past the tip already creates it. Subtracting it here as well
+                // shortened the progress arc by `gap`, so at 100% it stopped
+                // short of the track end instead of closing the sweep.
+                const end = progressEnd
                 const amplitude = root.thickness * root.spermAmplitudeMultiplier
 
                 if (amplitude > 0 && end > startAngle) {

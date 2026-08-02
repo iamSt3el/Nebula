@@ -1,5 +1,6 @@
 import Quickshell
 import Quickshell.Widgets
+import Quickshell.Networking
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
@@ -20,6 +21,20 @@ Item {
     property bool passwordPrompt: false
     property var network: null
     property bool scanning: false
+
+    function submitPassword() {
+        if (pwField.text.length === 0) return
+        if (root.network) root.network.connectWithPsk(pwField.text)
+        root.passwordPrompt = false
+    }
+
+    // Never carry a previous attempt's password into the next prompt
+    onPasswordPromptChanged: {
+        if (passwordPrompt) {
+            pwField.clear()
+            pwField.forceActiveFocus()
+        }
+    }
 
     Timer {
         id: scanTimer
@@ -123,22 +138,17 @@ Item {
                             font.pixelSize: 14
                             color: Colors.surfaceText
                             verticalAlignment: TextInput.AlignVCenter
-                            Component.onCompleted: forceActiveFocus()
-                            onAccepted: {
-                                if (root.network) root.network.connectWithPsk(pwField.text)
-                                root.passwordPrompt = false
-                            }
+                            onAccepted: root.submitPassword()
                         }
 
                         MaterialIconSymbol {
-                            content: "send"; iconSize: 20; customColor: Colors.primary
+                            content: "send"; iconSize: 20
+                            customColor: pwField.text.length > 0 ? Colors.primary
+                                                                 : Qt.alpha(Colors.primary, 0.4)
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (root.network) root.network.connectWithPsk(pwField.text)
-                                    root.passwordPrompt = false
-                                }
+                                onClicked: root.submitPassword()
                             }
                         }
                     }
@@ -177,7 +187,34 @@ Item {
 
             CustomCard {
                 Layout.topMargin: 6
-                autoRadius: false; topRadius: 20; bottomRadius: 20
+                autoRadius: false; topRadius: 20; bottomRadius: 5
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Wi-Fi"; size: 14 }
+                        CustomText {
+                            content: Networking.wifiHardwareEnabled ? "Enable or disable the Wi-Fi radio"
+                                                                    : "Blocked by hardware switch"
+                            size: 12; customColor: Colors.outline
+                        }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomToogle {
+                        isToggleOn: Networking.wifiEnabled
+                        opacity: Networking.wifiHardwareEnabled ? 1 : 0.4
+                        onToggled: function(state) {
+                            if (!Networking.wifiHardwareEnabled) return
+                            Networking.wifiEnabled = state
+                        }
+                    }
+                }
+            }
+
+            CustomCard {
+                Layout.topMargin: 3
+                autoRadius: false; topRadius: 5; bottomRadius: 20
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -331,11 +368,13 @@ Item {
 
                 MaterialIconSymbol {
                     visible: !root.scanning
-                    content: "refresh"; iconSize: 18; customColor: Colors.outline
+                    content: "refresh"; iconSize: 18
+                    customColor: Networking.wifiEnabled ? Colors.outline : Qt.alpha(Colors.outline, 0.4)
                     MouseArea {
                         anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
+                        cursorShape: Networking.wifiEnabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
                         onClicked: {
+                            if (!Networking.wifiEnabled) return
                             if (!ServiceNetwork.currentNetwork) return
                             ServiceNetwork.currentNetwork.scannerEnabled = true
                             root.scanning = true

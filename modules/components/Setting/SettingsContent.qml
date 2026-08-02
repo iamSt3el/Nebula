@@ -11,12 +11,21 @@ Item {
     id: root
     anchors.fill: parent
 
-    property var currentPage: 0
+    property int currentPage: firstPage
     signal settingClosed
 
     Connections {
         target: GlobalStates
         function onSettingsPageChanged() { root.currentPage = GlobalStates.settingsPage }
+
+        // This Item is built once inside the FloatingWindow and only toggled via `visible`,
+        // so the page has to be (re)selected on each open rather than at construction.
+        function onSettingsOpenChanged() {
+            if (GlobalStates.settingsOpen)
+                root.currentPage = GlobalStates.settingsPage
+            else
+                GlobalStates.settingsPage = root.firstPage   // plain reopen lands on page one
+        }
     }
 
     opacity: 0
@@ -27,10 +36,13 @@ Item {
 
     // Section → page-index mapping
     readonly property var navSections: [
-        { label: "System",  indices: [9, 0, 1, 2, 3] },
+        { label: "System",  indices: [9, 0, 1, 2, 3, 10] },
         { label: "Connect", indices: [4, 5] },
         { label: "Apps",    indices: [6, 7, 8] }
     ]
+
+    // Whatever sits at the top of the sidebar — not necessarily page 0
+    readonly property int firstPage: navSections[0].indices[0]
 
     Rectangle {
         anchors.fill: parent
@@ -204,36 +216,11 @@ Item {
                     Loader { anchors.fill: parent; active: root.currentPage === 7; visible: active; sourceComponent: MediaSettings{} }
                     Loader { anchors.fill: parent; active: root.currentPage === 8; visible: active; sourceComponent: About{} }
                     Loader { anchors.fill: parent; active: root.currentPage === 9; visible: active; sourceComponent: AppearanceSettings{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 10; visible: active; sourceComponent: Sleep{} }
 
                 }
             }
 
-            // Close button
-            Rectangle {
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.topMargin: 10
-                anchors.rightMargin: 10
-                implicitWidth: 30; implicitHeight: 30
-                radius: 10
-                color: closeArea.containsMouse ? Colors.primary : Colors.primaryContainer
-                Behavior on color { ColorAnimation { duration: 150 } }
-
-                MaterialIconSymbol {
-                    anchors.centerIn: parent
-                    content: "close"; iconSize: 16
-                    customColor: closeArea.containsMouse ? Colors.primaryText : Colors.primaryContainerText
-                    Behavior on customColor { ColorAnimation { duration: 150 } }
-                }
-
-                MouseArea {
-                    id: closeArea
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    hoverEnabled: true
-                    onClicked: root.settingClosed()
-                }
-            }
         }
     }
 }

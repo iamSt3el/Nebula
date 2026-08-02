@@ -24,9 +24,9 @@ Scope {
     }
 
     function launchSession() {
-        // Launch Hyprland (or your desktop environment)
-        // You can change this to launch different sessions
-        Greetd.launch(["Hyprland"], [], true)
+        // start-hyprland (/usr/bin/start-hyprland) rather than the Hyprland
+        // binary directly — the wrapper sets up the session environment.
+        Greetd.launch(["start-hyprland"], [], true)
     }
 
     // Handle authentication messages from greetd

@@ -16,6 +16,9 @@ Singleton {
     property alias widgets: settingsAdapter.widgets
     property alias weather: settingsAdapter.weather
     property alias notifications: settingsAdapter.notifications
+    property alias gameMode: settingsAdapter.gameMode
+    property alias dashboard: settingsAdapter.dashboard
+    property alias sleep: settingsAdapter.sleep
 
     Timer {
         id: writeTimer
@@ -64,7 +67,8 @@ Singleton {
                 showWorkspaceNumbers: false,
                 flatBarMode: true,
                 primaryMonitor: "",
-                perMonitorWorkspaces: false
+                perMonitorWorkspaces: false,
+                barCenter: "clock"
             })
 
             property var general: ({
@@ -85,7 +89,8 @@ Singleton {
                 showWorkspaceNumbers: false,
                 flatBarMode: true,
                 primaryMonitor: "",
-                perMonitorWorkspaces: false
+                perMonitorWorkspaces: false,
+                barCenter: "clock"
             })
 
             onGeneralChanged: {
@@ -195,7 +200,47 @@ Singleton {
                 showAnalogClock: false,
                 analogClockStyle: "classic",
                 dateWidgetStyle: "default",
-                digitalClockStyle: "classic"
+                digitalClockStyle: "classic",
+                showProfileCard: false,
+                profileCardStyle: "card",
+                profileCardX: 100,
+                profileCardY: 400,
+                showSunArc: false,
+                sunArcX: 100,
+                sunArcY: 620,
+                showMoonPhase: false,
+                moonPhaseX: 620,
+                moonPhaseY: 440,
+                showStickyNote: false,
+                stickyNoteText: "",
+                stickyNoteX: 620,
+                stickyNoteY: 660,
+                showHeadlines: false,
+                headlinesX: 620,
+                headlinesY: 900,
+                newsFeedUrl: "https://feeds.bbci.co.uk/news/world/rss.xml",
+                newsRefreshMinutes: 30,
+                showTaskList: false,
+                taskListX: 960,
+                taskListY: 200,
+                showNetworkGraph: false,
+                networkGraphX: 100,
+                networkGraphY: 780,
+                showSpectrum: false,
+                spectrumX: 420,
+                spectrumY: 620,
+                showAlbumArt: false,
+                albumArtX: 760,
+                albumArtY: 620,
+                showWeatherHourly: false,
+                weatherHourlyX: 420,
+                weatherHourlyY: 200,
+                showWeatherWind: false,
+                weatherWindX: 760,
+                weatherWindY: 200,
+                showWeatherBarometer: false,
+                weatherBarometerX: 1000,
+                weatherBarometerY: 200
             })
 
             property var weather: ({
@@ -213,6 +258,105 @@ Singleton {
                 playSound: false,
                 soundPath: ""
             })
+
+            readonly property var _dashboardDefaults: ({
+                profile: true,
+                controls: true,
+                quickActions: true,
+                music: true,
+                calendar: false,
+                cpu: true,
+                gpu: true,
+                memory: true,
+                network: true,
+                order: ["profile", "controls", "quickActions", "music",
+                        "calendar", "cpu", "gpu", "memory", "network"]
+            })
+
+            property var dashboard: ({
+                profile: true,
+                controls: true,
+                quickActions: true,
+                music: true,
+                calendar: false,
+                cpu: true,
+                gpu: true,
+                memory: true,
+                network: true,
+                order: ["profile", "controls", "quickActions", "music",
+                        "calendar", "cpu", "gpu", "memory", "network"]
+            })
+
+            onDashboardChanged: {
+                const d = _dashboardDefaults
+                const cur = dashboard || {}
+                let needsPatch = false
+                for (const k in d) {
+                    if (cur[k] === undefined) { needsPatch = true; break }
+                }
+                if (needsPatch)
+                    dashboard = Object.assign({}, d, cur)
+            }
+
+            readonly property var _sleepDefaults: ({
+                dimEnabled: true,
+                dimMinutes: 8,
+                dimLevel: 10,
+                lockEnabled: true,
+                lockMinutes: 10,
+                screenOffEnabled: false,
+                screenOffMinutes: 11,
+                suspendEnabled: true,
+                suspendMinutes: 30
+            })
+
+            property var sleep: ({
+                dimEnabled: true,
+                dimMinutes: 8,
+                dimLevel: 10,
+                lockEnabled: true,
+                lockMinutes: 10,
+                screenOffEnabled: false,
+                screenOffMinutes: 11,
+                suspendEnabled: true,
+                suspendMinutes: 30
+            })
+
+            onSleepChanged: {
+                const d = _sleepDefaults
+                const cur = sleep || {}
+                let needsPatch = false
+                for (const k in d) {
+                    if (cur[k] === undefined) { needsPatch = true; break }
+                }
+                if (needsPatch)
+                    sleep = Object.assign({}, d, cur)
+            }
+
+            readonly property var _gameModeDefaults: ({
+                hideBar: true,
+                hideWidgets: true,
+                dnd: true,
+                hyprPerf: true
+            })
+
+            property var gameMode: ({
+                hideBar: true,
+                hideWidgets: true,
+                dnd: true,
+                hyprPerf: true
+            })
+
+            onGameModeChanged: {
+                const d = _gameModeDefaults
+                const cur = gameMode || {}
+                let needsPatch = false
+                for (const k in d) {
+                    if (cur[k] === undefined) { needsPatch = true; break }
+                }
+                if (needsPatch)
+                    gameMode = Object.assign({}, d, cur)
+            }
 
             property var toggles: ({
                 airplaneMode: false,

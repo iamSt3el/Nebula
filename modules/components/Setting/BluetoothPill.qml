@@ -25,13 +25,22 @@ Rectangle {
 
     property var bluetooth: null
     property bool expanded: false
+    property string actionError: ""
 
-    readonly property bool isConnected: bluetooth?.state === 1
+    readonly property bool isConnected: bluetooth?.state === BluetoothDeviceState.Connected
     readonly property bool isPaired: bluetooth?.paired ?? bluetooth?.bonded ?? false
+    readonly property bool isPairing: bluetooth?.pairing ?? false
+    readonly property bool isBusy: bluetooth?.state === BluetoothDeviceState.Connecting
+                                || bluetooth?.state === BluetoothDeviceState.Disconnecting
+                                || isPairing
 
     property var buttonModel: {
         if (!bluetooth) return []
         const m = []
+        if (isPairing) {
+            m.push({ value: "cancelPair", label: "Cancel", icon: "close" })
+            return m
+        }
         if (isConnected) {
             m.push({ value: "disconnect", label: "Disconnect", icon: "bluetooth_disabled" })
         } else if (isPaired) {
@@ -40,6 +49,9 @@ Rectangle {
             m.push({ value: "pair", label: "Pair", icon: "bluetooth_searching" })
         }
         if (isPaired) {
+            m.push({ value: bluetooth.trusted ? "untrust" : "trust",
+                     label: bluetooth.trusted ? "Untrust" : "Trust",
+                     icon: bluetooth.trusted ? "shield_lock" : "verified_user" })
             m.push({ value: "forget", label: "Forget", icon: "link_off" })
         }
         return m
@@ -47,7 +59,65 @@ Rectangle {
 
     visible: bluetooth !== null
 
-    onBluetoothChanged: { if (!bluetooth) expanded = false }
+    // Action currently awaiting a result, so we can report one that silently fails
+    property string pendingAction: ""
+
+    onBluetoothChanged: {
+        if (!bluetooth) expanded = false
+        actionError = ""
+        pendingAction = ""
+        actionTimeout.stop()
+    }
+
+    function runAction(action) {
+        const dev = root.bluetooth
+        if (!dev) return
+        root.actionError = ""
+        root.pendingAction = action
+        actionTimeout.restart()
+
+        switch (action) {
+        case "connect":    dev.connect();    break
+        case "disconnect": dev.disconnect(); break
+        case "pair":       dev.pair();       break
+        case "cancelPair": dev.cancelPair(); break
+        case "forget":     root.expanded = false; dev.forget(); break
+        case "trust":      dev.trusted = true;  root.pendingAction = ""; actionTimeout.stop(); break
+        case "untrust":    dev.trusted = false; root.pendingAction = ""; actionTimeout.stop(); break
+        }
+    }
+
+    Timer {
+        id: actionTimeout
+        interval: 15000
+        onTriggered: {
+            switch (root.pendingAction) {
+            case "connect":    if (!root.isConnected) root.actionError = "Couldn't connect"; break
+            case "disconnect": if (root.isConnected)  root.actionError = "Couldn't disconnect"; break
+            case "pair":       if (!root.isPaired)    root.actionError = "Pairing failed"; break
+            case "forget":     if (root.isPaired)     root.actionError = "Couldn't forget device"; break
+            }
+            root.pendingAction = ""
+        }
+    }
+
+    // The device reaching a new state means the action landed — clear the watchdog
+    Connections {
+        target: root.bluetooth
+        ignoreUnknownSignals: true
+        function onStateChanged() {
+            if (root.bluetooth?.state === BluetoothDeviceState.Connecting
+             || root.bluetooth?.state === BluetoothDeviceState.Disconnecting) return
+            root.pendingAction = ""
+            root.actionError = ""
+            actionTimeout.stop()
+        }
+        function onPairedChanged() {
+            root.pendingAction = ""
+            root.actionError = ""
+            actionTimeout.stop()
+        }
+    }
 
     Behavior on implicitHeight {
         enabled: root.bluetooth !== null
@@ -111,12 +181,23 @@ Rectangle {
                     }
                     CustomText {
                         Layout.fillWidth: true
-                        content: isConnected ? "Connected"
-                               : isPaired    ? "Paired"
-                               :               "Nearby"
+                        content: root.bluetooth?.state === BluetoothDeviceState.Connecting    ? "Connecting…"
+                               : root.bluetooth?.state === BluetoothDeviceState.Disconnecting ? "Disconnecting…"
+                               : root.isPairing ? "Pairing…"
+                               : isConnected    ? "Connected"
+                               : isPaired       ? "Paired"
+                               :                  "Nearby"
                         size: 12
                         customColor: isConnected ? Colors.primary : Colors.outline
                         Behavior on customColor { ColorAnimation { duration: 200 } }
+                    }
+
+                    CustomText {
+                        Layout.fillWidth: true
+                        visible: root.actionError !== ""
+                        content: root.actionError
+                        size: 11
+                        customColor: Colors.error
                     }
                 }
 
@@ -165,11 +246,11 @@ Rectangle {
 
             RowLayout {
                 Layout.fillWidth: true
-                visible: (bluetooth?.battery ?? 0) > 0
+                visible: bluetooth?.batteryAvailable ?? false
                 CustomText { content: "Battery"; size: 12; customColor: Colors.outline }
                 Item { Layout.fillWidth: true }
                 CustomText {
-                    content: Math.round((bluetooth?.battery ?? 0) * (bluetooth?.battery > 1 ? 1 : 100)) + "%"
+                    content: Math.round((bluetooth?.battery ?? 0) * 100) + "%"
                     size: 12
                 }
             }
@@ -197,23 +278,7 @@ Rectangle {
                 activeCheck: function(v) { return false }
                 inactiveColor: Colors.surfaceContainerHighest
 
-                onSegmentClicked: function(action) {
-                    switch (action) {
-                    case "connect":
-                        bluetooth.connectDevice()
-                        break
-                    case "disconnect":
-                        bluetooth.disconnectDevice()
-                        break
-                    case "pair":
-                        bluetooth.pair()
-                        break
-                    case "forget":
-                        root.expanded = false
-                        bluetooth.removeDevice()
-                        break
-                    }
-                }
+                onSegmentClicked: function(action) { root.runAction(action) }
             }
         }
     }

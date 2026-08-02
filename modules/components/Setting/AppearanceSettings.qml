@@ -18,6 +18,66 @@ Item {
 
     property var monitorList: ServiceDisplay.monitorList
 
+    // ── Dashboard section order ───────────────────────────────────────────
+    // Mirrors Dashboard.qml's normalisation so the settings list and the
+    // dashboard can never disagree about what the saved order means.
+    readonly property var dashSections: [
+        { key: "profile",      label: "Profile",      icon: "person" },
+        { key: "controls",     label: "Controls",     icon: "tune" },
+        { key: "quickActions", label: "Quick",        icon: "apps" },
+        { key: "music",        label: "Music",        icon: "music_note" },
+        { key: "calendar",     label: "Calendar",     icon: "calendar_month" },
+        { key: "cpu",          label: "CPU",          icon: "memory" },
+        { key: "gpu",          label: "GPU",          icon: "developer_board" },
+        { key: "memory",       label: "Memory",       icon: "storage" },
+        { key: "network",      label: "Network",      icon: "network_check" }
+    ]
+
+    readonly property var dashDefaultOrder: dashSections.map(s => s.key)
+
+    readonly property var dashOrder: {
+        const saved = SettingsConfig.dashboard?.order
+        if (!Array.isArray(saved) || saved.length === 0) return root.dashDefaultOrder
+        const known = saved.filter(k => root.dashDefaultOrder.indexOf(k) !== -1)
+        const missing = root.dashDefaultOrder.filter(k => known.indexOf(k) === -1)
+        return known.concat(missing)
+    }
+
+    function dashMeta(key) {
+        for (var i = 0; i < root.dashSections.length; i++)
+            if (root.dashSections[i].key === key) return root.dashSections[i]
+        return { key: key, label: key, icon: "widgets" }
+    }
+
+    // The grid reorders live as you drag, so it needs a mutable model of its
+    // own rather than reading the settings array directly — the settings write
+    // only happens once, on drop.
+    ListModel { id: dashModel }
+
+    function dashRebuild() {
+        dashModel.clear()
+        const o = root.dashOrder
+        for (var i = 0; i < o.length; i++) dashModel.append({ secKey: o[i] })
+    }
+
+    function dashPersistOrder() {
+        var arr = []
+        for (var i = 0; i < dashModel.count; i++) arr.push(dashModel.get(i).secKey)
+        SettingsConfig.dashboard = Object.assign({}, SettingsConfig.dashboard, { order: arr })
+    }
+
+    Component.onCompleted: root.dashRebuild()
+
+    // Re-sync only when the saved order actually differs from what the grid is
+    // showing. Without the comparison, our own write on drop would rebuild the
+    // model and fight the drag that produced it.
+    onDashOrderChanged: {
+        if (dashModel.count !== root.dashOrder.length) { root.dashRebuild(); return }
+        for (var i = 0; i < dashModel.count; i++) {
+            if (dashModel.get(i).secKey !== root.dashOrder[i]) { root.dashRebuild(); return }
+        }
+    }
+
     FileDialog {
         id: imagePicker
         title: "Select a profile image"
@@ -284,6 +344,32 @@ Item {
                             activeCheck: function(value) { return barModeCard.currentBarMode === value }
                             onSegmentClicked: function(value) {
                                 SettingsConfig.general = Object.assign({}, SettingsConfig.general, { barMode: value })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Bar Centre"; size: 14 }
+                            CustomText { content: "What sits in the middle of the bar; all of them expand on hover"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        ButtonGroup {
+                            model: [
+                                { value: "clock", label: "Clock", icon: "schedule" },
+                                { value: "music", label: "Music", icon: "music_note" },
+                                { value: "both",  label: "Both",  icon: "splitscreen" }
+                            ]
+                            activeCheck: function(value) {
+                                return (SettingsConfig.general.barCenter ?? "clock") === value
+                            }
+                            onSegmentClicked: function(value) {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { barCenter: value })
                             }
                         }
                     }
@@ -666,6 +752,253 @@ Item {
                                 onToggled: function(state) {
                                     SettingsConfig.general = Object.assign({}, SettingsConfig.general, { dockMusicPlayer: state })
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Dashboard ────────────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Dashboard"; size: 13; customColor: Colors.primary }
+
+            CustomText {
+                Layout.topMargin: 2
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                content: "Click a card to show or hide it, drag to reorder. Cards read left to right, top to bottom \u2014 the same order they stack in the dashboard, which sizes itself to whatever you leave on."
+                size: 12
+                customColor: Colors.outline
+            }
+
+            GridView {
+                id: dashGrid
+                Layout.fillWidth: true
+                Layout.topMargin: 10
+                Layout.preferredHeight: {
+                    const perRow = Math.max(1, Math.floor(width / cellWidth))
+                    return Math.ceil(count / perRow) * cellHeight
+                }
+
+                cellWidth: 112
+                cellHeight: 96
+                interactive: false
+                model: dashModel
+
+                // Cards slide out of the way as a drag passes over them
+                displaced: Transition {
+                    NumberAnimation { properties: "x,y"; duration: 180; easing.type: Easing.OutQuad }
+                }
+
+                delegate: Item {
+                    id: slot
+                    required property int index
+                    required property string secKey
+
+                    width: dashGrid.cellWidth
+                    height: dashGrid.cellHeight
+                    // Lift the whole slot so the dragged card is never painted
+                    // under a neighbour as it leaves its own cell
+                    z: dragArea.drag.active ? 2 : 1
+
+                    readonly property var meta: root.dashMeta(secKey)
+                    readonly property bool on: SettingsConfig.dashboard?.[secKey] ?? true
+
+                    DropArea {
+                        anchors.fill: parent
+                        onEntered: function(drag) {
+                            const from = drag.source.slotIndex
+                            if (from !== slot.index) dashModel.move(from, slot.index, 1)
+                        }
+                    }
+
+                    Rectangle {
+                        id: card
+                        property int slotIndex: slot.index
+
+                        width: 104
+                        height: 88
+                        x: (slot.width  - width)  / 2
+                        y: (slot.height - height) / 2
+                        radius: 18
+
+                        color: slot.on ? Qt.alpha(Colors.primary, 0.13)
+                                       : Colors.surfaceContainerHigh
+                        border.width: slot.on ? 2 : 0
+                        border.color: Colors.primary
+
+                        scale: dragArea.drag.active ? 1.06 : 1
+                        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
+                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                        Drag.active: dragArea.drag.active
+                        Drag.source: card
+                        Drag.hotSpot.x: width / 2
+                        Drag.hotSpot.y: height / 2
+
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            MaterialIconSymbol {
+                                Layout.alignment: Qt.AlignHCenter
+                                content: slot.meta.icon
+                                iconSize: 24
+                                fill: slot.on ? 1 : 0
+                                customColor: slot.on ? Colors.primary : Colors.outline
+                            }
+
+                            CustomText {
+                                Layout.alignment: Qt.AlignHCenter
+                                content: slot.meta.label
+                                size: 12
+                                weight: slot.on ? 700 : 500
+                                customColor: slot.on ? Colors.primary : Colors.surfaceText
+                            }
+                        }
+
+                        MaterialIconSymbol {
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            anchors.margins: 7
+                            visible: slot.on
+                            content: "check_circle"
+                            iconSize: 14
+                            fill: 1
+                            customColor: Colors.primary
+                        }
+
+                        MouseArea {
+                            id: dragArea
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+
+                            drag.target: card
+                            drag.axis: Drag.XAndYAxis
+
+                            // Dragging moves the card by writing x/y directly,
+                            // which breaks the centring bindings — they have to
+                            // be restored explicitly once the card is dropped.
+                            property bool didDrag: false
+                            onPressed: didDrag = false
+                            onPositionChanged: if (drag.active) didDrag = true
+
+                            onReleased: {
+                                card.Drag.drop()
+                                card.x = Qt.binding(() => (slot.width  - card.width)  / 2)
+                                card.y = Qt.binding(() => (slot.height - card.height) / 2)
+                                if (didDrag) root.dashPersistOrder()
+                            }
+
+                            onClicked: {
+                                if (didDrag) return   // a drag is not a toggle
+                                var patch = {}
+                                patch[slot.secKey] = !slot.on
+                                SettingsConfig.dashboard = Object.assign({}, SettingsConfig.dashboard, patch)
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            // ── Game Mode ────────────────────────────────────────────────
+            CustomText { Layout.topMargin: 16; content: "Game Mode"; size: 13; customColor: Colors.primary }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 6
+                spacing: 3
+
+                CustomCard {
+                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Game Mode"; size: 14; customColor: Colors.primary }
+                            CustomText { content: "Reopen this panel with your settings shortcut to switch it back off"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomToogle {
+                            isToggleOn: ServiceGameMode.active
+                            onToggled: function(state) {
+                                ServiceGameMode.active = state
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Hide Bar"; size: 14 }
+                            CustomText { content: "Hides the top bar and drops window gaps to zero"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.gameMode?.hideBar ?? true
+                            onToggled: function(state) {
+                                SettingsConfig.gameMode = Object.assign({}, SettingsConfig.gameMode, { hideBar: state })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Hide Widgets & Dock"; size: 14 }
+                            CustomText { content: "Hides desktop widgets, the dock and the music visualizer"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.gameMode?.hideWidgets ?? true
+                            onToggled: function(state) {
+                                SettingsConfig.gameMode = Object.assign({}, SettingsConfig.gameMode, { hideWidgets: state })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Do Not Disturb"; size: 14 }
+                            CustomText { content: "Holds back notification banners; they still reach the center"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.gameMode?.dnd ?? true
+                            onToggled: function(state) {
+                                SettingsConfig.gameMode = Object.assign({}, SettingsConfig.gameMode, { dnd: state })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Performance Tweaks"; size: 14 }
+                            CustomText { content: "Turns off blur, shadows and animations; reloads your Hyprland config on exit"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.gameMode?.hyprPerf ?? true
+                            onToggled: function(state) {
+                                SettingsConfig.gameMode = Object.assign({}, SettingsConfig.gameMode, { hyprPerf: state })
                             }
                         }
                     }

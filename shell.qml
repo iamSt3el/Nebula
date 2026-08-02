@@ -15,7 +15,11 @@ import qs.modules.components.Widgets
 import qs.modules.components.ToolsWidget
 import qs.modules.components.ShutdownWindow
 import qs.modules.components.Screenshot
+import qs.modules.components.GameMode
+import qs.modules.components.CheatSheet
+import qs.modules.components.Overview
 import qs.modules.customComponents
+import qs.modules.services
 import qs.modules.settings
 import qs.modules
 
@@ -28,6 +32,7 @@ ShellRoot{
             required property var modelData
             Layout{
                 screen: modelData
+                visible: !ServiceGameMode.hideBar
                 isPrimary: {
                     const pm = SettingsConfig.general.primaryMonitor ?? ""
                     if (pm === "") return true
@@ -45,7 +50,7 @@ ShellRoot{
     ToolsWidget{}
     Shutdown{}
     Loader{
-        active: SettingsConfig.general.musicVisOn
+        active: SettingsConfig.general.musicVisOn && !ServiceGameMode.hideWidgets
         sourceComponent:Vis{
             anchors {
                 left: true
@@ -57,8 +62,13 @@ ShellRoot{
     
 
 
-    WidgetScreen{}
-    
+    WidgetScreen{
+        visible: !ServiceGameMode.hideWidgets
+    }
+
+    // Game mode confirmation pill — must outlive everything else it hides
+    GameModeToast{}
+
 
 
 
@@ -66,6 +76,12 @@ ShellRoot{
 
     // Fullscreen area selector (replaces slurp for screenshot/recording area mode)
     AreaSelectorOverlay {}
+
+    // Keybinding cheat sheet — hyprctl dispatch global quickshell:cheatsheet
+    CheatSheet {}
+
+    // Workspace manager with live previews — hyprctl dispatch global quickshell:overview
+    Overview {}
 
     // Lock screen - responds to `loginctl lock-session`
     LockScreen {}

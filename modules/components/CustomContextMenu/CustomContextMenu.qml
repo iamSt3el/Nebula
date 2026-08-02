@@ -172,7 +172,7 @@ PopupWindow {
                             anchors.fill: parent
                             onClicked: {
                                 for (const t of root.appEntry?.toplevels ?? [])
-                                    t.sendClose()
+                                    t.close()
                                 root.close()
                             }
                         }

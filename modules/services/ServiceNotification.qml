@@ -14,6 +14,14 @@ Singleton {
     property int notificationsNumber: allNotifications.length
     property bool muted: false
 
+    // Banners are held back while Do Not Disturb or game mode is on. Applied at
+    // arrival rather than by filtering `popups`, so a notification that was
+    // already on screen fades out on its own timer instead of reappearing when
+    // the suppression lifts. Either way it still lands in the notification
+    // center to be read later.
+    readonly property bool _suppressPopups: (SettingsConfig.notifications?.doNotDisturb ?? false)
+                                            || ServiceGameMode.dndActive
+
     Component.onCompleted: muted = SettingsConfig.toggles?.notificationMuted ?? false
     onMutedChanged: SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, { notificationMuted: muted })
 
@@ -39,7 +47,7 @@ Singleton {
                 root._playNotificationSound()
 
             var item = notifComp.createObject(root, {
-                popup: !root.muted,
+                popup: !root.muted && !root._suppressPopups,
                 notification: notif
             })
 

@@ -6,18 +6,12 @@ import qs.modules.services
 import qs.modules.settings
 import qs.modules.customComponents
 
-Item {
+WidgetHost {
     id: root
+    configKey: "weatherForecast"
+    defaultPos: Qt.point(120, 300)
     implicitWidth: 320
     implicitHeight: 185
-
-    property bool editMode: false
-
-    scale: root.editMode ? 1.05 : 1.0
-    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-    layer.enabled: root.editMode
-    layer.smooth: true
-    layer.textureSize: root.editMode ? Qt.size(width * 1.05, height * 1.05) : Qt.size(width, height)
 
     function getDayName(dateStr) {
         if (!dateStr) return "---"
@@ -39,43 +33,6 @@ Item {
     function getDayMin(day) {
         if (!day) return "--°"
         return (ServiceWeather.useMetric ? (day.mintempC ?? "--") : (day.mintempF ?? "--")) + "°"
-    }
-
-    Component.onCompleted: {
-        root.x = SettingsConfig.widgets.weatherForecastX ?? 120
-        root.y = SettingsConfig.widgets.weatherForecastY ?? 300
-    }
-
-    Connections {
-        target: SettingsConfig
-        function onWidgetsChanged() {
-            if (!root.editMode) {
-                root.x = SettingsConfig.widgets.weatherForecastX ?? 120
-                root.y = SettingsConfig.widgets.weatherForecastY ?? 300
-            }
-        }
-    }
-
-    onXChanged: if (editMode) saveTimer.restart()
-    onYChanged: if (editMode) saveTimer.restart()
-
-    Timer {
-        id: saveTimer
-        interval: 500
-        repeat: false
-        onTriggered: {
-            SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, {
-                weatherForecastX: root.x, weatherForecastY: root.y
-            })
-        }
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        drag.target: root.editMode ? root : undefined
-        cursorShape: root.editMode ? Qt.SizeAllCursor : Qt.ArrowCursor
-        onDoubleClicked: root.editMode = true
-        onReleased: if (root.editMode) root.editMode = false
     }
 
     Rectangle {

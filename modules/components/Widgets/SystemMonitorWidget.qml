@@ -8,62 +8,33 @@ import qs.modules.customComponents
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
-Item {
+WidgetHost {
     id: root
-    width: 265
-    height: 288
+    configKey: "sysMonitor"
+    defaultPos: Qt.point(120, 120)
 
-    property bool editMode: false
+    // Previews read canned values and never start the pollers
+    readonly property var si: root.preview ? PreviewData : ServiceSystemInfo
 
-    scale: root.editMode ? 1.05 : 1.0
-    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-    layer.enabled: root.editMode
-    layer.smooth: true
-    layer.textureSize: root.editMode ? Qt.size(width * 1.05, height * 1.05) : Qt.size(width, height)
+    // Not yet on the WidgetSizes ladder — see the size audit
+    implicitWidth: 265
+    implicitHeight: 288
 
     Component.onCompleted: {
-        ServiceSystemInfo.retain()
-        root.x = SettingsConfig.widgets.sysMonitorX ?? 120
-        root.y = SettingsConfig.widgets.sysMonitorY ?? 120
-    }
-    Component.onDestruction: ServiceSystemInfo.release()
-
-    Connections {
-        target: SettingsConfig
-        function onWidgetsChanged() {
-            if (!root.editMode) {
-                root.x = SettingsConfig.widgets.sysMonitorX ?? 120
-                root.y = SettingsConfig.widgets.sysMonitorY ?? 120
-            }
+        root.si.retain()   // no-op on PreviewData
+        if (root.preview) {
+            const seed = [140, 220, 180, 90, 310, 420, 260, 180, 120, 200,
+                          340, 480, 390, 250, 160, 110, 230, 300, 210, 150]
+            for (let i = 0; i < seed.length; i++) netSparkline.addValue(seed[i])
         }
     }
-
-    onXChanged: if (editMode) saveTimer.restart()
-    onYChanged: if (editMode) saveTimer.restart()
-
-    Timer {
-        id: saveTimer
-        interval: 500
-        repeat: false
-        onTriggered: {
-            SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, {
-                sysMonitorX: root.x, sysMonitorY: root.y
-            })
-        }
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        drag.target: root.editMode ? root : undefined
-        cursorShape: root.editMode ? Qt.SizeAllCursor : Qt.ArrowCursor
-        onDoubleClicked: root.editMode = true
-        onReleased: if (root.editMode) root.editMode = false
-    }
+    Component.onDestruction: root.si.release()
 
     Connections {
         target: ServiceSystemInfo
+        enabled: !root.preview
         function onNetDownloadBpsChanged() {
-            netSparkline.addValue(ServiceSystemInfo.netDownloadBps / 1024)
+            netSparkline.addValue(root.si.netDownloadBps / 1024)
         }
     }
 
@@ -101,8 +72,8 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 CustomText {
-                    content: ServiceSystemInfo.cpuName.length > 0
-                        ? ServiceSystemInfo.cpuName.split(" ").slice(0, 3).join(" ")
+                    content: root.si.cpuName.length > 0
+                        ? root.si.cpuName.split(" ").slice(0, 3).join(" ")
                         : ""
                     size: 9
                     customColor: Colors.outline
@@ -125,7 +96,7 @@ Item {
 
                         CustomGaugeProgress {
                             anchors.fill: parent
-                            progress: ServiceSystemInfo.cpuUsage
+                            progress: root.si.cpuUsage
                             thickness: 5
                             gap: 0.3
                             showData: false
@@ -143,7 +114,7 @@ Item {
                             }
                             CustomText {
                                 Layout.alignment: Qt.AlignHCenter
-                                content: Math.round(ServiceSystemInfo.cpuUsage * 100) + "%"
+                                content: Math.round(root.si.cpuUsage * 100) + "%"
                                 size: 15
                                 weight: 700
                                 customColor: Colors.primary
@@ -154,9 +125,9 @@ Item {
                     CustomText { Layout.alignment: Qt.AlignHCenter; content: "CPU"; size: 11; customColor: Colors.outline }
                     CustomText {
                         Layout.alignment: Qt.AlignHCenter
-                        content: Math.round(ServiceSystemInfo.cpuTemp) + "°C"
+                        content: Math.round(root.si.cpuTemp) + "°C"
                         size: 11
-                        customColor: ServiceSystemInfo.cpuTemp > 80 ? Colors.error : Colors.surfaceText
+                        customColor: root.si.cpuTemp > 80 ? Colors.error : Colors.surfaceText
                     }
                 }
 
@@ -171,7 +142,7 @@ Item {
 
                         CustomGaugeProgress {
                             anchors.fill: parent
-                            progress: ServiceSystemInfo.memUsage
+                            progress: root.si.memUsage
                             thickness: 5
                             gap: 0.3
                             showData: false
@@ -189,7 +160,7 @@ Item {
                             }
                             CustomText {
                                 Layout.alignment: Qt.AlignHCenter
-                                content: Math.round(ServiceSystemInfo.memUsage * 100) + "%"
+                                content: Math.round(root.si.memUsage * 100) + "%"
                                 size: 15
                                 weight: 700
                                 customColor: Colors.primary
@@ -200,7 +171,7 @@ Item {
                     CustomText { Layout.alignment: Qt.AlignHCenter; content: "RAM"; size: 11; customColor: Colors.outline }
                     CustomText {
                         Layout.alignment: Qt.AlignHCenter
-                        content: ServiceSystemInfo.memUsedGb.toFixed(1) + " GB"
+                        content: root.si.memUsedGb.toFixed(1) + " GB"
                         size: 11
                         customColor: Colors.surfaceText
                     }
@@ -217,7 +188,7 @@ Item {
 
                         CustomGaugeProgress {
                             anchors.fill: parent
-                            progress: ServiceSystemInfo.gpuUsage
+                            progress: root.si.gpuUsage
                             thickness: 5
                             gap: 0.3
                             showData: false
@@ -235,7 +206,7 @@ Item {
                             }
                             CustomText {
                                 Layout.alignment: Qt.AlignHCenter
-                                content: Math.round(ServiceSystemInfo.gpuUsage * 100) + "%"
+                                content: Math.round(root.si.gpuUsage * 100) + "%"
                                 size: 15
                                 weight: 700
                                 customColor: Colors.primary
@@ -246,9 +217,9 @@ Item {
                     CustomText { Layout.alignment: Qt.AlignHCenter; content: "GPU"; size: 11; customColor: Colors.outline }
                     CustomText {
                         Layout.alignment: Qt.AlignHCenter
-                        content: Math.round(ServiceSystemInfo.gpuTemp) + "°C"
+                        content: Math.round(root.si.gpuTemp) + "°C"
                         size: 11
-                        customColor: ServiceSystemInfo.gpuTemp > 85 ? Colors.error : Colors.surfaceText
+                        customColor: root.si.gpuTemp > 85 ? Colors.error : Colors.surfaceText
                     }
                 }
             }
@@ -271,13 +242,13 @@ Item {
 
                     MaterialIconSymbol { content: "arrow_downward"; iconSize: 12; customColor: Colors.primary }
                     CustomText {
-                        content: ServiceSystemInfo.formatNetSpeed(ServiceSystemInfo.netDownloadBps)
+                        content: root.si.formatNetSpeed(root.si.netDownloadBps)
                         size: 11
                         customColor: Colors.surfaceText
                     }
                     Item { Layout.fillWidth: true }
                     CustomText {
-                        content: ServiceSystemInfo.formatNetSpeed(ServiceSystemInfo.netUploadBps)
+                        content: root.si.formatNetSpeed(root.si.netUploadBps)
                         size: 11
                         customColor: Colors.surfaceText
                     }
@@ -312,7 +283,7 @@ Item {
 
                 MaterialIconSymbol { content: "hard_drive"; iconSize: 12; customColor: Colors.outline }
                 CustomText {
-                    content: ServiceSystemInfo.diskUsedGb.toFixed(0) + " / " + ServiceSystemInfo.diskTotalGb.toFixed(0) + " GB"
+                    content: root.si.diskUsedGb.toFixed(0) + " / " + root.si.diskTotalGb.toFixed(0) + " GB"
                     size: 11
                     customColor: Colors.surfaceText
                 }
@@ -329,10 +300,10 @@ Item {
                         color: Colors.surfaceContainerHighest
                     }
                     Rectangle {
-                        width: Math.max(6, parent.width * ServiceSystemInfo.diskUsage)
+                        width: Math.max(6, parent.width * root.si.diskUsage)
                         height: parent.height
                         radius: 3
-                        color: ServiceSystemInfo.diskUsage > 0.9 ? Colors.error : Colors.primary
+                        color: root.si.diskUsage > 0.9 ? Colors.error : Colors.primary
 
                         Behavior on width {
                             NumberAnimation { duration: 400; easing.type: Easing.OutQuad }

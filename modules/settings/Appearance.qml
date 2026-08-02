@@ -41,6 +41,8 @@ Singleton{
         property int typingGameHeight: 380
         property int todoPanelWidth: 380
         property int todoPanelHeight: 620
+        property int vpnPanelWidth: 340
+        property int vpnPanelHeight: 160
     }
 
     rounding : QtObject{

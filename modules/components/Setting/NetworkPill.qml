@@ -32,6 +32,11 @@ Rectangle {
         const connected = network.connected
         const known = network.known
         const m = []
+        if (network.state === ConnectionState.Connecting) {
+            m.push({ value: "cancel", label: "Cancel", icon: "close" })
+            if (known) m.push({ value: "forget", label: "Forget", icon: "link_off" })
+            return m
+        }
         if (connected) {
             m.push({ value: "disconnect", label: "Disconnect", icon: "wifi_off" })
         } else {
@@ -64,7 +69,12 @@ Rectangle {
     }
     function wifiIcon(strength, security) {
         const bars = Math.round((strength ?? 0) * 4)
-        const locked = (security ?? 0) !== 0
+        // Open/Owe/Unknown are the unsecured cases — every other enum value is encrypted.
+        // (Wpa3SuiteB192 is 0, so a `security !== 0` test gets this exactly backwards.)
+        const locked = security !== undefined
+                    && security !== WifiSecurityType.Open
+                    && security !== WifiSecurityType.Owe
+                    && security !== WifiSecurityType.Unknown
         if (bars >= 4) return locked ? "wifi_lock"                    : "wifi"
         if (bars === 3) return locked ? "network_wifi_3_bar_locked"   : "network_wifi_3_bar"
         if (bars === 2) return locked ? "network_wifi_2_bar_locked"   : "network_wifi_2_bar"
@@ -75,14 +85,32 @@ Rectangle {
     Connections {
         target: root.network
         ignoreUnknownSignals: true
+
         function onConnectionFailed(reason) {
             if (reason === ConnectionFailReason.NoSecrets) {
                 root.connectionError = ""
                 root.needsPassword(root.network)
-            } else if (reason === ConnectionFailReason.AuthenticationFailed) {
-                root.connectionError = "Wrong password"
-                root.expanded = true
+                return
             }
+
+            switch (reason) {
+            case ConnectionFailReason.WifiAuthTimeout:
+                root.connectionError = "Wrong password"; break
+            case ConnectionFailReason.WifiNetworkLost:
+                root.connectionError = "Network out of range"; break
+            case ConnectionFailReason.WifiClientDisconnected:
+                root.connectionError = "Disconnected by the network"; break
+            case ConnectionFailReason.WifiClientFailed:
+                root.connectionError = "Connection failed"; break
+            default:
+                root.connectionError = "Connection failed"; break
+            }
+            root.expanded = true
+        }
+
+        // A successful connection clears any leftover error
+        function onConnectedChanged() {
+            if (root.network?.connected) root.connectionError = ""
         }
     }
 
@@ -130,9 +158,11 @@ Rectangle {
                     }
                     CustomText {
                         Layout.fillWidth: true
-                        content: network?.connected ? "Connected"
-                               : network?.known    ? "Saved"
-                               :                     "Available"
+                        content: network?.state === ConnectionState.Connecting    ? "Connecting…"
+                               : network?.state === ConnectionState.Disconnecting ? "Disconnecting…"
+                               : network?.connected ? "Connected"
+                               : network?.known     ? "Saved"
+                               :                      "Available"
                         size: 12
                         customColor: network?.connected ? Colors.primary : Colors.outline
                         Behavior on customColor { ColorAnimation { duration: 200 } }
@@ -229,17 +259,22 @@ Rectangle {
                 inactiveColor: Colors.surfaceContainerHighest
 
                 onSegmentClicked: function(action) {
+                    const net = root.network
+                    if (!net) return
+
                     switch (action) {
                     case "connect":
                         root.connectionError = ""
-                        network.connect()
+                        net.connect()
                         break
                     case "disconnect":
-                        network.disconnect()
+                    case "cancel":
+                        net.disconnect()
                         break
                     case "forget":
+                        root.connectionError = ""
                         root.expanded = false
-                        network.forget()
+                        net.forget()
                         break
                     case "qr":
                         root.qrCode(root.network)

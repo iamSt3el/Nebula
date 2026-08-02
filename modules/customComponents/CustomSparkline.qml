@@ -11,6 +11,11 @@ Item {
     property real lineWidth: 1.5
     property bool filled: true      // fill area under the line
 
+    // Pins the Y scale instead of self-scaling to this series' own peak. Needed
+    // when two sparklines are read against each other — an upload trace that
+    // self-scales looks as tall as a download trace 20x its size.
+    property real maxOverride: 0    // <= 0 keeps the self-scaling behaviour
+
     // Call this to append a new data point
     function addValue(v) {
         const copy = values.slice()
@@ -31,7 +36,7 @@ Item {
             const pts = root.values
             if (pts.length < 2) return
 
-            const maxVal = Math.max(...pts, 1)
+            const maxVal = root.maxOverride > 0 ? root.maxOverride : Math.max(...pts, 1)
             const stepX  = width / (root.maxPoints - 1)
             const offsetX = (root.maxPoints - pts.length) * stepX
 
@@ -65,6 +70,8 @@ Item {
         Connections {
             target: root
             function onValuesChanged() { canvas.requestPaint() }
+            function onMaxOverrideChanged() { canvas.requestPaint() }
+            function onLineColorChanged() { canvas.requestPaint() }
         }
     }
 }

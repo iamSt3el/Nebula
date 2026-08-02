@@ -33,7 +33,7 @@ PanelWindow{
     // true = full bar; false = secondary monitor minimal bar
     property bool isPrimary: true
 
-    WlrLayershell.keyboardFocus: isPrimary && (workspaces.active || utility.isTodoClicked)
+    WlrLayershell.keyboardFocus: isPrimary && utility.isTodoClicked
                                  ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     mask: Region{
@@ -91,6 +91,13 @@ PanelWindow{
             y:      pillWeatherPanel.y
             width:  pillWeatherPanel.visible ? pillWeatherPanel.width  : 0
             height: pillWeatherPanel.visible ? pillWeatherPanel.height : 0
+            intersection: Intersection.Subtract
+        }
+        Region {
+            x:      pillVpnPanel.x
+            y:      pillVpnPanel.y
+            width:  pillVpnPanel.visible ? pillVpnPanel.width  : 0
+            height: pillVpnPanel.visible ? pillVpnPanel.height : 0
             intersection: Intersection.Subtract
         }
     }
@@ -355,21 +362,26 @@ PanelWindow{
                 strokeColor: "transparent"
                 fillColor: Colors.surface
                 PathSvg {
+                    // showArc is passed false: the workspaces section no longer
+                    // expands in place — the workspace manager is its own
+                    // overlay window. The builders keep the branch so the shape
+                    // can still scallop around a growing left section if
+                    // anything needs that again.
                     path: root.barMode === "pill"
                         ? root.buildPillBarPath(
                             root.disX, root.disY, root.radX, root.radY, root.pillMargin, sectionsRow.x,
-                            workspaces.height, workspaces.width, workspaces.showArc,
+                            workspaces.height, workspaces.width, false,
                             clock.x, clock.width, clock.height,
                             utility.x, utility.width, utility.height, utility.isDashboard)
                         : root.barMode === "stepped"
                             ? root.buildBarPath(
                                 root.disX, root.disY, root.radX, root.radY, root.lineDis,
-                                workspaces.height, workspaces.width, workspaces.showArc,
+                                workspaces.height, workspaces.width, false,
                                 clock.x, clock.width, clock.height,
                                 utility.x, utility.width, utility.height, utility.isDashboard)
                             : root.buildFlatBarPath(
                                 root.disX, root.disY, root.radX, root.radY,
-                                workspaces.height, workspaces.width, workspaces.showArc,
+                                workspaces.height, workspaces.width, false,
                                 clock.x, clock.width, clock.height,
                                 utility.x, utility.width, utility.height, utility.isDashboard)
                 }
@@ -415,7 +427,13 @@ PanelWindow{
             x:      parent.width - width - root.pillRightMargin
             y:      root.pillMargin + Appearance.size.barHeight + 8
             width:  300
-            height: parent.height - y - root.pillMargin - 8
+            // Content-sized, capped at the space between the bar and the
+            // bottom of the screen. Matches the flat-bar dashboard.
+            readonly property real maxHeight: parent.height - y - root.pillMargin - 8
+            height: Math.min(pillDashLoader.item?.contentHeight ?? 400,
+                             pillDashPanel.maxHeight)
+
+            Behavior on height { NumberAnimation { duration: 220; easing.type: Easing.OutQuad } }
             radius: 20
             color:  Colors.surface
             clip:   true
@@ -512,6 +530,43 @@ PanelWindow{
                 sourceComponent: WeatherPanel {
                     compact: true
                     onClosed: utility.isWeatherPanelClicked = false
+                }
+            }
+        }
+
+        // ── Pill VPN panel ─────────────────────────────────────────────────
+        Rectangle {
+            id: pillVpnPanel
+            visible: isPrimary && root.barMode === "pill" && utility.isVpnPanelClicked
+
+            x:      parent.width - width - root.pillRightMargin
+            y:      root.pillMargin + Appearance.size.barHeight + 8
+            width:  pillVpnLoader.item ? pillVpnLoader.item.implicitWidth  : Appearance.size.vpnPanelWidth
+            height: pillVpnLoader.item ? pillVpnLoader.item.implicitHeight : 0
+            radius: 20
+            color:  Colors.surface
+            clip:   true
+
+            Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
+
+            opacity: 0
+            property real _slideX: Appearance.size.vpnPanelWidth + 20
+            transform: Translate { x: pillVpnPanel._slideX }
+
+            NumberAnimation on opacity { from: 0; to: 1; duration: 300; easing.type: Easing.OutQuad;   running: pillVpnPanel.visible }
+            NumberAnimation on _slideX { from: Appearance.size.vpnPanelWidth + 20; to: 0; duration: 300; easing.type: Easing.OutCubic; running: pillVpnPanel.visible }
+
+            Loader {
+                id: pillVpnLoader
+                active:  pillVpnPanel.visible
+                visible: false
+                Timer {
+                    interval: 250
+                    running:  pillVpnPanel.visible
+                    onTriggered: pillVpnLoader.visible = true
+                }
+                sourceComponent: VpnPanel {
+                    onClosed: utility.isVpnPanelClicked = false
                 }
             }
         }

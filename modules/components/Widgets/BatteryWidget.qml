@@ -1,7 +1,6 @@
 import Quickshell
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Effects
 import qs.modules.utils
 import qs.modules.services
 import qs.modules.settings
@@ -9,18 +8,11 @@ import qs.modules.customComponents
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
-Item {
+WidgetHost {
     id: root
-    implicitWidth: 200
-    implicitHeight: 200
-
-    property bool editMode: false
-
-    scale: root.editMode ? 1.05 : 1.0
-    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-    layer.enabled: root.editMode
-    layer.smooth: true
-    layer.textureSize: root.editMode ? Qt.size(width * 1.05, height * 1.05) : Qt.size(width, height)
+    configKey: "battery"
+    tile: WidgetSizes.small
+    defaultPos: Qt.point(600, 200)
 
     readonly property real pct: ServiceUPower.powerLevel
     readonly property bool charging: ServiceUPower.isCharging
@@ -30,72 +22,11 @@ Item {
         return Qt.color(Colors.primary)
     }
 
-    Component.onCompleted: {
-        root.x = SettingsConfig.widgets.batteryX ?? 600
-        root.y = SettingsConfig.widgets.batteryY ?? 200
-    }
-
-    Connections {
-        target: SettingsConfig
-        function onWidgetsChanged() {
-            if (!root.editMode) {
-                root.x = SettingsConfig.widgets.batteryX ?? 600
-                root.y = SettingsConfig.widgets.batteryY ?? 200
-            }
-        }
-    }
-
-    onXChanged: if (editMode) saveTimer.restart()
-    onYChanged: if (editMode) saveTimer.restart()
-
-    Timer {
-        id: saveTimer
-        interval: 500
-        repeat: false
-        onTriggered: {
-            SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, {
-                batteryX: root.x, batteryY: root.y
-            })
-        }
-    }
-
-    MouseArea {
+    // ── Card + wavy fill ──────────────────────────────────────────────
+    Rectangle {
         anchors.fill: parent
-        drag.target: root.editMode ? root : undefined
-        cursorShape: root.editMode ? Qt.SizeAllCursor : Qt.ArrowCursor
-        onDoubleClicked: root.editMode = true
-        onReleased: if (root.editMode) root.editMode = false
-    }
-
-    // ── Square mask ───────────────────────────────────────────────────
-    // getSquare() = rounded rectangle with 30% corner rounding (squircle).
-    // Square parent → width: parent.height = height: parent.width = 200.
-    Item {
-        id: squareMask
-        anchors.fill: parent
-        layer.enabled: true
-        visible: false
-
-        MaterialShapes.ShapeCanvas {
-            anchors.centerIn: parent
-            width: parent.height
-            height: parent.width
-            roundedPolygon: MaterialShapeFn.getSquare()
-            color: "white"
-        }
-    }
-
-    // ── Background + wavy fill, masked to the square shape ───────────
-    Item {
-        id: batteryContent
-        anchors.fill: parent
-        visible: false
-        layer.enabled: true
-
-        Rectangle {
-            anchors.fill: parent
-            color: Colors.surface
-        }
+        radius: WidgetSizes.radius
+        color: Colors.surface
 
         Canvas {
             id: waveCanvas
@@ -114,8 +45,8 @@ Item {
             property real phase: 0
 
             // Colors as properties so they're accessible inside onPaint
-            property color fillColor: Qt.rgba(root.levelColor.r, root.levelColor.g, root.levelColor.b, 0.22)
-            property color crestColor: Qt.rgba(root.levelColor.r, root.levelColor.g, root.levelColor.b, 0.40)
+            property color fillColor: Qt.rgba(root.levelColor.r, root.levelColor.g, root.levelColor.b, 0.15)
+            property color crestColor: Qt.rgba(root.levelColor.r, root.levelColor.g, root.levelColor.b, 0.38)
 
             Component.onCompleted: {
                 smoothPct = root.pct       // instant — behavior is off
@@ -129,10 +60,12 @@ Item {
 
             // 60 fps wave animation — phase grows unboundedly so Math.sin()
             // stays continuous with no wrap-around snap
+            // Keeps running at 100% too — otherwise a full battery renders as a
+            // dead flat wash with no crest, which is what made the card look grey.
             Timer {
                 interval: 16
                 repeat: true
-                running: root.pct < 1.0
+                running: !root.preview   // gallery previews don't need 60fps
                 onTriggered: {
                     waveCanvas.phase += 0.02
                     waveCanvas.requestPaint()
@@ -148,16 +81,34 @@ Item {
 
                 if (smoothPct <= 0) return
 
-                if (smoothPct >= 1.0) {
-                    ctx.fillStyle = fillColor
-                    ctx.fillRect(0, 0, width, height)
-                    return
-                }
+                // Item.clip only clips to the bounding box, ignoring radius, so the
+                // wave has to clip itself to the card's rounded outline.
+                const r = WidgetSizes.radius
+                ctx.save()
+                ctx.beginPath()
+                ctx.moveTo(r, 0)
+                ctx.lineTo(width - r, 0)
+                ctx.arcTo(width, 0, width, r, r)
+                ctx.lineTo(width, height - r)
+                ctx.arcTo(width, height, width - r, height, r)
+                ctx.lineTo(r, height)
+                ctx.arcTo(0, height, 0, height - r, r)
+                ctx.lineTo(0, r)
+                ctx.arcTo(0, 0, r, 0, r)
+                ctx.closePath()
+                ctx.clip()
 
-                const fillY = height * (1 - smoothPct)
                 const amp   = 7   // wave amplitude px
                 const freq1 = Math.PI * 4 / width   // ~2 full waves
                 const freq2 = Math.PI * 7 / width   // secondary harmonic
+
+                // Peak deflection of the two summed harmonics
+                const maxAmp = amp * 1.4
+
+                // Travel is extended by maxAmp past both edges: otherwise at 100%
+                // the waterline sits exactly on y=0 and the troughs leave unfilled
+                // notches along the top edge.
+                const fillY = (height + maxAmp * 2) * (1 - smoothPct) - maxAmp
 
                 // Build the wave path
                 const wavePath = (offsetY) => {
@@ -192,54 +143,20 @@ Item {
                 ctx.lineWidth = 1.5
                 ctx.lineJoin = "round"
                 ctx.stroke()
+
+                ctx.restore()
             }
         }
     }
 
-    MultiEffect {
-        source: batteryContent
-        anchors.fill: batteryContent
-        maskEnabled: true
-        maskSource: squareMask
-        maskThresholdMin: 0.5
-        maskSpreadAtMin: 1.0
-    }
-
-    // ── Percentage + status — top-right ───────────────────────────────
-    Column {
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.topMargin: 30
-        anchors.rightMargin: 24
-        spacing: 2
-
-        CustomText {
-            anchors.right: parent.right
-            content: Math.round(root.pct * 100) + "%"
-            size: 52
-            weight: 400
-            customColor: root.levelColor
-            font.family: SettingsConfig.general.displayFont ?? "Titan One"
-        }
-
-        CustomText {
-            anchors.right: parent.right
-            content: root.charging
-                ? (ServiceUPower.timeToFull.length > 0 ? ServiceUPower.timeToFull : "Charging")
-                : "On Battery"
-            size: 13
-            customColor: Colors.outline
-        }
-    }
-
-    // ── Battery icon — bottom-left ────────────────────────────────────
+    // ── Battery icon — top-left ───────────────────────────────────────
     Item {
-        anchors.bottom: parent.bottom
+        anchors.top: parent.top
         anchors.left: parent.left
-        anchors.bottomMargin: 32
-        anchors.leftMargin: 32
-        implicitWidth: 54
-        implicitHeight: 54
+        anchors.topMargin: 22
+        anchors.leftMargin: 22
+        implicitWidth: 44
+        implicitHeight: 44
 
         MaterialShapes.ShapeCanvas {
             anchors.fill: parent
@@ -255,7 +172,7 @@ Item {
                 root.pct < 0.55 ? "battery_3_bar" :
                 root.pct < 0.75 ? "battery_5_bar" : "battery_full"
             )
-            iconSize: 26
+            iconSize: 22
             customColor: root.levelColor
 
             SequentialAnimation on opacity {
@@ -267,12 +184,12 @@ Item {
         }
     }
 
-    // ── Health — bottom-right ─────────────────────────────────────────
+    // ── Health — top-right, aligned to the icon's centre ──────────────
     Row {
-        anchors.bottom: parent.bottom
+        anchors.top: parent.top
         anchors.right: parent.right
-        anchors.bottomMargin: 38
-        anchors.rightMargin: 26
+        anchors.topMargin: 36
+        anchors.rightMargin: 22
         spacing: 5
 
         MaterialIconSymbol {
@@ -283,6 +200,31 @@ Item {
 
         CustomText {
             content: Math.round(ServiceUPower.health * 100) + "%"
+            size: 13
+            customColor: Colors.outline
+        }
+    }
+
+    // ── Hero: percentage + status — bottom-left ───────────────────────
+    Column {
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.bottomMargin: 20
+        anchors.leftMargin: 22
+        spacing: 0
+
+        CustomText {
+            content: Math.round(root.pct * 100) + "%"
+            size: 46
+            weight: 400
+            customColor: root.levelColor
+            font.family: SettingsConfig.general.displayFont ?? "Titan One"
+        }
+
+        CustomText {
+            content: root.charging
+                ? (ServiceUPower.timeToFull.length > 0 ? ServiceUPower.timeToFull : "Charging")
+                : "On Battery"
             size: 13
             customColor: Colors.outline
         }

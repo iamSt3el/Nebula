@@ -7,18 +7,12 @@ import qs.modules.customComponents
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
-Item {
+WidgetHost {
     id: root
-    width: 200
-    height: 234
-
-    property bool editMode: false
-
-    scale: root.editMode ? 1.05 : 1.0
-    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-    layer.enabled: root.editMode
-    layer.smooth: true
-    layer.textureSize: root.editMode ? Qt.size(width * 1.05, height * 1.05) : Qt.size(width, height)
+    configKey: "pomodoro"
+    defaultPos: Qt.point(400, 120)
+    implicitWidth: 200
+    implicitHeight: 234
 
     // ── Timer state ────────────────────────────────────────────────────
     property bool isWorking: true
@@ -72,41 +66,8 @@ Item {
     }
 
     // ── Position save ──────────────────────────────────────────────────
-    Component.onCompleted: {
-        root.x = SettingsConfig.widgets.pomodoroX ?? 400
-        root.y = SettingsConfig.widgets.pomodoroY ?? 120
-    }
-
-    Connections {
-        target: SettingsConfig
-        function onWidgetsChanged() {
-            if (!root.editMode) {
-                root.x = SettingsConfig.widgets.pomodoroX ?? 400
-                root.y = SettingsConfig.widgets.pomodoroY ?? 120
-            }
-        }
-    }
-
-    onXChanged: if (editMode) posTimer.restart()
-    onYChanged: if (editMode) posTimer.restart()
-
-    Timer {
-        id: posTimer; interval: 500; repeat: false
-        onTriggered: {
-            SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, {
-                pomodoroX: root.x, pomodoroY: root.y
-            })
-        }
-    }
 
     // ── Drag / edit ────────────────────────────────────────────────────
-    MouseArea {
-        anchors.fill: parent
-        drag.target: root.editMode ? root : undefined
-        cursorShape: root.editMode ? Qt.SizeAllCursor : Qt.ArrowCursor
-        onDoubleClicked: root.editMode = true
-        onReleased: if (root.editMode) root.editMode = false
-    }
 
     // ── Background ─────────────────────────────────────────────────────
     Rectangle { anchors.fill: parent; radius: 24; color: Colors.surface }

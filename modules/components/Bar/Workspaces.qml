@@ -13,9 +13,6 @@ import Quickshell.Widgets
 
 Item{
     id: root
-    property bool isClicked: false
-    property bool active: false
-    property bool showArc: height > 1000 ? true : false
 
     readonly property int wsCount:    SettingsConfig.general.workspaceCount ?? 5
     readonly property bool wsNumbers: SettingsConfig.general.showWorkspaceNumbers ?? false
@@ -30,57 +27,30 @@ Item{
         }
         return count
     }
-    readonly property int otherActive: {
-        if (!perMonitorMode) return 0
-        var count = 0
-        var vals = Hyprland.workspaces.values
-        for (var i = 0; i < vals.length; i++) {
-            if (vals[i].monitor?.name !== layout.screen.name && vals[i].active) count++
+    // The Hyprland monitor this particular bar is drawn on
+    readonly property var thisMonitor: {
+        var mons = Hyprland.monitors?.values ?? []
+        for (var i = 0; i < mons.length; i++) {
+            if (mons[i].name === layout.screen.name) return mons[i]
         }
-        return count
+        return null
     }
+
+    // What this monitor is currently showing. HyprlandWorkspace.active is the
+    // *globally* focused workspace, so relying on it made every bar react to a
+    // switch on any monitor. Each monitor tracks its own activeWorkspace.
+    readonly property int activeWsId: thisMonitor?.activeWorkspace?.id ?? -1
+
+    // Keyboard focus sits on some other monitor
+    readonly property bool otherFocused: perMonitorMode
+        && (Hyprland.focusedMonitor?.name ?? layout.screen.name) !== layout.screen.name
+
+    // Stable while monitors stay plugged in — unlike a workspace count, which
+    // churns as Hyprland creates and reaps empty workspaces
+    readonly property int monitorCount: Hyprland.monitors?.values?.length ?? 1
+    readonly property bool showOtherIndicator: perMonitorMode && monitorCount > 1
     implicitWidth:  outerRow.implicitWidth + 20
     implicitHeight: 40
-
-    states: State {
-        name: "expanded"
-        when: root.active
-        PropertyChanges {
-            target: root
-            implicitWidth:  500
-            implicitHeight: 1080
-        }
-    }
-
-    transitions: Transition {
-        NumberAnimation {
-            properties: "implicitWidth,implicitHeight"
-            duration:   300
-            easing.type: Easing.OutQuad
-        }
-    }
-    onActiveChanged:{
-        if(active){
-            timer.start();
-        }else{
-            loader.active = false
-        }
-    }
-    Timer{
-        id: timer
-        interval: 300
-        onTriggered:{
-            loader.active = true
-        }
-    }
-
-    Timer{
-        id: rowTimer
-        interval: 300
-        onTriggered:{
-            row.visible = true
-        }
-    }
 
     RowLayout{
         id: outerRow
@@ -104,37 +74,56 @@ Item{
                     delegate: Rectangle {
                         property int workspaceId: modelData
                         property var currentWorkspace: ServiceWorkspaces.getWorkspace(workspaceId)
-                        readonly property bool isActive:   !!currentWorkspace && currentWorkspace.active
                         readonly property bool isOccupied: !!currentWorkspace
                         readonly property bool showNumbers: root.wsNumbers
-                        // In per-monitor mode, hide occupied workspaces that live on other monitors
-                        readonly property bool isForThisMonitor: !root.perMonitorMode
-                            || !currentWorkspace
-                            || currentWorkspace.monitor?.name === layout.screen.name
 
-                        visible: isForThisMonitor
+                        // Requires a *known* monitor that isn't ours. During a switch
+                        // Hyprland briefly reports a workspace with no monitor yet;
+                        // treating that as "elsewhere" made the pill vanish and
+                        // reappear, which is what made the row jump.
+                        readonly property bool onOtherMonitor: root.perMonitorMode
+                            && !!currentWorkspace
+                            && !!currentWorkspace.monitor
+                            && currentWorkspace.monitor.name !== layout.screen.name
+
+                        readonly property bool occupiedHere: isOccupied && !onOtherMonitor
+
+                        // Per-monitor: ask this monitor what it's showing. Otherwise
+                        // fall back to the global focused workspace, which is what
+                        // mirrored bars want.
+                        readonly property bool isActive: !onOtherMonitor && (root.perMonitorMode
+                            ? workspaceId === root.activeWsId
+                            : (!!currentWorkspace && currentWorkspace.active))
+
+                        // The slot is always kept. Collapsing it to zero width made
+                        // the row resize on every switch, and since the bar centres
+                        // its contents that shifted everything either side.
+                        visible: true
                         Layout.alignment: Qt.AlignVCenter
                         Layout.preferredHeight: 25
-                        Layout.preferredWidth: isForThisMonitor
-                            ? (isOccupied ? Math.max(showNumbers ? 25 : 25, (topLevels.appList?.width ?? 0) + 12) : 25)
-                            : 0
+                        Layout.preferredWidth: occupiedHere
+                            ? Math.max(25, (topLevels.appList?.width ?? 0) + 12)
+                            : 25
                         radius: 15
-                        color: isActive   ? Colors.primary
-                        : isOccupied ? Colors.surfaceContainerHighest
-                        : "transparent"
+                        color: isActive     ? Colors.primary
+                             : occupiedHere ? Colors.surfaceContainerHighest
+                                            : "transparent"
 
-                        border.width: isOccupied && !isActive ? 1 : 0
-                        border.color: Qt.alpha(Colors.outline, 0.15)
+                        border.width: (occupiedHere && !isActive) || onOtherMonitor ? 1 : 0
+                        border.color: onOtherMonitor ? Qt.alpha(Colors.outline, 0.35)
+                                                     : Qt.alpha(Colors.outline, 0.15)
 
                         Behavior on Layout.preferredHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
                         Behavior on Layout.preferredWidth  { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
                         Behavior on color                  { ColorAnimation  { duration: 200 } }
 
                         Rectangle{
-                            visible: !isOccupied
+                            visible: !occupiedHere
                             implicitWidth: 5
                             implicitHeight: 5
-                            color: Colors.outline
+                            // Dimmer when the workspace exists but lives elsewhere,
+                            // so an empty slot still reads differently from a busy one
+                            color: onOtherMonitor ? Qt.alpha(Colors.outline, 0.45) : Colors.outline
                             radius: width / 2
                             anchors.centerIn: parent
                         }
@@ -142,7 +131,7 @@ Item{
                         Loader {
                             id: topLevels
                             anchors.fill: parent
-                            active: isOccupied && !showNumbers
+                            active: occupiedHere && !showNumbers
                             visible: active
                             sourceComponent: TopLevels {}
                             property var appList: item ? item.appList : null
@@ -150,7 +139,7 @@ Item{
 
                         CustomText {
                             anchors.centerIn: parent
-                            visible: showNumbers && isOccupied
+                            visible: showNumbers && occupiedHere
                             content: workspaceId.toString()
                             size: 10
                             weight: isActive ? 800 : 600
@@ -169,16 +158,20 @@ Item{
                     }
                 }
 
-                // Other-monitors indicator: shows when per-monitor mode is on and other monitors have workspaces
+                // Other-monitors indicator. Presence is keyed off the monitor count,
+                // not the other monitor's workspace count: Hyprland destroys a
+                // workspace as soon as you leave it empty, so counting workspaces
+                // made this pill appear and vanish — resizing the centred row on
+                // this bar every time the *other* monitor changed workspace.
                 Rectangle {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.preferredHeight: 25
-                    Layout.preferredWidth: root.perMonitorMode && root.otherOccupied > 0 ? 25 : 0
-                    opacity: root.perMonitorMode && root.otherOccupied > 0 ? 1 : 0
+                    Layout.preferredWidth: root.showOtherIndicator ? 25 : 0
+                    opacity: root.showOtherIndicator ? 1 : 0
                     visible: Layout.preferredWidth > 0
                     radius: 12
-                    color: root.otherActive > 0 ? Colors.primary : "transparent"
-                    border.width: root.otherActive > 0 ? 0 : 1
+                    color: root.otherFocused ? Colors.primary : "transparent"
+                    border.width: root.otherFocused ? 0 : 1
                     border.color: Qt.alpha(Colors.outline, 0.35)
 
                     Behavior on color                 { ColorAnimation  { duration: 200 } }
@@ -189,12 +182,12 @@ Item{
                         anchors.centerIn: parent
                         content: "tv_displays"
                         iconSize: 12
-                        customColor: root.otherActive > 0 ? Colors.primaryText : Colors.outline
+                        customColor: root.otherFocused ? Colors.primaryText : Colors.outline
                         Behavior on customColor { ColorAnimation { duration: 200 } }
                     }
 
                     CustomToolTip {
-                        content: root.otherOccupied + " workspace" + (root.otherOccupied !== 1 ? "s" : "") + " on other monitor" + (root.otherActive > 0 ? " (active)" : "")
+                        content: root.otherOccupied + " workspace" + (root.otherOccupied !== 1 ? "s" : "") + " on other monitor" + (root.otherFocused ? " — focused" : "")
                         visible: otherMonHov.containsMouse
                     }
                     MouseArea { id: otherMonHov; anchors.fill: parent; hoverEnabled: true }

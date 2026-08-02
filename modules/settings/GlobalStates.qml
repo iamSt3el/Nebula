@@ -11,6 +11,10 @@ Singleton{
     property bool clipboardOpen: false
     property bool settingsOpen: false
     property int  settingsPage: 9
+    property bool widgetEditMode: false
+    // True only while a desktop widget's text field holds focus. Drives the
+    // widget layer's keyboard mode so it never holds the keyboard at rest.
+    property bool widgetTextFocus: false
     property bool osdOpen: false
     property bool wallpaperOpen: false
     property bool typingGameOpen: false
@@ -18,5 +22,7 @@ Singleton{
     property bool shutdownWindow: false
     property bool fileDialogOpen: false
     property bool areaSelectOpen: false
+    property bool cheatSheetOpen: false
+    property bool overviewOpen: false
     property string areaSelectMode: ""   // "screenshot" or "recording"
 }

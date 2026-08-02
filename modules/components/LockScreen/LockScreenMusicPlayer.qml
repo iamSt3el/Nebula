@@ -15,19 +15,26 @@ Item {
         spacing: 10
 
         // Album art
-        ClippingWrapperRectangle {
+        // ClippingWrapperRectangle wraps exactly one visual child; the
+        // placeholder has to sit beside it, not inside it.
+        Item {
             Layout.preferredWidth: height
             Layout.fillHeight: true
-            radius: 12
-            color: Colors.surfaceContainerHigh
 
-            Image {
+            ClippingWrapperRectangle {
                 anchors.fill: parent
-                sourceSize: Qt.size(width, height)
-                source: ServiceMusic.activeTrack?.artUrl ?? ""
-                fillMode: Image.PreserveAspectCrop
-                visible: (ServiceMusic.activeTrack?.artUrl?.length ?? 0) > 0
+                radius: 12
+                color: Colors.surfaceContainerHigh
+
+                Image {
+                    anchors.fill: parent
+                    sourceSize: Qt.size(width, height)
+                    source: ServiceMusic.activeTrack?.artUrl ?? ""
+                    fillMode: Image.PreserveAspectCrop
+                    visible: (ServiceMusic.activeTrack?.artUrl?.length ?? 0) > 0
+                }
             }
+
             MaterialIconSymbol {
                 anchors.centerIn: parent
                 content: "music_note"; iconSize: 18; customColor: Colors.outline

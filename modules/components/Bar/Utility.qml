@@ -22,7 +22,15 @@ Item {
     property bool isNotificationClicked: false
     property bool isSoundPanelClicked:   false
     property bool isWeatherPanelClicked: false
-    property bool isDashboard:           height > 900
+    property bool isVpnPanelClicked:     false
+    // Switches the bar path's bottom-left corner to the outward curve. It is a
+    // height proxy, not a real signal: every panel is 1080 tall, so "> 900"
+    // meant "some panel is open". That held while the dashboard was also a
+    // fixed 1080, but it is content-sized now and still clears 900, so the
+    // curve kept appearing. Above the 1080 panel ceiling this is effectively
+    // off — raise or lower to taste.
+    property real dashboardCurveMin:     1150
+    property bool isDashboard:           height > dashboardCurveMin
     property real soundPanelCenterX: 0
     readonly property real dashBtnCenterX: dashBtnRect.mapToItem(null, dashBtnRect.width / 2, 0).x
     readonly property bool isPill: SettingsConfig.general.barMode === "pill"
@@ -35,7 +43,13 @@ Item {
             PropertyChanges {
                 target: utility
                 implicitWidth:  Appearance.size.dashboardPanelWidth
-                implicitHeight: Appearance.size.dashboardPanelHeight
+                // Follows the enabled sections instead of always claiming the
+                // full panel height — with three sections on, the dashboard is
+                // three sections tall. dashboardPanelHeight is the ceiling now,
+                // not the size.
+                implicitHeight: Math.min(
+                    dashboardLoader.item?.contentHeight ?? 400,
+                    Appearance.size.dashboardPanelHeight)
             }
         },
         State {
@@ -55,7 +69,16 @@ Item {
                 implicitWidth:  Appearance.size.weatherPanelWidth
                 implicitHeight: Appearance.size.weatherPanelHeight
             }
-        }
+        },
+        // State {
+        //     name: "vpn"
+        //     when: utility.isVpnPanelClicked && !utility.isPill
+        //     PropertyChanges {
+        //         target: utility
+        //         implicitWidth:  Appearance.size.vpnPanelWidth
+        //         implicitHeight: Appearance.size.vpnPanelHeight
+        //     }
+        // }
     ]
 
     transitions: Transition {
@@ -115,6 +138,25 @@ Item {
             }
         }
 
+        // // ── VPN panel (non-pill — expands bar) ────────────────────────────
+        // Loader {
+        //     id: vpnLoader
+        //     active:       utility.isVpnPanelClicked && !utility.isPill
+        //     anchors.fill: parent
+        //     visible:      false
+        //     Timer {
+        //         interval: Appearance.duration.normal
+        //         running:  utility.isVpnPanelClicked && !utility.isPill
+        //         onTriggered: vpnLoader.visible = true
+        //     }
+        //     sourceComponent: VpnPanel {
+        //         onClosed: {
+        //             utility.isVpnPanelClicked = false
+        //             vpnLoader.visible         = false
+        //         }
+        //     }
+        // }
+
         // ── Dashboard panel (non-pill modes — expands bar) ────────────────
         Loader {
             id: dashboardLoader
@@ -137,7 +179,7 @@ Item {
         // ── Utility row ────────────────────────────────────────────────────
         RowLayout {
             id: row
-            visible:             (!utility.isClicked || utility.isPill) && (!utility.isNotificationClicked || utility.isPill) && (!utility.isWeatherPanelClicked || utility.isPill) && utility.height === Appearance.size.barHeight
+            visible:             (!utility.isClicked || utility.isPill) && (!utility.isNotificationClicked || utility.isPill) && (!utility.isWeatherPanelClicked || utility.isPill) && (!utility.isVpnPanelClicked || utility.isPill) && utility.height === Appearance.size.barHeight
             spacing:             10
             anchors.verticalCenter: parent.verticalCenter
             anchors.right:          parent.right
@@ -398,6 +440,38 @@ Item {
                             visible: btHov.containsMouse
                         }
                     }
+                    //
+                    // // VPN
+                    // Rectangle {
+                    //     implicitWidth:  28; implicitHeight: 28; radius: 14
+                    //     color:          vpnHov.containsMouse ? Colors.primaryContainer : "transparent"
+                    //     Behavior on color { ColorAnimation { duration: 150 } }
+                    //
+                    //     MaterialIconSymbol {
+                    //         anchors.centerIn: parent
+                    //         content:     "vpn_lock"
+                    //         fill:        ServiceVpn.connected ? 1 : 0
+                    //         iconSize:    18
+                    //         customColor: vpnHov.containsMouse ? Colors.primaryContainerText
+                    //                    : ServiceVpn.connected  ? Colors.primary : Colors.surfaceText
+                    //         Behavior on customColor { ColorAnimation { duration: 150 } }
+                    //     }
+                    //
+                    //     MouseArea {
+                    //         id: vpnHov
+                    //         anchors.fill: parent
+                    //         hoverEnabled: true
+                    //         cursorShape:  Qt.PointingHandCursor
+                    //         onClicked:    utility.isVpnPanelClicked = true
+                    //     }
+                    //
+                    //     CustomToolTip {
+                    //         content: !ServiceVpn.installed ? "VPN not installed"
+                    //                : ServiceVpn.connected   ? "Connected · " + ServiceVpn.country
+                    //                :                          "VPN disconnected"
+                    //         visible: vpnHov.containsMouse
+                    //     }
+                    // }
 
                     // Notifications
                     Rectangle {

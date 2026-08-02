@@ -21,6 +21,7 @@ Scope {
     PanelWindow {
         id: panelWindow
         //implicitHeight: 600
+        visible: !ServiceGameMode.hideWidgets
         anchors.top: true
         anchors.left: true
         anchors.right: true

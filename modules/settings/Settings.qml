@@ -109,6 +109,10 @@ Singleton{
         {
             name: "Appearance",
             icon: "style"
+        },
+        {
+            name: "Sleep",
+            icon: "bedtime"
         }
     ]
 

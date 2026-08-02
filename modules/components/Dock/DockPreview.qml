@@ -137,7 +137,7 @@ PopupWindow {
                                         id: closeRipple
                                         anchors.fill: parent
                                         radius: 11
-                                        onClicked: card.modelData.sendClose()
+                                        onClicked: card.modelData.close()
                                     }
                                 }
                             }

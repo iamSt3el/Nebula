@@ -13,7 +13,18 @@ Item {
     property bool horizontal: false
     signal change
 
+    // The track is inset at each end so the handle can sit centred at 0% and
+    // 100% without overhanging. Every position calculation works in that inset
+    // space rather than the full length.
+    readonly property int inset: 7
+    readonly property int endPad: 14
 
+    function applyFraction(f) {
+        wrapper.progress = Math.max(0, Math.min(1, f))
+        // Emitted after the write so a handler reading `progress` sees the new
+        // value. It used to fire first, which left brightness one event behind.
+        root.change()
+    }
 
     // vertical
     Column {
@@ -35,7 +46,7 @@ Item {
             Rectangle {
                 implicitWidth: parent.width
                 anchors.top: parent.top
-                implicitHeight: (parent.height - 14) * (1 - wrapper.progress)
+                implicitHeight: (parent.height - root.endPad) * (1 - wrapper.progress)
                 color: Colors.surfaceContainerHigh
                 topLeftRadius: 12
                 topRightRadius: 12
@@ -52,7 +63,7 @@ Item {
             }
             Rectangle {
                 id: lower
-                implicitHeight: (parent.height - 14) * wrapper.progress
+                implicitHeight: (parent.height - root.endPad) * wrapper.progress
                 implicitWidth: parent.width
                 anchors.bottom: parent.bottom
                 color: Colors.primary
@@ -70,6 +81,10 @@ Item {
                     color: Colors.primaryText
                 }
             }
+
+            // Marker only. This used to own the sole MouseArea and be moved by
+            // drag.target, which is why the track ignored clicks — and why the
+            // y binding was destroyed the first time you dragged it.
             Rectangle {
                 id: handler
                 implicitHeight: 6
@@ -77,24 +92,24 @@ Item {
                 color: Colors.primary
                 radius: 2
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: (parent.height - 14) * (1 - wrapper.progress) + 7 - (height / 2)
+                y: (parent.height - root.endPad) * (1 - wrapper.progress) + root.inset - (height / 2)
+            }
 
-                MouseArea {
-                    anchors.fill: parent
-                    drag.target: handler
-                    drag.axis: Drag.YAxis
-                    drag.minimumY: 0
-                    drag.maximumY: wrapper.height - 14
-                    cursorShape: Qt.PointingHandCursor
-                    onPositionChanged: {
-                        if (drag.active) {
-                            root.change()
+            // Whole track responds: press or drag anywhere sets the value.
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                preventStealing: true
 
-                            let pct = 1 - ((handler.y - 6 + handler.height / 2) / (wrapper.height - 14));
-                            wrapper.progress = Math.max(0, Math.min(1, pct));
-                        }
-                    }
+                function applyAt(my) {
+                    const usable = wrapper.height - root.endPad
+                    if (usable <= 0) return
+                    root.applyFraction(1 - ((my - root.inset) / usable))
                 }
+
+                onPressed:         event => { root.isDragging = true; applyAt(event.y) }
+                onPositionChanged: event => { if (pressed) applyAt(event.y) }
+                onReleased:        root.isDragging = false
             }
         }
     }
@@ -121,21 +136,21 @@ Item {
             Rectangle {
                 implicitHeight: parent.height
                 anchors.right: parent.right
-                implicitWidth: (parent.width - 14) * (1 - wrapperH.progress)
+                implicitWidth: (parent.width - root.endPad) * (1 - wrapperH.progress)
                 color: Qt.alpha(Colors.primary, 0.5)
                 topRightRadius: 8
                 bottomRightRadius: 8
             }
             // active = left portion
             Rectangle {
-                implicitWidth: (parent.width - 14) * wrapperH.progress
+                implicitWidth: (parent.width - root.endPad) * wrapperH.progress
                 implicitHeight: parent.height
                 anchors.left: parent.left
                 color: Colors.primary
                 topLeftRadius: 8
                 bottomLeftRadius: 8
             }
-            // handler — tall and thin (inverted from vertical)
+            // handler — tall and thin (inverted from vertical), marker only
             Rectangle {
                 id: handlerH
                 implicitWidth: 6        // was implicitHeight: 6
@@ -143,23 +158,26 @@ Item {
                 color: Colors.primary
                 radius: 2
                 anchors.verticalCenter: parent.verticalCenter
-                x: (parent.width - 14) * wrapperH.progress + 7 - (width / 2)
+                x: (parent.width - root.endPad) * wrapperH.progress + root.inset - (width / 2)
+            }
 
-                MouseArea {
-                    anchors.fill: parent
-                    drag.target: handlerH
-                    drag.axis: Drag.XAxis
-                    drag.minimumX: 0
-                    drag.maximumX: wrapperH.width - 14
-                    cursorShape: Qt.PointingHandCursor
-                    onPositionChanged: {
-                        if (drag.active) {
-                            let pct = (handlerH.x - 6 + handlerH.width / 2) / (wrapperH.width - 14);
-                            wrapperH.progress = Math.max(0, Math.min(1, pct));
-                            wrapper.progress = wrapperH.progress;
-                        }
-                    }
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                preventStealing: true
+
+                // Writes wrapper.progress rather than wrapperH's: wrapperH.progress
+                // is bound to it, so assigning there would sever the binding and
+                // leave the two orientations disagreeing.
+                function applyAt(mx) {
+                    const usable = wrapperH.width - root.endPad
+                    if (usable <= 0) return
+                    root.applyFraction((mx - root.inset) / usable)
                 }
+
+                onPressed:         event => { root.isDragging = true; applyAt(event.x) }
+                onPositionChanged: event => { if (pressed) applyAt(event.x) }
+                onReleased:        root.isDragging = false
             }
         }
     }

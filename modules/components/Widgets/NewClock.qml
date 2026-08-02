@@ -10,43 +10,14 @@ import qs.modules.customComponents
 import qs.modules.services
 import qs.modules.settings
 
-Item{
+WidgetHost{
     id: root
+    configKey: "clock"
+    defaultPos: Qt.point(100, 100)
+
+    // Sizes to its own content rather than a tile
     implicitWidth: col.implicitWidth
     implicitHeight: col.implicitHeight
-
-    property bool editMode: false
-
-    scale: root.editMode ? 1.05 : 1.0
-    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-    layer.enabled: root.editMode
-    layer.smooth: true
-    layer.textureSize: root.editMode ? Qt.size(width * 1.05, height * 1.05) : Qt.size(width, height)
-
-    Component.onCompleted: {
-        root.x = SettingsConfig.widgets.clockX
-        root.y = SettingsConfig.widgets.clockY
-    }
-
-    onXChanged: if (editMode) clockSaveTimer.restart()
-    onYChanged: if (editMode) clockSaveTimer.restart()
-
-    Timer {
-        id: clockSaveTimer
-        interval: 500
-        repeat: false
-        onTriggered: {
-            SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { clockX: root.x, clockY: root.y })
-        }
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        drag.target: root.editMode ? root : undefined
-        cursorShape: root.editMode ? Qt.SizeAllCursor : Qt.ArrowCursor
-        onDoubleClicked: root.editMode = true
-        onReleased: if (root.editMode) root.editMode = false
-    }
 
     property string hourDigit1: {
         var h = ServiceClock.hour > 12 ? ServiceClock.hour - 12 : ServiceClock.hour;

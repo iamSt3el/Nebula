@@ -92,7 +92,7 @@ Item {
                         isToggleOn: Bluetooth.defaultAdapter?.enabled ?? false
                         onToggled: function(state) {
                             const adapter = Bluetooth.defaultAdapter
-                            if (adapter) adapter.discovering = state
+                            if (adapter) adapter.enabled = state
                         }
                     }
                 }
@@ -255,12 +255,17 @@ Item {
 
                 MaterialIconSymbol {
                     visible: !root.scanning
-                    content: "refresh"; iconSize: 18; customColor: Colors.outline
+                    content: "refresh"; iconSize: 18
+                    customColor: (Bluetooth.defaultAdapter?.enabled ?? false) ? Colors.outline
+                                                                             : Qt.alpha(Colors.outline, 0.4)
                     MouseArea {
                         anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
+                        cursorShape: (Bluetooth.defaultAdapter?.enabled ?? false) ? Qt.PointingHandCursor
+                                                                                  : Qt.ForbiddenCursor
                         onClicked: {
-                            if (Bluetooth.defaultAdapter) Bluetooth.defaultAdapter.discovering = true
+                            const adapter = Bluetooth.defaultAdapter
+                            if (!adapter || !adapter.enabled) return
+                            adapter.discovering = true
                             root.scanning = true
                             scanTimer.restart()
                         }

@@ -10,64 +10,21 @@ import qs.modules.customComponents
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
-
-Item {
+WidgetHost {
     id: root
+    configKey: "musicPlayer"
+    defaultPos: Qt.point(200, 200)
     visible: true
     implicitHeight: 500
     implicitWidth: 500
 
-    property bool editMode: false
-
-    scale: root.editMode ? 1.05 : 1.0
-    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-    layer.enabled: root.editMode
-    layer.smooth: true
-    layer.textureSize: root.editMode ? Qt.size(width * 1.05, height * 1.05) : Qt.size(width, height)
-
-    Component.onCompleted: {
-        ServiceCava.retain()
-        root.x = SettingsConfig.widgets.musicPlayerX ?? 200
-        root.y = SettingsConfig.widgets.musicPlayerY ?? 200
-    }
-    Component.onDestruction: ServiceCava.release()
+    // Never start audio capture for a gallery thumbnail
+    Component.onCompleted: if (!root.preview) ServiceCava.retain()
+    Component.onDestruction: if (!root.preview) ServiceCava.release()
 
     // Settings load asynchronously via a 100ms timer in SettingsConfig,
     // so widgets.musicPlayerX may not be ready at Component.onCompleted time.
     // React to the load completing here.
-    Connections {
-        target: SettingsConfig
-        function onWidgetsChanged() {
-            if (!root.editMode) {
-                root.x = SettingsConfig.widgets.musicPlayerX ?? 200
-                root.y = SettingsConfig.widgets.musicPlayerY ?? 200
-            }
-        }
-    }
-
-    onXChanged: if (editMode) musicSaveTimer.restart()
-    onYChanged: if (editMode) musicSaveTimer.restart()
-
-    Timer {
-        id: musicSaveTimer
-        interval: 500
-        repeat: false
-        onTriggered: {
-            SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, {
-                musicPlayerX: root.x,
-                musicPlayerY: root.y
-            })
-        }
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        drag.target: root.editMode ? root : undefined
-        cursorShape: root.editMode ? Qt.SizeAllCursor : Qt.ArrowCursor
-        onDoubleClicked: root.editMode = true
-        onReleased: if (root.editMode) root.editMode = false
-    }
-
 
     Canvas {
         id: outerVizShape
@@ -339,12 +296,10 @@ Item {
             size: 12
         }
 
-
         RowLayout{
             Layout.alignment: Qt.AlignCenter
             Layout.topMargin: 30
             spacing: 20
-
 
             Rectangle{
                 implicitHeight: 50
@@ -379,7 +334,6 @@ Item {
                 spermFrequency: 12
                 animateSperm: false
 
-
                 MaterialShapes.ShapeCanvas {
                     anchors.centerIn: parent
                     implicitWidth: 50
@@ -395,7 +349,7 @@ Item {
 
                         MouseArea{
                             anchors.fill: parent
-                            enabled: !root.editMode
+                            enabled: !root.lifted
 
                             cursorShape: Qt.PointingHandCursor
                             hoverEnabled: true
@@ -406,8 +360,6 @@ Item {
                     }
                 }
             }
-
-
 
             Rectangle{
                 implicitHeight: 50
@@ -434,9 +386,6 @@ Item {
 
         }
 
-
     }
 }
-
-
 

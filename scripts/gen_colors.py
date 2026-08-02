@@ -41,6 +41,12 @@ from materialyoucolor.utils.math_utils import sanitize_degrees_int
 CACHE_DIR   = Path.home() / ".cache" / "quickshell"
 OUTPUT_PATH = CACHE_DIR / "colors.json"
 
+# Extra plain-copy targets: apps that just want the raw colors.json (same
+# format as OUTPUT_PATH) rather than a matugen-style rendered template.
+_EXTRA_COPY_PATHS = [
+    Path.home() / ".config" / "orbit" / "colors.json",
+]
+
 _SCHEMES = {
     "content":    SchemeContent,
     "expressive": SchemeExpressive,
@@ -659,6 +665,18 @@ def _atomic_write(path: Path, content: str) -> None:
         raise
 
 
+def _write_colors_json(content: str) -> None:
+    """Writes colors.json to OUTPUT_PATH plus every plain-copy target in
+    _EXTRA_COPY_PATHS (e.g. the file manager's own config dir)."""
+    _atomic_write(OUTPUT_PATH, content)
+    for path in _EXTRA_COPY_PATHS:
+        try:
+            _atomic_write(path, content)
+            print(f"[gen_colors] copied colors.json → {path}", flush=True)
+        except Exception as e:
+            print(f"[gen_colors] ERROR copying colors.json to {path}: {e}", file=sys.stderr)
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -684,7 +702,7 @@ def main() -> None:
     # ── Fast path: full colors cached ─────────────────────────────────────
     if color_cache.exists():
         cached = color_cache.read_text()
-        _atomic_write(OUTPUT_PATH, cached)
+        _write_colors_json(cached)
         our_colors = json.loads(cached)
         wallpaper  = our_colors.get("wallpaper", image_path)
         print(f"[gen_colors] cache hit ({(time.time()-t_start)*1000:.0f}ms) — {img_hash[:8]}_{variant}_{mode}")
@@ -720,7 +738,7 @@ def main() -> None:
 
     cache_base.mkdir(parents=True, exist_ok=True)
     color_cache.write_text(content)
-    _atomic_write(OUTPUT_PATH, content)
+    _write_colors_json(content)
 
     print(f"[gen_colors] done in {(time.time()-t_start)*1000:.0f}ms — primary: {our_colors.get('primary', '?')}")
 

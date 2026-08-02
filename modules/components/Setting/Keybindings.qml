@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.settings
+import qs.modules.services
 import qs.modules.customComponents
 
 Item{
@@ -11,86 +12,9 @@ Item{
     anchors.fill: parent
     anchors.margins: 5
 
-    property var keybindingGroups: []
-
-    Process{
-        id: readKeybinds
-        running: true
-        command: ["cat", Quickshell.env("HOME") + "/.config/hypr/conf/keybindings/default.conf"]
-        stdout: SplitParser{
-            splitMarker: ""
-            onRead: data => {
-                root.keybindingGroups = root.parseKeybindings(data)
-            }
-        }
-    }
-
-    function parseKeybindings(text) {
-        var lines = text.split("\n")
-        var groups = []
-        var currentGroup = null
-
-        for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim()
-
-            // Skip empty lines and variable definitions
-            if (line === "" || line.startsWith("$")) continue
-
-            // Section comment (e.g. "# Applications")
-            if (line.startsWith("# ") && !line.startsWith("# ---") && !line.startsWith("# name:") && !line.startsWith("# SUPER")) {
-                currentGroup = { name: line.substring(2), binds: [] }
-                groups.push(currentGroup)
-                continue
-            }
-
-            // Skip commented-out binds
-            if (line.startsWith("#")) continue
-
-            // Parse bind lines
-            if (line.startsWith("bind")) {
-                var comment = ""
-                var commentIdx = line.indexOf("#")
-                if (commentIdx !== -1) {
-                    comment = line.substring(commentIdx + 1).trim()
-                    line = line.substring(0, commentIdx).trim()
-                }
-
-                // Extract modifiers and key
-                var parts = line.split(",")
-                if (parts.length < 3) continue
-
-                var bindType = parts[0].split("=")[0].trim()
-                var mods = parts[0].split("=")[1] ? parts[0].split("=")[1].trim() : ""
-                var key = parts[1].trim()
-
-                // Clean up mods
-                mods = mods.replace("$mainMod", "SUPER")
-
-                // Build shortcut string
-                var shortcut = ""
-                if (mods.length > 0) {
-                    shortcut = mods + " + " + key
-                } else {
-                    shortcut = key
-                }
-
-                // Use comment as description, or the action
-                var desc = comment || parts.slice(2).join(",").trim()
-
-                if (!currentGroup) {
-                    currentGroup = { name: "General", binds: [] }
-                    groups.push(currentGroup)
-                }
-
-                currentGroup.binds.push({
-                    shortcut: shortcut,
-                    description: desc
-                })
-            }
-        }
-
-        return groups
-    }
+    // Parsing lives in ServiceKeybinds so this page and the cheat sheet
+    // overlay cannot drift apart.
+    readonly property var keybindingGroups: ServiceKeybinds.groups
 
     Flickable{
         anchors.fill: parent
