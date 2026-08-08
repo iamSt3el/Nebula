@@ -7,7 +7,7 @@
 <br/>
 
 [![Stars](https://img.shields.io/github/stars/iamSt3el/Nebula?style=for-the-badge&logo=starship&color=8B5CF6&labelColor=1a1a2e)](https://github.com/iamSt3el/Nebula/stargazers)
-[![License](https://img.shields.io/github/license/iamSt3el/Nebula?style=for-the-badge&color=6D28D9&labelColor=1a1a2e)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPL%20v3-6D28D9?style=for-the-badge&labelColor=1a1a2e)](LICENSE)
 [![Quickshell](https://img.shields.io/badge/built%20with-Quickshell-a78bfa?style=for-the-badge&labelColor=1a1a2e)](https://quickshell.outfoxxed.me)
 
 </div>
