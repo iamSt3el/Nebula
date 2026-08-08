@@ -16,6 +16,9 @@ Scope {
     LockContext {
         id: lockContext
 
+        // Gates the caps-lock watcher process — nothing polls while unlocked
+        active: root.screenLocked
+
         onUnlocked: {
             //root.screenLocked = false
             timer.start()

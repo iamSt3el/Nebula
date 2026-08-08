@@ -19,6 +19,20 @@ Item {
     property bool isGrid: SettingsConfig.general.appGrid
     property var appList: isGrid ? gridLoader.item : listLoader.item
 
+    // ── Launcher modes ────────────────────────────────────────────────────
+    // "apps" keeps the whole existing app pipeline (categories, pin, context
+    // menu); every other mode is served by ServiceLauncher + its own view.
+    readonly property string mode: ServiceLauncher.mode
+    readonly property bool isApps: mode === "apps"
+    readonly property bool isEmoji: mode === "emoji"
+
+    // The one view that currently owns keyboard selection.
+    readonly property var activeView: isApps ? appList
+        : isEmoji ? emojiLoader.item : resultsLoader.item
+
+    readonly property int resultCount: isApps
+        ? filteredApps.length : ServiceLauncher.results.length
+
     // ── Category filter ───────────────────────────────────────────────────
     property string selectedCategory: "All"
 
@@ -65,9 +79,31 @@ Item {
         col.scale   = 0.92
         searchInput.text = ""
         ServiceApps.reset()
-        appList.activeIndex = 0
-        appList.animationsEnabled = false
+        ServiceLauncher.reset()
+        // appList is null whenever we close from a non-app mode, because its
+        // Loader is inactive then.
+        if (appList) {
+            appList.activeIndex = 0
+            appList.animationsEnabled = false
+        }
         selectedCategory = "All"
+    }
+
+    // Routes the query to the right backend. ServiceLauncher decides the mode;
+    // ServiceApps only ever sees a real app search.
+    function updateQuery(text) {
+        ServiceLauncher.query = text
+        ServiceApps.updateSearch(ServiceLauncher.mode === "apps" ? text : "")
+        if (activeView) activeView.activeIndex = 0
+    }
+
+    function activateSelected() {
+        if (isApps) {
+            const app = filteredApps[appList.activeIndex]
+            if (app) { app.execute(); appLauncher.closed() }
+        } else if (activeView) {
+            activeView.activateIndex(activeView.activeIndex)
+        }
     }
 
     // ── Context menu ──────────────────────────────────────────────────────
@@ -151,7 +187,7 @@ Item {
 
                     CustomText {
                         anchors.verticalCenter: parent.verticalCenter
-                        content: "Search apps…"
+                        content: "Search apps, or = > : w"
                         size: 15
                         customColor: Colors.outline
                         visible: searchInput.text.length === 0
@@ -168,44 +204,47 @@ Item {
                         color: Colors.surfaceText
                         focus: true
 
-                        onTextChanged: ServiceApps.updateSearch(text)
+                        onTextChanged: appLauncher.updateQuery(text)
 
-                        onAccepted: {
-                            if (appLauncher.filteredApps[appList.activeIndex]) {
-                                appLauncher.filteredApps[appList.activeIndex].execute()
-                                appLauncher.closed()
-                            }
-                        }
+                        onAccepted: appLauncher.activateSelected()
 
                         Keys.onPressed: event => {
+                            const view = appLauncher.activeView
+                            if (!view) return
+
+                            // Grid navigation applies to the app grid and to
+                            // the emoji grid; everything else is a plain list.
+                            const grid = (appLauncher.isApps && isGrid) || appLauncher.isEmoji
+                            const cols = appLauncher.isEmoji ? view.columns : 4
+                            const last = appLauncher.resultCount - 1
+
+                            function moveTo(i) {
+                                view.activeIndex = Math.max(0, Math.min(last, i))
+                                view.positionViewAtIndex(view.activeIndex, GridView.Contain)
+                            }
+
                             if (event.key === Qt.Key_Down) {
-                                if (!isGrid && appList.activeIndex < appList.count - 1) {
-                                    appList.activeIndex++
-                                    appList.positionViewAtIndex(appList.activeIndex, ListView.Contain)
-                                } else if (isGrid && appList.activeIndex < appList.count - 5) {
-                                    appList.activeIndex += 4
-                                    appList.positionViewAtIndex(appList.activeIndex, GridView.Contain)
-                                }
+                                moveTo(view.activeIndex + (grid ? cols : 1))
                             } else if (event.key === Qt.Key_Up) {
-                                if (!isGrid && appList.activeIndex > 0) {
-                                    appList.activeIndex--
-                                    appList.positionViewAtIndex(appList.activeIndex, ListView.Contain)
-                                } else if (isGrid && appList.activeIndex > 4) {
-                                    appList.activeIndex -= 4
-                                    appList.positionViewAtIndex(appList.activeIndex, GridView.Contain)
-                                }
-                            } else if (event.key === Qt.Key_Right && isGrid) {
-                                if (appList.activeIndex < appList.count - 1) {
-                                    appList.activeIndex++
-                                    appList.positionViewAtIndex(appList.activeIndex, ListView.Contain)
-                                }
-                            } else if (event.key === Qt.Key_Left && isGrid) {
-                                if (appList.activeIndex > 0) {
-                                    appList.activeIndex--
-                                    appList.positionViewAtIndex(appList.activeIndex, GridView.Contain)
-                                }
+                                moveTo(view.activeIndex - (grid ? cols : 1))
+                            } else if (event.key === Qt.Key_Right && grid) {
+                                moveTo(view.activeIndex + 1)
+                            } else if (event.key === Qt.Key_Left && grid) {
+                                moveTo(view.activeIndex - 1)
+                            } else if (event.key === Qt.Key_Backspace
+                                       && searchInput.cursorPosition === 0
+                                       && !appLauncher.isApps) {
+                                // Backspace at the very start leaves the mode
+                                // rather than deleting nothing.
+                                searchInput.text = ""
+                                event.accepted = true
                             } else if (event.key === Qt.Key_Escape) {
-                                appLauncher.closed()
+                                if (!appLauncher.isApps) {
+                                    searchInput.text = ""   // first Esc exits the mode
+                                    event.accepted = true
+                                } else {
+                                    appLauncher.closed()
+                                }
                             }
                         }
                     }
@@ -232,10 +271,21 @@ Item {
             }
         }
 
+        // ── Mode hints / active mode chip ─────────────────────────────
+        LauncherModeBar {
+            Layout.fillWidth: true
+            onPrefixRequested: prefix => {
+                searchInput.text = prefix
+                searchInput.cursorPosition = searchInput.text.length
+                searchInput.forceActiveFocus()
+            }
+        }
+
         // ── Category chips ────────────────────────────────────────────
         Flickable {
             Layout.fillWidth: true
             implicitHeight: 30
+            visible: appLauncher.isApps
             contentWidth: catGroup.implicitWidth
             contentHeight: height
             clip: true
@@ -260,17 +310,30 @@ Item {
             Layout.leftMargin: 2
             spacing: 0
 
-            MaterialIconSymbol { content: "apps"; iconSize: 14; customColor: Colors.outline }
-            CustomText {
-                Layout.leftMargin: 4
-                content: appLauncher.filteredApps.length + " apps"
-                size: 12
+            MaterialIconSymbol {
+                content: appLauncher.isApps ? "apps" : (ServiceLauncher.activeMode?.icon ?? "")
+                iconSize: 14
                 customColor: Colors.outline
             }
-
-            Item { Layout.fillWidth: true }
+            CustomText {
+                Layout.leftMargin: 4
+                Layout.fillWidth: true
+                // In emoji mode the grid cells have no room for a label, so the
+                // name of the selected glyph is surfaced here instead.
+                content: {
+                    if (appLauncher.isApps)
+                        return appLauncher.filteredApps.length + " apps"
+                    if (appLauncher.isEmoji && emojiLoader.item && appLauncher.resultCount > 0)
+                        return emojiLoader.item.activeName
+                    return appLauncher.resultCount + " results"
+                }
+                size: 12
+                customColor: Colors.outline
+                elide: Text.ElideRight
+            }
 
             Rectangle {
+                visible: appLauncher.isApps
                 width: 62; height: 26; radius: 10
                 color: Colors.surfaceContainerHigh
 
@@ -327,17 +390,55 @@ Item {
 
                 Loader {
                     id: gridLoader
-                    active: appLauncher.isGrid
+                    active: appLauncher.isApps && appLauncher.isGrid
                     visible: active
                     anchors.fill: parent
                     sourceComponent: GridApps {}
                 }
                 Loader {
                     id: listLoader
-                    active: !appLauncher.isGrid
+                    active: appLauncher.isApps && !appLauncher.isGrid
                     visible: active
                     anchors.fill: parent
                     sourceComponent: ListApps {}
+                }
+                Loader {
+                    id: emojiLoader
+                    active: appLauncher.isEmoji
+                    visible: active
+                    anchors.fill: parent
+                    sourceComponent: EmojiGrid {
+                        onActivated: appLauncher.closed()
+                    }
+                }
+                Loader {
+                    id: resultsLoader
+                    active: !appLauncher.isApps && !appLauncher.isEmoji
+                    visible: active
+                    anchors.fill: parent
+                    sourceComponent: LauncherResults {
+                        onActivated: appLauncher.closed()
+                    }
+                }
+
+                // Empty state — a mode with a query but nothing to show
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 8
+                    visible: !appLauncher.isApps
+                             && appLauncher.resultCount === 0
+                             && ServiceLauncher.term.length > 0
+
+                    MaterialIconSymbol {
+                        Layout.alignment: Qt.AlignHCenter
+                        content: "search_off"; iconSize: 30
+                        customColor: Colors.outline
+                    }
+                    CustomText {
+                        Layout.alignment: Qt.AlignHCenter
+                        content: "No results"
+                        size: 13; customColor: Colors.outline
+                    }
                 }
             }
         }

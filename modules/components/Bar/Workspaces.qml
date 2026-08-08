@@ -8,11 +8,44 @@ import qs.modules.customComponents
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Widgets
-
-
+import qs.modules.components.Ai
 
 Item{
     id: root
+
+    readonly property bool active: ServiceAi.open && layout.isPrimary
+
+    readonly property bool isPill: ServiceGaps.isPill
+
+    readonly property bool showArc: !isPill && height > Appearance.size.barHeight + 2
+
+    readonly property bool sweepBottom: showArc
+        && height >= layout.height - panelBottomInset - 36
+
+    readonly property real pillPanelTop: Appearance.size.barHeight + 8
+
+    property bool contentShown: false
+
+    onActiveChanged: {
+        if (active) {
+            revealDelay.restart()
+        } else {
+            revealDelay.stop()
+            root.contentShown = false
+        }
+    }
+
+    Timer {
+        id: revealDelay
+        interval: Appearance.duration.normal
+        onTriggered: {
+            root.contentShown = true
+            chat.takeFocus()
+        }
+    }
+
+    readonly property real collapsedWidth: outerRow.implicitWidth + 20
+    readonly property real panelWidth: 500
 
     readonly property int wsCount:    SettingsConfig.general.workspaceCount ?? 5
     readonly property bool wsNumbers: SettingsConfig.general.showWorkspaceNumbers ?? false
@@ -49,13 +82,67 @@ Item{
     // churns as Hyprland creates and reaps empty workspaces
     readonly property int monitorCount: Hyprland.monitors?.values?.length ?? 1
     readonly property bool showOtherIndicator: perMonitorMode && monitorCount > 1
-    implicitWidth:  outerRow.implicitWidth + 20
-    implicitHeight: 40
+    readonly property real panelBottomInset: ServiceGaps.isPill
+        ? ServiceGaps.pillMargin * 2
+        : 0
+
+    implicitWidth:  active ? panelWidth : collapsedWidth
+    implicitHeight: active ? layout.height - panelBottomInset : 40
+
+    Behavior on implicitWidth {
+        NumberAnimation {
+            duration: root.active ? Appearance.duration.normal : Appearance.duration.large
+            easing.type: root.active ? Easing.OutQuad : Easing.InOutCubic
+        }
+    }
+    Behavior on implicitHeight {
+        NumberAnimation {
+            duration: root.active ? Appearance.duration.normal : Appearance.duration.large
+            easing.type: root.active ? Easing.OutQuad : Easing.InOutCubic
+        }
+    }
+
+    AiChat {
+        id: chat
+        elevated: root.isPill
+
+        x: root.isPill ? 0 : 10
+        y: root.isPill ? root.pillPanelTop : 10
+        width:  root.width - (root.isPill ? 0 : 20)
+        height: Math.max(0, root.height - y - (root.isPill ? 0 : 10))
+
+        visible: root.contentShown
+        opacity: root.contentShown ? 1 : 0
+
+        property real slideX: root.contentShown ? 0 : (root.isPill ? -40 : 0)
+        transform: Translate { x: chat.slideX }
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: root.contentShown ? Appearance.duration.normal : Appearance.duration.small
+                easing.type: Easing.OutQuad
+            }
+        }
+        Behavior on slideX {
+            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+        }
+
+        onClosed: ServiceAi.hide()
+    }
 
     RowLayout{
         id: outerRow
-        anchors.centerIn: parent
+        anchors.left: parent.left
+        anchors.leftMargin: 10
+        y: (40 - height) / 2
         spacing: 5
+
+        opacity: root.active && !root.isPill ? 0 : 1
+        visible: opacity > 0.01
+
+        Behavior on opacity {
+            NumberAnimation { duration: Appearance.duration.normal; easing.type: Easing.OutQuad }
+        }
         Rectangle{
             Layout.preferredWidth: row.implicitWidth + 6
             Layout.preferredHeight: 30
@@ -236,8 +323,5 @@ Item{
             }
         }
     }
-
-
-
 
 }

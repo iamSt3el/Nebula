@@ -10,10 +10,14 @@ import qs.modules.services
 PopupWindow {
     id: root
     implicitWidth: 300
-    implicitHeight: child.implicitHeight
+    implicitHeight: col.implicitHeight + 32
     visible: true
     color: "transparent"
     signal close
+
+    property real srcWidth: 90
+    property real srcHeight: 30
+    property real srcRadius: 15
 
     anchor {
         window: layout
@@ -25,20 +29,25 @@ PopupWindow {
         id: focusGrab
         active: true
         windows: [QsWindow.window]
-        onCleared: root.close()
+        onCleared: morph.close()
     }
 
     readonly property real micVolume: ServicePipewire.source?.audio?.volume ?? 0
 
-    Rectangle {
-        id: child
-        implicitWidth: parent.width
-        implicitHeight: col.implicitHeight + 32
-        color: Colors.surface
-        radius: 24
+    MorphCard {
+        id: morph
+        anchors.fill: parent
 
-        opacity: 0
-        NumberAnimation on opacity { from: 0; to: 1; duration: 160; running: true }
+        srcWidth:  root.srcWidth
+        srcHeight: root.srcHeight
+        srcRadius: root.srcRadius
+
+        contentHeight: col.implicitHeight + 32
+        cardRadius: 24
+        cardColor: Colors.surface
+
+        onCloseFinished: root.close()
+        Component.onCompleted: Qt.callLater(morph.open)
 
         ColumnLayout {
             id: col

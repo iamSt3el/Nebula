@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Widgets
 import Quickshell.Bluetooth
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.customComponents
@@ -11,351 +12,421 @@ import QtQuick.Effects
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MatrialShapeFn
 
-ColumnLayout{
+ColumnLayout {
     id: root
     anchors.fill: parent
-    anchors.margins: 10
-    spacing: 10
+    anchors.margins: 14
+    spacing: 8
+
     signal backClicked
-    property var bluetoothData
+
+    property bool scanning: false
+
+    readonly property var adapter: Bluetooth.defaultAdapter
+    readonly property bool bluetoothOn: root.adapter?.enabled ?? false
+
+    function deviceIcon(icon) {
+        switch (icon) {
+        case "audio-headset":
+        case "audio-headphones":
+            return "headphones"
+        case "audio-card":
+        case "audio-speakers":
+            return "speaker"
+        case "input-keyboard":
+            return "keyboard"
+        case "input-mouse":
+            return "mouse"
+        case "input-gaming":
+            return "stadia_controller"
+        case "phone":
+            return "smartphone"
+        case "computer":
+            return "computer"
+        case "printer":
+            return "print"
+        default:
+            return "bluetooth"
+        }
+    }
+
+    function batteryIcon(level) {
+        if (level >= 1) return "battery_android_full"
+        if (level >= 0.9) return "battery_android_6"
+        if (level >= 0.7) return "battery_android_5"
+        if (level >= 0.5) return "battery_android_4"
+        if (level >= 0.3) return "battery_android_3"
+        if (level >= 0.2) return "battery_android_2"
+        if (level > 0) return "battery_android_1"
+        return "battery_android_0"
+    }
+
+    function startScan() {
+        if (!root.adapter || !root.bluetoothOn) return
+        root.adapter.discovering = true
+        root.scanning = true
+        scanTimer.restart()
+    }
+
+    Timer {
+        id: scanTimer
+        interval: 8000
+        onTriggered: {
+            root.scanning = false
+            if (root.adapter) root.adapter.discovering = false
+        }
+    }
 
     opacity: 0
-
-    NumberAnimation on opacity{
-        from: 0
-        to: 1
-        duration: 200
+    EffectsAnim {
+        target: root
+        property: "opacity"
+        from: 0; to: 1
+        speed: "slow"
         running: true
     }
 
-    RowLayout{
+    RowLayout {
         Layout.fillWidth: true
-        Layout.fillHeight: true
-        CustomButton{
+        Layout.bottomMargin: 4
+        spacing: 10
+
+        CustomButton {
+            Layout.preferredWidth: 32
+            Layout.preferredHeight: 32
+            radius: 16
             icon: "chevron_backward"
-            iconSize: 24
-            radius: 10
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 30
-            onClicked: {
-                if(root.isWifiSettingClicked){
-                    root.isWifiSettingClicked = false
-                }else{
-                    root.backClicked()
-                }
+            iconSize: 20
+            onClicked: root.backClicked()
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 0
+
+            CustomText {
+                Layout.fillWidth: true
+                content: "Bluetooth"
+                size: 17
+                weight: 700
+                elide: Text.ElideRight
+            }
+
+            CustomText {
+                Layout.fillWidth: true
+                content: !root.adapter ? "No adapter"
+                    : !root.bluetoothOn ? "Off"
+                    : ServiceBluetooth.connectedDevices === 1 ? "1 device connected"
+                    : ServiceBluetooth.connectedDevices > 1 ? ServiceBluetooth.connectedDevices + " devices connected"
+                    : "No devices connected"
+                size: 11
+                customColor: Colors.outline
+                elide: Text.ElideRight
             }
         }
-        Item{
-            Layout.fillWidth: true
-        }
 
-        CustomText{
-            content: "Bluetooth"
-            size: 18
-            color: Colors.primary
-        }
-        Item{
-            Layout.fillWidth: true
-        }
-        CustomButton{
-            icon: "search"
-            iconSize: 18
-            radius: 10
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 30
-            onClicked:  Bluetooth.defaultAdapter.discovering = true
-
+        CustomToogle {
+            Layout.alignment: Qt.AlignVCenter
+            isToggleOn: root.bluetoothOn
+            opacity: root.adapter ? 1 : 0.4
+            onToggled: function (state) {
+                if (root.adapter) root.adapter.enabled = state
+            }
         }
     }
 
-    CustomText{
+    CustomText {
         content: "Saved Devices"
-        size: 14
-        color: Colors.outline
+        size: 12
+        weight: 700
+        customColor: Colors.primary
     }
 
-    Item{
+    Item {
         Layout.fillWidth: true
-        Layout.fillHeight: true
+        Layout.preferredHeight: Math.min(Math.max(savedList.contentHeight, 56), 112)
         clip: true
-        ListView{
-            id: list
+        opacity: root.bluetoothOn ? 1 : 0.4
+        Behavior on opacity { EffectsAnim {} }
+
+        ListView {
+            id: savedList
             anchors.fill: parent
-            orientation: Qt.Vertical
-            model: ServiceBluetooth.connectedAndPairedDevices
-            spacing: 5
+            model: ScriptModel { values: ServiceBluetooth.connectedAndPairedDevices }
+            spacing: 4
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: CustomScrollBar {}
+            delegate: deviceRowComponent
+            populate: StaggerTransition {}
+            add: StaggerTransition {}
+            displaced: Transition { SpatialAnim { properties: "y"; speed: "fast" } }
+        }
 
-            delegate: Rectangle{
-                implicitHeight: 40
-                implicitWidth:  parent ? parent.width : 0
-                color: modelData.state === 1 ? Colors.primary : bluetoothArea.containsMouse ? Qt.alpha(Colors.primary, 0.5) : "transparent"
-                radius: 10
-
-                Behavior on color{
-                    ColorAnimation{
-                        duration: 200
-                    }
-                }
-
-                MouseArea{
-                    id: bluetoothArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-
-                    onClicked:{
-                        if(modelData.connected){
-                            modelData.disconnect()
-                        }else{
-                            modelData.connect()
-                        }
-                    }
-                }
-
-                RowLayout{
-                    anchors.fill: parent
-                    anchors.margins: 6
-                    spacing: 10
-
-                    MaterialIconSymbol{
-                        content:{
-                            if(modelData.icon === "audio-headset"){
-                                return "headphones"
-                            }else if(modelData.icon === "input-keyboard"){
-                                return "keyboard"
-                            }else if(modelData.icon === "input-mouse"){
-                                return "mouse"
-                            }else return "bluetooth"
-                        }
-                        iconSize: 22
-                        color: modelData.state === 1 ? Colors.primaryText : Colors.surfaceText
-                    }
-
-
-
-                    ColumnLayout{
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        CustomText{
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            size: 12
-                            content: modelData.name
-                            color: modelData.state === 1 ? Colors.primaryText : Colors.surfaceText
-                        }
-
-                        CustomText{
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            size: 11
-                            content: modelData.bonded ? "Saved" : "Not Trusted"
-                            color: Colors.outline
-                        }
-                    }
-
-   
-
-                    Loader{
-                        id: batteryLoader
-                        active: modelData.batteryAvailable
-                        Layout.alignment: Qt.AlignCenter
-                        property string icon:{
-                            let level = modelData.battery
-                            if(level === 1){
-                                return "battery_android_full"
-                            }else if(level < 1 && level >= 0.9){
-                                return "battery_android_6"
-                            }else if(level < 0.9 && level >= 0.7){
-                                return "battery_android_5"
-                            }else if(level < 0.7 && level >= 0.5){
-                                return "battery_android_4"
-                            }else if(level < 0.5 && level >= 0.3){
-                                return "battery_android_3"
-                            }else if(level < 0.3 && level >= 0.2){
-                                return "battery_android_2"
-                            }else if(level < 0.2 && level >= 0){
-                                return "battery_android_1"
-                            }
-                            return "battery_android_0"
-                        }
-                        sourceComponent: MaterialIconSymbol{
-                            anchors.centerIn: parent
-                            content: icon
-                            iconSize: 22
-                            color: Colors.primaryText
-                        }
-                    }
-                }
-            }
+        CustomText {
+            anchors.centerIn: parent
+            visible: ServiceBluetooth.connectedAndPairedDevices.length === 0
+            content: root.bluetoothOn ? "No saved devices" : "Bluetooth is off"
+            size: 12
+            customColor: Colors.outline
         }
     }
 
-    // Rectangle{
-    //     Layout.fillWidth: true
-    //     Layout.preferredHeight: 1
-    //     color: Colors.outline
-    // }
-    CustomSpermSeparator{
+    CustomSpermSeparator {
         Layout.fillWidth: true
+        Layout.topMargin: 2
         Layout.preferredHeight: 6
-        color: Colors.outline
+        color: Colors.outlineVariant
         frequency: 14
     }
 
-    CustomText{
-        content: "Available Devices"
-        size: 14
-        color: Colors.outline
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: 8
+
+        CustomText {
+            content: "Available Devices"
+            size: 12
+            weight: 700
+            customColor: Colors.primary
+        }
+
+        Item { Layout.fillWidth: true }
+
+        Item {
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+
+            CustomButton {
+                anchors.fill: parent
+                radius: 15
+                icon: "search"
+                iconSize: 17
+                enabled: root.bluetoothOn && !root.scanning
+                opacity: root.scanning ? 0 : root.bluetoothOn ? 1 : 0.4
+                onClicked: root.startScan()
+
+                Behavior on opacity { EffectsAnim {} }
+            }
+
+            CustomCircularLoader {
+                anchors.centerIn: parent
+                size: 20
+                trackWidth: 2
+                waveAmplitude: 0
+                highlightColor: Colors.primary
+                trackColor: Colors.surfaceContainerHighest
+                visible: root.scanning
+            }
+        }
     }
 
-    Item{
+    Item {
         Layout.fillWidth: true
         Layout.fillHeight: true
+        Layout.minimumHeight: 96
         clip: true
+        opacity: root.bluetoothOn ? 1 : 0.4
+        Behavior on opacity { EffectsAnim {} }
 
-        Loader{
+        ColumnLayout {
             anchors.centerIn: parent
-            visible: active
-            active: ServiceBluetooth.unpairedDevices.length === 0
-            sourceComponent:ColumnLayout{
-                anchors.centerIn: parent
-                MaterialShapes.ShapeCanvas{
-                    Layout.alignment: Qt.AlignCenter
-                    Layout.preferredHeight: 60
-                    Layout.preferredWidth: 60
+            visible: ServiceBluetooth.unpairedDevices.length === 0
+            spacing: 10
+
+            Item {
+                Layout.alignment: Qt.AlignHCenter
+                implicitWidth: 52
+                implicitHeight: 52
+
+                MaterialShapes.ShapeCanvas {
+                    anchors.fill: parent
                     roundedPolygon: MatrialShapeFn.getSunny()
-                    color: Colors.primaryText
-
-                    MaterialIconSymbol{
-                        anchors.centerIn: parent
-                        content: "bluetooth_searching"
-                        iconSize: 26
-                        color: Colors.primary
-                    }
-                }
-                CustomText{
-                    Layout.alignment: Qt.AlignCenter
-                    content: "Scan for Bluetooth Devices"
-                    size: 14
-                    color: Colors.outline
+                    color: Colors.surfaceContainerHighest
                 }
 
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: root.bluetoothOn ? "bluetooth_searching" : "bluetooth_disabled"
+                    iconSize: 22
+                    customColor: Colors.outline
+                }
+            }
+
+            CustomText {
+                Layout.alignment: Qt.AlignHCenter
+                content: !root.bluetoothOn ? "Bluetooth is off"
+                    : root.scanning ? "Scanning…"
+                    : "Scan for devices"
+                size: 12
+                customColor: Colors.outline
             }
         }
 
-        Loader{
+        ListView {
+            id: availableList
             anchors.fill: parent
-            visible: active
-            active: ServiceBluetooth.unpairedDevices.length > 0
-            sourceComponent: ListView{
-                anchors.fill: parent
-                orientation: Qt.Vertical
-                model: ServiceBluetooth.unpairedDevices
-                spacing: 5
+            visible: ServiceBluetooth.unpairedDevices.length > 0
+            model: ScriptModel { values: ServiceBluetooth.unpairedDevices }
+            spacing: 4
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: CustomScrollBar {}
+            delegate: deviceRowComponent
+            populate: StaggerTransition {}
+            add: StaggerTransition {}
+            displaced: Transition { SpatialAnim { properties: "y"; speed: "fast" } }
+        }
+    }
 
-                delegate: Rectangle{
-                    implicitHeight: 40
-                    implicitWidth:  parent ? parent.width : 0
-                    color: area.containsMouse ? Qt.alpha(Colors.primary, 0.5) : "transparent"
-                    radius: 10
+    Rectangle {
+        Layout.fillWidth: true
+        Layout.topMargin: 2
+        Layout.preferredHeight: 40
+        radius: 20
+        color: Colors.secondaryContainer
 
-                    Behavior on color{
-                        ColorAnimation{
-                            duration: 200
-                        }
-                    }
+        RowLayout {
+            anchors.centerIn: parent
+            spacing: 8
 
-                    MouseArea{
-                        id: area
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
+            MaterialIconSymbol {
+                content: "settings"
+                iconSize: 17
+                customColor: Colors.secondaryContainerText
+            }
 
-                        onClicked:{
-                            if(modelData.connected){
-                                modelData.disconnect()
-                            }else{
-                                modelData.connect()
-                            }
-                        }
-                    }
+            CustomText {
+                content: "Bluetooth Settings"
+                size: 13
+                weight: 700
+                customColor: Colors.secondaryContainerText
+            }
+        }
 
-                    RowLayout{
-                        anchors.fill: parent
-                        anchors.margins: 6
-                        spacing: 10
-
-                        MaterialIconSymbol{
-                            content:{
-                                if(modelData.icon === "audio-headset"){
-                                    return "headphones"
-                                }else if(modelData.icon === "input-keyboard"){
-                                    return "keyboard"
-                                }else if(modelData.icon === "input-mouse"){
-                                    return "mouse"
-                                }else return "bluetooth"
-                            }
-                            iconSize: 20
-                        }
-
-
-
-                        ColumnLayout{
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            CustomText{
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                size: 12
-                                content: modelData.name
-                                color: modelData.state === 1 ? Colors.primaryText : Colors.surfaceText
-                            }
-
-                            CustomText{
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                size: 11
-                                content: modelData.bonded ? "Saved" : "Not Trusted"
-                                color: Colors.outline
-                            }
-                        }
-                    }
-                }
+        RippleEffect {
+            anchors.fill: parent
+            radius: parent.radius
+            hoverColor: Qt.alpha(Colors.secondaryContainerText, 0.08)
+            rippleColor: Qt.alpha(Colors.secondaryContainerText, 0.16)
+            onClicked: {
+                root.backClicked()
+                GlobalStates.settingsPage = 5
+                GlobalStates.settingsOpen = true
             }
         }
     }
 
-        Rectangle{
-            Layout.alignment: Qt.AlignCenter
-            Layout.preferredHeight: 40
-            Layout.fillWidth: true
-            radius: 15
-            color: area.containsMouse ? Colors.primary : Colors.surfaceContainerHighest
-            RowLayout{
-                anchors.centerIn: parent
+    Component {
+        id: deviceRowComponent
+
+        Rectangle {
+            id: devRow
+
+            readonly property bool isActive: modelData?.state === BluetoothDeviceState.Connected
+            readonly property bool isBusy: modelData?.state === BluetoothDeviceState.Connecting
+                || modelData?.state === BluetoothDeviceState.Disconnecting
+                || (modelData?.pairing ?? false)
+            readonly property bool hasBattery: (modelData?.batteryAvailable ?? false) && devRow.isActive
+
+            width: ListView.view ? ListView.view.width : 0
+            implicitHeight: 54
+            radius: 18
+            color: devRow.isActive ? Qt.alpha(Colors.primary, 0.18)
+                : devRipple.containsMouse ? Colors.surfaceContainerHighest
+                : "transparent"
+
+            Behavior on color { EffectsColorAnim {} }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 12
                 spacing: 10
-                MaterialIconSymbol{
-                    content: "settings"
-                    iconSize: 18
-                    color: area.containsMouse ? Colors.primaryText : Colors.surfaceText
 
+                Rectangle {
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 36
+                    radius: 18
+                    color: devRow.isActive ? Colors.primary : Colors.surfaceContainerHighest
+
+                    Behavior on color { EffectsColorAnim {} }
+
+                    MaterialIconSymbol {
+                        anchors.centerIn: parent
+                        content: root.deviceIcon(modelData?.icon)
+                        iconSize: 19
+                        customColor: devRow.isActive ? Colors.primaryText : Colors.surfaceVariantText
+                    }
                 }
-                CustomText{
-                    content: "Bluetooth Settings"
-                    size: 14
-                    color: area.containsMouse ? Colors.primaryText : Colors.surfaceText
-                } 
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+
+                    CustomText {
+                        Layout.fillWidth: true
+                        content: modelData?.name ?? ""
+                        size: 14
+                        weight: 700
+                        elide: Text.ElideRight
+                    }
+
+                    CustomText {
+                        Layout.fillWidth: true
+                        content: {
+                            if (modelData?.pairing) return "Pairing…"
+                            if (modelData?.state === BluetoothDeviceState.Connecting) return "Connecting…"
+                            if (modelData?.state === BluetoothDeviceState.Disconnecting) return "Disconnecting…"
+                            if (devRow.isActive) return "Connected"
+                            if (modelData?.paired) return "Saved"
+                            return "Tap to pair"
+                        }
+                        size: 11
+                        customColor: Colors.outline
+                        elide: Text.ElideRight
+                    }
+                }
+
+                RowLayout {
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 3
+                    visible: devRow.hasBattery && !devRow.isBusy
+
+                    MaterialIconSymbol {
+                        content: root.batteryIcon(modelData?.battery ?? 0)
+                        iconSize: 18
+                        customColor: Colors.outline
+                    }
+
+                    CustomText {
+                        content: Math.round((modelData?.battery ?? 0) * 100) + "%"
+                        size: 11
+                        customColor: Colors.outline
+                    }
+                }
+
+                CustomCircularLoader {
+                    Layout.preferredWidth: 20
+                    Layout.preferredHeight: 20
+                    Layout.alignment: Qt.AlignVCenter
+                    visible: devRow.isBusy
+                    size: 18
+                    trackWidth: 2
+                    waveAmplitude: 0
+                    highlightColor: Colors.primary
+                    trackColor: Colors.surfaceContainerHighest
+                }
             }
-            MouseArea{
-                id: area
+
+            RippleEffect {
+                id: devRipple
                 anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
+                radius: parent.radius
                 onClicked: {
-                    root.backClicked()
-                    GlobalStates.settingsPage = 5
-                    GlobalStates.settingsOpen = true
+                    if (devRow.isBusy) return
+                    if (devRow.isActive) modelData?.disconnect()
+                    else modelData?.connect()
                 }
             }
         }
     }
+}

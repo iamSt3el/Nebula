@@ -9,6 +9,20 @@ import qs.modules.customComponents
 import qs.modules.services
 
 Item {
+    id: root
+
+    readonly property real _length: ServiceMusic.activePlayer?.length ?? 0
+    readonly property real _position: ServiceMusic.activePlayer?.position ?? 0
+
+    // MPRIS position is only re-read when the property is re-notified, so nudge
+    // it once a second while something is actually playing.
+    Timer {
+        interval: 1000
+        repeat: true
+        running: ServiceMusic.isPlaying && (ServiceMusic.activePlayer?.positionSupported ?? false)
+        onTriggered: ServiceMusic.activePlayer.positionChanged()
+    }
+
     RowLayout {
         anchors.fill: parent
         anchors.margins: 10
@@ -42,11 +56,13 @@ Item {
             }
         }
 
-        // Track info
+        // Track info + seek progress
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 3
+            spacing: 2
+
+            Item { Layout.fillHeight: true }
 
             CustomText {
                 Layout.fillWidth: true
@@ -58,6 +74,44 @@ Item {
                 content: ServiceMusic.activeTrack?.artist ?? ""
                 size: 10; customColor: Colors.outline; elide: Text.ElideRight
             }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 3
+                spacing: 7
+                visible: root._length > 0
+
+                CustomText {
+                    content: ServiceMusic.formatTime(root._position)
+                    size: 9; weight: 500; customColor: Colors.outline
+                }
+
+                // Plain Item host so the bar's width comes from anchors, not from
+                // its own implicitWidth feeding back into the layout.
+                Item {
+                    Layout.fillWidth: true
+                    implicitHeight: 3
+
+                    CustomProgressBar {
+                        anchors.fill: parent
+                        valueBarWidth: parent.width
+                        valueBarHeight: 3
+                        // Canvas repaints on value change only; no 60fps timer here.
+                        sperm: false
+                        animateSperm: false
+                        highlightColor: Colors.primary
+                        trackColor: Colors.surfaceContainerHighest
+                        value: root._length > 0 ? Math.min(1, root._position / root._length) : 0
+                    }
+                }
+
+                CustomText {
+                    content: ServiceMusic.formatTime(root._length)
+                    size: 9; weight: 500; customColor: Colors.outline
+                }
+            }
+
+            Item { Layout.fillHeight: true }
         }
 
         // Controls

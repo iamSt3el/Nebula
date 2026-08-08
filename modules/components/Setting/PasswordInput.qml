@@ -27,11 +27,23 @@ PopupWindow{
     }
    
 
-    Rectangle{
-        implicitHeight: 140
-        implicitWidth: 400
-        color: Colors.surface
-        radius: 20
+    MorphCard{
+        id: morph
+        width: 400
+        height: 140
+
+        fadeCard: true
+        srcWidth:  400 * 0.85
+        srcHeight: 140 * 0.85
+        srcRadius: 20
+        srcY: 140 * 0.075
+
+        contentHeight: 140
+        cardRadius: 20
+        cardColor: Colors.surface
+
+        onCloseFinished: root.close()
+        Component.onCompleted: Qt.callLater(morph.open)
 
         MaterialIconSymbol{
             content: "close"
@@ -44,7 +56,7 @@ PopupWindow{
             MouseArea{
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
-                onClicked: root.close()
+                onClicked: morph.close()
             }
         }
         

@@ -1,10 +1,10 @@
-import Quickshell
-import Quickshell.Widgets
+pragma ComponentBehavior: Bound
+
 import QtQuick
-import QtQuick.Effects
 import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.settings
+import qs.modules.services
 import qs.modules.customComponents
 
 Item {
@@ -12,146 +12,61 @@ Item {
     anchors.fill: parent
     anchors.margins: 5
 
+    readonly property var monoFonts: {
+        const all = Qt.fontFamilies()
+        const out = []
+        const seen = {}
+        for (let i = 0; i < all.length; i++) {
+            const f = all[i]
+            if (!/mono|code|consol|courier/i.test(f)) continue
+            if (/light|medium|semibold|bold|thin|retina|propo|italic/i.test(f)) continue
+            if (seen[f]) continue
+            seen[f] = true
+            out.push({ name: f })
+        }
+        return out.length > 0 ? out : [{ name: "Adwaita Mono" }]
+    }
+
+    function patch(key, value) {
+        const next = {}
+        next[key] = value
+        SettingsConfig.ai = Object.assign({}, SettingsConfig.ai, next)
+    }
+
     Flickable {
         anchors.fill: parent
         contentHeight: column.implicitHeight
         contentWidth: width
         clip: true
+        boundsBehavior: Flickable.StopAtBounds
 
         ColumnLayout {
             id: column
             width: parent.width
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.leftMargin: 5
-            anchors.rightMargin: 5
-            anchors.topMargin: 5
-            spacing: 0
+            spacing: 3
 
-            // ── Page header ──────────────────────────────────────
             RowLayout {
-                spacing: 10
-                MaterialIconSymbol { content: "neurology"; iconSize: 20 }
-                CustomText { content: "AI"; size: 20; customColor: Colors.primary }
-            }
-
-            // ── Google Gemini ────────────────────────────────────
-            CustomText { Layout.topMargin: 24; content: "Google Gemini"; size: 13; customColor: Colors.primary }
-
-            ColumnLayout {
-                Layout.topMargin: 6
                 Layout.fillWidth: true
-                spacing: 3
+                spacing: 10
 
-                // API Key
-                CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "API Key"; size: 14 }
-                            CustomText { content: "Required to use the AI assistant"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-
-                        Rectangle {
-                            implicitWidth: 220; implicitHeight: 32
-                            radius: 10
-                            color: Colors.surfaceContainerHighest
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 10; anchors.rightMargin: 8
-                                spacing: 6
-
-                                MaterialIconSymbol { content: "key"; iconSize: 16; customColor: Colors.outline }
-
-                                TextInput {
-                                    id: apiKeyInput
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    text: SettingsConfig.ai.googleApiKey
-                                    echoMode: showKey.checked ? TextInput.Normal : TextInput.Password
-                                    color: Colors.inverseSurface
-                                    selectionColor: Colors.primary
-                                    font.pixelSize: 13
-                                    verticalAlignment: TextInput.AlignVCenter
-                                    clip: true
-                                    onEditingFinished: {
-                                        SettingsConfig.ai = Object.assign({}, SettingsConfig.ai, { googleApiKey: text })
-                                        savedNotice.visible = true
-                                        savedTimer.restart()
-                                    }
-                                }
-
-                                Rectangle {
-                                    id: showKey
-                                    property bool checked: false
-                                    implicitWidth: 24; implicitHeight: 24
-                                    radius: 6
-                                    color: checked ? Colors.primary : "transparent"
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                                    MaterialIconSymbol {
-                                        anchors.centerIn: parent
-                                        content: parent.checked ? "visibility_off" : "visibility"
-                                        iconSize: 15
-                                        customColor: parent.checked ? Colors.primaryText : Colors.outline
-                                    }
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: showKey.checked = !showKey.checked
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        visible: savedNotice.visible
-
-                        MaterialIconSymbol { content: "check_circle"; iconSize: 14; customColor: Colors.primary }
-                        CustomText {
-                            id: savedNotice
-                            content: "API key saved"
-                            size: 12; customColor: Colors.primary
-                            visible: false
-                            Timer {
-                                id: savedTimer
-                                interval: 2000
-                                onTriggered: savedNotice.visible = false
-                            }
-                        }
-                    }
-                }
-
-                // How to get a key
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-
-                    RowLayout {
-                        spacing: 8
-                        MaterialIconSymbol { content: "info"; iconSize: 16; customColor: Colors.outline }
-                        CustomText { content: "How to get an API key"; size: 13; customColor: Colors.outline }
-                    }
-
-                    CustomText {
-                        Layout.fillWidth: true
-                        content: "1. Go to aistudio.google.com\n2. Sign in with your Google account\n3. Click \"Get API key\" → \"Create API key\"\n4. Copy the key and paste it above"
-                        size: 12
-                        customColor: Colors.outline
-                        wrapMode: Text.WordWrap
-                    }
+                MaterialIconSymbol { content: "neurology"; iconSize: 20; customColor: Colors.primary }
+                CustomText { content: "AI"; size: 20; customColor: Colors.primary }
+                Item { Layout.fillWidth: true }
+                CustomText {
+                    content: ServiceAi.bridgeConnected ? "claude.ai connected" : "Zen offline"
+                    size: 12
+                    customColor: ServiceAi.bridgeConnected ? Colors.primary : Colors.error
                 }
             }
 
-            // ── Model ────────────────────────────────────────────
-            CustomText { Layout.topMargin: 16; content: "Model"; size: 13; customColor: Colors.primary }
+            // ── Assistant ────────────────────────────────────────────────────
+
+            CustomText {
+                Layout.topMargin: 24
+                content: "Assistant"
+                size: 13
+                customColor: Colors.primary
+            }
 
             CustomCard {
                 Layout.topMargin: 6
@@ -159,34 +74,305 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 12
-
-                    MaterialIconSymbol { content: "auto_awesome"; iconSize: 20; customColor: Colors.primary }
-
                     ColumnLayout {
                         spacing: 2
-                        CustomText { content: "Gemini 2.0 Flash"; size: 14 }
-                        CustomText { content: "Fast, efficient model for all requests"; size: 12; customColor: Colors.outline }
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    Rectangle {
-                        implicitWidth: 54; implicitHeight: 24
-                        radius: 12
-                        color: Colors.primaryContainer
-
+                        CustomText { content: "Enable AI"; size: 14 }
                         CustomText {
-                            anchors.centerIn: parent
-                            content: "Active"
-                            size: 11
-                            customColor: Colors.primary
+                            content: "Off closes the panel and stops the browser bridge and dictation daemon"
+                            size: 12
+                            customColor: Colors.outline
+                        }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomToogle {
+                        isToggleOn: SettingsConfig.ai?.enabled ?? true
+                        onToggled: function(state) { root.patch("enabled", state) }
+                    }
+                }
+            }
+
+            // ── Reply text ───────────────────────────────────────────────────
+
+            CustomText {
+                Layout.topMargin: 16
+                content: "Reply text"
+                size: 13
+                customColor: Colors.primary
+            }
+
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 5
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Code font"; size: 14 }
+                        CustomText { content: "Monospace family used in code blocks"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomListNew {
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: 190
+                        color: Colors.surfaceContainerHighest
+                        currentVal: SettingsConfig.ai?.codeFont ?? "Adwaita Mono"
+                        list: root.monoFonts
+                        onCurrentValChanged: {
+                            if (currentVal && currentVal !== SettingsConfig.ai.codeFont)
+                                root.patch("codeFont", currentVal)
                         }
                     }
                 }
             }
 
-            Item { Layout.preferredHeight: 20 }
+            CustomCard {
+                autoRadius: false; topRadius: 5; bottomRadius: 5
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Code size"; size: 14 }
+                        CustomText { content: "Pixel size of code text"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomSpinBox {
+                        color: Colors.surfaceContainerHighest
+                        inc: 1
+                        limit: 24
+                        Component.onCompleted: val = SettingsConfig.ai?.codeFontSize ?? 13
+                        onValChanged: if (val >= 8) root.patch("codeFontSize", val)
+                    }
+                }
+            }
+
+            CustomCard {
+                autoRadius: false; topRadius: 5; bottomRadius: 5
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Syntax colours"; size: 14 }
+                        CustomText { content: "Highlight keywords, strings and comments"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomToogle {
+                        isToggleOn: SettingsConfig.ai?.syntaxHighlight ?? true
+                        onToggled: function(state) { root.patch("syntaxHighlight", state) }
+                    }
+                }
+            }
+
+            CustomCard {
+                autoRadius: false; topRadius: 5; bottomRadius: 20
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Accent bold text"; size: 14 }
+                        CustomText { content: "Show bold text in the accent colour"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomToogle {
+                        isToggleOn: SettingsConfig.ai?.accentBold ?? true
+                        onToggled: function(state) { root.patch("accentBold", state) }
+                    }
+                }
+            }
+
+            // ── Composer ─────────────────────────────────────────────────────
+
+            CustomText {
+                Layout.topMargin: 16
+                content: "Composer"
+                size: 13
+                customColor: Colors.primary
+            }
+
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 5
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Message font"; size: 14 }
+                        CustomText { content: "Family used in the input field"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomListNew {
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: 190
+                        color: Colors.surfaceContainerHighest
+                        currentVal: SettingsConfig.ai?.composerFont ?? "Adwaita Mono"
+                        list: root.monoFonts
+                        onCurrentValChanged: {
+                            if (currentVal && currentVal !== SettingsConfig.ai.composerFont)
+                                root.patch("composerFont", currentVal)
+                        }
+                    }
+                }
+            }
+
+            CustomCard {
+                autoRadius: false; topRadius: 5; bottomRadius: 20
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Message size"; size: 14 }
+                        CustomText { content: "Pixel size of typed text"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomSpinBox {
+                        color: Colors.surfaceContainerHighest
+                        inc: 1
+                        limit: 26
+                        Component.onCompleted: val = SettingsConfig.ai?.composerFontSize ?? 15
+                        onValChanged: if (val >= 10) root.patch("composerFontSize", val)
+                    }
+                }
+            }
+
+            // ── Dictation ────────────────────────────────────────────────────
+
+            CustomText {
+                Layout.topMargin: 16
+                content: "Dictation"
+                size: 13
+                customColor: Colors.primary
+            }
+
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 5
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Whisper model"; size: 14 }
+                        CustomText { content: "distil-large-v3 is most accurate, base.en is lighter"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomListNew {
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: 190
+                        color: Colors.surfaceContainerHighest
+                        currentVal: SettingsConfig.ai?.model ?? "distil-large-v3"
+                        list: [{ name: "distil-large-v3" }, { name: "small.en" }, { name: "base.en" }, { name: "tiny.en" }]
+                        onCurrentValChanged: {
+                            if (currentVal && currentVal !== SettingsConfig.ai.model)
+                                root.patch("model", currentVal)
+                        }
+                    }
+                }
+            }
+
+            CustomCard {
+                autoRadius: false; topRadius: 5; bottomRadius: 5
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Send on dictate"; size: 14 }
+                        CustomText { content: "Send immediately instead of leaving it to read over"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomToogle {
+                        isToggleOn: SettingsConfig.ai?.autoSend ?? false
+                        onToggled: function(state) { root.patch("autoSend", state) }
+                    }
+                }
+            }
+
+            CustomCard {
+                autoRadius: false; topRadius: 5; bottomRadius: 20
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Vocabulary"; size: 14 }
+                        CustomText { content: "Names and jargon whisper keeps mangling, comma separated"; size: 12; customColor: Colors.outline }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: 36
+                        radius: 10
+                        color: Colors.surfaceContainerHighest
+
+                        TextInput {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: Colors.surfaceText
+                            font.pixelSize: 13
+                            clip: true
+                            text: SettingsConfig.ai?.vocabulary ?? ""
+                            onEditingFinished: root.patch("vocabulary", text)
+                        }
+                    }
+                }
+            }
+
+            // ── Reply parsing ────────────────────────────────────────────────
+
+            CustomText {
+                Layout.topMargin: 16
+                content: "Reply parsing"
+                size: 13
+                customColor: Colors.primary
+            }
+
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 5
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Keep screen-reader copy"; size: 14 }
+                        CustomText { content: "claude.ai repeats every reply for screen readers"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomToogle {
+                        isToggleOn: SettingsConfig.ai?.keepScreenReader ?? false
+                        onToggled: function(state) { root.patch("keepScreenReader", state) }
+                    }
+                }
+            }
+
+            CustomCard {
+                autoRadius: false; topRadius: 5; bottomRadius: 20
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Keep page controls"; size: 14 }
+                        CustomText { content: "Buttons and labels such as Copy"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomToogle {
+                        isToggleOn: SettingsConfig.ai?.keepControls ?? false
+                        onToggled: function(state) { root.patch("keepControls", state) }
+                    }
+                }
+            }
+
+            Item { Layout.preferredHeight: 12 }
         }
     }
 }

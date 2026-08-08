@@ -1,3 +1,14 @@
 node_modules/
 package.json
 package-lock.json
+__pycache__/
+
+favorites.json
+
+# Extension build artifact — rebuild with extension/build.sh
+voice-bridge.xpi
+
+# AMO signing credentials — never commit
+.amo-credentials
+voice-bridge-src.zip
+*.xpi

@@ -14,150 +14,114 @@ Scope {
     PanelWindow {
         id: bar
         visible: true
-        implicitHeight: 200
-        implicitWidth: 200
-        color: "transparent"
+        implicitHeight: 400
+        implicitWidth: 400
+        color: Colors.surface
+        
 
-        Item {
+        Rectangle{
             id: root
-            implicitHeight: 200
-            implicitWidth: 200
-            property real progress: 0.6
-            property real thickness: 4
-            property real radius: Math.min(width, height) / 2 - thickness
-            property string baseColor: Colors.primaryText
-            property string lineColor: Colors.primary
-            property real gap: 0
-            property string icon: ""
-            property real iconSize: 20
-            property string iconColor: Colors.primary
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.topMargin: 40
+            implicitHeight: expanded ? 300 : 150
+            implicitWidth: 300
+            color: Colors.surfaceContainer
+            radius: 20
 
-            property bool sperm: true
-            property bool animateSperm: true
-            property real spermAmplitudeMultiplier: sperm ? 0.6 : 0
-            property real spermFrequency: 20
-            property real spermFps: 60
-            
-            // Dedicated phase tracker to maintain visual position when animation is paused
-            property real wavePhase: 0
-
-            Behavior on spermAmplitudeMultiplier {
-                NumberAnimation {
-                    duration: 100
-                    easing.type: Easing.OutQuad
+            Behavior on implicitHeight{
+                NumberAnimation{
+                    duration: M3Motion.spatial.defaultDuration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: M3Motion.spatialCurve("fast")
                 }
             }
+            property bool expanded: false
 
-            Behavior on progress {
-                NumberAnimation {
-                    duration: 200
-                    easing.type: Easing.OutQuad
-                }
-            }
+            ColumnLayout{
+            anchors.fill: parent
+                RowLayout{
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignTop
+                    Rectangle{
+                        Layout.margins: 10
+                        Layout.preferredWidth: 40
+                        Layout.preferredHeight: 40
+                        radius: 20
+                        color: Colors.primary
 
-            Canvas {
-                id: canvas
-                anchors.fill: parent
-                antialiasing: true
 
-                readonly property real centerX: width / 2
-                readonly property real centerY: height / 2
-                readonly property real startAngle: -Math.PI / 2
-                readonly property real endAngle: startAngle + (2 * Math.PI * root.progress)
-                readonly property real baseEndAngle: (2 * Math.PI)
-
-                onEndAngleChanged: requestPaint()
-
-                onPaint: {
-                    const ctx = getContext("2d")
-                    ctx.reset();
-
-                    ctx.lineWidth = root.thickness;
-                    ctx.lineCap = "round"
-
-                    const r = root.radius
-                    const cx = centerX;
-                    const cy = centerY;
-                    
-                    const amplitude = root.thickness * root.spermAmplitudeMultiplier;
-                    const phase = root.wavePhase;
-
-                    // --- 1. DRAW BASE LINE (Background Track) ---
-                    const baseStart = endAngle;
-                    const baseEnd = (Math.PI / 2 + Math.PI) - root.gap;
-
-                    if (amplitude > 0 && baseEnd > baseStart) {
-                        const baseSteps = Math.max(1, Math.round(Math.abs(baseEnd - baseStart) / 0.02));
-                        ctx.beginPath();
-                        
-                        for (let i = 0; i <= baseSteps; i++) {
-                            const angle = baseStart + (baseEnd - baseStart) * i / baseSteps;
-                            // Continuous tracking matching absolute angle positions
-                            const waveR = r + amplitude * Math.sin(root.spermFrequency * (angle - startAngle) + phase);
-                            const x = cx + waveR * Math.cos(angle);
-                            const y = cy + waveR * Math.sin(angle);
-                            
-                            if (i === 0) ctx.moveTo(x, y);
-                            else ctx.lineTo(x, y);
+                        MaterialIconSymbol{
+                            anchors.centerIn: parent
+                            content: "camera"
+                            iconSize: 18
+                            color: Colors.primaryText
                         }
-                        ctx.strokeStyle = root.baseColor;
-                        ctx.stroke();
-                    } else {
-                        ctx.beginPath();
-                        ctx.arc(cx, cy, r, baseStart, baseEnd, false);
-                        ctx.strokeStyle = root.baseColor;
-                        ctx.stroke();
                     }
 
-                    // --- 2. DRAW PROGRESS LINE ---
-                    if (root.progress > 0) {
-                        const start = startAngle;
-                        const arcSpan = endAngle - startAngle;
-                        const effectiveGap = Math.min(root.gap, arcSpan * 0.5);
-                        const end = endAngle - effectiveGap;
+                    CustomText{
+                        content: "notify-send"
+                        color: Colors.outline
+                    }
 
-                        if (amplitude > 0 && end > start) {
-                            const steps = Math.max(1, Math.round(Math.abs(end - start) / 0.02));
-                            ctx.beginPath();
-                            
-                            for (let i = 0; i <= steps; i++) {
-                                const angle = start + (end - start) * i / steps;
-                                const waveR = r + amplitude * Math.sin(root.spermFrequency * (angle - startAngle) + phase);
-                                const x = cx + waveR * Math.cos(angle);
-                                const y = cy + waveR * Math.sin(angle);
-                                
-                                if (i === 0) ctx.moveTo(x, y);
-                                else ctx.lineTo(x, y);
+                    CustomText{
+                        content: "now"
+                    }
+                    Item{
+                        Layout.fillWidth: true
+                    }
+
+                    Rectangle{
+                        Layout.rightMargin: 20
+                        Layout.preferredHeight: 25
+                        Layout.preferredWidth: 40
+                        color: Colors.surfaceContainerHigh
+                        radius: 20
+                        MaterialIconSymbol{
+                            anchors.centerIn: parent
+                            content: "keyboard_arrow_down"
+                            iconSize: 16
+                        }
+
+
+                        MouseArea{
+                            id: area
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked:{
+                                root.expanded = !root.expanded
                             }
-                            ctx.strokeStyle = root.lineColor;
-                            ctx.stroke();
-                        } else {
-                            ctx.beginPath();
-                            ctx.arc(cx, cy, r, start, end, false);
-                            ctx.strokeStyle = root.lineColor;
-                            ctx.stroke();
+                        }
+
+                    }
+                }
+
+                ListView{
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    orientation: Qt.Vertical
+                    spacing: 10
+                    Layout.leftMargin: 10
+                    Layout.rightMargin: 10
+
+                    model: 3
+
+                    delegate: Rectangle{
+                        implicitWidth: parent.width
+                        implicitHeight: root.expanded ? 60 : 20
+                        color: "transparent"
+                        radius: 20
+
+                        RowLayout{
+
                         }
                     }
-                }
 
-                Timer {
-                    interval: 1000 / root.spermFps
-                    running: root.animateSperm
-                    repeat: root.sperm
-                    onTriggered: {
-                        // Manually progress the wave phase relative to frame rate
-                        root.wavePhase += (1000 / root.spermFps) / 400.0;
-                        canvas.requestPaint();
-                    }
                 }
             }
 
-            MaterialIconSymbol {
-                anchors.centerIn: parent
-                content: root.icon
-                iconSize: root.iconSize
-                color: root.iconColor
-            }
+            
         }
     }
 }

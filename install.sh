@@ -276,6 +276,16 @@ else
 fi
 ok "Python venv ready at $VENV_DIR"
 
+# ── Emoji data for the launcher's `:` mode ────────────────────────────────────
+step "Emoji data"
+if [[ -f "$INSTALL_DIR/scripts/gen_emoji.py" ]]; then
+  v python3 "$INSTALL_DIR/scripts/gen_emoji.py" \
+    && ok "Emoji index written to assets/emoji.json" \
+    || warn "Emoji index failed — launcher ':' mode will be empty until you run scripts/gen_emoji.py"
+else
+  warn "No scripts/gen_emoji.py — skipping (launcher ':' mode will be empty)"
+fi
+
 # ── WfRecorder plugin ─────────────────────────────────────────────────────────
 step "WfRecorder plugin"
 if [[ -f "$PLUGIN_DIR/build.sh" ]]; then

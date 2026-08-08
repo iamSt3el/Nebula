@@ -27,19 +27,25 @@ PopupWindow {
     HyprlandFocusGrab {
         active: true
         windows: [QsWindow.window]
-        onCleared: root.close()
+        onCleared: morph.close()
     }
 
-    Rectangle {
-        id: menuRect
+    MorphCard {
+        id: morph
         anchors.fill: parent
-        color: Colors.surfaceContainer
-        radius: 20
 
-        scale: 0.88
-        opacity: 0
-        NumberAnimation on scale   { from: 0.88; to: 1; duration: 180; easing.type: Easing.OutQuad; running: true }
-        NumberAnimation on opacity { from: 0;    to: 1; duration: 150; running: true }
+        srcWidth: 48
+        srcHeight: 40
+        srcRadius: 20
+        srcX: 0
+        srcY: 0
+
+        contentHeight: menuCol.implicitHeight + 16
+        cardRadius: 20
+        cardColor: Colors.surfaceContainer
+
+        onCloseFinished: root.close()
+        Component.onCompleted: Qt.callLater(morph.open)
 
         ColumnLayout {
             id: menuCol
@@ -137,7 +143,7 @@ PopupWindow {
                             anchors.fill: parent
                             onClicked: {
                                 ServiceApps.togglePinById(root.appEntry?.appId ?? "")
-                                root.close()
+                                morph.close()
                             }
                         }
                     }
@@ -173,7 +179,7 @@ PopupWindow {
                             onClicked: {
                                 for (const t of root.appEntry?.toplevels ?? [])
                                     t.close()
-                                root.close()
+                                morph.close()
                             }
                         }
                     }

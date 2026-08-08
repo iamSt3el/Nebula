@@ -4,6 +4,8 @@ import Quickshell
 ShellRoot {
 	LockContext {
 		id: lockContext
+		// Preview harness has no WlSessionLock, so drive `active` directly
+		active: true
 		onUnlocked: Qt.quit();
 	}
 

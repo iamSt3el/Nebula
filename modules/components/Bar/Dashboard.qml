@@ -15,19 +15,47 @@ Item{
     id: root
     anchors.fill: parent
 
-    Component.onCompleted: ServiceSystemInfo.retain()
-    Component.onDestruction: ServiceSystemInfo.release()
     implicitHeight: col.implicitHeight
-    property string panelMode: ""   // "" | "wifi" | "bluetooth"
+    property string panelMode: ""   // "" | "wifi" | "bluetooth" | "modes"
     property bool   compact:   false
 
     property var parentPos
     property var wifiPos
     property var bluetoothPos
     property var pos
+    property var srcSize: null
+    property real srcRadius: 20
 
 
     readonly property bool isPill: SettingsConfig.general.barMode === "pill"
+
+    readonly property int morphOpen: M3Motion.spatial.slowDuration
+    readonly property int morphClose: M3Motion.spatial.defaultDuration
+
+    property string activeMode: ""
+    property bool panelVisible: false
+
+    onPanelModeChanged: {
+        closeTimer.stop()
+        contentTimer.stop()
+        if (root.panelMode !== "") {
+            root.activeMode = root.panelMode
+            root.panelVisible = true
+            contentTimer.restart()
+        } else {
+            closeTimer.restart()
+        }
+    }
+
+    Timer {
+        id: closeTimer
+        interval: root.morphClose
+        onTriggered: {
+            panelLoader.active = false
+            root.panelVisible = false
+            root.activeMode = ""
+        }
+    }
 
     opacity: 0
     scale: root.isPill ? 1 : 0.8
@@ -72,7 +100,14 @@ Item{
         radius: 20
         color: Qt.alpha(Colors.surface, 0.7)
         opacity: root.panelMode !== "" ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 300 } }
+        visible: opacity > 0.01
+        Behavior on opacity {
+            NumberAnimation {
+                duration: root.panelMode !== "" ? root.morphOpen : root.morphClose
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: M3Motion.effects.curve
+            }
+        }
     }
 
     // Panel container — persistent so states/transitions actually animate
@@ -81,16 +116,21 @@ Item{
         z: 2
         enabled: root.panelMode !== ""
 
-        // Default (closed) position — tracks the tile that was last clicked
         x: root.pos ? root.pos.x : 0
         y: root.pos ? root.pos.y : 0
-        // Closed size matches the controls section it grows out of
-        width: (root.controlsItem?.width ?? 300)
-        height: 60
-        opacity: 0
+        width:  root.srcSize ? root.srcSize.width  : (root.controlsItem?.width ?? 300)
+        height: root.srcSize ? root.srcSize.height : 60
+        radius: root.srcRadius
+        opacity: {
+            if (!root.panelVisible) return 0
+            if (root.panelMode !== "") return 1
+            const srcH = root.srcSize ? root.srcSize.height : 60
+            const band = Math.max(40, srcH)
+            return Math.max(0, Math.min(1, (container.height - srcH) / band))
+        }
+        visible: opacity > 0.01
 
         color: Colors.surfaceContainerHigh
-        radius: 20
         clip: true
 
         states: [
@@ -103,7 +143,19 @@ Item{
                     y: root.parentPos ? root.parentPos.y : 0
                     width: (root.controlsItem?.width ?? 300)
                     height: (root.controlsItem?.height ?? 60) + 400
-                    opacity: 1
+                    radius: 20
+                }
+            },
+            State {
+                name: "modes"
+                when: root.panelMode === "modes"
+                PropertyChanges {
+                    target: container
+                    x: root.parentPos ? root.parentPos.x : 0
+                    y: root.parentPos ? root.parentPos.y : 0
+                    width: (root.controlsItem?.width ?? 300)
+                    height: 310
+                    radius: 20
                 }
             },
             State {
@@ -115,60 +167,59 @@ Item{
                     y: root.parentPos ? root.parentPos.y : 0
                     width: (root.controlsItem?.width ?? 300)
                     height: (root.controlsItem?.height ?? 60) + 400
-                    opacity: 1
+                    radius: 20
                 }
             }
         ]
 
-        transitions: Transition {
-            NumberAnimation {
-                properties: "x,y,width,height,opacity"
-                duration: 300
-                easing.type: Easing.InOutCirc
+        transitions: [
+            Transition {
+                to: ""
+                SpatialAnim {
+                    properties: "x,y,width,height,radius"
+                    speed: "default"
+                }
+            },
+            Transition {
+                SpatialAnim {
+                    properties: "x,y,width,height,radius"
+                    speed: "slow"
+                }
             }
-        }
+        ]
 
-        // Show content after open animation completes
         Timer {
             id: contentTimer
-            interval: 300
-            onTriggered: panelLoader.active = true
-        }
-
-        Connections {
-            target: root
-            function onPanelModeChanged() {
-                panelLoader.active = false
-                if (root.panelMode !== "") contentTimer.start()
-            }
+            interval: root.morphOpen * 0.6
+            onTriggered: if (root.panelMode !== "") panelLoader.active = true
         }
 
         Loader {
             id: panelLoader
             active: false
             anchors.fill: parent
-            visible: active
-            sourceComponent: root.panelMode === "wifi" ? wifiComponent : bluetoothComponent
+            opacity: (root.panelMode !== "" && active) ? 1 : 0
+            visible: opacity > 0.01
+            Behavior on opacity { EffectsAnim { speed: "default" } }
+            sourceComponent: root.activeMode === "wifi" ? wifiComponent
+                : root.activeMode === "bluetooth" ? bluetoothComponent
+                : root.activeMode === "modes" ? modesComponent
+                : null
         }
 
         Component {
             id: wifiComponent
-            Wifi {
-                onBackClicked: {
-                    root.panelMode = ""
-                    panelLoader.active = false
-                }
-            }
+            Wifi { onBackClicked: root.panelMode = "" }
+        }
+
+        Component {
+            id: modesComponent
+            ModesPanel { onBackClicked: root.panelMode = "" }
         }
 
         Component {
             id: bluetoothComponent
-            Bluetooth {
-                onBackClicked: {
-                    root.panelMode = ""
-                    panelLoader.active = false
-                }
-            }
+            Bluetooth { onBackClicked: root.panelMode = "" }
         }
     }
 
@@ -197,8 +248,7 @@ Item{
     // report their size through implicitHeight rather than Layout attachments,
     // because a Loader can pass a size up but not a Layout attached property.
     readonly property var defaultOrder: [
-        "profile", "controls", "quickActions", "music",
-        "calendar", "cpu", "gpu", "memory", "network"
+        "profile", "controls", "quickActions", "notifications", "calendar"
     ]
 
     readonly property var sectionOrder: {
@@ -212,10 +262,7 @@ Item{
     }
 
     function shows(key) {
-        if (!(SettingsConfig.dashboard?.[key] ?? true)) return false
-        // The network graph needs more height than the pill dashboard has
-        if (key === "network" && root.compact) return false
-        return true
+        return SettingsConfig.dashboard?.[key] ?? true
     }
 
     // The wifi/bluetooth overlay sizes itself from the controls section, so the
@@ -230,34 +277,29 @@ Item{
             compact: root.compact
             coordSpace: root
             panelMode: root.panelMode
+            onToggleDashboard: root.toggleDashboard()
             Component.onCompleted: root.controlsItem = this
             Component.onDestruction: if (root.controlsItem === this) root.controlsItem = null
-            onOpenPanel: function(mode, pPos, p) {
+            onOpenPanel: function(mode, pPos, p, sz, r) {
                 root.parentPos = pPos
                 root.pos = p
+                root.srcSize = sz
+                root.srcRadius = r
                 root.panelMode = mode
             }
         } }
 
-    Component { id: cQuickActions; DashQuickActions { compact: root.compact } }
-    Component { id: cMusic;        DashMusic        { compact: root.compact } }
-    Component { id: cCalendar;     DashCalendar     { compact: root.compact } }
-    Component { id: cCpu;          DashCpu          { compact: root.compact } }
-    Component { id: cGpu;          DashGpu          { compact: root.compact } }
-    Component { id: cMemory;       DashMemory       { compact: root.compact } }
-    Component { id: cNetwork;      DashNetwork      { compact: root.compact } }
+    Component { id: cQuickActions;  DashQuickActions  { compact: root.compact } }
+    Component { id: cNotifications; DashNotifications { compact: root.compact } }
+    Component { id: cCalendar;      DashCalendar      { compact: root.compact } }
 
     function componentFor(key) {
         switch (key) {
-            case "profile":      return cProfile
-            case "controls":     return cControls
-            case "quickActions": return cQuickActions
-            case "music":        return cMusic
-            case "calendar":     return cCalendar
-            case "cpu":          return cCpu
-            case "gpu":          return cGpu
-            case "memory":       return cMemory
-            case "network":      return cNetwork
+            case "profile":       return cProfile
+            case "controls":      return cControls
+            case "quickActions":  return cQuickActions
+            case "notifications": return cNotifications
+            case "calendar":      return cCalendar
         }
         return null
     }
@@ -278,14 +320,11 @@ Item{
                 visible: active          // an inactive Loader still takes space
                 Layout.fillWidth: true
                 Layout.preferredHeight: item ? item.implicitHeight : 0
+                Layout.fillHeight: modelData === "notifications"
+                Layout.minimumHeight: modelData === "notifications" ? 120 : 0
                 sourceComponent: root.componentFor(modelData)
             }
         }
 
     }
-
-    // What the panel has to be to fit the sections exactly: the layout's own
-    // content height plus the margins it sits inside. Containers read this
-    // rather than measuring col themselves.
-    readonly property real contentHeight: col.implicitHeight + 2 * col.anchors.margins
 }

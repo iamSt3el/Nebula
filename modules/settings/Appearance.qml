@@ -13,14 +13,13 @@ Singleton{
     property QtObject radius
     property QtObject margin
     property QtObject spacing
+    property QtObject motion
 
     size : QtObject{
         property int barHeight: 40
         property int arcHeight: 10
         property int arcWidth: 20
         property int lineWidth: 4
-        property int notificationPanelWidth: 340
-        property int notificationPanelHeight: 1080
         property int weatherPanelWidth: 340
         property int weatherPanelHeight: 1080
         property int dashboardPanelWidth: 320
@@ -54,6 +53,24 @@ Singleton{
         property int small: 100
         property int normal: 300
         property int large: 400
+    }
+
+    motion : QtObject{
+        readonly property int spatialFast: M3Motion.spatial.fastDuration
+        readonly property int spatialDefault: M3Motion.spatial.defaultDuration
+        readonly property int spatialSlow: M3Motion.spatial.slowDuration
+        property int spatialEasing: Easing.OutBack
+        property real spatialOvershoot: 1.1
+        property int sizeEasing: Easing.OutCubic
+
+        readonly property int effectsFast: M3Motion.effects.fastDuration
+        readonly property int effectsDefault: M3Motion.effects.defaultDuration
+        readonly property int effectsSlow: M3Motion.effects.slowDuration
+        property int effectsEasing: Easing.OutCubic
+
+        property real swipeSpring: 3.2
+        property real swipeDamping: 0.32
+        property real swipeMass: 0.7
     }
 
     radius : QtObject{

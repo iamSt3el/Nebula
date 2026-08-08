@@ -19,19 +19,15 @@ Item {
     property alias container: container
 
     property bool isClicked:             false
-    property bool isNotificationClicked: false
     property bool isSoundPanelClicked:   false
     property bool isWeatherPanelClicked: false
     property bool isVpnPanelClicked:     false
-    // Switches the bar path's bottom-left corner to the outward curve. It is a
-    // height proxy, not a real signal: every panel is 1080 tall, so "> 900"
-    // meant "some panel is open". That held while the dashboard was also a
-    // fixed 1080, but it is content-sized now and still clears 900, so the
-    // curve kept appearing. Above the 1080 panel ceiling this is effectively
-    // off — raise or lower to taste.
     property real dashboardCurveMin:     1150
     property bool isDashboard:           height > dashboardCurveMin
     property real soundPanelCenterX: 0
+    property real soundPanelSrcW: 90
+    property real soundPanelSrcH: 30
+    property real soundPanelSrcR: 15
     readonly property real dashBtnCenterX: dashBtnRect.mapToItem(null, dashBtnRect.width / 2, 0).x
     readonly property bool isPill: SettingsConfig.general.barMode === "pill"
 
@@ -43,22 +39,7 @@ Item {
             PropertyChanges {
                 target: utility
                 implicitWidth:  Appearance.size.dashboardPanelWidth
-                // Follows the enabled sections instead of always claiming the
-                // full panel height — with three sections on, the dashboard is
-                // three sections tall. dashboardPanelHeight is the ceiling now,
-                // not the size.
-                implicitHeight: Math.min(
-                    dashboardLoader.item?.contentHeight ?? 400,
-                    Appearance.size.dashboardPanelHeight)
-            }
-        },
-        State {
-            name: "notification"
-            when: utility.isNotificationClicked && !utility.isPill
-            PropertyChanges {
-                target: utility
-                implicitWidth:  Appearance.size.notificationPanelWidth
-                implicitHeight: Appearance.size.notificationPanelHeight
+                implicitHeight: Appearance.size.dashboardPanelHeight
             }
         },
         State {
@@ -93,31 +74,17 @@ Item {
     Loader {
         active:  utility.isSoundPanelClicked
         visible: active
-        sourceComponent: SoundPanel { onClose: utility.isSoundPanelClicked = false }
+        sourceComponent: SoundPanel {
+            srcWidth:  utility.soundPanelSrcW
+            srcHeight: utility.soundPanelSrcH
+            srcRadius: utility.soundPanelSrcR
+            onClose: utility.isSoundPanelClicked = false
+        }
     }
 
     Item {
         id: container
         anchors.fill: parent
-
-        // ── Notification panel (non-pill — expands bar) ───────────────────
-        Loader {
-            id: notificationLoader
-            active:       utility.isNotificationClicked && !utility.isPill
-            anchors.fill: parent
-            visible:      false
-            Timer {
-                interval: Appearance.duration.normal
-                running:  utility.isNotificationClicked && !utility.isPill
-                onTriggered: notificationLoader.visible = true
-            }
-            sourceComponent: NotificationCenter {
-                onNotificationCenterClosed: {
-                    utility.isNotificationClicked = false
-                    notificationLoader.visible    = false
-                }
-            }
-        }
 
         // ── Weather panel (non-pill — expands bar) ────────────────────────
         Loader {
@@ -179,7 +146,7 @@ Item {
         // ── Utility row ────────────────────────────────────────────────────
         RowLayout {
             id: row
-            visible:             (!utility.isClicked || utility.isPill) && (!utility.isNotificationClicked || utility.isPill) && (!utility.isWeatherPanelClicked || utility.isPill) && (!utility.isVpnPanelClicked || utility.isPill) && utility.height === Appearance.size.barHeight
+            visible:             (!utility.isClicked || utility.isPill) && (!utility.isWeatherPanelClicked || utility.isPill) && (!utility.isVpnPanelClicked || utility.isPill) && utility.height === Appearance.size.barHeight
             spacing:             10
             anchors.verticalCenter: parent.verticalCenter
             anchors.right:          parent.right
@@ -368,6 +335,9 @@ Item {
                             cursorShape:  Qt.PointingHandCursor
                             onClicked: {
                                 utility.soundPanelCenterX = volPill.mapToItem(null, volPill.width / 2, 0).x
+                                utility.soundPanelSrcW = volPill.width
+                                utility.soundPanelSrcH = volPill.height
+                                utility.soundPanelSrcR = volPill.radius
                                 utility.isSoundPanelClicked = true
                             }
                         }
@@ -518,7 +488,7 @@ Item {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape:  Qt.PointingHandCursor
-                            onClicked:    utility.isNotificationClicked = true
+                            onClicked:    utility.isClicked = true
                         }
 
                         CustomToolTip {

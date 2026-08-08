@@ -68,7 +68,8 @@ Singleton {
                 flatBarMode: true,
                 primaryMonitor: "",
                 perMonitorWorkspaces: false,
-                barCenter: "clock"
+                barCenter: "clock",
+                motionScheme: "expressive"
             })
 
             property var general: ({
@@ -90,7 +91,8 @@ Singleton {
                 flatBarMode: true,
                 primaryMonitor: "",
                 perMonitorWorkspaces: false,
-                barCenter: "clock"
+                barCenter: "clock",
+                motionScheme: "expressive"
             })
 
             onGeneralChanged: {
@@ -161,9 +163,32 @@ Singleton {
             })
 
             property var ai: ({
-                googleApiKey: "",
-                backend: "ollama",
-                ollamaModel: "deepseek-r1:1.5b"
+                // Master switch. Off stops the browser bridge and the whisper
+                // daemon and makes the panel refuse to open.
+                enabled: true,
+                // Empty means the PipeWire default source.
+                source: "",
+                // Send a dictation the moment it lands rather than dropping it
+                // into the composer to read over first.
+                autoSend: false,
+                // faster-whisper model. distil-large-v3 is the most accurate that
+                // fits the GPU; base.en / small.en are lighter if it struggles.
+                model: "distil-large-v3",
+                // Terms whisper keeps mangling. It leans toward words it has
+                // already seen, so listing your jargon here makes them far
+                // likelier to come out right.
+                vocabulary: "",
+                // Panel appearance
+                codeFont: "Adwaita Mono",
+                codeFontSize: 13,
+                composerFont: "Adwaita Mono",
+                composerFontSize: 15,
+                syntaxHighlight: true,
+                accentBold: true,
+                // Reply parsing policy. The extension ships an unfiltered node
+                // walk; these decide what survives into the rendered blocks.
+                keepScreenReader: false,
+                keepControls: false
             })
 
             property var recording: ({
@@ -263,28 +288,18 @@ Singleton {
                 profile: true,
                 controls: true,
                 quickActions: true,
-                music: true,
-                calendar: false,
-                cpu: true,
-                gpu: true,
-                memory: true,
-                network: true,
-                order: ["profile", "controls", "quickActions", "music",
-                        "calendar", "cpu", "gpu", "memory", "network"]
+                notifications: true,
+                calendar: true,
+                order: ["profile", "controls", "quickActions", "notifications", "calendar"]
             })
 
             property var dashboard: ({
                 profile: true,
                 controls: true,
                 quickActions: true,
-                music: true,
-                calendar: false,
-                cpu: true,
-                gpu: true,
-                memory: true,
-                network: true,
-                order: ["profile", "controls", "quickActions", "music",
-                        "calendar", "cpu", "gpu", "memory", "network"]
+                notifications: true,
+                calendar: true,
+                order: ["profile", "controls", "quickActions", "notifications", "calendar"]
             })
 
             onDashboardChanged: {

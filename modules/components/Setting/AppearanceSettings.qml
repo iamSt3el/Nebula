@@ -25,12 +25,8 @@ Item {
         { key: "profile",      label: "Profile",      icon: "person" },
         { key: "controls",     label: "Controls",     icon: "tune" },
         { key: "quickActions", label: "Quick",        icon: "apps" },
-        { key: "music",        label: "Music",        icon: "music_note" },
-        { key: "calendar",     label: "Calendar",     icon: "calendar_month" },
-        { key: "cpu",          label: "CPU",          icon: "memory" },
-        { key: "gpu",          label: "GPU",          icon: "developer_board" },
-        { key: "memory",       label: "Memory",       icon: "storage" },
-        { key: "network",      label: "Network",      icon: "network_check" }
+        { key: "notifications", label: "Alerts",      icon: "notifications" },
+        { key: "calendar",     label: "Calendar",     icon: "calendar_month" }
     ]
 
     readonly property var dashDefaultOrder: dashSections.map(s => s.key)

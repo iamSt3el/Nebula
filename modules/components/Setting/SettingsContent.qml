@@ -38,7 +38,7 @@ Item {
     readonly property var navSections: [
         { label: "System",  indices: [9, 0, 1, 2, 3, 10] },
         { label: "Connect", indices: [4, 5] },
-        { label: "Apps",    indices: [6, 7, 8] }
+        { label: "Apps",    indices: [6, 7, 11, 8] }
     ]
 
     // Whatever sits at the top of the sidebar — not necessarily page 0
@@ -217,6 +217,7 @@ Item {
                     Loader { anchors.fill: parent; active: root.currentPage === 8; visible: active; sourceComponent: About{} }
                     Loader { anchors.fill: parent; active: root.currentPage === 9; visible: active; sourceComponent: AppearanceSettings{} }
                     Loader { anchors.fill: parent; active: root.currentPage === 10; visible: active; sourceComponent: Sleep{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 11; visible: active; sourceComponent: Ai{} }
 
                 }
             }

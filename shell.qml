@@ -18,6 +18,7 @@ import qs.modules.components.Screenshot
 import qs.modules.components.GameMode
 import qs.modules.components.CheatSheet
 import qs.modules.components.Overview
+import qs.modules.components.Ai
 import qs.modules.customComponents
 import qs.modules.services
 import qs.modules.settings
@@ -73,7 +74,6 @@ ShellRoot{
 
 
 
-
     // Fullscreen area selector (replaces slurp for screenshot/recording area mode)
     AreaSelectorOverlay {}
 
@@ -82,6 +82,9 @@ ShellRoot{
 
     // Workspace manager with live previews — hyprctl dispatch global quickshell:overview
     Overview {}
+
+    // Type or dictate a prompt into claude.ai — hyprctl dispatch global quickshell:ai
+    AiPanel {}
 
     // Lock screen - responds to `loginctl lock-session`
     LockScreen {}

@@ -137,9 +137,9 @@ Item {
                 implicitHeight: parent.height
                 anchors.right: parent.right
                 implicitWidth: (parent.width - root.endPad) * (1 - wrapperH.progress)
-                color: Qt.alpha(Colors.primary, 0.5)
-                topRightRadius: 8
-                bottomRightRadius: 8
+                color: Colors.surfaceContainerHigh
+                topRightRadius: 12
+                bottomRightRadius: 12
             }
             // active = left portion
             Rectangle {
@@ -147,8 +147,21 @@ Item {
                 implicitHeight: parent.height
                 anchors.left: parent.left
                 color: Colors.primary
-                topLeftRadius: 8
-                bottomLeftRadius: 8
+                topLeftRadius: 12
+                bottomLeftRadius: 12
+            }
+
+            MaterialIconSymbol {
+                id: hIcon
+                readonly property real fillW: (parent.width - root.endPad) * wrapperH.progress
+                readonly property bool insideFill: hIcon.fillW > hIcon.width + 18
+                anchors.verticalCenter: parent.verticalCenter
+                x: Math.max(8, Math.min(parent.width - hIcon.width - 8,
+                       hIcon.insideFill ? hIcon.fillW - hIcon.width - 9
+                                        : hIcon.fillW + 9))
+                content: root.icon
+                iconSize: 20
+                customColor: hIcon.insideFill ? Colors.primaryText : Colors.surfaceText
             }
             // handler — tall and thin (inverted from vertical), marker only
             Rectangle {

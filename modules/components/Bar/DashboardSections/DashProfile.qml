@@ -12,25 +12,19 @@ Rectangle{
     id: root
     property bool compact: false
     signal toggleDashboard()
-    implicitHeight: root.compact ? 42 : 50
-    color: Colors.surfaceContainer
-    radius: 20
+    implicitHeight: root.compact ? 44 : 52
+    color: "transparent"
     RowLayout{
         anchors.fill: parent
-        anchors.margins: 10
-        anchors.rightMargin: 10
-        spacing: 5
+        anchors.leftMargin: 2
+        anchors.rightMargin: 0
+        spacing: 10
 
         ClippingWrapperRectangle{
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 30
+            Layout.preferredWidth: root.compact ? 34 : 40
+            Layout.preferredHeight: root.compact ? 34 : 40
             radius: height
-            color: "transparent"
-
-            border{
-                width: 1
-                color: Colors.outline
-            }
+            color: Colors.surfaceContainerHigh
 
             Image{
                 anchors.fill: parent
@@ -45,17 +39,17 @@ Rectangle{
             spacing: 0
             CustomText{
                 Layout.fillWidth: true
-                Layout.fillHeight: true
                 content: "St3el"
-                size: 14
+                size: 15
+                weight: 700
+                elide: Text.ElideRight
             }
             CustomText{
                 Layout.fillWidth: true
-                Layout.fillHeight: true
-                content: "uptime " + ServiceSystemInfo.getUptime()
-
-                size: 13
-                color: Colors.outline
+                content: "up " + ServiceSystemInfo.getUptime()
+                size: 11
+                customColor: Colors.outline
+                elide: Text.ElideRight
             }
         }
 
@@ -74,9 +68,9 @@ Rectangle{
         CustomButton{
             icon: "settings"
             iconSize: 18
-            Layout.preferredHeight: 30
-            Layout.preferredWidth: 30
-            radius: 10
+            Layout.preferredHeight: 34
+            Layout.preferredWidth: 34
+            radius: 17
             onClicked: {
                 root.toggleDashboard()
                 GlobalStates.settingsPage = 9
@@ -87,9 +81,9 @@ Rectangle{
         CustomButton{
             icon: "power_settings_new"
             iconSize: 18
-            Layout.preferredHeight: 30
-            Layout.preferredWidth: 40
-            radius: 10
+            Layout.preferredHeight: 34
+            Layout.preferredWidth: 34
+            radius: 17
             onClicked: {
                 root.toggleDashboard()
                 GlobalStates.shutdownWindow = true
@@ -98,9 +92,9 @@ Rectangle{
         CustomButton{
             icon: "close"
             iconSize: 18
-            Layout.preferredHeight: 30
-            Layout.preferredWidth: 30
-            radius: 10
+            Layout.preferredHeight: 34
+            Layout.preferredWidth: 34
+            radius: 17
 
             onClicked: {
                 root.toggleDashboard()

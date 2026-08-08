@@ -19,7 +19,6 @@ import qs.modules.components.Widgets
 import qs.modules.services
 import qs.modules.customComponents
 
-
 PanelWindow{
     id: layout
     color: "transparent"
@@ -33,7 +32,7 @@ PanelWindow{
     // true = full bar; false = secondary monitor minimal bar
     property bool isPrimary: true
 
-    WlrLayershell.keyboardFocus: isPrimary && utility.isTodoClicked
+    WlrLayershell.keyboardFocus: isPrimary && (utility.isTodoClicked || workspaces.active)
                                  ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     mask: Region{
@@ -71,19 +70,12 @@ PanelWindow{
             intersection: Intersection.Subtract
         }
 
-        // Pill floating panels (dashboard / notification / weather)
+        // Pill floating panels (dashboard / weather)
         Region {
             x:      pillDashPanel.x
             y:      pillDashPanel.y
             width:  pillDashPanel.visible ? pillDashPanel.width  : 0
             height: pillDashPanel.visible ? pillDashPanel.height : 0
-            intersection: Intersection.Subtract
-        }
-        Region {
-            x:      pillNotifPanel.x
-            y:      pillNotifPanel.y
-            width:  pillNotifPanel.visible ? pillNotifPanel.width  : 0
-            height: pillNotifPanel.visible ? pillNotifPanel.height : 0
             intersection: Intersection.Subtract
         }
         Region {
@@ -100,6 +92,14 @@ PanelWindow{
             height: pillVpnPanel.visible ? pillVpnPanel.height : 0
             intersection: Intersection.Subtract
         }
+
+        Region {
+            x:      notifPopups.x
+            y:      notifPopups.y
+            width:  (isPrimary && notifPopups.height > 0) ? notifPopups.width : 0
+            height: isPrimary ? notifPopups.height : 0
+            intersection: Intersection.Subtract
+        }
     }
     Rectangle{
         id: maskRect
@@ -108,8 +108,6 @@ PanelWindow{
         anchors.bottom: parent.bottom
         color: "transparent"
     }
-
-
 
     // ── Secondary bar (shown on non-primary monitors) ──────────────────────
     SecondaryBar {
@@ -139,74 +137,61 @@ PanelWindow{
         // Truly flat bar (no stepped bridges). Sections expand downward when open:
         //   • clock expands when calendar is open (cH > wH)
         //   • utility expands when dashboard/panel is open (uH > wH)
-        // showArc: workspace panel open — bridge arc at workspace right + utility left
         function buildFlatBarPath(dX, dY, rX, rY,
-                                  wH, wW, showArc,
+                                  wH, wW, showArc, wpH, sweep,
                                   cX, cW, cH,
                                   uX, uW, uH, isDashboard) {
             function A(sw, ex, ey) { return `A ${rX} ${rY} 0 0 ${sw} ${ex} ${ey} ` }
             function L(x,  y)      { return `L ${x} ${y} ` }
             const CW = 1, CCW = 0
 
-            let p = `M 0 ${wH + dY} `
-            p += A(CW, dX, wH)   // BL corner
-
+            let p
             if (showArc) {
-                // Workspace panel open: concave arc at workspace right, bridge, concave arc at utility left
-                p += L(wW + dX, wH)
-                p += A(CW,  wW,  wH - dY)
-                p += L(uX - dX,  wH - dY)
-                p += A(CCW, uX,  wH)              // now at (uX, wH)
-                if (uH > wH + 2 * dY) {
-                    p += L(uX, uH - dY)
-                    if (isDashboard) {
-                        p += A(CW,  uX - dX, uH)
-                        p += L(uX + uW, uH)
-                    } else {
-                        p += A(CCW, uX + dX, uH)
-                        p += L(uX + uW - dX, uH)
-                    }
-                    p += A(CW,  uX + uW, uH + dY)
-                } else {
-                    p += L(uX + uW - dX, wH)
-                    p += A(CW,  uX + uW, wH + dY)
-                }
+                p  = `M 0 ${wpH - dY} `
+                p += A(CCW, dX,      wpH)
+                p += sweep ? L(wW + dX, wpH) : L(wW - dX, wpH)
+                p += sweep ? A(CW, wW, wpH - dY) : A(CCW, wW, wpH - dY)
+                p += L(wW,           wH + dY)
+                p += A(CW,  wW + dX, wH)
             } else {
-                // Clock section — expand downward if calendar is open, else flat
-                if (cH > wH + 2 * dY) {
-                    p += L(cX - dX, wH)
-                    p += A(CW,  cX,            wH + dY)   // outer corner going down
-                    p += L(cX,                 cH - dY)   // clock left wall
-                    p += A(CCW, cX + dX,       cH)        // clock BL corner
-                    p += L(cX + cW - dX,       cH)        // clock bottom
-                    p += A(CCW, cX + cW,       cH - dY)   // clock BR corner
-                    p += L(cX + cW,            wH + dY)   // clock right wall (up)
-                    p += A(CW,  cX + cW + dX,  wH)        // outer corner back to flat
-                }
-                // else: bar is flat through the clock area — no scallop
+                p  = `M 0 ${wH + dY} `
+                p += A(CW, dX, wH)   // BL corner
+            }
 
-                // Utility section — expand downward if dashboard/panel is open
-                if (uH > wH + 2 * dY) {
-                    p += L(uX - dX, wH)
-                    p += A(CW,  uX,      wH + dY)   // outer corner going down
-                    p += L(uX,           uH - dY)   // utility left wall
-                    if (isDashboard) {
-                        p += A(CW,  uX - dX, uH)
-                        p += L(uX + uW, uH)
-                    } else {
-                        p += A(CCW, uX + dX, uH)
-                        p += L(uX + uW - dX, uH)
-                    }
-                    p += A(CW,  uX + uW, uH + dY)
+            // Clock section — expand downward if calendar is open, else flat
+            if (cH > wH + 2 * dY) {
+                p += L(cX - dX, wH)
+                p += A(CW,  cX,            wH + dY)   // outer corner going down
+                p += L(cX,                 cH - dY)   // clock left wall
+                p += A(CCW, cX + dX,       cH)        // clock BL corner
+                p += L(cX + cW - dX,       cH)        // clock bottom
+                p += A(CCW, cX + cW,       cH - dY)   // clock BR corner
+                p += L(cX + cW,            wH + dY)   // clock right wall (up)
+                p += A(CW,  cX + cW + dX,  wH)        // outer corner back to flat
+            }
+            // else: bar is flat through the clock area — no scallop
+
+            // Utility section — expand downward if dashboard/panel is open
+            if (uH > wH + 2 * dY) {
+                p += L(uX - dX, wH)
+                p += A(CW,  uX,      wH + dY)   // outer corner going down
+                p += L(uX,           uH - dY)   // utility left wall
+                if (isDashboard) {
+                    p += A(CW,  uX - dX, uH)
+                    p += L(uX + uW, uH)
                 } else {
-                    p += L(uX + uW - dX, wH)
-                    p += A(CW,  uX + uW, wH + dY)
+                    p += A(CCW, uX + dX, uH)
+                    p += L(uX + uW - dX, uH)
                 }
+                p += A(CW,  uX + uW, uH + dY)
+            } else {
+                p += L(uX + uW - dX, wH)
+                p += A(CW,  uX + uW, wH + dY)
             }
 
             p += L(uX + uW, 0)
             p += L(0, 0)
-            p += L(0, wH + dY)
+            p += L(0, showArc ? wpH - dY : wH + dY)
             return p
         }
 
@@ -215,7 +200,7 @@ PanelWindow{
         // as their vertical offset. When lineDis == disY the offset is 0 and those arcs
         // would bulge as semicircles; this function emits a straight L segment instead.
         function buildBarPath(dX, dY, rX, rY, lD,
-                              wH, wW, showArc,
+                              wH, wW, showArc, wpH, sweep,
                               cX, cW, cH,
                               uX, uW, uH, isDashboard) {
             const eD = dY - lD  // effectiveDis: 0 = flat bar, dY = maximum step
@@ -226,17 +211,14 @@ PanelWindow{
             function T(sw, ex, ey) { return eD < 0.1 ? L(ex, ey) : A(sw, ex, ey) }
             const CW = 1, CCW = 0
 
-            let p = `M 0 ${wH + dY} `
+            const wBlockH = showArc ? wpH : wH
+
+            let p = `M 0 ${showArc ? wBlockH - dY : wBlockH + dY} `
             // bottom-left corner
-            p += A(CW, dX, wH)
+            p += showArc ? A(CCW, dX, wBlockH) : A(CW, dX, wBlockH)
             // workspaces bottom edge + right-bottom corner
-            if (showArc) {
-                p += L(wW + dX, wH)
-                p += A(CW, wW, wH - dY)
-            } else {
-                p += L(wW - dX, wH)
-                p += A(CCW, wW, wH - dY)
-            }
+            p += (showArc && sweep) ? L(wW + dX, wBlockH) : L(wW - dX, wBlockH)
+            p += (showArc && sweep) ? A(CW, wW, wBlockH - dY) : A(CCW, wW, wBlockH - dY)
             // workspaces right wall up to transition point
             p += L(wW, dY)
             // ── TRANSITION: workspace → bridge
@@ -270,7 +252,7 @@ PanelWindow{
             // utility right wall up, top edge, left wall back to start
             p += L(uX + uW, 0)
             p += L(0, 0)
-            p += L(0, wH + dY)
+            p += L(0, showArc ? wBlockH - dY : wBlockH + dY)
             return p
         }
 
@@ -282,7 +264,7 @@ PanelWindow{
         // xOff = sectionsRow.x — all section x coords are relative to sectionsRow,
         // but the Shape is drawn in root space, so every x needs this offset.
         function buildPillBarPath(dX, dY, rX, rY, margin, xOff,
-                                  wH, wW, showArc,
+                                  wH, wW, showArc, wpH,
                                   cX, cW, cH,
                                   uX, uW, uH, isDashboard) {
             function A(sw, ex, ey) { return `A ${rX} ${rY} 0 0 ${sw} ${ex} ${ey} ` }
@@ -293,64 +275,58 @@ PanelWindow{
             cX += xOff;  uX += xOff
             const right = uX + uW
 
-            // Start on the bottom edge just past the left pill cap
-            let p = `M ${xOff + capR} ${margin + wH} `
+            let p = `M ${xOff + capR} ${margin + (showArc ? wpH : wH)} `
 
             if (showArc) {
-                p += L(xOff + wW + dX, margin + wH)
-                p += A(CW,  xOff + wW,  margin + wH - dY)
-                p += L(uX - dX,         margin + wH - dY)
-                p += A(CCW, uX,         margin + wH)
-                if (uH > wH + 2 * dY) {
-                    p += L(uX, margin + uH - dY)
-                    if (isDashboard) {
-                        p += A(CW,  uX - dX, margin + uH)
-                        p += L(right, margin + uH)
-                    } else {
-                        p += A(CCW, uX + dX, margin + uH)
-                        p += L(right - dX, margin + uH)
-                    }
-                    p += A(CW, right, margin + uH + dY)
-                    p += L(right, margin + capR)
-                } else {
-                    p += L(right - capR, margin + wH)
-                }
-            } else {
-                if (cH > wH + 2 * dY) {
-                    p += L(cX - dX,            margin + wH)
-                    p += A(CW,  cX,            margin + wH + dY)
-                    p += L(cX,                 margin + cH - dY)
-                    p += A(CCW, cX + dX,       margin + cH)
-                    p += L(cX + cW - dX,       margin + cH)
-                    p += A(CCW, cX + cW,       margin + cH - dY)
-                    p += L(cX + cW,            margin + wH + dY)
-                    p += A(CW,  cX + cW + dX,  margin + wH)
-                }
+                p += L(xOff + wW - dX,      margin + wpH)
+                p += A(CCW, xOff + wW,      margin + wpH - dY)
+                p += L(xOff + wW,           margin + wH + dY)
+                p += A(CW,  xOff + wW + dX, margin + wH)
+            }
 
-                if (uH > wH + 2 * dY) {
-                    p += L(uX - dX, margin + wH)
-                    p += A(CW,  uX, margin + wH + dY)
-                    p += L(uX,  margin + uH - dY)
-                    if (isDashboard) {
-                        p += A(CW,  uX - dX, margin + uH)
-                        p += L(right, margin + uH)
-                    } else {
-                        p += A(CCW, uX + dX, margin + uH)
-                        p += L(right - dX, margin + uH)
-                    }
-                    p += A(CW, right, margin + uH + dY)
-                    p += L(right, margin + capR)
+            if (cH > wH + 2 * dY) {
+                p += L(cX - dX,            margin + wH)
+                p += A(CW,  cX,            margin + wH + dY)
+                p += L(cX,                 margin + cH - dY)
+                p += A(CCW, cX + dX,       margin + cH)
+                p += L(cX + cW - dX,       margin + cH)
+                p += A(CCW, cX + cW,       margin + cH - dY)
+                p += L(cX + cW,            margin + wH + dY)
+                p += A(CW,  cX + cW + dX,  margin + wH)
+            }
+
+            if (uH > wH + 2 * dY) {
+                p += L(uX - dX, margin + wH)
+                p += A(CW,  uX, margin + wH + dY)
+                p += L(uX,  margin + uH - dY)
+                if (isDashboard) {
+                    p += A(CW,  uX - dX, margin + uH)
+                    p += L(right, margin + uH)
                 } else {
-                    p += L(right - capR, margin + wH)
+                    p += A(CCW, uX + dX, margin + uH)
+                    p += L(right - dX, margin + uH)
                 }
+                p += A(CW, right, margin + uH + dY)
+                p += L(right, margin + capR)
+            } else {
+                p += L(right - capR, margin + wH)
             }
 
             // Right pill cap — CCW sweep (bottom→rightmost→top, bulges outward)
             p += `A ${capR} ${capR} 0 0 0 ${right - capR} ${margin} `
-            // Top edge right-to-left
-            p += L(xOff + capR, margin)
-            // Left pill cap — CCW sweep (top→leftmost→bottom, bulges outward)
-            p += `A ${capR} ${capR} 0 0 0 ${xOff + capR} ${margin + wH} `
+
+            if (showArc) {
+                p += L(xOff + dX, margin)
+                p += A(CCW, xOff,      margin + dY)
+                p += L(xOff,           margin + wpH - dY)
+                p += A(CCW, xOff + dX, margin + wpH)
+                p += L(xOff + capR,    margin + wpH)
+            } else {
+                // Top edge right-to-left
+                p += L(xOff + capR, margin)
+                // Left pill cap — CCW sweep (top→leftmost→bottom, bulges outward)
+                p += `A ${capR} ${capR} 0 0 0 ${xOff + capR} ${margin + wH} `
+            }
             p += `Z `
             return p
         }
@@ -362,33 +338,26 @@ PanelWindow{
                 strokeColor: "transparent"
                 fillColor: Colors.surface
                 PathSvg {
-                    // showArc is passed false: the workspaces section no longer
-                    // expands in place — the workspace manager is its own
-                    // overlay window. The builders keep the branch so the shape
-                    // can still scallop around a growing left section if
-                    // anything needs that again.
                     path: root.barMode === "pill"
                         ? root.buildPillBarPath(
                             root.disX, root.disY, root.radX, root.radY, root.pillMargin, sectionsRow.x,
-                            workspaces.height, workspaces.width, false,
+                            Appearance.size.barHeight, workspaces.width, workspaces.showArc, workspaces.height,
                             clock.x, clock.width, clock.height,
                             utility.x, utility.width, utility.height, utility.isDashboard)
                         : root.barMode === "stepped"
                             ? root.buildBarPath(
                                 root.disX, root.disY, root.radX, root.radY, root.lineDis,
-                                workspaces.height, workspaces.width, false,
+                                Appearance.size.barHeight, workspaces.width, workspaces.showArc, workspaces.height, workspaces.sweepBottom,
                                 clock.x, clock.width, clock.height,
                                 utility.x, utility.width, utility.height, utility.isDashboard)
                             : root.buildFlatBarPath(
                                 root.disX, root.disY, root.radX, root.radY,
-                                workspaces.height, workspaces.width, false,
+                                Appearance.size.barHeight, workspaces.width, workspaces.showArc, workspaces.height, workspaces.sweepBottom,
                                 clock.x, clock.width, clock.height,
                                 utility.x, utility.width, utility.height, utility.isDashboard)
                 }
             }
         }
-
-
 
         Item {
             id: sectionsRow
@@ -427,13 +396,7 @@ PanelWindow{
             x:      parent.width - width - root.pillRightMargin
             y:      root.pillMargin + Appearance.size.barHeight + 8
             width:  300
-            // Content-sized, capped at the space between the bar and the
-            // bottom of the screen. Matches the flat-bar dashboard.
-            readonly property real maxHeight: parent.height - y - root.pillMargin - 8
-            height: Math.min(pillDashLoader.item?.contentHeight ?? 400,
-                             pillDashPanel.maxHeight)
-
-            Behavior on height { NumberAnimation { duration: 220; easing.type: Easing.OutQuad } }
+            height: parent.height - y - root.pillMargin - 8
             radius: 20
             color:  Colors.surface
             clip:   true
@@ -457,42 +420,6 @@ PanelWindow{
                 }
                 sourceComponent: Dashboard {
                     onToggleDashboard: utility.isClicked = false
-                }
-            }
-        }
-
-        // ── Pill notification panel ───────────────────────────────────────
-        Rectangle {
-            id: pillNotifPanel
-            visible: isPrimary && root.barMode === "pill" && utility.isNotificationClicked
-
-            x:      parent.width - width - root.pillRightMargin
-            y:      root.pillMargin + Appearance.size.barHeight + 8
-            width:  Appearance.size.notificationPanelWidth
-            height: parent.height - y - root.pillMargin - 8
-            radius: 20
-            color:  Colors.surface
-            clip:   true
-
-            opacity: 0
-            property real _slideX: Appearance.size.notificationPanelWidth + 20
-            transform: Translate { x: pillNotifPanel._slideX }
-
-            NumberAnimation on opacity { from: 0; to: 1; duration: 300; easing.type: Easing.OutQuad;   running: pillNotifPanel.visible }
-            NumberAnimation on _slideX { from: Appearance.size.notificationPanelWidth + 20; to: 0; duration: 300; easing.type: Easing.OutCubic; running: pillNotifPanel.visible }
-
-            Loader {
-                id: pillNotifLoader
-                anchors.fill: parent
-                active:  pillNotifPanel.visible
-                visible: false
-                Timer {
-                    interval: 250
-                    running:  pillNotifPanel.visible
-                    onTriggered: pillNotifLoader.visible = true
-                }
-                sourceComponent: NotificationCenter {
-                    onNotificationCenterClosed: utility.isNotificationClicked = false
                 }
             }
         }
@@ -585,8 +512,8 @@ PanelWindow{
         }
     }
 
-
     NotificationPanel{
+        id: notifPopups
         visible: isPrimary
     }
 

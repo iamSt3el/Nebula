@@ -56,14 +56,14 @@ Rectangle{
             anchor.window: layout
             visible: true
             implicitWidth: root.width
-            implicitHeight: child.implicitHeight
+            implicitHeight: Math.min(listView.contentHeight + 10, 250)
             color: "transparent"
 
 
             HyprlandFocusGrab {
                 active: true
                 windows: [QsWindow.window]
-                onCleared: root.isListClicked = false
+                onCleared: morph.close()
             }
 
 
@@ -75,20 +75,22 @@ Rectangle{
                 rect.y: windowPos.y - root.height
             }
 
-            Rectangle{
-                id: child
-                implicitWidth: parent.width
-                implicitHeight: Math.min(listView.contentHeight + 10, 250)
-                radius: 10
-                color: root.color
+            MorphCard{
+                id: morph
+                anchors.fill: parent
 
-                border{
-                    width: 1
-                    color: Colors.outline
-                }
+                srcWidth:  root.width
+                srcHeight: root.height
+                srcRadius: root.radius
 
+                contentHeight: Math.min(listView.contentHeight + 10, 250)
+                cardRadius: 10
+                cardColor: root.color
+                cardBorderWidth: 1
+                cardBorderColor: Colors.outline
 
-
+                onCloseFinished: root.isListClicked = false
+                Component.onCompleted: Qt.callLater(morph.open)
 
                 ListView{
                     id: listView
@@ -124,7 +126,7 @@ Rectangle{
                             hoverEnabled: true
 
                             onClicked:{
-                                root.isListClicked = false
+                                morph.close()
                                 root.currentVal = modelData.description
                                 root.listChildClicked(modelData)
                             }

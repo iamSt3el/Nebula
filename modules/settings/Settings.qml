@@ -113,6 +113,10 @@ Singleton{
         {
             name: "Sleep",
             icon: "bedtime"
+        },
+        {
+            name: "AI",
+            icon: "neurology"
         }
     ]
 

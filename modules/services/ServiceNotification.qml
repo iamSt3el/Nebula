@@ -14,6 +14,8 @@ Singleton {
     property int notificationsNumber: allNotifications.length
     property bool muted: false
 
+    property bool popupsPaused: false
+
     // Banners are held back while Do Not Disturb or game mode is on. Applied at
     // arrival rather than by filtering `popups`, so a notification that was
     // already on screen fades out on its own timer instead of reappearing when
@@ -101,8 +103,8 @@ Singleton {
         readonly property real arrivalTimestamp: Date.now()
 
         property Timer timer: Timer {
-            running: true
-            interval: 5000
+            running: !root.popupsPaused
+            interval: Math.max(1, SettingsConfig.notifications?.popupTimeout ?? 5) * 1000
             onTriggered: notifItem.popup = false
         }
 

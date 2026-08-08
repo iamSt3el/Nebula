@@ -57,7 +57,11 @@ Item {
                 readonly property bool hasLabel: !!modelData.label
 
                 height: root.height
-                implicitWidth: _content.implicitWidth + 22
+                readonly property real contentWidth:
+                    (seg.hasIcon ? _icon.implicitWidth : 0)
+                    + (seg.hasIcon && seg.hasLabel ? _content.spacing : 0)
+                    + (seg.hasLabel ? _label.implicitWidth : 0)
+                implicitWidth: seg.contentWidth + 22
                 width: root.fillWidth
                     ? (root.width - (root.model.length - 1) * root.gap) / Math.max(root.model.length, 1)
                     : implicitWidth
@@ -74,27 +78,41 @@ Item {
                     bottomRightRadius: (seg.isLast  || seg.active) ? root.fullRadius : root.innerRadius
                 }
 
-                Row {
-                    id: _content
-                    anchors.centerIn: parent
-                    spacing: 5
+                Item {
+                    id: _box
+                    anchors.fill: parent
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    clip: true
 
-                    MaterialIconSymbol {
-                        visible: seg.hasIcon
-                        anchors.verticalCenter: parent.verticalCenter
-                        content: seg.modelData.icon ?? ""
-                        iconSize: root.iconSize
-                        fill: seg.active ? 1 : 0
-                        Behavior on fill { NumberAnimation { duration: 200 } }
-                        customColor: seg.active ? root.activeTextColor : root.inactiveTextColor
-                    }
+                    Row {
+                        id: _content
+                        anchors.centerIn: parent
+                        spacing: 5
 
-                    CustomText {
-                        visible: seg.hasLabel
-                        anchors.verticalCenter: parent.verticalCenter
-                        content: seg.modelData.label ?? ""
-                        size: root.textSize
-                        customColor: seg.active ? root.activeTextColor : root.inactiveTextColor
+                        MaterialIconSymbol {
+                            id: _icon
+                            visible: seg.hasIcon
+                            anchors.verticalCenter: parent.verticalCenter
+                            content: seg.modelData.icon ?? ""
+                            iconSize: root.iconSize
+                            fill: seg.active ? 1 : 0
+                            Behavior on fill { NumberAnimation { duration: 200 } }
+                            customColor: seg.active ? root.activeTextColor : root.inactiveTextColor
+                        }
+
+                        CustomText {
+                            id: _label
+                            visible: seg.hasLabel
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.max(0, Math.min(implicitWidth,
+                                            _box.width - (seg.hasIcon ? _icon.implicitWidth + _content.spacing : 0)))
+                            content: seg.modelData.label ?? ""
+                            size: root.textSize
+                            elide: Text.ElideRight
+                            horizontalAlignment: Text.AlignHCenter
+                            customColor: seg.active ? root.activeTextColor : root.inactiveTextColor
+                        }
                     }
                 }
 

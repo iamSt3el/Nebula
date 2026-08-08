@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
-import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Widgets
@@ -17,12 +16,18 @@ Item {
     required property LockContext context
     focus: true
 
-    Keys.onPressed: event => { passInput.forceActiveFocus() }
+    Keys.onPressed: event => { auth.input.forceActiveFocus() }
 
     // ── Clock digit helpers (NewClock style) ──────────────────────────────────
-    readonly property string _font:  SettingsConfig.general.displayFont ?? "Titan One"
-    readonly property real   _sz:    160
-    readonly property real   _fX:    26    // overlap offset (scaled from NewClock 40/250 * 160)
+    readonly property string _font: SettingsConfig.general.displayFont ?? "Titan One"
+
+    // These are constants on purpose. _th1/_mh1 are layered items feeding a
+    // MultiEffect mask, and their layer textures are captured on first render —
+    // so anything that resizes them afterwards (e.g. deriving _sz from
+    // root.height, which is 0 until geometry arrives) leaves the mask sized for
+    // the old glyphs and visibly misaligns the digits.
+    readonly property real _sz: 160
+    readonly property real _fX: 26    // overlap offset (scaled from NewClock 40/250 * 160)
 
     readonly property string h1: {
         let h = parseInt(ServiceClock.hour)
@@ -37,6 +42,12 @@ Item {
     readonly property string m1: ServiceClock.minute[0] ?? "0"
     readonly property string m2: ServiceClock.minute[1] ?? "0"
 
+    // Corners settle in after the surface itself has slid into place.
+    property real cornersOpacity: 0
+    NumberAnimation on cornersOpacity {
+        from: 0; to: 1; duration: 450; easing.type: Easing.OutQuad
+    }
+
     // ── Blurred wallpaper ─────────────────────────────────────────────────────
     Image {
         anchors.fill: parent
@@ -50,17 +61,57 @@ Item {
         }
     }
 
+    // Gradient scrim — darkest through the middle band where the auth stack
+    // sits, so the pill and its border stay legible over any wallpaper.
     Rectangle {
         anchors.fill: parent
-        color: Qt.rgba(0, 0, 0, 0.32)
+        gradient: Gradient {
+            GradientStop { position: 0.00; color: Qt.rgba(0, 0, 0, 0.30) }
+            GradientStop { position: 0.50; color: Qt.rgba(0, 0, 0, 0.46) }
+            GradientStop { position: 1.00; color: Qt.rgba(0, 0, 0, 0.38) }
+        }
     }
 
-    // ── Clock (centered in upper area) ────────────────────────────────────────
-    ColumnLayout {
-        anchors.horizontalCenter: parent.horizontalCenter
+    // ── Corners ───────────────────────────────────────────────────────────────
+    LockWeatherChip {
+        anchors.left: parent.left
         anchors.top: parent.top
-        anchors.topMargin: parent.height * 0.1
+        anchors.margins: 30
+        opacity: root.cornersOpacity
+    }
+
+    LockStatusRow {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 30
+        opacity: root.cornersOpacity
+    }
+
+    LockMusicCard {
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+        anchors.margins: 30
+        opacity: root.cornersOpacity
+    }
+
+    LockPowerActions {
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 30
+        opacity: root.cornersOpacity
+    }
+
+    // ── Centered stack: clock → date → avatar → name → password ───────────────
+    ColumnLayout {
+        id: stack
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
         spacing: 0
+
+        opacity: 0
+        NumberAnimation on opacity {
+            from: 0; to: 1; duration: 500; easing.type: Easing.OutQuad
+        }
 
         // HH:MM with overlapping digit masking — exact NewClock technique
         RowLayout {
@@ -101,8 +152,10 @@ Item {
 
             // Colon
             CustomText {
-                Layout.leftMargin: 20; Layout.rightMargin: 20
-                content: ":"; size: root._sz; weight: 600; bottomPadding: 18
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
+                content: ":"; size: root._sz; weight: 600
+                bottomPadding: 18
                 font.family: root._font; color: Colors.primary
                 style: Text.Raised; styleColor: Colors.outline
             }
@@ -140,262 +193,69 @@ Item {
             }
         }
 
-        // Day name — two-color split (same as NewClock)
+        // DAY · 04 AUGUST 2026 — day keeps the two-tone split from NewClock
         RowLayout {
-            Layout.alignment: Qt.AlignHCenter; spacing: 0
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 0
+
             CustomText {
-                content: ServiceClock.day.slice(0, -3); size: 56; weight: 600
+                content: ServiceClock.day.slice(0, -3)
+                size: 28; weight: 600
                 font.family: root._font; color: Colors.surfaceText
                 style: Text.Raised; styleColor: Colors.outline
             }
             CustomText {
-                content: ServiceClock.day.slice(-3); size: 56; weight: 600
+                content: ServiceClock.day.slice(-3)
+                size: 28; weight: 600
                 font.family: root._font; color: Colors.primary
+                style: Text.Raised; styleColor: Colors.outline
+            }
+            CustomText {
+                leftPadding: 14; rightPadding: 14
+                content: "·"
+                size: 28; weight: 600
+                font.family: root._font; color: Colors.outline
+            }
+            CustomText {
+                content: ServiceClock.date + " " + ServiceClock.month + " " + ServiceClock.year
+                size: 28; weight: 600
+                font.family: root._font; color: Colors.surfaceText
                 style: Text.Raised; styleColor: Colors.outline
             }
         }
 
-        // Date · Month · Year
-        RowLayout {
-            Layout.alignment: Qt.AlignHCenter; spacing: 10
-            CustomText {
-                content: ServiceClock.date; size: 26; weight: 600
-                font.family: root._font; style: Text.Raised; styleColor: Colors.outline
-            }
-            CustomText {
-                content: ServiceClock.month; size: 26; weight: 600; color: Colors.primary
-                font.family: root._font; style: Text.Raised; styleColor: Colors.outline
-            }
-            CustomText {
-                content: ServiceClock.year; size: 26; weight: 600
-                font.family: root._font; style: Text.Raised; styleColor: Colors.outline
-            }
+        LockAvatar {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 46
+            context: root.context
+        }
+
+        CustomText {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 12
+            content: Quickshell.env("USER") || "user"
+            size: 17; weight: 700
+        }
+
+        CustomText {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 1
+            content: "Hyprland"
+            size: 11; weight: 500
+            customColor: Colors.outline
+        }
+
+        LockAuthField {
+            id: auth
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 26
+            context: root.context
         }
     }
 
-    // ── Bottom dock (original shape + improved cards) ─────────────────────────
-    Item {
-        anchors.bottom: parent.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        implicitWidth: 900
-        implicitHeight: 110
-
-        // Dock flare shape (unchanged from original)
-        Shape {
-            id: bgShape
-            z: 1
-            preferredRendererType: Shape.CurveRenderer
-
-            readonly property real w:          container.width
-            readonly property real h:          container.height
-            readonly property real bodyLeft:   container.x
-            readonly property real bodyRight:  container.x + w
-            readonly property real bodyBottom: container.y + container.height
-            readonly property real bodyTop:    bodyBottom - h
-            readonly property real rounding:   Math.min(h / 3, w / 3)
-            readonly property real flareX:     w / 18
-            readonly property bool flattenFlare: h < flareX * 2
-            readonly property real flareY:     flattenFlare ? Math.max(0, h / 2) : flareX
-            readonly property real flareRadiusY: Math.min(flareX, Math.max(0, h))
-
-            ShapePath {
-                strokeWidth: -1
-                fillColor: Settings.layoutColor
-
-                startX: bgShape.bodyLeft - bgShape.flareX
-                startY: bgShape.bodyBottom
-
-                PathArc {
-                    x: bgShape.bodyLeft
-                    y: bgShape.bodyBottom - bgShape.flareY
-                    radiusX: bgShape.flareX
-                    radiusY: bgShape.flareRadiusY
-                    direction: PathArc.Counterclockwise
-                }
-                PathLine {
-                    x: bgShape.bodyLeft
-                    y: bgShape.bodyTop + bgShape.rounding
-                }
-                PathArc {
-                    x: bgShape.bodyLeft + bgShape.rounding
-                    y: bgShape.bodyTop
-                    radiusX: bgShape.rounding
-                    radiusY: Math.min(bgShape.rounding, bgShape.h)
-                }
-                PathLine {
-                    x: bgShape.bodyRight - bgShape.rounding
-                    y: bgShape.bodyTop
-                }
-                PathArc {
-                    x: bgShape.bodyRight
-                    y: bgShape.bodyTop + bgShape.rounding
-                    radiusX: bgShape.rounding
-                    radiusY: Math.min(bgShape.rounding, bgShape.h)
-                }
-                PathLine {
-                    x: bgShape.bodyRight
-                    y: bgShape.bodyBottom - bgShape.flareY
-                }
-                PathArc {
-                    x: bgShape.bodyRight + bgShape.flareX
-                    y: bgShape.bodyBottom
-                    radiusX: bgShape.flareX
-                    radiusY: bgShape.flareRadiusY
-                    direction: PathArc.Counterclockwise
-                }
-                PathLine {
-                    x: bgShape.bodyLeft - bgShape.flareX
-                    y: bgShape.bodyBottom
-                }
-            }
-        }
-
-        // Container (slides up via implicitHeight)
-        Item {
-            id: container
-            z: 10
-            implicitWidth: 800
-            implicitHeight: 0
-            anchors.bottom: parent.bottom
-            anchors.horizontalCenter: parent.horizontalCenter
-
-            Behavior on implicitHeight {
-                NumberAnimation { duration: 300; easing.type: Easing.OutQuad }
-            }
-
-            Connections {
-                target: root.context
-                function onUnlocked() {
-                    container.implicitHeight = 0
-                    row.visible = false
-                }
-            }
-
-            Timer {
-                interval: 600; running: true
-                onTriggered: container.implicitHeight = 90
-            }
-            Timer {
-                interval: 900; running: true
-                onTriggered: row.visible = true
-            }
-
-            // ── Three cards ───────────────────────────────────────────────────
-            RowLayout {
-                id: row
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 10
-                visible: false
-
-                // ── User card ─────────────────────────────────────────────────
-                Rectangle {
-                    Layout.preferredWidth: 150
-                    Layout.fillHeight: true
-                    radius: 20
-                    color: Colors.surfaceContainer
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 10
-
-                        // Avatar
-                        ClippingWrapperRectangle {
-                            width: 44; height: 44; radius: 14
-                            color: Colors.primary
-                            Image {
-                                anchors.fill: parent
-                                source: SettingsConfig.general.profile
-                                fillMode: Image.PreserveAspectCrop
-                                sourceSize: Qt.size(width, height)
-                            }
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            spacing: 2
-
-                            CustomText {
-                                content: Quickshell.env("USER") || "user"
-                                size: 14; weight: 700
-                            }
-                            CustomText {
-                                content: "Hyprland"
-                                size: 11; customColor: Colors.outline
-                            }
-                        }
-                    }
-                }
-
-                // ── Password card ─────────────────────────────────────────────
-                Rectangle {
-                    Layout.preferredWidth: 390
-                    Layout.fillHeight: true
-                    radius: 20
-                    color: Colors.surfaceContainer
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 8
-
-                        // Lock icon with state tinting
-                        Rectangle {
-                            width: 38; height: 38; radius: 12
-                            color: root.context.showFailure
-                                ? Qt.alpha(Colors.error, 0.15)
-                                : root.context.unlockInProgress
-                                    ? Qt.alpha(Colors.primary, 0.15)
-                                    : "transparent"
-                            Behavior on color { ColorAnimation { duration: 200 } }
-
-                            MaterialIconSymbol {
-                                anchors.centerIn: parent
-                                content: root.context.unlockInProgress ? "lock_open" : "lock"
-                                iconSize: 22
-                                customColor: root.context.showFailure
-                                    ? Colors.error
-                                    : root.context.unlockInProgress ? Colors.primary : Colors.outline
-                            }
-                        }
-
-                        CustomShapeInput {
-                            id: passInput
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            placeholderText: root.context.showFailure
-                                ? "Wrong password — try again"
-                                : "Enter password"
-                            placeholderColor: root.context.showFailure ? Colors.error : Colors.outline
-                            enabled: !root.context.unlockInProgress
-
-                            onTextChanged: root.context.currentText = text
-                            onAccepted:    root.context.tryUnlock()
-
-                            Connections {
-                                target: root.context
-                                function onCurrentTextChanged() {
-                                    passInput.text = root.context.currentText
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ── Music card ────────────────────────────────────────────────
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    radius: 20
-                    color: Colors.surfaceContainer
-
-                    LockScreenMusicPlayer {
-                        anchors.fill: parent
-                    }
-                }
-            }
-        }
+    // The input can only take focus once it is actually on screen.
+    Timer {
+        interval: 700; running: true
+        onTriggered: auth.input.forceActiveFocus()
     }
 }
