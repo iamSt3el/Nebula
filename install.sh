@@ -1,21 +1,37 @@
 #!/usr/bin/env bash
 # Nebula Shell — standalone installer
 # Usage: bash <(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/main/install.sh)
-#        bash install.sh [--force] [--skip-sysupdate] [--skip-hyprland]
+#        bash install.sh [--force] [--skip-sysupdate]
+#
+# Installs the Nebula shell only. It never edits your Hyprland config —
+# autostart and keybind snippets live in config/hypr/ for you to copy.
 
 cd "$(dirname "$0")" 2>/dev/null || true   # no-op when piped via curl
 export base="$(pwd)"
 
 # ── colours ────────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-BLUE='\033[0;34m'; CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
+BLUE='\033[0;34m'; CYAN='\033[0;36m'; MAGENTA='\033[0;35m'
+BOLD='\033[1m'; DIM='\033[2m'; RESET='\033[0m'
 
-ok()     { echo -e "  ${GREEN}✓${RESET}  $*"; }
-warn()   { echo -e "  ${YELLOW}!${RESET}  $*"; }
-info()   { echo -e "  ${CYAN}→${RESET}  $*"; }
-step()   { echo -e "\n${BOLD}${BLUE}▸ $*${RESET}"; }
+RULE='──────────────────────────────────────────────────────────────'
+
+STEP_N=0
+TOTAL_STEPS=18
+WARNINGS=()
+START_TS=$SECONDS
+
+ok()     { echo -e "   ${GREEN}✓${RESET} $*"; }
+warn()   { echo -e "   ${YELLOW}▲${RESET} $*"; WARNINGS+=("$*"); }
+info()   { echo -e "   ${DIM}· $*${RESET}"; }
+step()   {
+  STEP_N=$((STEP_N + 1))
+  printf "\n${BOLD}${MAGENTA}%02d${RESET}${DIM}/%02d${RESET}  ${BOLD}%s${RESET}\n" \
+    "$STEP_N" "$TOTAL_STEPS" "$*"
+  echo -e "${DIM}${RULE}${RESET}"
+}
 banner() { echo -e "${BOLD}${CYAN}$*${RESET}"; }
-die()    { echo -e "\n${RED}${BOLD}FATAL: $*${RESET}\n" >&2; exit 1; }
+die()    { echo -e "\n  ${RED}${BOLD}✗ FATAL${RESET}  ${RED}$*${RESET}\n" >&2; exit 1; }
 has()    { command -v "$1" &>/dev/null; }
 
 # ── XDG dirs ───────────────────────────────────────────────────────────────────
@@ -32,42 +48,43 @@ PLUGIN_DIR="$INSTALL_DIR/plugins/WfRecorder"
 # ── option defaults ───────────────────────────────────────────────────────────
 ask=true
 SKIP_SYSUPDATE=false
-SKIP_HYPRLAND=false
 
 # ── parse flags ───────────────────────────────────────────────────────────────
 for arg in "$@"; do
   case $arg in
     -f|--force)           ask=false ;;
     -s|--skip-sysupdate)  SKIP_SYSUPDATE=true ;;
-    --skip-hyprland)      SKIP_HYPRLAND=true ;;
     -h|--help)
       echo "Usage: $0 [OPTIONS]"
       echo "  -f, --force            Skip all confirmations"
       echo "  -s, --skip-sysupdate   Skip pacman -Syu"
-      echo "      --skip-hyprland    Skip patching hyprland.conf"
       echo "  -h, --help             Show this help"
       exit 0 ;;
   esac
 done
 
+$SKIP_SYSUPDATE && TOTAL_STEPS=$((TOTAL_STEPS - 1))
+
 # ── interactive wrapper (mirrors dots-hyprland's v()) ─────────────────────────
 # Shows the command, optionally waits for confirmation, and handles failures.
 v() {
-  echo -e "\n${BLUE}──────────────────────────────────────${RESET}"
-  echo -e "${CYAN}  Next: ${GREEN}$*${RESET}"
   local execute=true
   if $ask; then
+    echo -e "   ${DIM}${RULE}${RESET}"
+    echo -e "   ${BOLD}run${RESET}  ${GREEN}$*${RESET}"
     while true; do
-      echo -e "${BLUE}  [y] Run  [s] Skip  [e] Exit  [!] Run all without asking${RESET}"
-      read -rp "  ───> " p
+      echo -e "   ${DIM}[y] run    [s] skip    [e] exit    [!] run all without asking${RESET}"
+      read -rp "   ❯ " p
       case $p in
         y|Y|"")  break ;;
         s|S)     execute=false; break ;;
         e|E)     die "Aborted by user." ;;
         "!")     ask=false; break ;;
-        *)       echo "  Please enter y / s / e / !" ;;
+        *)       echo -e "   ${DIM}enter y / s / e / !${RESET}" ;;
       esac
     done
+  else
+    echo -e "   ${DIM}❯ $*${RESET}"
   fi
   if $execute; then
     x "$@"
@@ -81,9 +98,9 @@ x() {
   local status=0
   "$@" || status=$?
   while [[ $status -ne 0 ]]; do
-    echo -e "${RED}  Command failed: ${YELLOW}$*${RESET}"
-    echo -e "${BLUE}  [r] Retry  [i] Ignore  [e] Exit${RESET}"
-    read -rp "  ───> " p
+    echo -e "   ${RED}✗ failed${RESET}  ${YELLOW}$*${RESET}"
+    echo -e "   ${DIM}[r] retry    [i] ignore    [e] exit${RESET}"
+    read -rp "   ❯ " p
     case $p in
       r|R|"") "$@" && status=0 || status=$? ;;
       i|I)    warn "Ignoring failure: $*"; return 0 ;;
@@ -105,9 +122,14 @@ banner "
   ██║ ╚████║███████╗██████╔╝╚██████╔╝███████╗██║  ██║
   ╚═╝  ╚═══╝╚══════╝╚═════╝  ╚═════╝ ╚══════╝╚═╝  ╚═╝
 "
-echo -e "  Repo:    ${CYAN}${REPO_URL}${RESET}"
-echo -e "  Target:  ${CYAN}${INSTALL_DIR}${RESET}"
-echo -e "  Venv:    ${CYAN}${VENV_DIR}${RESET}"
+echo -e "  ${DIM}a dreamy desktop shell for Hyprland, built with Quickshell${RESET}"
+echo ""
+echo -e "  ${DIM}repo${RESET}    ${CYAN}${REPO_URL}${RESET}"
+echo -e "  ${DIM}target${RESET}  ${CYAN}${INSTALL_DIR}${RESET}"
+echo -e "  ${DIM}venv${RESET}    ${CYAN}${VENV_DIR}${RESET}"
+echo ""
+echo -e "  ${DIM}This installs the shell only — it will not touch your Hyprland config.${RESET}"
+echo -e "  ${DIM}Autostart and keybind snippets are in config/hypr/ for you to copy.${RESET}"
 echo ""
 
 # ── sanity: must be Arch ──────────────────────────────────────────────────────
@@ -116,7 +138,7 @@ has pacman || die "pacman not found — this installer is for Arch Linux only."
 # ── offer backup ──────────────────────────────────────────────────────────────
 step "Backup (optional)"
 echo -e "  Would you like to back up ${CYAN}~/.config${RESET} and ${CYAN}~/.local${RESET} before we start? [y/N]"
-read -rp "  ───> " bk
+read -rp "   ❯ " bk
 case $bk in
   y|Y)
     BACKUP_DIR="$HOME/nebula-backup-$(date +%Y%m%d-%H%M%S)"
@@ -165,7 +187,7 @@ step "Nebula source"
 if [[ -d "$INSTALL_DIR/.git" ]]; then
   warn "$INSTALL_DIR already exists."
   echo -e "  Update to latest? [y/N]"
-  read -rp "  ───> " upd
+  read -rp "   ❯ " upd
   if [[ "${upd,,}" == "y" ]]; then
     v git -C "$INSTALL_DIR" pull --ff-only
   else
@@ -175,7 +197,7 @@ else
   if [[ -d "$INSTALL_DIR" ]]; then
     warn "$INSTALL_DIR exists but is not a git repo."
     echo -e "  Back it up and replace? [y/N]"
-    read -rp "  ───> " rep
+    read -rp "   ❯ " rep
     [[ "${rep,,}" == "y" ]] || die "Move or delete $INSTALL_DIR and re-run."
     mv "$INSTALL_DIR" "${INSTALL_DIR}.bak.$(date +%s)"
     ok "Backed up"
@@ -401,92 +423,38 @@ input_path  = '~/.config/matugen/templates/hyprland-colors.conf'
 output_path = '~/.config/hypr/colors.conf'
 post_hook   = 'hyprctl reload'"
 
-# ── Hyprland config setup ─────────────────────────────────────────────────────
-if ! $SKIP_HYPRLAND; then
-  step "Hyprland config"
-  HYPR_DIR="$XDG_CONFIG_HOME/hypr"
-  HYPR_LUA="$HYPR_DIR/hyprland.lua"
-  HYPR_CONF="$HYPR_DIR/hyprland.conf"
-
-  if [[ -f "$HYPR_LUA" ]]; then
-    # ── Lua-based Hyprland (>= 0.55) — config already exists ─────────────────
-    ok "Detected Lua-based Hyprland config ($HYPR_LUA)"
-
-    # Offer to patch existing env + autostart files
-    echo ""
-    echo -e "  Auto-append Nebula env vars + autostart entries to your existing Lua files? [y/N]"
-    read -rp "  ───> " lua_patch
-    if [[ "${lua_patch,,}" == "y" ]]; then
-      ENV_LUA="$HYPR_DIR/lua/environment.lua"
-      AUTO_LUA="$HYPR_DIR/lua/autostart.lua"
-      if [[ -f "$ENV_LUA" ]] && ! grep -q "NEBULA_VENV\|QML_IMPORT_PATH" "$ENV_LUA"; then
-        echo "" >> "$ENV_LUA"
-        echo "-- Nebula shell" >> "$ENV_LUA"
-        echo "hl.env(\"QML_IMPORT_PATH\", os.getenv(\"HOME\") .. \"/.local/lib/qt6/qml\")" >> "$ENV_LUA"
-        echo "hl.env(\"NEBULA_VENV\",    os.getenv(\"HOME\") .. \"/.local/state/quickshell/.venv\")" >> "$ENV_LUA"
-        ok "Patched $ENV_LUA"
-      elif [[ -f "$ENV_LUA" ]]; then
-        ok "QML_IMPORT_PATH already in $ENV_LUA"
-      fi
-      if [[ -f "$AUTO_LUA" ]] && ! grep -q "quickshell\|awww" "$AUTO_LUA"; then
-        cat >> "$AUTO_LUA" <<'LUABLOCK'
-
--- Nebula shell
-hl.exec_cmd("awww-daemon")
-hl.exec_cmd("wl-paste --watch cliphist store")
-hl.exec_cmd("QSG_RENDER_LOOP=threaded quickshell")
-LUABLOCK
-        ok "Patched $AUTO_LUA"
-      elif [[ -f "$AUTO_LUA" ]]; then
-        ok "Quickshell already in $AUTO_LUA"
-      fi
-    fi
-    echo -e "  Full reference config is at: ${CYAN}$INSTALL_DIR/config/hypr/${RESET}"
-  elif [[ ! -f "$HYPR_LUA" ]] && [[ ! -f "$HYPR_CONF" ]]; then
-    # ── No Hyprland config yet — offer to copy the full Nebula Lua config ─────
-    warn "No existing Hyprland config found."
-    echo -e "  Copy the full Nebula Lua config to ${CYAN}$HYPR_DIR${RESET}? [y/N]"
-    read -rp "  ───> " copy_lua
-    if [[ "${copy_lua,,}" == "y" ]]; then
-      mkdir -p "$HYPR_DIR/lua"
-      rsync -a "$INSTALL_DIR/config/hypr/hyprland.lua" "$HYPR_DIR/"
-      rsync -a "$INSTALL_DIR/config/hypr/lua/"         "$HYPR_DIR/lua/"
-      ok "Copied Nebula Lua config to $HYPR_DIR"
-      warn "Edit $HYPR_DIR/lua/monitor.lua to match your display outputs."
-    else
-      info "Skipped. See $INSTALL_DIR/config/hypr/ for the reference config."
-    fi
-
-  elif [[ -f "$HYPR_CONF" ]]; then
-    # ── Classic .conf Hyprland ────────────────────────────────────────────────
-    ok "Detected classic hyprland.conf"
-    NEBULA_CONF_SRC="$INSTALL_DIR/config/hypr/nebula.conf"
-    if grep -q "quickshell\|awww-daemon" "$HYPR_CONF"; then
-      ok "Nebula entries already present in hyprland.conf"
-    else
-      echo -e "  Append Nebula env + autostart + keybinds to ${CYAN}hyprland.conf${RESET}? [Y/n]"
-      read -rp "  ───> " hc
-      if [[ "${hc,,}" != "n" ]]; then
-        echo "" >> "$HYPR_CONF"
-        echo "# ── Nebula shell ─────────────────────────────────────────────────────────────" >> "$HYPR_CONF"
-        cat "$NEBULA_CONF_SRC" >> "$HYPR_CONF"
-        ok "Appended Nebula config to hyprland.conf"
-      fi
-    fi
-  fi
-fi
-
 # ── done ──────────────────────────────────────────────────────────────────────
+ELAPSED=$((SECONDS - START_TS))
+
 echo ""
-echo -e "${BOLD}${GREEN}╔══════════════════════════════════════════╗"
-echo -e            "║   Nebula installed successfully!   ✓    ║"
-echo -e            "╚══════════════════════════════════════════╝${RESET}"
+echo -e "${GREEN}${BOLD}  ✓  Nebula installed${RESET}  ${DIM}in $((ELAPSED / 60))m $((ELAPSED % 60))s${RESET}"
+echo -e "${DIM}  ${RULE}${RESET}"
 echo ""
-echo -e "  ${BOLD}Launch:${RESET}      ${CYAN}QSG_RENDER_LOOP=threaded quickshell${RESET}"
-echo -e "  ${BOLD}Wallpapers:${RESET}  ${CYAN}~/wallpaper/${RESET}"
-echo -e "  ${BOLD}Colors:${RESET}      run ${CYAN}matugen image <path-to-wallpaper>${RESET} to generate colors"
-echo -e "  ${BOLD}Reload shell${RESET} (or log out/in) to pick up the new env vars."
+echo -e "  ${BOLD}launch${RESET}      ${CYAN}QSG_RENDER_LOOP=threaded quickshell${RESET}"
+echo -e "  ${BOLD}wallpapers${RESET}  ${CYAN}~/wallpaper/${RESET}"
+echo -e "  ${BOLD}colors${RESET}      ${CYAN}matugen image <path-to-wallpaper>${RESET}"
 echo ""
-echo -e "  ${BOLD}Config snippets:${RESET} ${CYAN}$INSTALL_DIR/config/hypr/${RESET}"
-echo -e "  ${BOLD}Keybindings:${RESET}    see ${CYAN}config/hypr/nebula.conf${RESET} or the README"
+echo -e "  ${DIM}Reload your shell (or log out and back in) to pick up NEBULA_VENV${RESET}"
+echo -e "  ${DIM}and QML_IMPORT_PATH.${RESET}"
 echo ""
+echo -e "${DIM}  ${RULE}${RESET}"
+echo -e "  ${BOLD}Hyprland setup is up to you.${RESET} ${DIM}Nothing here touched your config.${RESET}"
+echo ""
+echo -e "  ${DIM}autostart + keybinds${RESET}  ${CYAN}$INSTALL_DIR/config/hypr/${RESET}"
+echo -e "  ${DIM}classic .conf users${RESET}   ${CYAN}config/hypr/nebula.conf${RESET}"
+echo ""
+echo -e "  ${DIM}At minimum, add to your Hyprland config:${RESET}"
+echo -e "    ${CYAN}exec-once = awww-daemon${RESET}"
+echo -e "    ${CYAN}exec-once = wl-paste --watch cliphist store${RESET}"
+echo -e "    ${CYAN}exec-once = QSG_RENDER_LOOP=threaded quickshell${RESET}"
+echo ""
+
+if [[ ${#WARNINGS[@]} -gt 0 ]]; then
+  echo -e "${DIM}  ${RULE}${RESET}"
+  echo -e "  ${YELLOW}${BOLD}${#WARNINGS[@]} warning(s) during install${RESET}"
+  echo ""
+  for w in "${WARNINGS[@]}"; do
+    echo -e "   ${YELLOW}▲${RESET} ${DIM}${w}${RESET}"
+  done
+  echo ""
+fi

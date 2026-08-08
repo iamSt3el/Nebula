@@ -39,20 +39,15 @@ PopupWindow {
         edges: Edges.Bottom
     }
 
-    MorphCard {
-        id: morph
+    Rectangle {
         anchors.fill: parent
+        radius: 20
+        color: Colors.surfaceContainer
 
-        srcWidth:  44
-        srcHeight: 44
-        srcRadius: 20
-        srcY: morph.height - 44
-
-        contentHeight: root.implicitHeight
-        cardRadius: 20
-        cardColor: Colors.surfaceContainer
-
-        Component.onCompleted: Qt.callLater(morph.open)
+        scale: 0.88
+        opacity: 0
+        NumberAnimation on scale   { from: 0.88; to: 1; duration: 180; easing.type: Easing.OutQuad; running: true }
+        NumberAnimation on opacity { from: 0;    to: 1; duration: 150; running: true }
 
         ColumnLayout {
             anchors.fill: parent
