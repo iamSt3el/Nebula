@@ -315,6 +315,18 @@ built-in **Settings panel**.
 
 ---
 
+## License
+
+Nebula is free software, licensed under the [GNU General Public License v3.0](LICENSE).
+
+Copyright © 2026 iamSt3el
+
+`modules/MatrialShapes/` is [rounded-polygon-qmljs](https://github.com/end-4/rounded-polygon-qmljs)
+by end_4, included under the [Apache License 2.0](modules/MatrialShapes/LICENSE) and
+retained under its original terms.
+
+---
+
 <div align="center">
   <sub>made with ♥ and too many late nights</sub>
 </div>
