@@ -144,7 +144,7 @@ Item {
             Layout.bottomMargin: 4
             spacing: 10
 
-            CustomButton {
+            M3IconButton {
                 Layout.preferredWidth: 32
                 Layout.preferredHeight: 32
                 radius: 16
@@ -249,7 +249,7 @@ Item {
                 Layout.preferredWidth: 30
                 Layout.preferredHeight: 30
 
-                CustomButton {
+                M3IconButton {
                     anchors.fill: parent
                     radius: 15
                     icon: "search"

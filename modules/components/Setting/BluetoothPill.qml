@@ -270,7 +270,7 @@ Rectangle {
                 opacity: 0.3
             }
 
-            ButtonGroup {
+            M3ButtonGroup {
                 Layout.topMargin: 6
                 Layout.bottomMargin: 2
                 height: 30

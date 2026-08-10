@@ -291,7 +291,7 @@ Item {
             clip: true
             interactive: contentWidth > width
 
-            ButtonGroup {
+            M3ButtonGroup {
                 id: catGroup
                 height: 30
                 model: appLauncher.availableCategories

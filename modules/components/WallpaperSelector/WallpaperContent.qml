@@ -50,22 +50,25 @@ Rectangle {
 
             ListModel { id: onlineRowModel }
 
+            function syncOnlineRows() {
+                if (!ServiceWallpaper.onlineMode) return
+                const total = ServiceWallpaper.onlineWallpapers.length
+                if (total === 0) { onlineRowModel.clear(); return }
+                const newRowCount = Math.ceil(total / grid.columns)
+                if (onlineRowModel.count === 0 || onlineRowModel.count > newRowCount
+                    || ServiceWallpaper.onlinePage === 1) {
+                    onlineRowModel.clear()
+                    for (let i = 0; i < newRowCount; i++) onlineRowModel.append({})
+                } else {
+                    const prev = onlineRowModel.count
+                    for (let i = prev; i < newRowCount; i++) onlineRowModel.append({})
+                }
+            }
+
             Connections {
                 target: ServiceWallpaper
 
-                function onOnlineWallpapersChanged() {
-                    if (!ServiceWallpaper.onlineMode) return
-                    const total = ServiceWallpaper.onlineWallpapers.length
-                    if (total === 0) { onlineRowModel.clear(); return }
-                    const newRowCount = Math.ceil(total / 4)
-                    if (onlineRowModel.count === 0 || ServiceWallpaper.onlinePage === 1) {
-                        onlineRowModel.clear()
-                        for (let i = 0; i < newRowCount; i++) onlineRowModel.append({})
-                    } else {
-                        const prev = onlineRowModel.count
-                        for (let i = prev; i < newRowCount; i++) onlineRowModel.append({})
-                    }
-                }
+                function onOnlineWallpapersChanged() { col.syncOnlineRows() }
 
                 function onOnlineModeChanged() {
                     if (ServiceWallpaper.onlineMode) {
@@ -113,6 +116,10 @@ Rectangle {
                                 color: Colors.inverseSurface
                                 onTextChanged: ServiceWallpaper.updateSearch(text)
                                 Keys.onEscapePressed: text = ""
+                                Keys.onDownPressed: {
+                                    grid.forceActiveFocus()
+                                    if (grid.selectedIndex < 0) grid.moveSelection(0)
+                                }
                             }
                             MaterialIconSymbol {
                                 content: "close"; iconSize: 14; customColor: Colors.outline
@@ -125,7 +132,7 @@ Rectangle {
                         }
                     }
 
-                    ButtonGroup {
+                    M3ButtonGroup {
                         model: [
                             { value: "all",       icon: "grid_view", label: "All" },
                             { value: "favorites", icon: "favorite",  label: "Fav" }
@@ -134,7 +141,7 @@ Rectangle {
                         onSegmentClicked: v => col.activeTab = v
                     }
 
-                    ButtonGroup {
+                    M3ButtonGroup {
                         model: [
                             { icon: "schedule",      value: "newest" },
                             { icon: "sort_by_alpha", value: "name"   }
@@ -306,33 +313,33 @@ Rectangle {
                         flickDeceleration: 3000; maximumFlickVelocity: 4000
 
                         RowLayout { id: _filterRow; height: parent.height; spacing: 6
-                            ButtonGroup {
+                            M3ButtonGroup {
                                 height: 28
                                 model: onlineConfigCol.sortOpts.map(o => ({ label: o[0], value: o[1] }))
                                 activeCheck: v => SettingsConfig.wallhaven.sorting === v
                                 onSegmentClicked: v => SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, { sorting: v })
                             }
-                            ButtonGroup {
+                            M3ButtonGroup {
                                 height: 28; visible: SettingsConfig.wallhaven.sorting === "toplist"
                                 model: onlineConfigCol.rangeOpts.map(v => ({ label: v, value: v }))
                                 activeCheck: v => SettingsConfig.wallhaven.topRange === v
                                 onSegmentClicked: v => SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, { topRange: v })
                             }
                             Rectangle { width: 1; height: 18; color: Colors.outline; opacity: 0.35 }
-                            ButtonGroup {
+                            M3ButtonGroup {
                                 height: 28
                                 model: [{ icon: "arrow_downward", value: "desc" }, { icon: "arrow_upward", value: "asc" }]
                                 activeCheck: v => SettingsConfig.wallhaven.order === v
                                 onSegmentClicked: v => SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, { order: v })
                             }
                             Rectangle { width: 1; height: 18; color: Colors.outline; opacity: 0.35 }
-                            ButtonGroup {
+                            M3ButtonGroup {
                                 height: 28
                                 model: [{ label: "General", value: 0 }, { label: "Anime", value: 1 }, { label: "People", value: 2 }]
                                 activeCheck: v => SettingsConfig.wallhaven.categories[v] === "1"
                                 onSegmentClicked: v => onlineConfigCol.toggleCat(v)
                             }
-                            ButtonGroup {
+                            M3ButtonGroup {
                                 height: 28
                                 model: [{ label: "SFW", value: 0 }, { label: "Sketchy", value: 1 }]
                                 activeCheck: v => SettingsConfig.wallhaven.purity[v] === "1"
@@ -466,10 +473,209 @@ Rectangle {
                     anchors.fill: parent; clip: true; interactive: true
                     boundsBehavior: Flickable.StopAtBounds
                     ScrollBar.vertical: CustomScrollBar {}
-                    flickDeceleration: 3000; maximumFlickVelocity: 6000; pixelAligned: true
+                    flickDeceleration: 2500; maximumFlickVelocity: 8000
 
                     property real itemSpacing: 8
                     spacing: itemSpacing
+
+                    readonly property real targetTileWidth: 320
+                    readonly property int  columns: Math.max(2, Math.min(6,
+                        Math.round(width / targetTileWidth))) || 2
+                    readonly property real cellWidth:
+                        (width - itemSpacing * (columns - 1)) / columns
+
+                    onColumnsChanged: col.syncOnlineRows()
+
+                    readonly property real itemRadius: 28
+                    readonly property real xSmallSize: 10
+                    readonly property real preferredRowHeight: cellWidth * 9 / 16
+
+                    // false: biggest focal rows that fit  ([L…L, S], abrupt L→S at the edge)
+                    // true:  smoother L→M→S ladder, at the cost of a smaller focal row
+                    readonly property bool preferSmoothLadder: false
+
+                    readonly property var arrangement: {
+                        const H = height, sp = itemSpacing, pref = preferredRowHeight
+                        if (H <= 0 || cellWidth <= 0)
+                            return { n: 1, m: 0, large: Math.max(1, pref), medium: 0, small: 0 }
+
+                        const cands = []
+                        for (const m of [1, 0]) {
+                            for (let n = 1; n <= 8; n++) {
+                                let S = 48, L = 0
+                                for (let k = 0; k < 10; k++) {
+                                    L = (H - S * (1 + m / 2) - (n + m) * sp) / (n + m / 2)
+                                    S = Math.max(40, Math.min(56, L * 0.3))
+                                }
+                                if (L <= S * 1.2) continue
+                                cands.push({ cost: Math.abs(L - pref), n: n, m: m, L: L, S: S })
+                            }
+                        }
+
+                        let best = null
+                        for (const c of cands) {
+                            if (preferSmoothLadder && c.m !== 1) continue
+                            if (best === null || c.cost < best.cost) best = c
+                        }
+                        if (best === null)
+                            for (const c of cands)
+                                if (best === null || c.cost < best.cost) best = c
+
+                        if (best === null) {
+                            const L = Math.max(1, Math.min(pref, H))
+                            return { n: 1, m: 0, large: L, medium: L, small: L }
+                        }
+                        return { n: best.n, m: best.m, large: best.L, small: best.S,
+                                 medium: (best.L + best.S) / 2 }
+                    }
+
+                    readonly property real rowHeight: arrangement.large
+                    readonly property real rowPitch:  rowHeight + itemSpacing
+                    readonly property real wheelStep: rowPitch
+                    readonly property real focalLoc:  rowHeight / 2
+                    readonly property real focalSpan: arrangement.n * rowHeight
+                                                    + (arrangement.n - 1) * itemSpacing
+
+                    bottomMargin: Math.max(0, height - focalSpan)
+
+                    // Exactly the slots whose drawn extent can touch the viewport:
+                    // one pitch above, and down to the last *visible* keyline (the
+                    // small one). The xS anchors are drawn off-screen, so let them cull.
+                    displayMarginBeginning: Math.ceil(rowPitch)
+                    displayMarginEnd: Math.ceil(Math.max(0, rowHeight
+                        + (arrangement.n + arrangement.m) * rowPitch - height))
+                    cacheBuffer: Math.ceil(rowPitch * 2)
+
+                    readonly property real minContentY: 0
+                    readonly property real maxContentY: Math.max(0,
+                        contentHeight + bottomMargin - height)
+
+                    property real wheelAccum: 0
+
+                    readonly property var keylines: {
+                        const sp = itemSpacing, L = rowHeight, p = rowPitch
+                        const n = arrangement.n, m = arrangement.m
+                        const S = arrangement.small, M = arrangement.medium, xS = xSmallSize
+
+                        const k = []
+                        k.push({ io: -1, lo: -(sp + xS / 2), sz: xS })
+                        k.push({ io: 0,  lo: focalLoc,       sz: L  })
+                        if (n > 1)
+                            k.push({ io: n - 1, lo: focalLoc + (n - 1) * p, sz: L })
+
+                        let lo = focalLoc + (n - 1) * p, prev = L, io = n - 1
+                        if (m === 1) {
+                            lo += prev / 2 + sp + M / 2; prev = M; io += 1
+                            k.push({ io: io, lo: lo, sz: M })
+                        }
+                        lo += prev / 2 + sp + S / 2;  prev = S; io += 1
+                        k.push({ io: io, lo: lo, sz: S })
+                        lo += prev / 2 + sp + xS / 2; io += 1
+                        k.push({ io: io, lo: lo, sz: xS })
+
+                        for (let j = 0; j < k.length; j++) k[j].loc = focalLoc + k[j].io * p
+                        return k
+                    }
+
+                    function sample(childLoc) {
+                        const k = keylines, last = k.length - 1
+                        if (childLoc <= k[0].loc)
+                            return { c: k[0].lo - (k[0].loc - childLoc), s: k[0].sz }
+                        if (childLoc >= k[last].loc)
+                            return { c: k[last].lo + (childLoc - k[last].loc), s: k[last].sz }
+                        for (let j = 0; j < last; j++) {
+                            if (childLoc > k[j + 1].loc) continue
+                            const a = k[j], b = k[j + 1]
+                            const span = b.loc - a.loc
+                            const u = span > 0 ? (childLoc - a.loc) / span : 0
+                            return { c: a.lo + (b.lo - a.lo) * u,
+                                     s: a.sz + (b.sz - a.sz) * u }
+                        }
+                        return { c: k[last].lo, s: k[last].sz }
+                    }
+
+                    function snapTarget(y) {
+                        const t = Math.round(y / rowPitch) * rowPitch
+                        return Math.max(minContentY, Math.min(maxContentY, t))
+                    }
+
+                    function glideTo(dest) {
+                        const d = Math.max(minContentY, Math.min(maxContentY, dest))
+                        if (Math.abs(d - contentY) < 0.5) return
+                        cancelFlick()
+                        wheelAnim.stop()
+                        wheelAnim.from = contentY
+                        wheelAnim.to   = d
+                        wheelAnim.start()
+                    }
+
+                    function snapToNearest() { glideTo(snapTarget(contentY)) }
+
+                    // ── Keyboard navigation ────────────────────────────────────
+                    keyNavigationEnabled: false
+                    property int selectedIndex: -1
+                    readonly property int itemCount: currentDataArray ? currentDataArray.length : 0
+
+                    onCurrentDataArrayChanged: selectedIndex = -1
+
+                    function focalFirstRow() { return Math.round(contentY / rowPitch) }
+
+                    function revealRow(row) {
+                        const first = focalFirstRow()
+                        const last  = first + arrangement.n - 1
+                        if (row < first)     glideTo(row * rowPitch)
+                        else if (row > last) glideTo((row - arrangement.n + 1) * rowPitch)
+                    }
+
+                    function moveSelection(delta) {
+                        if (itemCount === 0) return
+                        let i = selectedIndex < 0 ? focalFirstRow() * columns
+                                                  : selectedIndex + delta
+                        i = Math.max(0, Math.min(itemCount - 1, i))
+                        selectedIndex = i
+                        revealRow(Math.floor(i / columns))
+                    }
+
+                    function activateSelection() {
+                        if (selectedIndex < 0 || selectedIndex >= itemCount) return
+                        const d = currentDataArray[selectedIndex]
+                        if (ServiceWallpaper.onlineMode)
+                            ServiceWallpaper.downloadAndSetWallpaper(d)
+                        else
+                            ServiceWallpaper.setWallpaper(d)
+                    }
+
+                    Keys.onLeftPressed:   moveSelection(-1)
+                    Keys.onRightPressed:  moveSelection(1)
+                    Keys.onUpPressed:     moveSelection(-columns)
+                    Keys.onDownPressed:   moveSelection(columns)
+                    Keys.onReturnPressed: activateSelection()
+                    Keys.onEnterPressed:  activateSelection()
+                    Keys.onEscapePressed: {
+                        selectedIndex = -1
+                        if (ServiceWallpaper.onlineMode) onlineSearch.forceActiveFocus()
+                        else searchInput.forceActiveFocus()
+                    }
+                    Keys.onPressed: event => {
+                        const page = columns * arrangement.n
+                        if (event.key === Qt.Key_PageDown)      moveSelection(page)
+                        else if (event.key === Qt.Key_PageUp)   moveSelection(-page)
+                        else if (event.key === Qt.Key_Home && itemCount > 0) {
+                            selectedIndex = 0
+                            revealRow(0)
+                        } else if (event.key === Qt.Key_End && itemCount > 0) {
+                            selectedIndex = itemCount - 1
+                            revealRow(Math.floor(selectedIndex / columns))
+                        } else return
+                        event.accepted = true
+                    }
+
+                    onDraggingVerticallyChanged: if (draggingVertically) wheelAnim.stop()
+
+                    onMovementEnded: {
+                        if (wheelAnim.running) return
+                        snapToNearest()
+                    }
 
                     readonly property var currentDataArray: ServiceWallpaper.onlineMode
                         ? ServiceWallpaper.onlineWallpapers
@@ -479,7 +685,7 @@ Rectangle {
 
                     model: ServiceWallpaper.onlineMode
                         ? onlineRowModel
-                        : (currentDataArray ? Math.ceil(currentDataArray.length / 4) : 0)
+                        : (currentDataArray ? Math.ceil(currentDataArray.length / columns) : 0)
 
                     onAtYEndChanged: {
                         if (atYEnd && ServiceWallpaper.onlineMode) ServiceWallpaper.fetchNextPage()
@@ -487,33 +693,29 @@ Rectangle {
 
                     delegate: Item {
                         id: rowContainer
-                        width: grid.width
+                        width:  grid.width
+                        height: grid.rowHeight
 
-                        readonly property real cellWidth: (grid.width - (grid.itemSpacing * 3)) / 4
-                        property real targetHeight: cellWidth * 1
-                        property int  rowIndex:     index
+                        property int rowIndex: index
 
-                        property real rowCenterY:         y + (targetHeight / 2)
-                        property real viewCenterY:        grid.contentY + (grid.height / 2)
-                        property real distanceFromCenter: Math.abs(rowCenterY - viewCenterY)
-                        property real maxDistance:        grid.height / 2
-
-                        property real maskRatio:     Math.max(0.62, 1.0 - (distanceFromCenter / maxDistance) * 0.52)
-                        height: targetHeight * maskRatio
-
-                        property real compressRatio: (1.0 - maskRatio) / (1.0 - 0.62)
-                        property real dynamicRadius: 12 + compressRatio * 36
+                        readonly property real childLoc:
+                            index * grid.rowPitch + grid.rowHeight / 2 - grid.contentY
+                        readonly property var  keyline:    grid.sample(childLoc)
+                        readonly property real tileHeight: keyline.s
+                        readonly property real tileRadius: Math.min(grid.itemRadius, tileHeight / 2)
 
                         Row {
-                            anchors.centerIn: parent; spacing: grid.itemSpacing
+                            y: (rowContainer.keyline.c - rowContainer.childLoc)
+                             + (rowContainer.height - rowContainer.tileHeight) / 2
+                            spacing: grid.itemSpacing
 
                             Repeater {
-                                model: 4
+                                model: grid.columns
 
                                 delegate: Rectangle {
                                     id: wallpaperItem
 
-                                    property int wallpaperIndex: (rowContainer.rowIndex * 4) + index
+                                    property int wallpaperIndex: (rowContainer.rowIndex * grid.columns) + index
                                     property var itemData: (grid.currentDataArray && wallpaperIndex < grid.currentDataArray.length)
                                         ? grid.currentDataArray[wallpaperIndex] : null
 
@@ -521,13 +723,12 @@ Rectangle {
                                         && itemData && ServiceWallpaper.downloadingId === itemData.id
 
                                     visible: itemData !== null
-                                    width:  (grid.width - (grid.itemSpacing * 3)) / 4
-                                    height: rowContainer.height
-                                    radius: rowContainer.dynamicRadius
+                                    width:  grid.cellWidth
+                                    height: rowContainer.tileHeight
+                                    radius: rowContainer.tileRadius
                                     clip:   true
                                     color:  tileArea.containsMouse ? Qt.alpha(Colors.primary, 0.15) : "transparent"
 
-                                    // Masked image with parallax
                                     Item {
                                         id: maskContainer
                                         anchors.fill: parent
@@ -538,15 +739,14 @@ Rectangle {
                                         layer.effect: OpacityMask {
                                             maskSource: Rectangle {
                                                 width: maskContainer.width; height: maskContainer.height
-                                                radius: rowContainer.dynamicRadius
+                                                radius: rowContainer.tileRadius
                                             }
                                         }
 
                                         Image {
                                             id: thumbnail
                                             anchors.centerIn: parent
-                                            anchors.verticalCenterOffset: -(rowContainer.rowCenterY - rowContainer.viewCenterY) * 0.12
-                                            width: parent.width; height: rowContainer.targetHeight
+                                            width: parent.width; height: rowContainer.height
                                             sourceSize: Qt.size(width, height)
                                             asynchronous: true; smooth: true; cache: true
                                             source: {
@@ -567,6 +767,17 @@ Rectangle {
                                         sourceComponent: CustomLoader { size: 52; color: Colors.primary }
                                     }
 
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        z: 4
+                                        visible: grid.selectedIndex === wallpaperItem.wallpaperIndex
+                                              && wallpaperItem.itemData !== null
+                                        color: "transparent"
+                                        radius: rowContainer.tileRadius
+                                        border.width: 3
+                                        border.color: Colors.primary
+                                    }
+
                                     HoverHandler { id: tileHover }
 
                                     MouseArea {
@@ -581,6 +792,7 @@ Rectangle {
                                                 ctxMenu.show(mapped.x, mapped.y,
                                                     wallpaperItem.itemData, ServiceWallpaper.onlineMode)
                                             } else {
+                                                grid.selectedIndex = wallpaperItem.wallpaperIndex
                                                 if (ServiceWallpaper.onlineMode)
                                                     ServiceWallpaper.downloadAndSetWallpaper(wallpaperItem.itemData)
                                                 else
@@ -591,7 +803,7 @@ Rectangle {
 
                                     // ── Download overlay ───────────────────────
                                     Rectangle {
-                                        anchors.fill: parent; radius: rowContainer.dynamicRadius
+                                        anchors.fill: parent; radius: rowContainer.tileRadius
                                         color: Qt.rgba(0, 0, 0, 0.55)
                                         visible: wallpaperItem.isDownloading; z: 3
 
@@ -664,6 +876,63 @@ Rectangle {
                                 }
                             }
                         }
+                    }
+                }
+
+                // ── Smooth wheel scrolling ─────────────────────────────────────
+                NumberAnimation {
+                    id: wheelAnim
+                    target: grid
+                    property: "contentY"
+                    duration: 180
+                    easing.type: Easing.OutCubic
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    enabled: ctxMenu.target === null
+
+                    onWheel: wheel => {
+                        wheel.accepted = false
+                        if (grid.maxContentY <= grid.minContentY) return
+
+                        if (wheel.phase === Qt.ScrollEnd) {
+                            grid.wheelAccum = 0
+                            grid.snapToNearest()
+                            wheel.accepted = true
+                            return
+                        }
+
+                        const px = wheel.pixelDelta.y
+                        const ang = wheel.angleDelta.y
+                        if (px === 0 && ang === 0) return
+
+                        if (px !== 0) {
+                            grid.wheelAccum = 0
+                            const d = Math.max(grid.minContentY,
+                                Math.min(grid.maxContentY, grid.contentY - px))
+                            if (Math.abs(d - grid.contentY) < 0.01) return
+                            wheelAnim.stop()
+                            grid.cancelFlick()
+                            grid.contentY = d
+                            wheel.accepted = true
+                            return
+                        }
+
+                        const n = ang / 120
+                        if (grid.wheelAccum !== 0 && (grid.wheelAccum > 0) !== (n > 0))
+                            grid.wheelAccum = 0
+                        grid.wheelAccum += n
+
+                        const steps = grid.wheelAccum > 0
+                            ? Math.floor(grid.wheelAccum) : Math.ceil(grid.wheelAccum)
+                        wheel.accepted = true
+                        if (steps === 0) return
+                        grid.wheelAccum -= steps
+
+                        const base = wheelAnim.running ? wheelAnim.to : grid.contentY
+                        grid.glideTo(grid.snapTarget(base - steps * grid.wheelStep))
                     }
                 }
 

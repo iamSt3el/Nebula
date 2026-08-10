@@ -186,7 +186,7 @@ Item {
                                 }
                             }
 
-                            CustomButton {
+                            M3IconButton {
                                 Layout.preferredWidth: 42
                                 Layout.preferredHeight: 32
                                 topLeftRadius: 6;   bottomLeftRadius: 6
@@ -331,7 +331,7 @@ Item {
                             CustomText { content: "Shape of the top bar"; size: 12; customColor: Colors.outline }
                         }
                         Item { Layout.fillWidth: true }
-                        ButtonGroup {
+                        M3ButtonGroup {
                             model: [
                                 { value: "stepped", label: "Stepped", icon: "view_agenda" },
                                 { value: "flat",    label: "Flat",    icon: "remove" },
@@ -355,7 +355,7 @@ Item {
                             CustomText { content: "What sits in the middle of the bar; all of them expand on hover"; size: 12; customColor: Colors.outline }
                         }
                         Item { Layout.fillWidth: true }
-                        ButtonGroup {
+                        M3ButtonGroup {
                             model: [
                                 { value: "clock", label: "Clock", icon: "schedule" },
                                 { value: "music", label: "Music", icon: "music_note" },
@@ -390,7 +390,7 @@ Item {
                             }
                         }
                         Item { Layout.fillWidth: true }
-                        ButtonGroup {
+                        M3ButtonGroup {
                             height: 30
                             model: {
                                 const all = [{ value: "", label: "All", icon: "devices" }]

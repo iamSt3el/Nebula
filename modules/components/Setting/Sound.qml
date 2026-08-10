@@ -100,7 +100,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: 8
 
-                        ButtonGroup {
+                        M3ButtonGroup {
                             model: [
                                 { value: false, icon: "volume_up"  },
                                 { value: true,  icon: "volume_off" }
@@ -117,7 +117,7 @@ Item {
                             radius: 10
                             color: Colors.surfaceContainerHighest
 
-                            CustomSliderNew {
+                            M3Slider {
                                 anchors.fill: parent
                                 anchors.leftMargin: 10
                                 anchors.rightMargin: 10
@@ -192,7 +192,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: 8
 
-                        ButtonGroup {
+                        M3ButtonGroup {
                             model: [
                                 { value: false, icon: "mic"     },
                                 { value: true,  icon: "mic_off" }
@@ -310,10 +310,10 @@ Item {
                                     visible: (modelData.properties?.["media.name"] ?? "").length > 0
                                 }
 
-                                CustomSliderNew {
+                                M3Slider {
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: 18
-                                    handleSize: 12
+                                    handleHeight: 12
                                     trackHeight: 4
                                     progress: modelData.audio?.volume ?? 0
                                     onProgressChanged: {

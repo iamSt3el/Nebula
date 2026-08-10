@@ -256,7 +256,7 @@ Item {
                                     elide: Text.ElideLeft
                                 }
                             }
-                            CustomButton {
+                            M3IconButton {
                                 implicitHeight: 32; implicitWidth: 40
                                 topLeftRadius: 6;   bottomLeftRadius: 6
                                 topRightRadius: 16; bottomRightRadius: 16
@@ -281,7 +281,7 @@ Item {
                             CustomText { content: "Switch between dark and light variants"; size: 12; customColor: Colors.outline }
                         }
                         Item { Layout.fillWidth: true }
-                        ButtonGroup {
+                        M3ButtonGroup {
                             model: Settings.themeModes.map(m => ({ value: m.name.toLowerCase(), label: m.name, icon: m.icon }))
                             activeCheck: function(v) { return SettingsConfig.theme.matugenTheme === v }
                             onSegmentClicked: function(v) {

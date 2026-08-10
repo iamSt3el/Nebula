@@ -98,23 +98,39 @@ Rectangle{
             Layout.fillWidth: true
             spacing: controleRectangle.compact ? 6 : 8
 
-            CustomSliderOld{
+            M3Slider {
                 property var brightnessMonitor: ServiceBrightness.getMonitorForScreen(screen)
-                horizontal: true
                 Layout.fillWidth: true
                 Layout.preferredHeight: controleRectangle.compact ? 42 : 48
                 icon: "brightness_7"
+                iconAtEnd: true
+                showStopIndicator: false
+                trackOuterCorner: 14
+                showValueLabel: true
+                trackHeight: Math.min(40, height - 8)
+                handleHeight: height
+                handleWidth: 6
+                pressedHandleWidth: 4
+                handleGap: 4
                 progress: ServiceBrightness.getMonitorForScreen(screen).brightness
-                onChange: brightnessMonitor.setBrightness(progress)
+                onMoved: brightnessMonitor.setBrightness(progress)
             }
 
-            CustomSliderOld{
-                horizontal: true
+            M3Slider {
                 Layout.fillWidth: true
                 Layout.preferredHeight: controleRectangle.compact ? 42 : 48
                 icon: ServicePipewire.muted ? "volume_off" : "volume_up"
+                iconAtEnd: true
+                showStopIndicator: false
+                trackOuterCorner: 14
+                showValueLabel: true
+                trackHeight: Math.min(40, height - 8)
+                handleHeight: height
+                handleWidth: 6
+                pressedHandleWidth: 4
+                handleGap: 4
                 progress: ServicePipewire.volume
-                onChange: ServicePipewire.setVolume(progress)
+                onMoved: ServicePipewire.setVolume(progress)
             }
         }
 

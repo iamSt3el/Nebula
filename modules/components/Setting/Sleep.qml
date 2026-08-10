@@ -179,7 +179,7 @@ Item {
                         }
                     }
                     Item { Layout.fillWidth: true }
-                    CustomButton {
+                    M3IconButton {
                         implicitWidth: 42; implicitHeight: 34
                         icon: "restart_alt"
                         iconSize: 18

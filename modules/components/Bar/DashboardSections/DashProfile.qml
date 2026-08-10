@@ -65,7 +65,7 @@ Rectangle{
         //         }
         //     }
         // }
-        CustomButton{
+        M3IconButton {
             icon: "settings"
             iconSize: 18
             Layout.preferredHeight: 34
@@ -78,7 +78,7 @@ Rectangle{
             }
         }
 
-        CustomButton{
+        M3IconButton {
             icon: "power_settings_new"
             iconSize: 18
             Layout.preferredHeight: 34
@@ -89,7 +89,7 @@ Rectangle{
                 GlobalStates.shutdownWindow = true
             }
         }
-        CustomButton{
+        M3IconButton {
             icon: "close"
             iconSize: 18
             Layout.preferredHeight: 34

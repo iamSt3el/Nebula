@@ -27,7 +27,7 @@ RowLayout {
 
     Item { Layout.fillWidth: true }
 
-    CustomButton {
+    M3IconButton {
         implicitWidth: root.sideSize
         implicitHeight: root.sideSize
         icon: "skip_previous"
@@ -36,7 +36,7 @@ RowLayout {
         onClicked: if (ServiceMusic.canGoPrevious) ServiceMusic.previous()
     }
 
-    CustomButton {
+    M3IconButton {
         implicitWidth: root.playSize
         implicitHeight: root.playSize
         icon: ServiceMusic.isPlaying ? "pause" : "play_arrow"
@@ -47,7 +47,7 @@ RowLayout {
         onClicked: if (ServiceMusic.canTogglePlaying) ServiceMusic.togglePlaying()
     }
 
-    CustomButton {
+    M3IconButton {
         implicitWidth: root.sideSize
         implicitHeight: root.sideSize
         icon: "skip_next"

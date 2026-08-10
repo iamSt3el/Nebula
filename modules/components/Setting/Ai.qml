@@ -43,6 +43,12 @@ Item {
         ColumnLayout {
             id: column
             width: parent.width
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 5
+            anchors.rightMargin: 5
+            anchors.topMargin: 5
             spacing: 3
 
             RowLayout {

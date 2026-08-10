@@ -99,7 +99,7 @@ Item {
                         CustomText { content: "Applies to temperature, wind speed, and distance"; size: 12; customColor: Colors.outline }
                     }
                     Item { Layout.fillWidth: true }
-                    ButtonGroup {
+                    M3ButtonGroup {
                         model: [
                             { value: true,  label: "Metric (°C)",   icon: "thermometer" },
                             { value: false, label: "Imperial (°F)", icon: "thermometer" }

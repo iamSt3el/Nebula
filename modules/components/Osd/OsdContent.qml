@@ -39,7 +39,7 @@ Rectangle {
             }
         }
 
-        CustomSliderNew {
+        M3Slider {
             Layout.fillWidth: true
             Layout.preferredHeight: 6
             interactive: false

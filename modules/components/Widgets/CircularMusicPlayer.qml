@@ -324,7 +324,7 @@ WidgetHost {
                 }
             }
 
-            CustomMatrialProgressBar{
+            M3WavyCircularProgress {
                 implicitWidth: 64
                 implicitHeight: 64
                 progress: (ServiceMusic.activePlayer?.position / Math.max(ServiceMusic.activePlayer?.length, 1) || 0)

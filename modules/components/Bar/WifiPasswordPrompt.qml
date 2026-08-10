@@ -129,7 +129,7 @@ PanelWindow {
                         }
                     }
 
-                    CustomButton {
+                    M3IconButton {
                         Layout.preferredWidth: 32
                         Layout.preferredHeight: 32
                         radius: 16

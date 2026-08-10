@@ -1,178 +1,160 @@
 import Quickshell
-import Quickshell.Widgets
 import QtQuick
-import QtQuick.Effects
 import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
 
 Item {
+    id: root
     anchors.fill: parent
     anchors.margins: 5
 
-    Flickable {
-        anchors.fill: parent
-        contentHeight: column.implicitHeight
-        contentWidth: width
-        clip: true
+    readonly property var links: [
+        { icon: "code",       label: "GitHub",       url: "https://github.com/iamSt3el/Nebula" },
+        { icon: "bug_report", label: "Report issue", url: "https://github.com/iamSt3el/Nebula/issues/new" },
+        { icon: "star",       label: "Star",         url: "https://github.com/iamSt3el/Nebula" }
+    ]
 
-        ColumnLayout {
-            id: column
-            width: parent.width
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.leftMargin: 5
-            anchors.rightMargin: 5
-            anchors.topMargin: 5
-            spacing: 0
+    readonly property var facts: [
+        { key: "Built with", value: "Quickshell" },
+        { key: "Display",    value: "Wayland" },
+        { key: "Compositor", value: "Hyprland" },
+        { key: "Author",     value: "St3el" }
+    ]
 
-            // ── Page header ──────────────────────────────────────
+    ColumnLayout {
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: 5
+        spacing: 8
+
+        // ── Identity ──────────────────────────────────────────────────
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 84
+            radius: 20
+            color: Colors.surfaceContainerHigh
+
             RowLayout {
-                spacing: 10
-                MaterialIconSymbol { content: "info"; iconSize: 20 }
-                CustomText { content: "About"; size: 20; customColor: Colors.primary }
-            }
+                anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 14
 
-            // ── App info ─────────────────────────────────────────
-            CustomCard {
-                Layout.topMargin: 24
-                autoRadius: false; topRadius: 20; bottomRadius: 20
+                Rectangle {
+                    Layout.preferredWidth: 52
+                    Layout.preferredHeight: 52
+                    Layout.alignment: Qt.AlignVCenter
+                    radius: 16
+                    color: Colors.primaryContainer
 
-                RowLayout {
-                    spacing: 16
-
-                    Rectangle {
-                        Layout.preferredWidth: 60
-                        Layout.preferredHeight: 60
-                        Layout.alignment: Qt.AlignVCenter
-                        radius: 18
-                        color: Colors.primaryContainer
-
-                        Image {
-                            anchors.centerIn: parent
-                            width: 36; height: 36
-                            sourceSize: Qt.size(width, height)
-                            source: IconUtil.getSystemIconPng("nebula")
-                            fillMode: Image.PreserveAspectFit
-                        }
-                    }
-
-                    ColumnLayout {
-                        spacing: 3
-                        CustomText { content: "Nebula"; size: 22; weight: 700; customColor: Colors.primary }
-                        CustomText { content: "v0.2.0-beta"; size: 13; customColor: Colors.outline }
-                        CustomText {
-                            content: "A modern desktop shell for Wayland built with QuickShell"
-                            size: 12; customColor: Colors.outline
-                            wrapMode: Text.WordWrap
-                            Layout.fillWidth: true
-                        }
+                    Image {
+                        anchors.centerIn: parent
+                        width: 32; height: 32
+                        sourceSize: Qt.size(width, height)
+                        source: IconUtil.getSystemIconPng("nebula")
+                        fillMode: Image.PreserveAspectFit
                     }
                 }
-            }
 
-            // ── Developer ────────────────────────────────────────
-            CustomText { Layout.topMargin: 16; content: "Developer"; size: 13; customColor: Colors.primary }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 3
 
-            CustomCard {
-                Layout.topMargin: 6
-                autoRadius: false; topRadius: 20; bottomRadius: 20
-
-                RowLayout {
-                    spacing: 12
-
-                    Rectangle {
-                        implicitWidth: 48; implicitHeight: 48
-                        radius: 24
-                        color: Colors.primaryContainer
-
+                    RowLayout {
+                        spacing: 8
                         CustomText {
-                            anchors.centerIn: parent
-                            content: "S"; size: 20; weight: 700
+                            content: "Nebula"; size: 20; weight: 700
                             customColor: Colors.primary
                         }
+                        Rectangle {
+                            Layout.alignment: Qt.AlignVCenter
+                            implicitWidth: _ver.implicitWidth + 14
+                            implicitHeight: 19
+                            radius: 10
+                            color: Colors.primaryContainer
+                            CustomText {
+                                id: _ver
+                                anchors.centerIn: parent
+                                content: "v0.2.0-beta"; size: 10; weight: 600
+                                customColor: Colors.primary
+                            }
+                        }
+                        Item { Layout.fillWidth: true }
                     }
+
+                    CustomText {
+                        Layout.fillWidth: true
+                        content: "A modern desktop shell for Wayland"
+                        size: 12; customColor: Colors.outline
+                        elide: Text.ElideRight
+                    }
+                }
+            }
+        }
+
+        // ── Facts ─────────────────────────────────────────────────────
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Repeater {
+                model: root.facts
+                delegate: Rectangle {
+                    required property var modelData
+                    // preferredWidth 1 + fillWidth forces equal columns; fillWidth
+                    // alone only shares out surplus and they stay content-sized.
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
+                    implicitHeight: 56
+                    radius: 16
+                    color: Colors.surfaceContainerHigh
 
                     ColumnLayout {
-                        spacing: 2
-                        CustomText { content: "St3el"; size: 15; weight: 600 }
-                        CustomText { content: "Developer & Designer"; size: 12; customColor: Colors.outline }
-                    }
+                        anchors.centerIn: parent
+                        width: parent.width - 16
+                        spacing: 3
 
-                    Item { Layout.fillWidth: true }
-                }
-            }
-
-            // ── Links ────────────────────────────────────────────
-            CustomText { Layout.topMargin: 16; content: "Links"; size: 13; customColor: Colors.primary }
-
-            ColumnLayout {
-                Layout.topMargin: 6
-                Layout.fillWidth: true
-                spacing: 3
-
-                Repeater {
-                    model: [
-                        { icon: "code",       label: "GitHub",          desc: "github.com/iamSt3el/Nebula", url: "https://github.com/iamSt3el/Nebula",          first: true,  last: false },
-                        { icon: "bug_report", label: "Report Issue",    desc: "Open a bug report on GitHub", url: "https://github.com/iamSt3el/Nebula/issues/new", first: false, last: false },
-                        { icon: "star",       label: "Star the Project", desc: "Show your support",         url: "https://github.com/iamSt3el/Nebula",          first: false, last: true  }
-                    ]
-
-                    delegate: Rectangle {
-                        Layout.fillWidth: true
-                        implicitHeight: linkRow.implicitHeight + 24
-                        color: linkArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
-                        topLeftRadius:     modelData.first ? 20 : 5
-                        topRightRadius:    modelData.first ? 20 : 5
-                        bottomLeftRadius:  modelData.last  ? 20 : 5
-                        bottomRightRadius: modelData.last  ? 20 : 5
-                        Behavior on color { ColorAnimation { duration: 150 } }
-
-                        RowLayout {
-                            id: linkRow
-                            anchors.fill: parent
-                            anchors.leftMargin: 14; anchors.rightMargin: 14
-                            spacing: 12
-
-                            Rectangle {
-                                Layout.preferredWidth: 32
-                                Layout.preferredHeight: 32
-                                radius: 10
-                                color: Colors.surfaceContainerHighest
-
-                                MaterialIconSymbol {
-                                    anchors.centerIn: parent
-                                    content: modelData.icon; iconSize: 17; customColor: Colors.primary
-                                }
-                            }
-
-                            ColumnLayout {
-                                spacing: 1
-                                CustomText { content: modelData.label; size: 14 }
-                                CustomText { content: modelData.desc; size: 11; customColor: Colors.outline }
-                            }
-
-                            Item { Layout.fillWidth: true }
-
-                            MaterialIconSymbol {
-                                content: "arrow_forward"; iconSize: 16; customColor: Colors.outline
-                            }
+                        CustomText {
+                            Layout.fillWidth: true
+                            content: modelData.key
+                            size: 10; customColor: Colors.outline
+                            horizontalAlignment: Text.AlignHCenter
                         }
-
-                        MouseArea {
-                            id: linkArea
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            hoverEnabled: true
-                            onClicked: Quickshell.execDetached(["xdg-open", modelData.url])
+                        CustomText {
+                            Layout.fillWidth: true
+                            content: modelData.value
+                            size: 13; weight: 600
+                            customColor: Colors.surfaceText
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                         }
                     }
                 }
             }
+        }
 
-            Item { Layout.preferredHeight: 20 }
+        // ── Links ─────────────────────────────────────────────────────
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Repeater {
+                model: root.links
+                delegate: M3Button {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
+                    size: "xsmall"
+                    variant: "tonal"
+                    icon: modelData.icon
+                    label: modelData.label
+                    onClicked: Quickshell.execDetached(["xdg-open", modelData.url])
+                }
+            }
         }
     }
 }

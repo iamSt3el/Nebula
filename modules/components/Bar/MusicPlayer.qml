@@ -201,11 +201,12 @@ Rectangle{
                                 }
                             }
 
-                            CustomProgressBar{
-                                value: (ServiceMusic.activePlayer?.position / Math.max(ServiceMusic.activePlayer?.length, 1) || 0)
-                                valueBarWidth: parent.width
-                                sperm: true
-                                animateSperm: ServiceMusic.isPlaying
+                            M3WavyProgressBar {
+                                width: parent.width
+                                height: 10
+                                progress: (ServiceMusic.activePlayer?.position / Math.max(ServiceMusic.activePlayer?.length, 1) || 0)
+                                waveSpeed: ServiceMusic.isPlaying ? wavelength : 0
+                                waveAmplitude: ServiceMusic.isPlaying ? 3 : 0
                             }
                         }
                     }

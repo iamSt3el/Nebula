@@ -223,7 +223,7 @@ Item {
                                     elide: Text.ElideLeft
                                 }
                             }
-                            CustomButton {
+                            M3IconButton {
                                 implicitHeight: 32; implicitWidth: 40
                                 topLeftRadius: 6;   bottomLeftRadius: 6
                                 topRightRadius: 16; bottomRightRadius: 16

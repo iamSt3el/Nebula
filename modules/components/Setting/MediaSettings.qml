@@ -113,7 +113,7 @@ Item {
                                 elide: Text.ElideLeft
                             }
                         }
-                        CustomButton {
+                        M3IconButton {
                             implicitHeight: 32; implicitWidth: 40
                             topLeftRadius: 6;   bottomLeftRadius: 6
                             topRightRadius: 16; bottomRightRadius: 16
@@ -268,7 +268,7 @@ Item {
                             CustomText { content: "What audio to capture"; size: 12; customColor: Colors.outline }
                         }
                         Item { Layout.fillWidth: true }
-                        ButtonGroup {
+                        M3ButtonGroup {
                             model: [
                                 { value: "mic",    label: "Mic",    icon: "mic"     },
                                 { value: "system", label: "System", icon: "speaker" },
@@ -389,7 +389,7 @@ Item {
                                 elide: Text.ElideLeft
                             }
                         }
-                        CustomButton {
+                        M3IconButton {
                             implicitHeight: 32; implicitWidth: 40
                             topLeftRadius: 6;   bottomLeftRadius: 6
                             topRightRadius: 16; bottomRightRadius: 16
@@ -451,7 +451,7 @@ Item {
                                     elide: Text.ElideLeft
                                 }
                             }
-                            CustomButton {
+                            M3IconButton {
                                 implicitHeight: 32; implicitWidth: 40
                                 topLeftRadius: 6;   bottomLeftRadius: 6
                                 topRightRadius: 16; bottomRightRadius: 16

@@ -1,10 +1,11 @@
 import QtQuick
 import qs.modules.utils
 import qs.modules.services
+import qs.modules.customComponents
 
 // The scrub track, shared by every music surface in the bar.
 //
-// Driven directly rather than through CustomSliderNew: a two-way binding fights
+// Driven directly rather than through M3Slider: a two-way binding fights
 // the once-a-second position tick, so the handle jumps back under the cursor
 // mid-drag. Here the drag owns the displayed value until release.
 Item {
@@ -27,6 +28,19 @@ Item {
 
     implicitHeight: Math.max(root.handleSize, 16)
 
+    M3WavyProgressBar {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        height: 10
+        progress: root.shown
+        activeThickness: root.active ? root.hoverHeight : root.barHeight
+        trackThickness: root.active ? root.hoverHeight : root.barHeight
+        trackColor: Colors.surfaceContainerHigh
+        showStopIndicator: false
+        waveAmplitude: ServiceMusic.isPlaying && !root.dragging ? 3 : 0
+    }
+
     Rectangle {
         id: seekTrack
         anchors.left: parent.left
@@ -34,19 +48,9 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         height: root.active ? root.hoverHeight : root.barHeight
         radius: height / 2
-        color: Colors.surfaceContainerHigh
+        color: "transparent"
         Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
 
-        Rectangle {
-            width: parent.width * root.shown
-            height: parent.height
-            radius: height / 2
-            color: Colors.primary
-            Behavior on width {
-                enabled: !root.dragging
-                NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
-            }
-        }
     }
 
     // Only appears once the bar is live, so a non-seekable stream doesn't
