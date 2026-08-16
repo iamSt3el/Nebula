@@ -687,9 +687,16 @@ Rectangle {
                         ? onlineRowModel
                         : (currentDataArray ? Math.ceil(currentDataArray.length / columns) : 0)
 
-                    onAtYEndChanged: {
-                        if (atYEnd && ServiceWallpaper.onlineMode) ServiceWallpaper.fetchNextPage()
+                    readonly property real prefetchMargin: rowPitch * 2
+
+                    function maybeFetchMore() {
+                        if (!ServiceWallpaper.onlineMode) return
+                        if (contentY < maxContentY - prefetchMargin) return
+                        ServiceWallpaper.fetchNextPage()
                     }
+
+                    onContentYChanged: maybeFetchMore()
+                    onContentHeightChanged: maybeFetchMore()
 
                     delegate: Item {
                         id: rowContainer
@@ -701,12 +708,22 @@ Rectangle {
                         readonly property real childLoc:
                             index * grid.rowPitch + grid.rowHeight / 2 - grid.contentY
                         readonly property var  keyline:    grid.sample(childLoc)
-                        readonly property real tileHeight: keyline.s
+
+                        readonly property var band: {
+                            const c = keyline.c, s = keyline.s, H = grid.height
+                            let t = c - s / 2, b = c + s / 2
+                            if (t < 0 && b > 0) t = 0
+                            if (b > H && t < H) b = Math.max(H, t)
+                            return { t: t, b: b }
+                        }
+
+                        readonly property real tileHeight: Math.max(0, band.b - band.t)
                         readonly property real tileRadius: Math.min(grid.itemRadius, tileHeight / 2)
+                        readonly property real imageY: keyline.c - grid.rowHeight / 2 - band.t
 
                         Row {
-                            y: (rowContainer.keyline.c - rowContainer.childLoc)
-                             + (rowContainer.height - rowContainer.tileHeight) / 2
+                            y: rowContainer.band.t - rowContainer.childLoc
+                             + rowContainer.height / 2
                             spacing: grid.itemSpacing
 
                             Repeater {
@@ -745,7 +762,7 @@ Rectangle {
 
                                         Image {
                                             id: thumbnail
-                                            anchors.centerIn: parent
+                                            y: rowContainer.imageY
                                             width: parent.width; height: rowContainer.height
                                             sourceSize: Qt.size(width, height)
                                             asynchronous: true; smooth: true; cache: true
