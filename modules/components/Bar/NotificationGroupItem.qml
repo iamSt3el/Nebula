@@ -18,8 +18,10 @@ Item {
     property real dismissThreshold: 80
     property bool dragSettling: true
     property var dismissTarget: null
+    property real clipBottomAmount: 0
 
     signal dragBegan(int i)
+    signal expandRequested(int i)
     signal dragMoved(real d)
     signal dragCancelled
     signal dragDismissed(bool toRight)
@@ -82,11 +84,17 @@ Item {
     readonly property bool unfolding: expandAnim.running
     readonly property bool seamsOpen: root.expanded && !root.unfolding
 
+    readonly property real cardHeight:
+        Math.max(0, stack.implicitHeight - root.clipBottomAmount)
+
     onExpandedChanged: {
         if (root.group) root.group.isExpanded = root.expanded
         expandAnim.to = root.expanded ? 1 : 0
         expandAnim.restart()
+        if (root.expanded) root.expandRequested(root.index)
     }
+
+    onMultipleChanged: if (!root.multiple) root.expanded = false
 
     NumberAnimation {
         id: expandAnim
@@ -204,7 +212,8 @@ Item {
         id: swipe
         y: 0
         width: root.width
-        height: root.height
+        height: root.cardHeight
+        clip: root.clipBottomAmount > 0.5
         x: root.xOffset
 
         Behavior on x {
@@ -224,10 +233,10 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            height: stack.implicitHeight
+            height: root.cardHeight
             radius: root.outerRadius
             color: Colors.surfaceContainerHigh
-            visible: root.multiple && !root.seamsOpen
+            visible: !root.seamsOpen
         }
 
         ColumnLayout {
@@ -241,7 +250,7 @@ Item {
                 visible: !root.multiple
                 Layout.fillWidth: true
                 Layout.preferredHeight: visible ? loneRow.implicitHeight + 2 * root.vPad : 0
-                color: Colors.surfaceContainerHigh
+                color: "transparent"
                 radius: root.outerRadius
                 clip: true
 
@@ -317,7 +326,8 @@ Item {
                             anchors.fill: parent
                             anchors.margins: 6
                             source: root.usesSymbol ? "" : IconUtil.getIconPath(root.group?.appIcon ?? "")
-                            sourceSize: Qt.size(width, height)
+                            sourceSize: Qt.size(24, 24)
+                            asynchronous: true
                             fillMode: Image.PreserveAspectFit
                             visible: !root.usesSymbol && status === Image.Ready
                         }

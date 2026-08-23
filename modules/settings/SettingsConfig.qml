@@ -62,6 +62,9 @@ Singleton {
                 fontScale: "normal",
                 fontWeight: "medium",
                 musicVisBars: 60,
+                musicVisStyle: "Wave",
+                musicVisFps: "30 fps",
+                musicVisColor: "Primary",
                 wallpaperDir: Quickshell.env("HOME") + "/wallpaper",
                 workspaceCount: 10,
                 showWorkspaceNumbers: false,
@@ -69,7 +72,9 @@ Singleton {
                 primaryMonitor: "",
                 perMonitorWorkspaces: false,
                 barCenter: "clock",
-                motionScheme: "expressive"
+                motionScheme: "expressive",
+                holidayCountry: "",
+                fileDropDir: ""
             })
 
             property var general: ({
@@ -85,6 +90,9 @@ Singleton {
                 fontScale: "normal",
                 fontWeight: "medium",
                 musicVisBars: 60,
+                musicVisStyle: "Wave",
+                musicVisFps: "30 fps",
+                musicVisColor: "Primary",
                 wallpaperDir: Quickshell.env("HOME") + "/wallpaper",
                 workspaceCount: 10,
                 showWorkspaceNumbers: false,
@@ -92,7 +100,9 @@ Singleton {
                 primaryMonitor: "",
                 perMonitorWorkspaces: false,
                 barCenter: "clock",
-                motionScheme: "expressive"
+                motionScheme: "expressive",
+                holidayCountry: "",
+                fileDropDir: ""
             })
 
             onGeneralChanged: {
@@ -251,6 +261,8 @@ Singleton {
                 showNetworkGraph: false,
                 networkGraphX: 100,
                 networkGraphY: 780,
+                networkGraphWindow: "3 min",
+                networkGraphInterval: "2 s",
                 showSpectrum: false,
                 spectrumX: 420,
                 spectrumY: 620,

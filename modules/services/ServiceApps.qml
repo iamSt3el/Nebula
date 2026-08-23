@@ -86,6 +86,26 @@ Singleton{
 
 
 
+    // dockModel holds plain objects, not DesktopEntry, so a launch has to
+    // resolve the entry first
+    function entryFor(appId: string): var {
+        if (!appId) return null
+        const direct = DesktopEntries.heuristicLookup(appId)
+        if (direct) return direct
+        const lower = appId.toLowerCase()
+        return root.list.find(a => (a.id ?? "").toLowerCase() === lower) ?? null
+    }
+
+    function launch(appId: string): bool {
+        const entry = root.entryFor(appId)
+        if (!entry) {
+            console.warn("ServiceApps.launch: no desktop entry for", appId)
+            return false
+        }
+        entry.execute()
+        return true
+    }
+
     function isPinned(app): bool {
         return SettingsConfig.general.pinnedApps.includes(app.id)
     }

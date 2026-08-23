@@ -327,9 +327,11 @@ WidgetHost {
             M3WavyCircularProgress {
                 implicitWidth: 64
                 implicitHeight: 64
-                progress: (ServiceMusic.activePlayer?.position / Math.max(ServiceMusic.activePlayer?.length, 1) || 0)
+                progress: ServiceMusic.trackLength > 0
+                    ? Math.max(0, Math.min(1, (ServiceMusic.activePlayer?.position ?? 0) / ServiceMusic.trackLength))
+                    : 0
                 thickness: 3
-                sperm: true
+                sperm: false
                 gap: 0.2
                 spermFrequency: 12
                 animateSperm: false

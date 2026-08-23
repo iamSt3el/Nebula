@@ -10,15 +10,30 @@ import qs.modules.services
 Item {
     id: root
 
+    clip: true
+
     readonly property real contentHeight: list.contentHeight
     readonly property int shelfHeight: 34
+    readonly property int slotGap: 8
 
     property int firstHidden: -1
+    property real enterProgress: 0
     readonly property bool shelfVisible: root.firstHidden >= 0
 
-    readonly property real shelfReserve:
-        (list.contentHeight > list.height + 1) ? root.shelfHeight + 6 : 0
-    readonly property real shelfLine: list.contentY + list.height - root.shelfReserve
+    readonly property int shelfGap: 6
+    readonly property real shelfRise: root.shelfHeight + root.shelfGap
+
+    readonly property real scrollRemaining:
+        Math.max(0, (list.contentHeight - list.height) - list.contentY)
+    readonly property real shelfSlide: list.contentHeight > list.height
+        ? Math.max(0, root.shelfRise - root.scrollRemaining) : root.shelfRise
+
+    readonly property real shelfLine:
+        list.contentY + list.height - root.shelfRise + root.shelfSlide
+
+    function groupKey(g) {
+        return (g?.appName ?? "") + "|" + (g?.appIcon ?? "")
+    }
 
     readonly property var hiddenIcons: {
         if (root.firstHidden < 0) return []
@@ -26,7 +41,7 @@ Item {
         const out = []
         const all = list.sortedGroups
         for (var i = root.firstHidden; i < all.length; i++) {
-            const key = (all[i].appName ?? "") + "|" + (all[i].appIcon ?? "")
+            const key = root.groupKey(all[i])
             if (seen[key]) continue
             seen[key] = true
             out.push(all[i])
@@ -35,21 +50,48 @@ Item {
         return out
     }
 
+    readonly property bool enterIsNew: {
+        if (root.firstHidden < 0) return false
+        const all = list.sortedGroups
+        if (root.firstHidden >= all.length) return false
+        const key = root.groupKey(all[root.firstHidden])
+        for (var i = root.firstHidden + 1; i < all.length; i++)
+            if (root.groupKey(all[i]) === key) return false
+        return true
+    }
+
+    property int followIndex: -1
+
+    function followExpanded() {
+        if (root.followIndex < 0) return
+        const it = list.itemAtIndex(root.followIndex)
+        if (!it) return
+        const maxY = Math.max(0, list.contentHeight - list.height)
+        const want = (it.y + it.height) - list.height + root.shelfRise
+        if (want > list.contentY)
+            list.contentY = Math.min(want, maxY)
+    }
+
     function recomputeShelf() {
         if (list.count === 0 || list.height <= 0) {
             root.firstHidden = -1
+            root.enterProgress = 0
             return
         }
         const bottom = root.shelfLine
         for (var i = 0; i < list.count; i++) {
             const it = list.itemAtIndex(i)
             if (!it) continue
-            if (it.y + it.height > bottom) {
+            const cardH = Math.max(1, it.height - root.slotGap)
+            const covered = (it.y + cardH) - bottom
+            if (covered > 0) {
                 root.firstHidden = i
+                root.enterProgress = Math.min(1, covered / cardH)
                 return
             }
         }
         root.firstHidden = -1
+        root.enterProgress = 0
     }
 
     Connections {
@@ -68,7 +110,7 @@ Item {
         cacheBuffer: 200
         boundsBehavior: Flickable.OvershootBounds
         flickDeceleration: 3000
-        bottomMargin: root.shelfVisible ? root.shelfHeight + 6 : 0
+        onMovementStarted: root.followIndex = -1
 
         property bool populated: false
         Component.onCompleted: populateTimer.start()
@@ -173,32 +215,33 @@ Item {
             required property int index
 
             width: list.width
-            height: row.implicitHeight + 8
+            height: row.implicitHeight + root.slotGap
 
-            onHeightChanged: root.recomputeShelf()
-
-            // Cards shrink away into the shelf instead of being clipped by it
-            readonly property real shelfProgress: {
-                const h = Math.max(1, row.implicitHeight)
-                const covered = (slot.y + h) - root.shelfLine
-                if (covered <= 0) return 0
-                return Math.min(1, covered / h)
+            onHeightChanged: {
+                root.recomputeShelf()
+                if (root.followIndex === slot.index) root.followExpanded()
             }
+
+            readonly property real clipBottom:
+                Math.max(0, (slot.y + row.implicitHeight) - root.shelfLine)
 
             NotificationGroupItem {
                 id: row
                 width: slot.width
-                opacity: 1 - slot.shelfProgress
-                scale: 1 - 0.08 * slot.shelfProgress
-                transformOrigin: Item.Top
                 group: slot.modelData
                 index: slot.index
+                clipBottomAmount: slot.clipBottom
 
                 listDragIndex: list.dragIndex
                 listDragDistance: list.dragDistance
                 dismissThreshold: list.dismissThreshold
                 dragSettling: !list.dragActive
                 dismissTarget: list.dismissTarget
+
+                onExpandRequested: {
+                    root.followIndex = slot.index
+                    root.followExpanded()
+                }
 
                 onDragBegan: i => list.beginDrag(i)
                 onDragMoved: d => list.updateDrag(d)
@@ -212,19 +255,11 @@ Item {
         id: shelf
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.bottom: parent.bottom
+        y: root.height - root.shelfHeight + root.shelfSlide
         height: root.shelfHeight
         radius: 20
         color: Colors.surfaceContainerHigh
-
-        opacity: root.shelfVisible ? 1 : 0
-        visible: opacity > 0.01
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.motion.effectsDefault
-                easing.type: Appearance.motion.effectsEasing
-            }
-        }
+        visible: root.shelfVisible && root.shelfSlide < root.shelfHeight
 
         Row {
             anchors.left: parent.left
@@ -238,6 +273,13 @@ Item {
                 delegate: Rectangle {
                     id: shelfIcon
                     required property var modelData
+                    required property int index
+
+                    readonly property bool entering: shelfIcon.index === 0 && root.enterIsNew
+                    opacity: shelfIcon.entering
+                        ? Math.min(1, root.enterProgress * 1.6) : 1
+                    scale: shelfIcon.entering
+                        ? 0.55 + 0.45 * root.enterProgress : 1
 
                     readonly property string symbol:
                         shelfIcon.resolveSymbol(modelData.appIcon, modelData.appName)
@@ -275,7 +317,8 @@ Item {
                         anchors.margins: 4
                         source: shelfIcon.symbol !== ""
                             ? "" : IconUtil.getIconPath(shelfIcon.modelData.appIcon ?? "")
-                        sourceSize: Qt.size(width, height)
+                        sourceSize: Qt.size(14, 14)
+                        asynchronous: true
                         fillMode: Image.PreserveAspectFit
                         visible: shelfIcon.symbol === "" && status === Image.Ready
                     }

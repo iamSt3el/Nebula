@@ -40,6 +40,28 @@ Singleton{
         musicColorGen.running = true
     }
 
+    property real trackLength: 0
+
+    function _metadataLength(player) {
+        const raw = Number(player?.metadata?.["mpris:length"])
+        return (isFinite(raw) && raw > 0) ? raw / 1000000 : 0
+    }
+
+    function refreshLength() {
+        const p = root.activePlayer
+        if (!p) {
+            root.trackLength = 0
+            return
+        }
+        const fromMeta = root._metadataLength(p)
+        if (fromMeta > 0) {
+            root.trackLength = fromMeta
+            return
+        }
+        if (p.lengthSupported && p.length > 0)
+            root.trackLength = p.length
+    }
+
     Timer {
         running: ServiceMusic.activePlayer?.isPlaying ?? false
         interval: 1000
@@ -47,6 +69,7 @@ Singleton{
         onTriggered: {
             if (ServiceMusic.activePlayer) {
                 ServiceMusic.activePlayer.positionChanged()
+                ServiceMusic.refreshLength()
             }
         }
     }
@@ -92,6 +115,10 @@ Singleton{
             root.updateTrack()
         }
 
+        function onMetadataChanged() {
+            root.refreshLength()
+        }
+
         function onTrackArtUrlChanged() {
             if (root.activePlayer.uniqueId == root.activeTrack.uniqueId && root.activePlayer.trackArtUrl != root.activeTrack.artUrl) {
                 const r = root.__reverse
@@ -111,6 +138,8 @@ Singleton{
     onActivePlayerChanged: this.updateTrack()
 
     function updateTrack() {
+        this.trackLength = 0
+        this.refreshLength()
         this.activeTrack = {
             uniqueId: this.activePlayer?.uniqueId ?? 0,
             artUrl: this.activePlayer?.trackArtUrl ?? "",

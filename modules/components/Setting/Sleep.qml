@@ -5,6 +5,7 @@ import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
+import QtQuick.Controls
 
 // Idle behaviour. Writing here regenerates ~/.config/hypr/hypridle.conf and
 // restarts hypridle — see ServiceIdle.
@@ -33,6 +34,7 @@ Item {
     }
 
     Flickable {
+        ScrollBar.vertical: CustomScrollBar {}
         anchors.fill: parent
         contentHeight: column.implicitHeight
         contentWidth: width

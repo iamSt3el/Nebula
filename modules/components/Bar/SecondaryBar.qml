@@ -207,13 +207,13 @@ Item {
                     color: "transparent"
                     MaterialIconSymbol {
                         anchors.centerIn: parent
-                        content:     ServiceNetwork.wifiEnabled ? ServiceNetwork.icon : "signal_wifi_off"
+                        content:     ServiceNetwork.icon
                         iconSize:    16
                         customColor: Colors.surfaceText
                     }
                     CustomToolTip {
-                        content: ServiceNetwork.currentSSID.length > 0
-                               ? ServiceNetwork.currentSSID : "No network"
+                        content: ServiceNetwork.connectionLabel.length > 0
+                               ? ServiceNetwork.connectionLabel : "No network"
                         visible: netHov.containsMouse
                     }
                     MouseArea { id: netHov; anchors.fill: parent; hoverEnabled: true }

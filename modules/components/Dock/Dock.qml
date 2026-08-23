@@ -220,7 +220,7 @@ Item {
                             if (dockItem.modelData.toplevels.length > 0)
                                 dockItem.modelData.toplevels[0].activate()
                             else
-                                modelData.execute()
+                                ServiceApps.launch(dockItem.modelData.appId)
                         } else if (mouse.button === Qt.RightButton) {
                             const pos = dockIconArea.mapToItem(root, mouse.x, mouse.y)
                             root.contextMenuRequested(pos.x, root.y, dockItem.modelData)

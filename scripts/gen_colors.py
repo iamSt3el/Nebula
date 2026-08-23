@@ -219,6 +219,18 @@ _APP_TEMPLATES = [
         "post_hook": "pywalfox update",
     },
     {
+        "name":      "tmux",
+        "input":     _TPL / "tmux-colors.conf",
+        "output":    _HOME / ".config/tmux/colors.conf",
+        "post_hook": 'L="$HOME/.tmux.conf.local"; C="$HOME/.config/tmux/colors.conf"; '
+                     '{ sed "/^# >>> m3 palette >>>$/q" "$L"; cat "$C"; '
+                     r'sed -n "/^# <<< m3 palette <<<$/,\$p" "$L"; } > "$L.new" '
+                     '&& cat "$L.new" > "$L" && rm -f "$L.new"; '
+                     'for s in "${TMUX_TMPDIR:-/tmp}"/tmux-$(id -u)/*; do '
+                     '[ -S "$s" ] && tmux -S "$s" source-file "$HOME/.tmux.conf"; '
+                     'done',
+    },
+    {
         "name":   "starship",
         "input":  _TPL / "starship.toml",
         "output": _HOME / ".config/starship.toml",

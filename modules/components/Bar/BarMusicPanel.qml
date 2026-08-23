@@ -18,7 +18,7 @@ Item {
     readonly property bool hasTrack: ServiceMusic.activePlayer !== null
 
     readonly property real elapsed: ServiceMusic.activePlayer?.position ?? 0
-    readonly property real total: ServiceMusic.activePlayer?.length ?? 0
+    readonly property real total: ServiceMusic.trackLength
 
     // Artist and album on one line — three stacked secondary lines made the
     // title compete with its own metadata.

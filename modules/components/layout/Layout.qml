@@ -138,24 +138,26 @@ PanelWindow{
         //   • clock expands when calendar is open (cH > wH)
         //   • utility expands when dashboard/panel is open (uH > wH)
         function buildFlatBarPath(dX, dY, rX, rY,
-                                  wH, wW, showArc, wpH, sweep,
+                                  wH, wW, showArc, wpH, atBottom,
                                   cX, cW, cH,
-                                  uX, uW, uH, isDashboard) {
+                                  uX, uW, uH, uAtBottom) {
             function A(sw, ex, ey) { return `A ${rX} ${rY} 0 0 ${sw} ${ex} ${ey} ` }
             function L(x,  y)      { return `L ${x} ${y} ` }
             const CW = 1, CCW = 0
 
-            let p
+            const wBlockH = showArc ? wpH : wH
+
+            let p  = `M 0 ${wBlockH + dY} `
+            p += A(CW, dX, wBlockH)   // screen-edge flare, same at every height
             if (showArc) {
-                p  = `M 0 ${wpH - dY} `
-                p += A(CCW, dX,      wpH)
-                p += sweep ? L(wW + dX, wpH) : L(wW - dX, wpH)
-                p += sweep ? A(CW, wW, wpH - dY) : A(CCW, wW, wpH - dY)
+                // Landed on the screen bottom: the edge overshoots and flares back
+                // up so the block merges into it, mirroring the dashboard's
+                // corner on the utility side. Still growing: a plain rounded corner.
+                p += atBottom ? L(wW + dX, wpH) : L(wW - dX, wpH)
+                p += atBottom ? A(CW,  wW, wpH - dY)
+                              : A(CCW, wW, wpH - dY)
                 p += L(wW,           wH + dY)
                 p += A(CW,  wW + dX, wH)
-            } else {
-                p  = `M 0 ${wH + dY} `
-                p += A(CW, dX, wH)   // BL corner
             }
 
             // Clock section — expand downward if calendar is open, else flat
@@ -176,13 +178,9 @@ PanelWindow{
                 p += L(uX - dX, wH)
                 p += A(CW,  uX,      wH + dY)   // outer corner going down
                 p += L(uX,           uH - dY)   // utility left wall
-                if (isDashboard) {
-                    p += A(CW,  uX - dX, uH)
-                    p += L(uX + uW, uH)
-                } else {
-                    p += A(CCW, uX + dX, uH)
-                    p += L(uX + uW - dX, uH)
-                }
+                p += uAtBottom ? A(CW,  uX - dX, uH)   // merges into the screen bottom
+                               : A(CCW, uX + dX, uH)   // still growing
+                p += L(uX + uW - dX, uH)
                 p += A(CW,  uX + uW, uH + dY)
             } else {
                 p += L(uX + uW - dX, wH)
@@ -191,7 +189,7 @@ PanelWindow{
 
             p += L(uX + uW, 0)
             p += L(0, 0)
-            p += L(0, showArc ? wpH - dY : wH + dY)
+            p += L(0, wBlockH + dY)
             return p
         }
 
@@ -200,9 +198,9 @@ PanelWindow{
         // as their vertical offset. When lineDis == disY the offset is 0 and those arcs
         // would bulge as semicircles; this function emits a straight L segment instead.
         function buildBarPath(dX, dY, rX, rY, lD,
-                              wH, wW, showArc, wpH, sweep,
+                              wH, wW, showArc, wpH, atBottom,
                               cX, cW, cH,
-                              uX, uW, uH, isDashboard) {
+                              uX, uW, uH, uAtBottom) {
             const eD = dY - lD  // effectiveDis: 0 = flat bar, dY = maximum step
 
             function A(sw, ex, ey) { return `A ${rX} ${rY} 0 0 ${sw} ${ex} ${ey} ` }
@@ -213,12 +211,15 @@ PanelWindow{
 
             const wBlockH = showArc ? wpH : wH
 
-            let p = `M 0 ${showArc ? wBlockH - dY : wBlockH + dY} `
-            // bottom-left corner
-            p += showArc ? A(CCW, dX, wBlockH) : A(CW, dX, wBlockH)
-            // workspaces bottom edge + right-bottom corner
-            p += (showArc && sweep) ? L(wW + dX, wBlockH) : L(wW - dX, wBlockH)
-            p += (showArc && sweep) ? A(CW, wW, wBlockH - dY) : A(CCW, wW, wBlockH - dY)
+            let p = `M 0 ${wBlockH + dY} `
+            // bottom-left corner — screen-edge flare, same at every height
+            p += A(CW, dX, wBlockH)
+            // workspaces bottom edge + right-bottom corner. Only flares once the
+            // block has landed on the screen bottom, so the curve opens into the
+            // edge instead of hanging in mid-air while it grows.
+            p += atBottom ? L(wW + dX, wBlockH) : L(wW - dX, wBlockH)
+            p += atBottom ? A(CW,  wW, wBlockH - dY)
+                          : A(CCW, wW, wBlockH - dY)
             // workspaces right wall up to transition point
             p += L(wW, dY)
             // ── TRANSITION: workspace → bridge
@@ -241,18 +242,14 @@ PanelWindow{
             p += T(CW, uX, dY)
             // utility left wall + bottom corners + bottom edge + right-bottom corner
             p += L(uX, uH - dY)
-            if (isDashboard) {
-                p += A(CW,  uX - dX, uH)
-                p += L(uX + uW, uH)
-            } else {
-                p += A(CCW, uX + dX, uH)
-                p += L(uX + uW - dX, uH)
-            }
+            p += uAtBottom ? A(CW,  uX - dX, uH)   // merges into the screen bottom
+                           : A(CCW, uX + dX, uH)   // still growing
+            p += L(uX + uW - dX, uH)
             p += A(CW, uX + uW, uH + dY)
             // utility right wall up, top edge, left wall back to start
             p += L(uX + uW, 0)
             p += L(0, 0)
-            p += L(0, showArc ? wBlockH - dY : wBlockH + dY)
+            p += L(0, wBlockH + dY)
             return p
         }
 
@@ -266,7 +263,7 @@ PanelWindow{
         function buildPillBarPath(dX, dY, rX, rY, margin, xOff,
                                   wH, wW, showArc, wpH,
                                   cX, cW, cH,
-                                  uX, uW, uH, isDashboard) {
+                                  uX, uW, uH, uAtBottom) {
             function A(sw, ex, ey) { return `A ${rX} ${rY} 0 0 ${sw} ${ex} ${ey} ` }
             function L(x,  y)      { return `L ${x} ${y} ` }
             const CW = 1, CCW = 0
@@ -299,13 +296,9 @@ PanelWindow{
                 p += L(uX - dX, margin + wH)
                 p += A(CW,  uX, margin + wH + dY)
                 p += L(uX,  margin + uH - dY)
-                if (isDashboard) {
-                    p += A(CW,  uX - dX, margin + uH)
-                    p += L(right, margin + uH)
-                } else {
-                    p += A(CCW, uX + dX, margin + uH)
-                    p += L(right - dX, margin + uH)
-                }
+                p += uAtBottom ? A(CW,  uX - dX, margin + uH)
+                               : A(CCW, uX + dX, margin + uH)
+                p += L(right - dX, margin + uH)
                 p += A(CW, right, margin + uH + dY)
                 p += L(right, margin + capR)
             } else {
@@ -343,18 +336,18 @@ PanelWindow{
                             root.disX, root.disY, root.radX, root.radY, root.pillMargin, sectionsRow.x,
                             Appearance.size.barHeight, workspaces.width, workspaces.showArc, workspaces.height,
                             clock.x, clock.width, clock.height,
-                            utility.x, utility.width, utility.height, utility.isDashboard)
+                            utility.x, utility.width, utility.height, utility.atScreenBottom)
                         : root.barMode === "stepped"
                             ? root.buildBarPath(
                                 root.disX, root.disY, root.radX, root.radY, root.lineDis,
-                                Appearance.size.barHeight, workspaces.width, workspaces.showArc, workspaces.height, workspaces.sweepBottom,
+                                Appearance.size.barHeight, workspaces.width, workspaces.showArc, workspaces.height, workspaces.atScreenBottom,
                                 clock.x, clock.width, clock.height,
-                                utility.x, utility.width, utility.height, utility.isDashboard)
+                                utility.x, utility.width, utility.height, utility.atScreenBottom)
                             : root.buildFlatBarPath(
                                 root.disX, root.disY, root.radX, root.radY,
-                                Appearance.size.barHeight, workspaces.width, workspaces.showArc, workspaces.height, workspaces.sweepBottom,
+                                Appearance.size.barHeight, workspaces.width, workspaces.showArc, workspaces.height, workspaces.atScreenBottom,
                                 clock.x, clock.width, clock.height,
-                                utility.x, utility.width, utility.height, utility.isDashboard)
+                                utility.x, utility.width, utility.height, utility.atScreenBottom)
                 }
             }
         }

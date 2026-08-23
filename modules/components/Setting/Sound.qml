@@ -9,14 +9,16 @@ import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
+import "../../MatrialShapes/" as MaterialShapes
+import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
+import QtQuick.Controls
 
 Item {
     id: root
     anchors.fill: parent
     anchors.margins: 5
 
-    PwNodePeakMonitor { id: outputPeak; node: ServicePipewire.sink }
-    PwNodePeakMonitor { id: inputPeak;  node: ServicePipewire.source }
+    PwNodePeakMonitor { id: inputPeak; node: ServicePipewire.source }
 
     property var sinkList: {
         const r = []
@@ -31,7 +33,99 @@ Item {
         return r
     }
 
+    function fmtRate(node) {
+        const p = node?.properties ?? ({})
+        let r = parseInt(p["audio.rate"] ?? "")
+        if (isNaN(r)) {
+            const nr = String(p["node.rate"] ?? "")
+            const slash = nr.indexOf("/")
+            if (slash >= 0) r = parseInt(nr.slice(slash + 1))
+        }
+        if (isNaN(r) || r <= 0) return ""
+        const k = r / 1000
+        return (r % 1000 === 0 ? k : k.toFixed(1)) + " kHz"
+    }
+
+    function fmtChannels(node) {
+        const n = node?.audio?.channels?.length ?? 0
+        if (n <= 0) return ""
+        if (n === 1) return "Mono"
+        if (n === 2) return "Stereo"
+        if (n === 6) return "5.1"
+        if (n === 8) return "7.1"
+        return n + " ch"
+    }
+
+    function fmtLatency(node) {
+        const parts = String(node?.properties?.["node.latency"] ?? "").split("/")
+        if (parts.length !== 2) return ""
+        const q = parseInt(parts[0])
+        const r = parseInt(parts[1])
+        if (isNaN(q) || isNaN(r) || r <= 0) return ""
+        return Math.round(q / r * 1000) + " ms"
+    }
+
+    function fmtBus(node) {
+        const p = node?.properties ?? ({})
+        const api = String(p["device.api"] ?? "")
+        const bus = String(p["device.bus"] ?? "")
+        if (bus !== "") return bus.toUpperCase()
+        if (api !== "") return api.toUpperCase()
+        return ""
+    }
+
+    function hasInfo(node) {
+        return root.fmtRate(node) !== "" || root.fmtChannels(node) !== ""
+            || root.fmtLatency(node) !== "" || root.fmtBus(node) !== ""
+    }
+
+    component InfoChip: Rectangle {
+        id: chip
+        property string label: ""
+        property string glyph: ""
+
+        visible: chip.label !== ""
+        implicitWidth: chipRow.implicitWidth + 20
+        implicitHeight: 24
+        radius: 12
+        color: Colors.surfaceContainerHighest
+
+        RowLayout {
+            id: chipRow
+            anchors.centerIn: parent
+            spacing: 5
+            MaterialIconSymbol {
+                visible: chip.glyph !== ""
+                content: chip.glyph
+                iconSize: 13
+                customColor: Colors.outline
+            }
+            CustomText {
+                content: chip.label
+                size: 11
+                weight: 600
+                customColor: Colors.outline
+            }
+        }
+    }
+
+    component ValueChip: Rectangle {
+        id: vchip
+        property string label: ""
+        implicitWidth: 52
+        implicitHeight: 36
+        radius: 10
+        color: Colors.surfaceContainerHighest
+        CustomText {
+            anchors.centerIn: parent
+            content: vchip.label
+            size: 13
+            weight: 600
+        }
+    }
+
     Flickable {
+        ScrollBar.vertical: CustomScrollBar {}
         anchors.fill: parent
         contentHeight: column.implicitHeight
         contentWidth: width
@@ -63,86 +157,66 @@ Item {
                 Layout.topMargin: 6
                 spacing: 3
 
-                // Output device
                 CustomCard {
                     autoRadius: false; topRadius: 20; bottomRadius: 5
-                    RowLayout {
+
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Output Device"; size: 14 }
-                            CustomText { content: "Active output sink"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredWidth: 200
-                            Layout.preferredHeight: 30
-                            color: Colors.surfaceContainerHighest
-                            currentVal: ServicePipewire.sink?.description ?? ""
-                            list: root.sinkList
-                            onCurrentValChanged: {
-                                if (!currentVal) return
-                                for (let i = 0; i < ServicePipewire.sinks.length; i++) {
-                                    if (ServicePipewire.sinks[i].description === currentVal) {
-                                        ServicePipewire.setAudioSink(ServicePipewire.sinks[i])
-                                        return
+                        spacing: 12
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            ColumnLayout {
+                                spacing: 2
+                                CustomText { content: "Output Device"; size: 14 }
+                                CustomText { content: "Active output sink"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredWidth: 200
+                                Layout.preferredHeight: 30
+                                color: Colors.surfaceContainerHighest
+                                currentVal: ServicePipewire.sink?.description ?? ""
+                                list: root.sinkList
+                                onCurrentValChanged: {
+                                    if (!currentVal) return
+                                    for (let i = 0; i < ServicePipewire.sinks.length; i++) {
+                                        if (ServicePipewire.sinks[i].description === currentVal) {
+                                            ServicePipewire.setAudioSink(ServicePipewire.sinks[i])
+                                            return
+                                        }
                                     }
                                 }
                             }
                         }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            visible: root.hasInfo(ServicePipewire.sink)
+                            InfoChip { glyph: "graphic_eq";     label: root.fmtRate(ServicePipewire.sink) }
+                            InfoChip { glyph: "surround_sound"; label: root.fmtChannels(ServicePipewire.sink) }
+                            InfoChip { glyph: "timer";          label: root.fmtLatency(ServicePipewire.sink) }
+                            InfoChip { glyph: "cable";          label: root.fmtBus(ServicePipewire.sink) }
+                            Item { Layout.fillWidth: true }
+                        }
                     }
                 }
 
-                // Volume
                 CustomCard {
                     autoRadius: false; topRadius: 5; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: 14
 
-                        M3ButtonGroup {
-                            model: [
-                                { value: false, icon: "volume_up"  },
-                                { value: true,  icon: "volume_off" }
-                            ]
-                            activeCheck: function(v) { return ServicePipewire.muted === v }
-                            onSegmentClicked: function(v) {
-                                if (ServicePipewire.muted !== v) ServicePipewire.toggleMute()
-                            }
-                        }
-
-                        Rectangle {
+                        M3Slider {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 36
-                            radius: 10
-                            color: Colors.surfaceContainerHighest
-
-                            M3Slider {
-                                anchors.fill: parent
-                                anchors.leftMargin: 10
-                                anchors.rightMargin: 10
-                                progress: ServicePipewire.volume
-                                peakLevel: outputPeak.peak
-                                showPeak: true
-                                onProgressChanged: {
-                                    if (Math.abs(progress - ServicePipewire.volume) > 0.005)
-                                        ServicePipewire.setVolume(progress)
-                                }
-                            }
+                            progress: ServicePipewire.volume
+                            onMoved: ServicePipewire.setVolume(progress)
                         }
 
-                        Rectangle {
-                            implicitWidth: 50
-                            implicitHeight: 36
-                            radius: 10
-                            color: Colors.surfaceContainerHighest
-                            CustomText {
-                                anchors.centerIn: parent
-                                content: Math.round(ServicePipewire.volume * 100) + "%"
-                                size: 13
-                                weight: 600
-                            }
-                        }
+                        ValueChip { label: Math.round(ServicePipewire.volume * 100) + "%" }
                     }
                 }
             }
@@ -155,93 +229,68 @@ Item {
                 Layout.topMargin: 6
                 spacing: 3
 
-                // Input device
                 CustomCard {
                     autoRadius: false; topRadius: 20; bottomRadius: 5
-                    RowLayout {
+
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Input Device"; size: 14 }
-                            CustomText { content: "Active input source"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredWidth: 200
-                            Layout.preferredHeight: 30
-                            color: Colors.surfaceContainerHighest
-                            currentVal: ServicePipewire.source?.description ?? ""
-                            list: root.sourceList
-                            onCurrentValChanged: {
-                                if (!currentVal) return
-                                for (let i = 0; i < ServicePipewire.sources.length; i++) {
-                                    if (ServicePipewire.sources[i].description === currentVal) {
-                                        ServicePipewire.setAudioSource(ServicePipewire.sources[i])
-                                        return
+                        spacing: 12
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            ColumnLayout {
+                                spacing: 2
+                                CustomText { content: "Input Device"; size: 14 }
+                                CustomText { content: "Active input source"; size: 12; customColor: Colors.outline }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CustomListNew {
+                                Layout.preferredWidth: 200
+                                Layout.preferredHeight: 30
+                                color: Colors.surfaceContainerHighest
+                                currentVal: ServicePipewire.source?.description ?? ""
+                                list: root.sourceList
+                                onCurrentValChanged: {
+                                    if (!currentVal) return
+                                    for (let i = 0; i < ServicePipewire.sources.length; i++) {
+                                        if (ServicePipewire.sources[i].description === currentVal) {
+                                            ServicePipewire.setAudioSource(ServicePipewire.sources[i])
+                                            return
+                                        }
                                     }
                                 }
                             }
                         }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            visible: root.hasInfo(ServicePipewire.source)
+                            InfoChip { glyph: "graphic_eq";     label: root.fmtRate(ServicePipewire.source) }
+                            InfoChip { glyph: "surround_sound"; label: root.fmtChannels(ServicePipewire.source) }
+                            InfoChip { glyph: "timer";          label: root.fmtLatency(ServicePipewire.source) }
+                            InfoChip { glyph: "cable";          label: root.fmtBus(ServicePipewire.source) }
+                            Item { Layout.fillWidth: true }
+                        }
                     }
                 }
 
-                // Mic level
                 CustomCard {
                     autoRadius: false; topRadius: 5; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: 14
 
-                        M3ButtonGroup {
-                            model: [
-                                { value: false, icon: "mic"     },
-                                { value: true,  icon: "mic_off" }
-                            ]
-                            activeCheck: function(v) { return ServicePipewire.micMuted === v }
-                            onSegmentClicked: function(v) {
-                                if (ServicePipewire.micMuted !== v) ServicePipewire.toggleMicMute()
-                            }
-                        }
-
-                        Rectangle {
+                        M3Slider {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 36
-                            radius: 10
-                            color: Colors.surfaceContainerHighest
-
-                            Rectangle {
-                                anchors.left: parent.left; anchors.leftMargin: 10
-                                anchors.right: parent.right; anchors.rightMargin: 10
-                                anchors.verticalCenter: parent.verticalCenter
-                                height: 6
-                                radius: 10
-                                color: Colors.surfaceContainer
-
-                                Rectangle {
-                                    anchors.left: parent.left
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    height: parent.height
-                                    radius: parent.radius
-                                    width: parent.width * inputPeak.peak
-                                    color: inputPeak.peak > 0.85 ? Colors.error : Colors.primary
-                                    Behavior on width { NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
-                                    Behavior on color { ColorAnimation { duration: 100 } }
-                                }
-                            }
+                            progress: ServicePipewire.micVolume
+                            peakLevel: inputPeak.peak
+                            showPeak: true
+                            onMoved: ServicePipewire.setMicVolume(progress)
                         }
 
-                        Rectangle {
-                            implicitWidth: 50
-                            implicitHeight: 36
-                            radius: 10
-                            color: Colors.surfaceContainerHighest
-                            CustomText {
-                                anchors.centerIn: parent
-                                content: Math.round(inputPeak.peak * 100) + "%"
-                                size: 13
-                                weight: 600
-                            }
-                        }
+                        ValueChip { label: Math.round(ServicePipewire.micVolume * 100) + "%" }
                     }
                 }
             }
@@ -249,78 +298,140 @@ Item {
             // ── Playbacks ─────────────────────────────────────────────────
             CustomText { Layout.topMargin: 16; content: "Playbacks"; size: 13; customColor: Colors.primary }
 
+            // Empty state — nothing playing
+            Rectangle {
+                Layout.topMargin: 6
+                Layout.fillWidth: true
+                implicitHeight: 90
+                visible: ServicePipewire.playbacks.length === 0
+                color: Colors.surfaceContainerHigh
+                radius: 20
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 10
+
+                    Item {
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitWidth: 46; implicitHeight: 46
+
+                        MaterialShapes.ShapeCanvas {
+                            anchors.fill: parent
+                            roundedPolygon: MaterialShapeFn.getCookie6Sided()
+                            color: Colors.surfaceContainerHighest
+                        }
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: "music_off"; iconSize: 22; customColor: Colors.outline
+                        }
+                    }
+                    CustomText {
+                        Layout.alignment: Qt.AlignHCenter
+                        content: "Nothing is playing"; size: 13; customColor: Colors.outline
+                    }
+                }
+            }
+
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.topMargin: 6
                 spacing: 3
+                visible: ServicePipewire.playbacks.length > 0
 
                 Repeater {
                     model: ServicePipewire.playbacks
 
                     delegate: Rectangle {
+                        id: stream
+                        required property var modelData
+                        required property int index
+
+                        readonly property string appName:
+                            stream.modelData.properties?.["application.name"] || stream.modelData.name || "Unknown"
+                        readonly property string mediaName:
+                            stream.modelData.properties?.["media.name"] ?? ""
+                        readonly property real vol: stream.modelData.audio?.volume ?? 0
+
                         Layout.fillWidth: true
-                        implicitHeight: streamRow.implicitHeight + 24
+                        implicitHeight: streamRow.implicitHeight + 28
                         color: Colors.surfaceContainerHigh
-                        topLeftRadius:     index === 0 ? 20 : 5
-                        topRightRadius:    index === 0 ? 20 : 5
-                        bottomLeftRadius:  index === ServicePipewire.playbacks.length - 1 ? 20 : 5
-                        bottomRightRadius: index === ServicePipewire.playbacks.length - 1 ? 20 : 5
+                        topLeftRadius:     stream.index === 0 ? 20 : 5
+                        topRightRadius:    stream.index === 0 ? 20 : 5
+                        bottomLeftRadius:  stream.index === ServicePipewire.playbacks.length - 1 ? 20 : 5
+                        bottomRightRadius: stream.index === ServicePipewire.playbacks.length - 1 ? 20 : 5
 
                         RowLayout {
                             id: streamRow
                             anchors.fill: parent
-                            anchors.margins: 12
+                            anchors.margins: 14
                             spacing: 12
 
-                            Image {
-                                Layout.preferredWidth: 36
-                                Layout.preferredHeight: 36
+                            Rectangle {
+                                Layout.preferredWidth: 40
+                                Layout.preferredHeight: 40
                                 Layout.alignment: Qt.AlignVCenter
-                                source: IconUtil.getIconPath(modelData.name)
-                                sourceSize: Qt.size(width, height)
-                                fillMode: Image.PreserveAspectFit
+                                radius: 20
+                                color: Colors.surfaceContainerHighest
+
+                                Image {
+                                    id: streamIcon
+                                    anchors.centerIn: parent
+                                    width: 24; height: 24
+                                    source: IconUtil.getIconPath(stream.modelData.name)
+                                    sourceSize: Qt.size(width, height)
+                                    fillMode: Image.PreserveAspectFit
+                                    visible: status === Image.Ready
+                                }
+
+                                MaterialIconSymbol {
+                                    anchors.centerIn: parent
+                                    content: "volume_up"
+                                    iconSize: 20
+                                    customColor: Colors.outline
+                                    visible: streamIcon.status !== Image.Ready
+                                }
                             }
 
                             ColumnLayout {
+                                id: streamCol
                                 Layout.fillWidth: true
-                                spacing: 4
+                                spacing: 6
 
                                 RowLayout {
                                     Layout.fillWidth: true
+                                    spacing: 8
 
                                     CustomText {
                                         Layout.fillWidth: true
-                                        content: modelData.properties?.["application.name"] || modelData.name
+                                        content: stream.appName
                                         size: 14
-                                        customColor: Colors.primary
                                     }
 
                                     CustomText {
-                                        content: Math.round((modelData.audio?.volume ?? 0) * 100) + "%"
+                                        content: Math.round(stream.vol * 100) + "%"
                                         size: 12
+                                        weight: 600
                                         customColor: Colors.outline
                                     }
                                 }
 
                                 CustomText {
                                     Layout.fillWidth: true
-                                    content: modelData.properties?.["media.name"] ?? ""
+                                    content: stream.mediaName
                                     size: 12
                                     customColor: Colors.outline
-                                    visible: (modelData.properties?.["media.name"] ?? "").length > 0
+                                    visible: stream.mediaName.length > 0
                                 }
 
                                 M3Slider {
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: 18
-                                    handleHeight: 12
-                                    trackHeight: 4
-                                    progress: modelData.audio?.volume ?? 0
-                                    onProgressChanged: {
-                                        const cur = modelData.audio?.volume ?? 0
-                                        if (Math.abs(progress - cur) > 0.005)
-                                            ServicePipewire.setSinkVolume(modelData, progress)
-                                    }
+                                    Layout.preferredHeight: 22
+                                    trackHeight: 8
+                                    handleHeight: 22
+                                    handleGap: 4
+                                    showStopIndicator: false
+                                    progress: stream.vol
+                                    onMoved: ServicePipewire.setSinkVolume(stream.modelData, progress)
                                 }
                             }
                         }

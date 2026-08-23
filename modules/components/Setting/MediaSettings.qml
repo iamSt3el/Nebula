@@ -7,6 +7,7 @@ import Qt.labs.platform
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
+import QtQuick.Controls
 
 Item {
     id: root
@@ -56,6 +57,7 @@ Item {
     readonly property var audioSampleRates: [{ name: "44100" }, { name: "48000" }, { name: "96000" }]
 
     Flickable {
+        ScrollBar.vertical: CustomScrollBar {}
         anchors.fill: parent
         contentHeight: column.implicitHeight + 20
         contentWidth: width

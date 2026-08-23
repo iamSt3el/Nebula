@@ -149,7 +149,8 @@ Item {
                             anchors.fill: parent
                             anchors.margins: 6
                             source: row.usesSymbol ? "" : IconUtil.getIconPath(row.notifData?.appIcon ?? "")
-                            sourceSize: Qt.size(width, height)
+                            sourceSize: Qt.size(24, 24)
+                            asynchronous: true
                             fillMode: Image.PreserveAspectFit
                             visible: !row.usesSymbol && status === Image.Ready
                         }
@@ -163,17 +164,22 @@ Item {
                         }
                     }
 
-                    ClippingRectangle {
+                    Loader {
                         anchors.fill: parent
-                        visible: !row.showIcon && row.hasImage
-                        radius: 18
-                        color: Colors.surfaceContainerHighest
+                        active: !row.showIcon && row.hasImage
+                        visible: active
 
-                        Image {
-                            anchors.fill: parent
-                            source: row.notifData?.image ?? ""
-                            sourceSize: Qt.size(width, height)
-                            fillMode: Image.PreserveAspectCrop
+                        sourceComponent: ClippingRectangle {
+                            radius: 18
+                            color: Colors.surfaceContainerHighest
+
+                            Image {
+                                anchors.fill: parent
+                                source: row.notifData?.image ?? ""
+                                sourceSize: Qt.size(36, 36)
+                                asynchronous: true
+                                fillMode: Image.PreserveAspectCrop
+                            }
                         }
                     }
                 }
@@ -235,19 +241,24 @@ Item {
                     }
                 }
 
-                ClippingRectangle {
+                Loader {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                     Layout.alignment: row.isExtended ? Qt.AlignTop : Qt.AlignVCenter
-                    visible: row.hasImage && row.showIcon
-                    radius: 10
-                    color: Colors.surfaceContainerHighest
+                    active: row.hasImage && row.showIcon
+                    visible: active
 
-                    Image {
-                        anchors.fill: parent
-                        source: row.notifData?.image ?? ""
-                        sourceSize: Qt.size(width, height)
-                        fillMode: Image.PreserveAspectCrop
+                    sourceComponent: ClippingRectangle {
+                        radius: 10
+                        color: Colors.surfaceContainerHighest
+
+                        Image {
+                            anchors.fill: parent
+                            source: row.notifData?.image ?? ""
+                            sourceSize: Qt.size(40, 40)
+                            asynchronous: true
+                            fillMode: Image.PreserveAspectCrop
+                        }
                     }
                 }
 

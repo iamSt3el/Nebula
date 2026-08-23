@@ -35,7 +35,8 @@ Singleton{
     
     readonly property bool muted:    !!sink?.audio?.muted
     readonly property bool micMuted: !!source?.audio?.muted
-    readonly property real volume:   sink?.audio?.volume ?? 0
+    readonly property real volume:    sink?.audio?.volume ?? 0
+    readonly property real micVolume: source?.audio?.volume ?? 0
 
     function toggleMute(): void {
         if (sink?.audio) sink.audio.muted = !sink.audio.muted
@@ -52,6 +53,13 @@ Singleton{
         }
     }
 
+    function setMicVolume(newVolume: real): void{
+        if(source?.ready && source?.audio){
+            source.audio.muted = false;
+            source.audio.volume = Math.max(0, Math.min(1, newVolume))
+        }
+    }
+
     function setSinkVolume(node: PwNode, newVolume: real){
         if(node?.ready && node?.audio){
             node.audio.muted = false;
@@ -59,8 +67,8 @@ Singleton{
         }
     }
 
-    function getName(value: PwAudioChannel): void{
-         PwAudioChannel.toString(value)
+    function getName(value: PwAudioChannel): string{
+        return PwAudioChannel.toString(value)
     }
 
     function incrementVolume(amount: real): void{

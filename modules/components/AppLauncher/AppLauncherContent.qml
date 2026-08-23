@@ -185,11 +185,22 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 
+                    TextMetrics {
+                        id: hintMetrics
+                        font: placeholder.font
+                        text: "Search apps   = calc   > run   : emoji   w windows"
+                    }
+
                     CustomText {
+                        id: placeholder
+                        anchors.left: parent.left
+                        anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        content: "Search apps, or = > : w"
+                        content: hintMetrics.width <= placeholder.width
+                            ? hintMetrics.text : "Search apps"
                         size: 15
                         customColor: Colors.outline
+                        elide: Text.ElideRight
                         visible: searchInput.text.length === 0
                     }
 
@@ -250,7 +261,6 @@ Item {
                     }
                 }
 
-                // Clear button
                 Rectangle {
                     width: 28; height: 28; radius: 10
                     color: Colors.surfaceContainerHighest
@@ -268,113 +278,88 @@ Item {
                         onClicked: searchInput.text = ""
                     }
                 }
-            }
-        }
-
-        // ── Mode hints / active mode chip ─────────────────────────────
-        LauncherModeBar {
-            Layout.fillWidth: true
-            onPrefixRequested: prefix => {
-                searchInput.text = prefix
-                searchInput.cursorPosition = searchInput.text.length
-                searchInput.forceActiveFocus()
-            }
-        }
-
-        // ── Category chips ────────────────────────────────────────────
-        Flickable {
-            Layout.fillWidth: true
-            implicitHeight: 30
-            visible: appLauncher.isApps
-            contentWidth: catGroup.implicitWidth
-            contentHeight: height
-            clip: true
-            interactive: contentWidth > width
-
-            M3ButtonGroup {
-                id: catGroup
-                height: 30
-                model: appLauncher.availableCategories
-                activeCheck: function(value) { return value === appLauncher.selectedCategory }
-                onSegmentClicked: value => {
-                    appLauncher.selectedCategory = value
-                    if (appList) appList.activeIndex = 0
-                }
-                inactiveColor: Colors.surfaceContainerHigh
-            }
-        }
-
-        // ── Count + view toggle row ───────────────────────────────────
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.leftMargin: 2
-            spacing: 0
-
-            MaterialIconSymbol {
-                content: appLauncher.isApps ? "apps" : (ServiceLauncher.activeMode?.icon ?? "")
-                iconSize: 14
-                customColor: Colors.outline
-            }
-            CustomText {
-                Layout.leftMargin: 4
-                Layout.fillWidth: true
-                // In emoji mode the grid cells have no room for a label, so the
-                // name of the selected glyph is surfaced here instead.
-                content: {
-                    if (appLauncher.isApps)
-                        return appLauncher.filteredApps.length + " apps"
-                    if (appLauncher.isEmoji && emojiLoader.item && appLauncher.resultCount > 0)
-                        return emojiLoader.item.activeName
-                    return appLauncher.resultCount + " results"
-                }
-                size: 12
-                customColor: Colors.outline
-                elide: Text.ElideRight
-            }
-
-            Rectangle {
-                visible: appLauncher.isApps
-                width: 62; height: 26; radius: 10
-                color: Colors.surfaceContainerHigh
 
                 Rectangle {
-                    x: appLauncher.isGrid ? 33 : 3
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 26; height: 20; radius: 7
-                    color: Colors.primary
-                    Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-                }
+                    visible: appLauncher.isApps
+                    width: 60; height: 28; radius: 10
+                    color: Colors.surfaceContainerHighest
 
-                RowLayout {
-                    anchors.fill: parent; anchors.margins: 3; spacing: 0
+                    Rectangle {
+                        x: appLauncher.isGrid ? 30 : 3
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 27; height: 22; radius: 8
+                        color: Colors.primary
+                        Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+                    }
 
-                    Item {
-                        Layout.preferredWidth: 26; Layout.fillHeight: true
-                        MaterialIconSymbol {
-                            anchors.centerIn: parent
-                            content: "lists"; iconSize: 15
-                            customColor: !appLauncher.isGrid ? Colors.primaryText : Colors.outline
-                            Behavior on customColor { ColorAnimation { duration: 150 } }
+                    RowLayout {
+                        anchors.fill: parent; anchors.margins: 3; spacing: 0
+
+                        Item {
+                            Layout.preferredWidth: 27; Layout.fillHeight: true
+                            MaterialIconSymbol {
+                                anchors.centerIn: parent
+                                content: "lists"; iconSize: 15
+                                customColor: !appLauncher.isGrid ? Colors.primaryText : Colors.outline
+                                Behavior on customColor { ColorAnimation { duration: 150 } }
+                            }
+                            MouseArea {
+                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                onClicked: SettingsConfig.general = Object.assign({}, SettingsConfig.general, { appGrid: false })
+                            }
                         }
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: SettingsConfig.general = Object.assign({}, SettingsConfig.general, { appGrid: false })
+                        Item {
+                            Layout.preferredWidth: 27; Layout.fillHeight: true
+                            MaterialIconSymbol {
+                                anchors.centerIn: parent
+                                content: "grid_view"; iconSize: 15
+                                customColor: appLauncher.isGrid ? Colors.primaryText : Colors.outline
+                                Behavior on customColor { ColorAnimation { duration: 150 } }
+                            }
+                            MouseArea {
+                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                onClicked: SettingsConfig.general = Object.assign({}, SettingsConfig.general, { appGrid: true })
+                            }
                         }
                     }
-                    Item {
-                        Layout.preferredWidth: 26; Layout.fillHeight: true
-                        MaterialIconSymbol {
-                            anchors.centerIn: parent
-                            content: "grid_view"; iconSize: 15
-                            customColor: appLauncher.isGrid ? Colors.primaryText : Colors.outline
-                            Behavior on customColor { ColorAnimation { duration: 150 } }
-                        }
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: SettingsConfig.general = Object.assign({}, SettingsConfig.general, { appGrid: true })
-                        }
-                    }
                 }
+            }
+        }
+
+        Item {
+            Layout.fillWidth: true
+            implicitHeight: 30
+            visible: appLauncher.isApps ? appLauncher.availableCategories.length > 1 : true
+
+            Flickable {
+                anchors.fill: parent
+                visible: appLauncher.isApps
+                contentWidth: catGroup.implicitWidth
+                contentHeight: height
+                clip: true
+                interactive: contentWidth > width
+
+                M3ButtonGroup {
+                    id: catGroup
+                    height: 30
+                    model: appLauncher.availableCategories
+                    activeCheck: function(value) { return value === appLauncher.selectedCategory }
+                    onSegmentClicked: value => {
+                        appLauncher.selectedCategory = value
+                        if (appList) appList.activeIndex = 0
+                    }
+                    inactiveColor: Colors.surfaceContainerHigh
+                }
+            }
+
+            LauncherModeBar {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !appLauncher.isApps
+                detail: appLauncher.isEmoji && emojiLoader.item && appLauncher.resultCount > 0
+                    ? emojiLoader.item.activeName
+                    : ""
             }
         }
 

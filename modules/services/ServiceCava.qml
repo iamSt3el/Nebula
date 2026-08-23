@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 
 import Quickshell
 import Quickshell.Io
+import QtQuick
 import qs.modules.settings
 
 Singleton {
@@ -14,9 +15,40 @@ Singleton {
     // Averaged down to exactly 12 groups — one per cookie12 star tip
     property var cavaData12: []
 
-    readonly property real smoothFactor: 0.3
+    readonly property real attackAt30: 0.6
+    readonly property real decayAt30: 0.15
+
+    readonly property real attackFactor: 1 - Math.pow(1 - root.attackAt30, 30 / root.fps)
+    readonly property real decayFactor:  1 - Math.pow(1 - root.decayAt30,  30 / root.fps)
+
+    readonly property int bars: {
+        const n = parseInt(SettingsConfig.general?.musicVisBars ?? 60)
+        return (isNaN(n) || n <= 0) ? 60 : Math.max(8, Math.min(256, n))
+    }
+
+    readonly property int fps: {
+        const n = parseInt(SettingsConfig.general?.musicVisFps ?? "30")
+        return (isNaN(n) || n <= 0) ? 30 : Math.max(10, Math.min(144, n))
+    }
 
     property int _refCount: 0
+
+    property bool _restarting: false
+
+    onBarsChanged: root._restart()
+    onFpsChanged: root._restart()
+
+    function _restart() {
+        if (root._refCount <= 0) return
+        root._restarting = true
+        restartTimer.restart()
+    }
+
+    Timer {
+        id: restartTimer
+        interval: 80
+        onTriggered: root._restarting = false
+    }
 
     function retain() {
         _refCount++
@@ -32,12 +64,12 @@ Singleton {
 
     Process {
         id: cavaProc
-        running: root._refCount > 0
+        running: root._refCount > 0 && !root._restarting
         command: ["sh", "-c", `
 cava -p /dev/stdin <<'CAVAEOF'
 [general]
-bars = ${SettingsConfig.general.musicVisBars ?? 60}
-framerate = 30
+bars = ${root.bars}
+framerate = ${root.fps}
 autosens = 1
 
 [input]
@@ -80,7 +112,10 @@ CAVAEOF
                 } else {
                     smoothed = []
                     for (let i = 0; i < newPoints.length; i++) {
-                        smoothed.push(root.cavaData[i] + (newPoints[i] - root.cavaData[i]) * root.smoothFactor)
+                        const prev = root.cavaData[i]
+                        const next = newPoints[i]
+                        const k = next > prev ? root.attackFactor : root.decayFactor
+                        smoothed.push(prev + (next - prev) * k)
                     }
                 }
                 root.cavaData = smoothed

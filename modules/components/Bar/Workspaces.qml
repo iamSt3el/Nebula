@@ -19,9 +19,6 @@ Item{
 
     readonly property bool showArc: !isPill && height > Appearance.size.barHeight + 2
 
-    readonly property bool sweepBottom: showArc
-        && height >= layout.height - panelBottomInset - 36
-
     readonly property real pillPanelTop: Appearance.size.barHeight + 8
 
     property bool contentShown: false
@@ -86,8 +83,21 @@ Item{
         ? ServiceGaps.pillMargin * 2
         : 0
 
+    // Size the chat targets once, off the *open* geometry rather than the
+    // animating one — binding the card to root.width/height relaid out every
+    // line of the transcript at every width the animation passed through.
+    readonly property real openHeight: layout.height - panelBottomInset
+
+    // The bottom-right corner only flares once the block has actually landed on
+    // the screen bottom — mid-animation that curve has nothing to merge into and
+    // just reads as a notch hanging in the air.
+    readonly property bool atScreenBottom: showArc && height >= openHeight - 2
+    readonly property real chatWidth:  panelWidth - (isPill ? 0 : 20)
+    readonly property real chatHeight: Math.max(0, openHeight
+        - (isPill ? pillPanelTop : 10) - (isPill ? 0 : 10))
+
     implicitWidth:  active ? panelWidth : collapsedWidth
-    implicitHeight: active ? layout.height - panelBottomInset : 40
+    implicitHeight: active ? openHeight : 40
 
     Behavior on implicitWidth {
         NumberAnimation {
@@ -108,8 +118,8 @@ Item{
 
         x: root.isPill ? 0 : 10
         y: root.isPill ? root.pillPanelTop : 10
-        width:  root.width - (root.isPill ? 0 : 20)
-        height: Math.max(0, root.height - y - (root.isPill ? 0 : 10))
+        width:  root.chatWidth
+        height: root.chatHeight
 
         visible: root.contentShown
         opacity: root.contentShown ? 1 : 0

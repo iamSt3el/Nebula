@@ -185,9 +185,11 @@ ClippingRectangle{
                             // }
                         }
                         CustomProgressBar{
-                            value: (ServiceMusic.activePlayer?.position / Math.max(ServiceMusic.activePlayer?.length, 1) || 0)
+                            value: ServiceMusic.trackLength > 0
+                                ? Math.max(0, Math.min(1, (ServiceMusic.activePlayer?.position ?? 0) / ServiceMusic.trackLength))
+                                : 0
                             valueBarWidth: parent.width
-                            sperm: true
+                            sperm: false
                             animateSperm: ServiceMusic.isPlaying
                             highlightColor: MusicTheme.primary
                             trackColor: MusicTheme.outline
@@ -202,7 +204,7 @@ ClippingRectangle{
                             }
 
                             CustomText{
-                                content: ServiceMusic.formatTime(ServiceMusic.activePlayer?.length ?? 0)
+                                content: ServiceMusic.formatTime(ServiceMusic.trackLength)
                                 horizontalAlignment: Text.AlignHCenter
                                 size: 10
                             }

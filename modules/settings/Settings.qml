@@ -117,6 +117,10 @@ Singleton{
         {
             name: "AI",
             icon: "neurology"
+        },
+        {
+            name: "Storage",
+            icon: "hard_drive"
         }
     ]
 

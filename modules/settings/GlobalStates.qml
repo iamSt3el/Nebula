@@ -24,5 +24,6 @@ Singleton{
     property bool areaSelectOpen: false
     property bool cheatSheetOpen: false
     property bool overviewOpen: false
+    property bool fileDropOpen: false
     property string areaSelectMode: ""   // "screenshot" or "recording"
 }

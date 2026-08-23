@@ -20,7 +20,7 @@ WidgetHost {
     // Previews read canned values and never start the pollers
     readonly property var si: root.preview ? PreviewData : ServiceSystemInfo
 
-    readonly property int historyLength: 44
+    readonly property int historyLength: root.preview ? 22 : ServiceSystemInfo.netHistoryPoints
 
     // Kept here rather than inside the sparklines so both can be scaled together
     property var downHist: []
@@ -54,15 +54,36 @@ WidgetHost {
     }
     Component.onDestruction: root.si.release()
 
+    property real _accDown: 0
+    property real _accUp: 0
+    property int  _accCount: 0
+
+    function _resetHistory() {
+        root.downHist = []
+        root.upHist = []
+        root._accDown = 0
+        root._accUp = 0
+        root._accCount = 0
+    }
+
     Connections {
         target: ServiceSystemInfo
         enabled: !root.preview
-        // Download and upload are refreshed in the same poll, so one signal
-        // is enough to sample both and keep the two traces time-aligned.
-        function onNetDownloadBpsChanged() {
-            root.sample(ServiceSystemInfo.netDownloadBps / 1024,
-                        ServiceSystemInfo.netUploadBps / 1024)
+        function onNetSampled() {
+            root._accDown += ServiceSystemInfo.netDownloadBps / 1024
+            root._accUp   += ServiceSystemInfo.netUploadBps / 1024
+            root._accCount++
+
+            if (root._accCount < ServiceSystemInfo.netSamplesPerPoint) return
+
+            root.sample(root._accDown / root._accCount, root._accUp / root._accCount)
+            root._accDown = 0
+            root._accUp = 0
+            root._accCount = 0
         }
+
+        function onNetSampleIntervalMsChanged() { root._resetHistory() }
+        function onNetHistoryPointsChanged()    { root._resetHistory() }
     }
 
     // ── Card ──────────────────────────────────────────────────────────
@@ -112,7 +133,8 @@ WidgetHost {
                 maxPoints: root.historyLength
                 maxOverride: root.peak
                 lineColor: Colors.primary
-                lineWidth: 1.5
+                lineWidth: 2
+                logScale: true
             }
 
             // Same component, flipped about its own centre so the trace grows
@@ -128,7 +150,8 @@ WidgetHost {
                 maxPoints: root.historyLength
                 maxOverride: root.peak
                 lineColor: Colors.tertiary
-                lineWidth: 1.5
+                lineWidth: 2
+                logScale: true
 
                 transform: Scale {
                     origin.x: upTrace.width / 2

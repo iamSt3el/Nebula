@@ -16,7 +16,7 @@ Item {
     property real handleSize: 12
 
     readonly property real elapsed: ServiceMusic.activePlayer?.position ?? 0
-    readonly property real total: ServiceMusic.activePlayer?.length ?? 0
+    readonly property real total: ServiceMusic.trackLength
     readonly property real progress: root.total > 0
         ? Math.max(0, Math.min(1, root.elapsed / root.total)) : 0
     readonly property bool canSeek: ServiceMusic.activePlayer?.canSeek ?? false

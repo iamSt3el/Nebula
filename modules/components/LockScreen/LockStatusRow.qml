@@ -38,10 +38,12 @@ RowLayout {
     }
 
     LockInfoChip {
+        readonly property bool _online: ServiceNetwork.connectionType !== "disconnected"
+
         icon: ServiceNetwork.icon
-        label: ServiceNetwork.currentSSID !== "" ? ServiceNetwork.currentSSID : "Offline"
-        iconColor: ServiceNetwork.connectionType === "wifi" ? Colors.surfaceText : Colors.outline
-        labelColor: ServiceNetwork.connectionType === "wifi" ? Colors.surfaceText : Colors.outline
+        label: ServiceNetwork.connectionLabel !== "" ? ServiceNetwork.connectionLabel : "Offline"
+        iconColor: _online ? Colors.surfaceText : Colors.outline
+        labelColor: _online ? Colors.surfaceText : Colors.outline
     }
 
     LockInfoChip {

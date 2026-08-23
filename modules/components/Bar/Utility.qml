@@ -22,8 +22,10 @@ Item {
     property bool isSoundPanelClicked:   false
     property bool isWeatherPanelClicked: false
     property bool isVpnPanelClicked:     false
-    property real dashboardCurveMin:     1150
-    property bool isDashboard:           height > dashboardCurveMin
+    // The panel's inner bottom corner only flares once the panel has actually
+    // landed on the screen bottom — mid-animation that curve has nothing to
+    // merge into. Same rule as the AI panel on the other side of the bar.
+    readonly property bool atScreenBottom: height >= layout.height - 2
     property real soundPanelCenterX: 0
     property real soundPanelSrcW: 90
     property real soundPanelSrcH: 30
@@ -365,7 +367,7 @@ Item {
 
                         MaterialIconSymbol {
                             anchors.centerIn: parent
-                            content:     ServiceNetwork.wifiEnabled ? ServiceNetwork.icon : "signal_wifi_off"
+                            content:     ServiceNetwork.icon
                             iconSize:    18
                             customColor: wifiHov.containsMouse ? Colors.primaryContainerText : Colors.surfaceText
                             Behavior on customColor { ColorAnimation { duration: 150 } }
@@ -379,7 +381,7 @@ Item {
                         }
 
                         CustomToolTip {
-                            content: ServiceNetwork.currentSSID.length > 0 ? ServiceNetwork.currentSSID : "No network"
+                            content: ServiceNetwork.connectionLabel.length > 0 ? ServiceNetwork.connectionLabel : "No network"
                             visible: wifiHov.containsMouse
                         }
                     }

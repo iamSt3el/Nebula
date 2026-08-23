@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import QtQuick
+import qs.modules.settings
 
 Singleton{
     id: root
@@ -29,71 +30,57 @@ Singleton{
     property bool holidaysLoaded: false
     property bool holidayLoadAttempted: false  // Prevent infinite retry loop
 
-    // FileView to monitor holiday cache
-    FileView {
-        id: holidayFile
-        path: Quickshell.env("HOME") + "/.cache/quickshell/holidays/" + root.currentHolidayYear + ".json"
+    // Empty means the script detects the country from the system timezone
+    readonly property string holidayCountry: SettingsConfig.general?.holidayCountry ?? ""
 
-        onLoaded: {
-            try {
-                root.holidayData = JSON.parse(holidayFile.text());
-                root.holidaysLoaded = true;
-                root.holidayLoadAttempted = true;
-                console.log("Holidays loaded for", root.currentHolidayYear + ":", root.holidayData.length, "holidays");
-            } catch (e) {
-                console.error("Failed to parse holiday JSON:", e);
-                root.holidayData = [];
-                root.holidaysLoaded = false;
-            }
-        }
-
-        onLoadFailed: {
-            // Only attempt to run script once per year to prevent infinite loop
-            if (!root.holidayLoadAttempted) {
-                root.holidayLoadAttempted = true;
-                console.log("Holiday cache not found for", root.currentHolidayYear + ", running script...");
-                holidayProcess.command = ["bash", Quickshell.env("HOME") + "/.config/quickshell/holidayList.sh", root.currentHolidayYear.toString()];
-                holidayProcess.running = true;
-            } else {
-                console.log("Holiday cache unavailable for", root.currentHolidayYear + ", skipping (already attempted)");
-            }
-        }
-    }
-
-    // Process to run holiday script when cache doesn't exist
+    // The script owns the per-country cache, so its stdout is the source of truth
     Process {
         id: holidayProcess
         command: []
         running: false
 
-        stdout: SplitParser {
-            onRead: data => {
-                console.log("Holiday script output:", data);
-            }
-        }
-
-        onRunningChanged: {
-            if (!running && !holidaysLoaded) {
-                console.log("Holiday script finished, reloading...");
-                // Reload the file after script completes
-                holidayFile.reload();
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let parsed = [];
+                try {
+                    parsed = JSON.parse(text);
+                } catch (e) {
+                    console.error("Failed to parse holiday JSON:", e);
+                }
+                root.holidayData = Array.isArray(parsed) ? parsed : [];
+                root.holidaysLoaded = root.holidayData.length > 0;
+                if (root.holidaysLoaded)
+                    console.log("Holidays loaded for", root.currentHolidayYear + ":", root.holidayData.length, "holidays");
+                else
+                    console.log("No holidays available for", root.currentHolidayYear, root.holidayCountry);
             }
         }
     }
 
-    Component.onCompleted: {
-        // FileView will automatically try to load the file for current year
-        // If it fails, onLoadFailed will trigger the script
+    function loadHolidays() {
+        if (root.holidayLoadAttempted)
+            return;
+        root.holidayLoadAttempted = true;
+        holidayProcess.command = ["python3", Quickshell.env("HOME") + "/.config/quickshell/scripts/holidays.py", root.currentHolidayYear.toString(), root.holidayCountry];
+        holidayProcess.running = true;
     }
+
+    function resetHolidays() {
+        root.holidaysLoaded = false;
+        root.holidayLoadAttempted = false;
+        root.holidayData = [];
+        root.loadHolidays();
+    }
+
+    Component.onCompleted: root.loadHolidays()
+
+    onHolidayCountryChanged: root.resetHolidays()
 
     // Function to load holidays for a specific year
     function ensureHolidaysForYear(year) {
         if (year !== root.currentHolidayYear) {
             root.currentHolidayYear = year;
-            root.holidaysLoaded = false;
-            root.holidayLoadAttempted = false;  // Reset for new year
-            root.holidayData = [];
-            // Changing currentHolidayYear will update holidayFile.path, triggering a reload
+            root.resetHolidays();
         }
     }
 

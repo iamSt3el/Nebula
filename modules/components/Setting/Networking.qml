@@ -11,6 +11,7 @@ import qs.modules.services
 import qs.modules.customComponents
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
+import QtQuick.Controls
 
 Item {
     id: root
@@ -159,6 +160,7 @@ Item {
 
     // ── Main content ─────────────────────────────────────────────
     Flickable {
+        ScrollBar.vertical: CustomScrollBar {}
         anchors.fill: parent
         contentHeight: column.implicitHeight
         contentWidth: width
@@ -187,7 +189,7 @@ Item {
 
             CustomCard {
                 Layout.topMargin: 6
-                autoRadius: false; topRadius: 20; bottomRadius: 5
+                autoRadius: false; topRadius: 20; bottomRadius: 20
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -208,28 +210,6 @@ Item {
                             if (!Networking.wifiHardwareEnabled) return
                             Networking.wifiEnabled = state
                         }
-                    }
-                }
-            }
-
-            CustomCard {
-                Layout.topMargin: 3
-                autoRadius: false; topRadius: 5; bottomRadius: 20
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    ColumnLayout {
-                        spacing: 2
-                        CustomText { content: "Quick Connect"; size: 14 }
-                        CustomText { content: "Switch to a nearby network"; size: 12; customColor: Colors.outline }
-                    }
-                    Item { Layout.fillWidth: true }
-                    CustomListNew {
-                        Layout.preferredHeight: 30
-                        Layout.preferredWidth: 200
-                        color: Colors.surfaceContainerHighest
-                        objectVal: ServiceNetwork.currentNetwork
-                        list: ServiceNetwork.availableNetworks
                     }
                 }
             }

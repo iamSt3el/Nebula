@@ -10,8 +10,19 @@ Singleton {
     id: root
 
     property var availableNetworks: Networking.devices ?? null
-    property bool isConnected: Networking.wifiEnabled
-    property var currentNetwork: (availableNetworks?.values?.length ?? 0) > 0 ? availableNetworks.values[1] : null
+    readonly property var devices: availableNetworks?.values ?? []
+
+    readonly property var wifiDevice:  devices.find(d => d.type === DeviceType.Wifi)  ?? null
+    readonly property var wiredDevice: devices.find(d => d.type === DeviceType.Wired) ?? null
+
+    readonly property var activeDevice: wiredDevice?.connected ? wiredDevice
+                                      : wifiDevice?.connected  ? wifiDevice
+                                      : null
+
+    readonly property string activeInterface: activeDevice?.name ?? ""
+
+    property bool isConnected: activeDevice !== null
+    property var currentNetwork: wifiDevice
 
     property var networks: !currentNetwork?.networks?.values ? [] :
     currentNetwork.networks.values.slice()
@@ -29,12 +40,15 @@ Singleton {
     property string currentSSID: connectedNetwork?.name ?? ""
 
     property string connectionType: {
-        if (!Networking.wifiEnabled) return "disconnected"
-        if (connectedNetwork) return "wifi"
+        if (wiredDevice?.connected) return "ethernet"
+        if (Networking.wifiEnabled && connectedNetwork) return "wifi"
         return "disconnected"
     }
 
+    readonly property string connectionLabel: connectionType === "ethernet" ? "Ethernet" : currentSSID
+
     property string icon: {
+        if (connectionType === "ethernet") return "lan"
         const sig = (connectedNetwork?.signalStrength ?? 0) * 100
         if (!Networking.wifiEnabled || !connectedNetwork) return "signal_wifi_off"
         if (sig >= 90) return "signal_wifi_4_bar"

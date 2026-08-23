@@ -14,6 +14,7 @@ import qs.modules.components.Clipboard
 import qs.modules.components.WallpaperSelector
 import qs.modules.components.CustomContextMenu
 import qs.modules.components.Osd
+import qs.modules.components.FileDrop
 
 Scope {
     id: root
@@ -28,7 +29,7 @@ Scope {
         anchors.bottom: true
         WlrLayershell.layer: WlrLayer.Overlay
         exclusionMode: ExclusionMode.Normal
-        WlrLayershell.keyboardFocus: (GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.typingGameOpen) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: (GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.typingGameOpen || GlobalStates.fileDropOpen) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
 
         Loader {
@@ -120,7 +121,7 @@ Scope {
             implicitHeight: Math.max(20, child.implicitHeight)
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
-            property bool active: SettingsConfig.general.dockAutoHide ? hover.hovered || GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.typingGameOpen || GlobalStates.osdOpen || contextMenuLoader.active || (dockLoder.item && dockLoder.item.showPreview) : true
+            property bool active: SettingsConfig.general.dockAutoHide ? hover.hovered || GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.typingGameOpen || GlobalStates.fileDropOpen || GlobalStates.osdOpen || contextMenuLoader.active || (dockLoder.item && dockLoder.item.showPreview) : true
             property bool collapsed: false
 
             onActiveChanged: {
@@ -179,6 +180,7 @@ Scope {
                     && !GlobalStates.clipboardOpen
                     && !GlobalStates.wallpaperOpen
                     && !GlobalStates.typingGameOpen
+                    && !GlobalStates.fileDropOpen
                     && !container.collapsed
                     && !child.collapsing
                     && !GlobalStates.osdOpen
@@ -222,6 +224,11 @@ Scope {
                             implicitHeight: Appearance.size.typingGameHeight
                             implicitWidth:  Appearance.size.typingGameWidth
                         }
+                    },
+                    State {
+                        name: "filedrop"
+                        when: GlobalStates.fileDropOpen
+                        PropertyChanges { target: child; implicitHeight: 560; implicitWidth: 460 }
                     },
                     State {
                         name: "osd"
@@ -295,6 +302,15 @@ Scope {
                 }
 
                 Loader {
+                    id: fileDropLoader
+                    active: GlobalStates.fileDropOpen
+                    anchors.fill: parent
+                    sourceComponent: FileDropContent {
+                        onClosed: GlobalStates.fileDropOpen = false
+                    }
+                }
+
+                Loader {
                     id: wallpaperLoader
                     active: GlobalStates.wallpaperOpen
                     anchors.fill: parent
@@ -333,6 +349,7 @@ Scope {
             } else {
                 GlobalStates.clipboardOpen = true
                 GlobalStates.wallpaperOpen = false
+                GlobalStates.fileDropOpen = false
             }
         }
     }
@@ -348,6 +365,22 @@ Scope {
                 GlobalStates.wallpaperOpen = true
                 GlobalStates.clipboardOpen = false
                 GlobalStates.typingGameOpen = false
+                GlobalStates.fileDropOpen = false
+            }
+        }
+    }
+
+    GlobalShortcut {
+        name: "filedrop"
+        onPressed: {
+            if (GlobalStates.fileDropOpen) {
+                GlobalStates.fileDropOpen = false
+            } else {
+                GlobalStates.fileDropOpen = true
+                GlobalStates.clipboardOpen = false
+                GlobalStates.wallpaperOpen = false
+                GlobalStates.typingGameOpen = false
+                if (!ServiceFileDrop.running) ServiceFileDrop.start()
             }
         }
     }
@@ -361,6 +394,7 @@ Scope {
                 GlobalStates.typingGameOpen = true
                 GlobalStates.clipboardOpen = false
                 GlobalStates.wallpaperOpen = false
+                GlobalStates.fileDropOpen = false
             }
         }
     }

@@ -15,6 +15,8 @@ Item {
     property real waveAmplitude:   3
     property real trackGap:        4
     property real stopSize:        4
+    property real innerRadius:     2
+    property real stopTrailingSpace: 6
     property real waveSpeed:       wavelength
 
     property bool  showStopIndicator: true
@@ -93,6 +95,55 @@ Item {
 
             const stopX = root.showStopIndicator && !root.indeterminate
                 ? x1 - root.stopSize / 2 : x1
+
+            // Flat (non-wavy, determinate) draws as two rounded rects so the
+            // corners facing the gap can be square while the outer ends stay
+            // fully round. A stroked line can only give round caps on both.
+            if (!root.indeterminate && root.amp < 0.01) {
+                const ah = root.activeThickness
+                const th = root.trackThickness
+                const outer = ah / 2
+                const inner = Math.min(root.innerRadius, ah / 2)
+                const aEnd = Math.max(0, Math.min(w, w * root._p))
+                const tStart = aEnd + root.trackGap
+
+                function rrect(x, y, rw, rh, rl, rr) {
+                    if (rw <= 0) return
+                    const l = Math.min(rl, rw / 2), r = Math.min(rr, rw / 2)
+                    ctx.beginPath()
+                    ctx.moveTo(x + l, y)
+                    ctx.lineTo(x + rw - r, y)
+                    ctx.arcTo(x + rw, y, x + rw, y + r, r)
+                    ctx.lineTo(x + rw, y + rh - r)
+                    ctx.arcTo(x + rw, y + rh, x + rw - r, y + rh, r)
+                    ctx.lineTo(x + l, y + rh)
+                    ctx.arcTo(x, y + rh, x, y + rh - l, l)
+                    ctx.lineTo(x, y + l)
+                    ctx.arcTo(x, y, x + l, y, l)
+                    ctx.closePath()
+                    ctx.fill()
+                }
+
+                if (tStart < w) {
+                    ctx.fillStyle = root.trackColor
+                    rrect(tStart, cy - th / 2, w - tStart, th, inner, th / 2)
+                }
+                if (aEnd > 0) {
+                    ctx.fillStyle = root.activeColor
+                    rrect(0, cy - ah / 2, aEnd, ah, outer, aEnd >= w ? outer : inner)
+                }
+
+                if (root.showStopIndicator) {
+                    const dotX = w - root.stopTrailingSpace - root.stopSize / 2
+                    if (dotX > aEnd + root.trackGap) {
+                        ctx.fillStyle = root.activeColor
+                        ctx.beginPath()
+                        ctx.arc(dotX, cy, root.stopSize / 2, 0, 2 * Math.PI)
+                        ctx.fill()
+                    }
+                }
+                return
+            }
 
             // ── Inactive track: from after the active end + gap, to the stop dot
             const trackFrom = aTo + root.trackGap + half

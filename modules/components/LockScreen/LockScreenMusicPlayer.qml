@@ -11,7 +11,7 @@ import qs.modules.services
 Item {
     id: root
 
-    readonly property real _length: ServiceMusic.activePlayer?.length ?? 0
+    readonly property real _length: ServiceMusic.trackLength
     readonly property real _position: ServiceMusic.activePlayer?.position ?? 0
 
     // MPRIS position is only re-read when the property is re-notified, so nudge

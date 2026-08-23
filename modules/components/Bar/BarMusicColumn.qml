@@ -17,7 +17,7 @@ Item {
     readonly property bool hasTrack: ServiceMusic.activePlayer !== null
 
     readonly property real elapsed: ServiceMusic.activePlayer?.position ?? 0
-    readonly property real total: ServiceMusic.activePlayer?.length ?? 0
+    readonly property real total: ServiceMusic.trackLength
 
     // Square, capped so a wide slot doesn't push the transport off the bottom
     readonly property real artSide: Math.max(0, Math.min(root.width - root.padding * 2, 170))

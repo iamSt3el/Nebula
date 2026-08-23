@@ -36,7 +36,7 @@ Item {
 
     // Section → page-index mapping
     readonly property var navSections: [
-        { label: "System",  indices: [9, 0, 1, 2, 3, 10] },
+        { label: "System",  indices: [9, 0, 1, 2, 3, 10, 12] },
         { label: "Connect", indices: [4, 5] },
         { label: "Apps",    indices: [6, 7, 11, 8] }
     ]
@@ -218,6 +218,7 @@ Item {
                     Loader { anchors.fill: parent; active: root.currentPage === 9; visible: active; opacity: active ? 1 : 0; scale: active ? 1 : 0.985; Behavior on opacity { NumberAnimation { duration: M3Motion.effects.defaultDuration } } Behavior on scale { NumberAnimation { duration: M3Motion.spatial.fastDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: M3Motion.spatial.fastCurve } } sourceComponent: AppearanceSettings{} }
                     Loader { anchors.fill: parent; active: root.currentPage === 10; visible: active; opacity: active ? 1 : 0; scale: active ? 1 : 0.985; Behavior on opacity { NumberAnimation { duration: M3Motion.effects.defaultDuration } } Behavior on scale { NumberAnimation { duration: M3Motion.spatial.fastDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: M3Motion.spatial.fastCurve } } sourceComponent: Sleep{} }
                     Loader { anchors.fill: parent; active: root.currentPage === 11; visible: active; opacity: active ? 1 : 0; scale: active ? 1 : 0.985; Behavior on opacity { NumberAnimation { duration: M3Motion.effects.defaultDuration } } Behavior on scale { NumberAnimation { duration: M3Motion.spatial.fastDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: M3Motion.spatial.fastCurve } } sourceComponent: Ai{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 12; visible: active; opacity: active ? 1 : 0; scale: active ? 1 : 0.985; Behavior on opacity { NumberAnimation { duration: M3Motion.effects.defaultDuration } } Behavior on scale { NumberAnimation { duration: M3Motion.spatial.fastDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: M3Motion.spatial.fastCurve } } sourceComponent: Storage{} }
 
                 }
             }

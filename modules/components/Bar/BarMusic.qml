@@ -27,7 +27,7 @@ Item {
     readonly property bool playing: ServiceMusic.isPlaying
 
     readonly property real progress: {
-        const len = ServiceMusic.activePlayer?.length ?? 0
+        const len = ServiceMusic.trackLength
         if (len <= 0) return 0
         return Math.max(0, Math.min(1, (ServiceMusic.activePlayer?.position ?? 0) / len))
     }

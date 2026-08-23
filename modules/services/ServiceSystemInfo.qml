@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import qs.modules.settings
 
 Singleton {
     id: root
@@ -38,6 +39,7 @@ Singleton {
 
     function release() {
         if (_refCount > 0) _refCount--
+        if (_refCount === 0) _resetNetBaseline()
     }
 
     function formatNetSpeed(bps) {
@@ -179,39 +181,112 @@ Singleton {
         }
     }
 
-    // --- Network speed (wlan0 from /proc/net/dev) ---
+    // --- Network speed (active interface from /proc/net/dev) ---
+    readonly property string netInterface: ServiceNetwork.activeInterface
+
+    readonly property int netWindowMinutes: {
+        const n = parseInt(SettingsConfig.widgets?.networkGraphWindow ?? "3")
+        return (isNaN(n) || n <= 0) ? 3 : n
+    }
+
+    readonly property int netSampleIntervalMs: {
+        const n = parseInt(SettingsConfig.widgets?.networkGraphInterval ?? "2")
+        return Math.max(1000, Math.min(60000, (isNaN(n) || n <= 0 ? 2 : n) * 1000))
+    }
+
+    readonly property int _netRawPoints:
+        Math.max(1, Math.round(root.netWindowMinutes * 60000 / root.netSampleIntervalMs))
+
+    readonly property int netSamplesPerPoint: Math.max(1, Math.ceil(root._netRawPoints / 240))
+
+    readonly property int netHistoryPoints:
+        Math.max(2, Math.round(root._netRawPoints / root.netSamplesPerPoint))
+
+    signal netSampled()
+
     property var _prevNet: null
     property real _lastNetTime: 0
+
+    function _resetNetBaseline() {
+        root._prevNet = null
+        root._lastNetTime = 0
+    }
+
+    function _clearNetReadings() {
+        root.netDownloadBps = 0
+        root.netUploadBps = 0
+    }
+
+    onNetInterfaceChanged: {
+        _resetNetBaseline()
+        _clearNetReadings()
+        root.netTotalRxBytes = 0
+        root.netTotalTxBytes = 0
+    }
 
     FileView {
         id: netFile
         path: "/proc/net/dev"
 
         onLoaded: {
+            const iface = root.netInterface
+            if (!iface) {
+                root._resetNetBaseline()
+                root._clearNetReadings()
+                root.netSampled()
+                return
+            }
+
+            const prefix = iface + ":"
             const lines = text().split("\n")
+            let rx = NaN, tx = NaN
+
             for (const line of lines) {
                 const trimmed = line.trim()
-                if (!trimmed.startsWith("wlan0:")) continue
-                const parts = trimmed.split(/\s+/)
-                const rx = parseFloat(parts[1])
-                const tx = parseFloat(parts[9])
-                const now = Date.now()
-
-                if (root._prevNet) {
-                    const dt = (now - root._lastNetTime) / 1000
-                    if (dt > 0) {
-                        root.netDownloadBps = (rx - root._prevNet.rx) / dt
-                        root.netUploadBps   = (tx - root._prevNet.tx) / dt
-                    }
-                }
-
-                root.netTotalRxBytes = rx
-                root.netTotalTxBytes = tx
-                root._prevNet = { rx: rx, tx: tx }
-                root._lastNetTime = now
+                if (!trimmed.startsWith(prefix)) continue
+                const parts = trimmed.slice(prefix.length).trim().split(/\s+/)
+                rx = parseFloat(parts[0])
+                tx = parseFloat(parts[8])
                 break
             }
+
+            if (isNaN(rx) || isNaN(tx)) {
+                root._resetNetBaseline()
+                root._clearNetReadings()
+                root.netSampled()
+                return
+            }
+
+            const now = Date.now()
+            const dt = (now - root._lastNetTime) / 1000
+
+            const usable = root._prevNet !== null
+                && rx >= root._prevNet.rx
+                && tx >= root._prevNet.tx
+                && dt > 0
+                && dt < (root.netSampleIntervalMs / 1000) * 3
+
+            if (usable) {
+                root.netDownloadBps = (rx - root._prevNet.rx) / dt
+                root.netUploadBps   = (tx - root._prevNet.tx) / dt
+            } else {
+                root._clearNetReadings()
+            }
+
+            root.netTotalRxBytes = rx
+            root.netTotalTxBytes = tx
+            root._prevNet = { rx: rx, tx: tx }
+            root._lastNetTime = now
+            root.netSampled()
         }
+    }
+
+    Timer {
+        interval: root.netSampleIntervalMs
+        repeat: true
+        running: root._refCount > 0
+        triggeredOnStart: true
+        onTriggered: netFile.reload()
     }
 
     // inotify doesn't work on /proc or /sys, so poll manually
@@ -228,7 +303,6 @@ Singleton {
             gpuTempFile.reload()
             gpuVramUsedFile.reload()
             gpuClockFile.reload()
-            netFile.reload()
         }
     }
 

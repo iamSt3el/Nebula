@@ -6,6 +6,7 @@ import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
 import "../Widgets" as W
+import QtQuick.Controls
 
 Item {
     id: root
@@ -139,6 +140,26 @@ Item {
         ]}
     ]
 
+    readonly property var networkWindows: [
+        { name: "1 min" }, { name: "3 min" }, { name: "5 min" },
+        { name: "10 min" }, { name: "15 min" }, { name: "30 min" }
+    ]
+    readonly property var networkIntervals: [
+        { name: "1 s" }, { name: "2 s" }, { name: "5 s" }, { name: "10 s" }, { name: "30 s" }
+    ]
+
+    readonly property var visualizerStyles: [
+        { name: "Wave" }, { name: "Chart" }
+    ]
+    readonly property var visualizerColors: [
+        { name: "Primary" }, { name: "Secondary" }, { name: "Tertiary" },
+        { name: "Two-tone" }, { name: "Deep" }, { name: "Warm" }
+    ]
+    readonly property var visualizerFps: [
+        { name: "15 fps" }, { name: "30 fps" }, { name: "60 fps" },
+        { name: "90 fps" }, { name: "120 fps" }
+    ]
+
     function isActive(item) {
         if (!(SettingsConfig.widgets[item.show] ?? false)) return false
         if (!item.styleKey) return true
@@ -159,6 +180,7 @@ Item {
     }
 
     Flickable {
+        ScrollBar.vertical: CustomScrollBar {}
         id: flick
         anchors.fill: parent
         contentHeight: column.implicitHeight
@@ -349,6 +371,78 @@ Item {
                 }
 
                 CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Visualizer Style"; size: 14 }
+                            CustomText { content: "Smooth wave or segmented trapezoid chart"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomListNew {
+                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
+                            color: Colors.surfaceContainerHighest
+                            currentVal: SettingsConfig.general.musicVisStyle ?? "Wave"
+                            list: root.visualizerStyles
+                            onCurrentValChanged: {
+                                if (currentVal && currentVal !== SettingsConfig.general.musicVisStyle)
+                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general,
+                                                                           { musicVisStyle: currentVal })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Visualizer Color"; size: 14 }
+                            CustomText { content: "Theme role for the bars and their ghost cap"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomListNew {
+                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
+                            color: Colors.surfaceContainerHighest
+                            currentVal: SettingsConfig.general.musicVisColor ?? "Primary"
+                            list: root.visualizerColors
+                            onCurrentValChanged: {
+                                if (currentVal && currentVal !== SettingsConfig.general.musicVisColor)
+                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general,
+                                                                           { musicVisColor: currentVal })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Visualizer Frame Rate"; size: 14 }
+                            CustomText { content: "Higher is smoother and costs more CPU"; size: 12; customColor: Colors.outline }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomListNew {
+                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
+                            color: Colors.surfaceContainerHighest
+                            currentVal: SettingsConfig.general.musicVisFps ?? "30 fps"
+                            list: root.visualizerFps
+                            onCurrentValChanged: {
+                                if (currentVal && currentVal !== SettingsConfig.general.musicVisFps)
+                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general,
+                                                                           { musicVisFps: currentVal })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
                     autoRadius: false; topRadius: 5; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
@@ -364,6 +458,69 @@ Item {
                             onValChanged: {
                                 if (val !== value)
                                     SettingsConfig.general = Object.assign({}, SettingsConfig.general, { musicVisBars: val })
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Network options (not widgets) ────────────────────────────
+            SectionLabel { content: "Network" }
+
+            ColumnLayout {
+                Layout.fillWidth: true; Layout.topMargin: 6; spacing: 3
+
+                CustomCard {
+                    autoRadius: false; topRadius: 20; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Stats Duration"; size: 14 }
+                            CustomText {
+                                content: "How much history the network graph spans"
+                                size: 12
+                                customColor: Colors.outline
+                            }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomListNew {
+                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
+                            color: Colors.surfaceContainerHighest
+                            currentVal: SettingsConfig.widgets.networkGraphWindow ?? "3 min"
+                            list: root.networkWindows
+                            onCurrentValChanged: {
+                                if (currentVal && currentVal !== SettingsConfig.widgets.networkGraphWindow)
+                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets,
+                                                                           { networkGraphWindow: currentVal })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Update Interval"; size: 14 }
+                            CustomText {
+                                content: "How often the speeds are re-read"
+                                size: 12
+                                customColor: Colors.outline
+                            }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomListNew {
+                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
+                            color: Colors.surfaceContainerHighest
+                            currentVal: SettingsConfig.widgets.networkGraphInterval ?? "2 s"
+                            list: root.networkIntervals
+                            onCurrentValChanged: {
+                                if (currentVal && currentVal !== SettingsConfig.widgets.networkGraphInterval)
+                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets,
+                                                                           { networkGraphInterval: currentVal })
                             }
                         }
                     }

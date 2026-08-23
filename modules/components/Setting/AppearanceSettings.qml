@@ -10,6 +10,7 @@ import qs.modules.customComponents
 import Qt.labs.platform
 import "../../MatrialShapes/" as MaterialShapes
 import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
+import QtQuick.Controls
 
 Item {
     id: root
@@ -88,6 +89,7 @@ Item {
     }
 
     Flickable {
+        ScrollBar.vertical: CustomScrollBar {}
         anchors.fill: parent
         contentHeight: column.implicitHeight
         contentWidth: width

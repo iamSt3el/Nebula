@@ -20,12 +20,20 @@ WidgetHost {
     implicitWidth: 265
     implicitHeight: 288
 
+    // TrapezoidChart binds to an array, unlike CustomSparkline's addValue ring
+    // buffer, so the history lives here now
+    property var netHist: []
+    readonly property int netHistLength: 30
+
+    function pushNet(v) {
+        root.netHist = root.netHist.concat([v]).slice(-root.netHistLength)
+    }
+
     Component.onCompleted: {
         root.si.retain()   // no-op on PreviewData
         if (root.preview) {
-            const seed = [140, 220, 180, 90, 310, 420, 260, 180, 120, 200,
-                          340, 480, 390, 250, 160, 110, 230, 300, 210, 150]
-            for (let i = 0; i < seed.length; i++) netSparkline.addValue(seed[i])
+            root.netHist = [140, 220, 180, 90, 310, 420, 260, 180, 120, 200,
+                            340, 480, 390, 250, 160, 110, 230, 300, 210, 150]
         }
     }
     Component.onDestruction: root.si.release()
@@ -33,8 +41,8 @@ WidgetHost {
     Connections {
         target: ServiceSystemInfo
         enabled: !root.preview
-        function onNetDownloadBpsChanged() {
-            netSparkline.addValue(root.si.netDownloadBps / 1024)
+        function onNetSampled() {
+            root.pushNet(root.si.netDownloadBps / 1024)
         }
     }
 
@@ -262,16 +270,11 @@ WidgetHost {
                     CustomSparkline {
                         id: netSparkline
                         anchors.fill: parent
+                        values: root.netHist
+                        maxPoints: root.netHistLength
                         lineColor: Colors.primary
-                        fillColor: Qt.rgba(
-                            Qt.color(Colors.primary).r,
-                            Qt.color(Colors.primary).g,
-                            Qt.color(Colors.primary).b,
-                            0.12
-                        )
-                        maxPoints: 30
-                        lineWidth: 1.5
-                        filled: true
+                        lineWidth: 2
+                        logScale: true
                     }
                 }
             }
