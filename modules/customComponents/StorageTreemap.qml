@@ -9,6 +9,7 @@ Item {
     property bool busy: false
     property string emptyText: "Empty folder"
     property string scanKey: ""
+    property string itemsKey: ""
 
     signal drill(string name)
 
@@ -22,6 +23,10 @@ Item {
     }
 
     property var tiles: []
+
+    property var _slotNames: []
+    property string _slotKey: ""
+    property bool _awaitingScan: false
 
     property int revealToken: 0
     property real enterScale: 0.94
@@ -47,13 +52,31 @@ Item {
         Colors.tertiaryContainerText
     ]
 
-    onItemsChanged: root._rebuild()
+    onItemsChanged: {
+        if (root._awaitingScan) {
+            root._maybeReveal(false)
+            return
+        }
+        root._rebuild()
+    }
     onWidthChanged: root._reflow()
     onHeightChanged: root._reflow()
 
-    onScanKeyChanged: {
+    onItemsKeyChanged: root._maybeReveal(false)
+
+    onScanKeyChanged: root._awaitingScan = true
+
+    function _maybeReveal(fromMorph) {
+        if (!root._awaitingScan) return
         if (root.morphing) return
-        root.enterScale = 0.94
+        if (root.itemsKey !== root.scanKey) return
+
+        root._awaitingScan = false
+        root._slotKey = root.scanKey
+        root._slotNames = []
+        root.enterScale = fromMorph ? 1.06 : 0.94
+        root.tileLayerOpacity = 1
+        root._rebuild()
         root.revealToken++
     }
 
@@ -101,6 +124,7 @@ Item {
     function _rebuild() {
         if (root.width <= 0 || root.height <= 0 || root.items.length === 0) {
             root.tiles = []
+            root._slotNames = []
             return
         }
         const list = []
@@ -109,7 +133,49 @@ Item {
 
         const out = []
         root._splitLayout(list, 0, 0, root.width, root.height, out)
-        root.tiles = out
+        root.tiles = root._assignSlots(out)
+    }
+
+    function _assignSlots(cells) {
+        if (root.scanKey !== root._slotKey) {
+            root._slotKey = root.scanKey
+            root._slotNames = []
+        }
+
+        const byName = ({})
+        for (let i = 0; i < cells.length; i++) byName[cells[i].item.name] = cells[i]
+
+        const names = root._slotNames.slice()
+        const placed = []
+        for (let i = 0; i < names.length; i++) {
+            const c = byName[names[i]]
+            if (c === undefined) {
+                names[i] = ""
+                placed[i] = null
+            } else {
+                placed[i] = c
+                delete byName[names[i]]
+            }
+        }
+
+        for (const n in byName) {
+            let idx = names.indexOf("")
+            if (idx === -1) {
+                idx = names.length
+                names.push("")
+                placed.push(null)
+            }
+            names[idx] = n
+            placed[idx] = byName[n]
+        }
+
+        while (placed.length > 0 && placed[placed.length - 1] === null) {
+            placed.pop()
+            names.pop()
+        }
+
+        root._slotNames = names
+        return placed
     }
 
     function beginDrill(rect, fill, textColor, label, name) {
@@ -146,8 +212,12 @@ Item {
             script: {
                 root.morphing = false
                 root.enterScale = 1.06
-                root.tileLayerOpacity = 1
-                root.revealToken++
+                if (root._awaitingScan) {
+                    root._maybeReveal(true)
+                } else {
+                    root.tileLayerOpacity = 1
+                    root.revealToken++
+                }
             }
         }
 
@@ -189,6 +259,8 @@ Item {
                 readonly property bool isDir: tile.entry ? tile.entry.isDir : false
                 readonly property bool hovered: tileArea.containsMouse || tileRipple.containsMouse
                 readonly property bool labelled: tile.width > 70 && tile.height > 38
+
+                visible: tile.cell !== null && tile.cell !== undefined
 
                 property bool geomReady: false
 

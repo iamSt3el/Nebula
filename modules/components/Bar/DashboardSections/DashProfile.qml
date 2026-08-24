@@ -79,6 +79,18 @@ Rectangle{
         }
 
         M3IconButton {
+            icon: "refresh"
+            iconSize: 18
+            Layout.preferredHeight: 34
+            Layout.preferredWidth: 34
+            radius: 17
+            onClicked: {
+                root.toggleDashboard()
+                Quickshell.reload(true)
+            }
+        }
+
+        M3IconButton {
             icon: "power_settings_new"
             iconSize: 18
             Layout.preferredHeight: 34

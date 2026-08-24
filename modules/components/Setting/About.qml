@@ -201,6 +201,37 @@ Item {
                     }
                 }
             }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 5
+                Layout.rightMargin: 5
+                Layout.bottomMargin: 5
+                spacing: 8
+
+                M3Button {
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
+                    size: "xsmall"
+                    variant: "outlined"
+                    icon: "restart_alt"
+                    label: "Run setup again"
+                    onClicked: {
+                        GlobalStates.settingsOpen = false
+                        GlobalStates.welcomeOpen = true
+                    }
+                }
+
+                M3Button {
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
+                    size: "xsmall"
+                    variant: "outlined"
+                    icon: "refresh"
+                    label: "Restart shell"
+                    onClicked: Quickshell.reload(true)
+                }
+            }
         }
     }
 

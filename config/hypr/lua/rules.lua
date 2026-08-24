@@ -11,6 +11,18 @@ hl.window_rule({
     center = true,
 })
 
+hl.window_rule({
+    name  = "float-quickshell",
+    match = { class = "^(org\\.)?[Qq]uickshell$" },
+    float = true,
+})
+
+hl.window_rule({
+    name   = "center-welcome",
+    match  = { title = "^Nebula Setup$" },
+    center = true,
+})
+
 -- Disable blur for empty-class XWayland context menus (prevents artifacts)
 hl.window_rule({
     name  = "noblur-xwayland-menus",

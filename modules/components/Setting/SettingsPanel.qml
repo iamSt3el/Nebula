@@ -5,15 +5,20 @@ import qs.modules.settings
 import qs.modules.customComponents
 
 Scope {
-    FloatingWindow {
-        id: floatWindow
-        implicitWidth: 1000
-        implicitHeight: 700
-        title: "Settings"
-        color: "transparent"
+    LazyLoader {
+        id: settingsLoader
 
-        SettingsContent {
-            onSettingClosed: GlobalStates.settingsOpen = false
+        activeAsync: true
+
+        component: FloatingWindow {
+            implicitWidth: 1000
+            implicitHeight: 700
+            title: "Settings"
+            color: "transparent"
+
+            SettingsContent {
+                onSettingClosed: GlobalStates.settingsOpen = false
+            }
         }
     }
 
@@ -22,7 +27,7 @@ Scope {
     // which would break a plain binding; a Binding element re-applies on every
     // later change, so the shortcut keeps working afterwards.
     Binding {
-        target: floatWindow
+        target: settingsLoader.item
         property: "visible"
         value: GlobalStates.settingsOpen
         restoreMode: Binding.RestoreNone
@@ -32,9 +37,10 @@ Scope {
     // settingsOpen stays true and the next keypress only toggles it to false —
     // which is why it took two presses to get the window back.
     Connections {
-        target: floatWindow
+        target: settingsLoader.item
         function onVisibleChanged() {
-            if (!floatWindow.visible) GlobalStates.settingsOpen = false
+            if (settingsLoader.item && !settingsLoader.item.visible)
+                GlobalStates.settingsOpen = false
         }
     }
 

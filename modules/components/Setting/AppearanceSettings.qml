@@ -46,33 +46,14 @@ Item {
         return { key: key, label: key, icon: "widgets" }
     }
 
-    // The grid reorders live as you drag, so it needs a mutable model of its
-    // own rather than reading the settings array directly — the settings write
-    // only happens once, on drop.
-    ListModel { id: dashModel }
-
-    function dashRebuild() {
-        dashModel.clear()
+    readonly property var dashSegments: {
+        const out = []
         const o = root.dashOrder
-        for (var i = 0; i < o.length; i++) dashModel.append({ secKey: o[i] })
-    }
-
-    function dashPersistOrder() {
-        var arr = []
-        for (var i = 0; i < dashModel.count; i++) arr.push(dashModel.get(i).secKey)
-        SettingsConfig.dashboard = Object.assign({}, SettingsConfig.dashboard, { order: arr })
-    }
-
-    Component.onCompleted: root.dashRebuild()
-
-    // Re-sync only when the saved order actually differs from what the grid is
-    // showing. Without the comparison, our own write on drop would rebuild the
-    // model and fight the drag that produced it.
-    onDashOrderChanged: {
-        if (dashModel.count !== root.dashOrder.length) { root.dashRebuild(); return }
-        for (var i = 0; i < dashModel.count; i++) {
-            if (dashModel.get(i).secKey !== root.dashOrder[i]) { root.dashRebuild(); return }
+        for (var i = 0; i < o.length; i++) {
+            const m = root.dashMeta(o[i])
+            out.push({ value: o[i], label: m.label, icon: m.icon })
         }
+        return out
     }
 
     FileDialog {
@@ -763,141 +744,36 @@ Item {
                 Layout.topMargin: 2
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                content: "Click a card to show or hide it, drag to reorder. Cards read left to right, top to bottom \u2014 the same order they stack in the dashboard, which sizes itself to whatever you leave on."
+                content: "Click one to show or hide it, drag to reorder. They stack in the dashboard in this order, which sizes itself to whatever you leave on."
                 size: 12
                 customColor: Colors.outline
             }
 
-            GridView {
-                id: dashGrid
+            M3ButtonGroup {
                 Layout.fillWidth: true
                 Layout.topMargin: 10
-                Layout.preferredHeight: {
-                    const perRow = Math.max(1, Math.floor(width / cellWidth))
-                    return Math.ceil(count / perRow) * cellHeight
+                Layout.preferredHeight: 56
+
+                fillWidth: true
+                reorderable: true
+                iconSize: 20
+                textSize: 12
+                model: root.dashSegments
+
+                activeCheck: key => SettingsConfig.dashboard?.[key] ?? true
+
+                onSegmentClicked: key => {
+                    var patch = {}
+                    patch[key] = !(SettingsConfig.dashboard?.[key] ?? true)
+                    SettingsConfig.dashboard = Object.assign({}, SettingsConfig.dashboard, patch)
                 }
 
-                cellWidth: 112
-                cellHeight: 96
-                interactive: false
-                model: dashModel
-
-                // Cards slide out of the way as a drag passes over them
-                displaced: Transition {
-                    NumberAnimation { properties: "x,y"; duration: 180; easing.type: Easing.OutQuad }
-                }
-
-                delegate: Item {
-                    id: slot
-                    required property int index
-                    required property string secKey
-
-                    width: dashGrid.cellWidth
-                    height: dashGrid.cellHeight
-                    // Lift the whole slot so the dragged card is never painted
-                    // under a neighbour as it leaves its own cell
-                    z: dragArea.drag.active ? 2 : 1
-
-                    readonly property var meta: root.dashMeta(secKey)
-                    readonly property bool on: SettingsConfig.dashboard?.[secKey] ?? true
-
-                    DropArea {
-                        anchors.fill: parent
-                        onEntered: function(drag) {
-                            const from = drag.source.slotIndex
-                            if (from !== slot.index) dashModel.move(from, slot.index, 1)
-                        }
-                    }
-
-                    Rectangle {
-                        id: card
-                        property int slotIndex: slot.index
-
-                        width: 104
-                        height: 88
-                        x: (slot.width  - width)  / 2
-                        y: (slot.height - height) / 2
-                        radius: 18
-
-                        color: slot.on ? Qt.alpha(Colors.primary, 0.13)
-                                       : Colors.surfaceContainerHigh
-                        border.width: slot.on ? 2 : 0
-                        border.color: Colors.primary
-
-                        scale: dragArea.drag.active ? 1.06 : 1
-                        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
-                        Behavior on color { ColorAnimation { duration: 150 } }
-
-                        Drag.active: dragArea.drag.active
-                        Drag.source: card
-                        Drag.hotSpot.x: width / 2
-                        Drag.hotSpot.y: height / 2
-
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            spacing: 6
-
-                            MaterialIconSymbol {
-                                Layout.alignment: Qt.AlignHCenter
-                                content: slot.meta.icon
-                                iconSize: 24
-                                fill: slot.on ? 1 : 0
-                                customColor: slot.on ? Colors.primary : Colors.outline
-                            }
-
-                            CustomText {
-                                Layout.alignment: Qt.AlignHCenter
-                                content: slot.meta.label
-                                size: 12
-                                weight: slot.on ? 700 : 500
-                                customColor: slot.on ? Colors.primary : Colors.surfaceText
-                            }
-                        }
-
-                        MaterialIconSymbol {
-                            anchors.top: parent.top
-                            anchors.right: parent.right
-                            anchors.margins: 7
-                            visible: slot.on
-                            content: "check_circle"
-                            iconSize: 14
-                            fill: 1
-                            customColor: Colors.primary
-                        }
-
-                        MouseArea {
-                            id: dragArea
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-
-                            drag.target: card
-                            drag.axis: Drag.XAndYAxis
-
-                            // Dragging moves the card by writing x/y directly,
-                            // which breaks the centring bindings — they have to
-                            // be restored explicitly once the card is dropped.
-                            property bool didDrag: false
-                            onPressed: didDrag = false
-                            onPositionChanged: if (drag.active) didDrag = true
-
-                            onReleased: {
-                                card.Drag.drop()
-                                card.x = Qt.binding(() => (slot.width  - card.width)  / 2)
-                                card.y = Qt.binding(() => (slot.height - card.height) / 2)
-                                if (didDrag) root.dashPersistOrder()
-                            }
-
-                            onClicked: {
-                                if (didDrag) return   // a drag is not a toggle
-                                var patch = {}
-                                patch[slot.secKey] = !slot.on
-                                SettingsConfig.dashboard = Object.assign({}, SettingsConfig.dashboard, patch)
-                            }
-                        }
-                    }
+                onSegmentMoved: (from, to) => {
+                    const arr = root.dashOrder.slice()
+                    arr.splice(to, 0, arr.splice(from, 1)[0])
+                    SettingsConfig.dashboard = Object.assign({}, SettingsConfig.dashboard, { order: arr })
                 }
             }
-
 
             // ── Game Mode ────────────────────────────────────────────────
             CustomText { Layout.topMargin: 16; content: "Game Mode"; size: 13; customColor: Colors.primary }

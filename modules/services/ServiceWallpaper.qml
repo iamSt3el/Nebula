@@ -328,7 +328,7 @@ Singleton {
     property alias folderModel: folderModel
     property alias cacheModel: cacheModel
 
-    property int currentIndex: 0
+    property var thumbQueue: []
     property bool isProcessing: false
 
     Process {
@@ -370,9 +370,10 @@ Singleton {
         }
 
         onStatusChanged: {
-            if (status === FolderListModel.Ready && count === 0) {
+            if (status === FolderListModel.Ready && count === 0)
                 console.warn("[ServiceWallpaper] Folder is ready but empty. Path:", root.wallpaperDir)
-            }
+            if (status === FolderListModel.Ready)
+                root.generateThumbnails()
         }
     }
 
@@ -394,72 +395,75 @@ Singleton {
         }
 
         onStatusChanged: {
-            console.log("[ServiceWallpaper] Cache model status:", status)
+            if (status === FolderListModel.Ready)
+                root.generateThumbnails()
         }
+    }
+
+    function cachedThumbNames() {
+        const have = ({})
+        for (let i = 0; i < cacheModel.count; i++)
+            have[cacheModel.get(i, "fileName")] = true
+        return have
     }
 
     function generateThumbnails() {
-        if (folderModel.count === 0 || root.isProcessing) return
-        console.log("[ServiceWallpaper] Starting thumbnail generation for", folderModel.count, "wallpapers")
+        if (root.isProcessing) return
+        if (folderModel.count === 0) return
+        if (folderModel.status !== FolderListModel.Ready) return
+        if (cacheModel.status !== FolderListModel.Ready) return
+
+        const have = root.cachedThumbNames()
+        const queue = []
+
+        for (let i = 0; i < folderModel.count; i++) {
+            const originalPath = folderModel.get(i, "filePath")
+            const hash = Qt.md5(originalPath)
+            const thumbPath = root.cacheDir + "/" + hash + ".jpg"
+
+            if (have[hash + ".jpg"]) {
+                root.wallpaperMap[thumbPath] = originalPath
+                root.processedFiles[originalPath] = true
+                continue
+            }
+
+            if (root.processedFiles[originalPath]) continue
+            queue.push({ originalPath: originalPath, thumbPath: thumbPath })
+        }
+
+        root.updateWallpapersList()
+
+        if (queue.length === 0) return
+
+        console.log("[ServiceWallpaper] Generating", queue.length, "missing thumbnails")
+        root.thumbQueue = queue
         root.isProcessing = true
-        currentIndex = 0
-        processNextThumbnail()
+        root.processNextThumbnail()
     }
 
     function processNextThumbnail() {
-        while (currentIndex < folderModel.count) {
-            const originalPath = folderModel.get(currentIndex, "filePath")
-
-            if (!root.processedFiles[originalPath]) {
-                const hash = Qt.md5(originalPath)
-                const thumbPath = root.cacheDir + "/" + hash + ".jpg"
-
-                root.processedFiles[originalPath] = true
-
-                thumbChecker.originalPath = originalPath
-                thumbChecker.thumbPath = thumbPath
-                thumbChecker.command = ["test", "-f", thumbPath]
-                thumbChecker.running = true
-                return
-            }
-
-            currentIndex++
+        if (root.thumbQueue.length === 0) {
+            root.isProcessing = false
+            root.updateWallpapersList()
+            return
         }
 
-        // All done
-        console.log("[ServiceWallpaper] Thumbnail generation completed. Updating wallpapers list...")
-        root.isProcessing = false
-        updateWallpapersList()
-    }
+        const job = root.thumbQueue[0]
+        root.processedFiles[job.originalPath] = true
+        root.wallpaperMap[job.thumbPath] = job.originalPath
 
-    Process {
-        id: thumbChecker
-        property string originalPath: ""
-        property string thumbPath: ""
-
-        onExited: (exitCode) => {
-            if (exitCode === 0) {
-                console.log("[ServiceWallpaper] Thumbnail exists:", thumbPath)
-                root.wallpaperMap[thumbPath] = originalPath
-                currentIndex++
-                processNextThumbnail()
-            } else {
-                console.log("[ServiceWallpaper] Generating thumbnail for:", originalPath)
-                root.wallpaperMap[thumbPath] = originalPath
-                thumbGenerator.originalPath = originalPath
-                thumbGenerator.thumbPath = thumbPath
-                thumbGenerator.command = [
-                    "convert",
-                    originalPath,
-                    "-resize", root.thumbSize + "x" + root.thumbSize + "^",
-                    "-gravity", "center",
-                    "-extent", root.thumbSize + "x" + root.thumbSize,
-                    "-quality", "85",
-                    thumbPath
-                ]
-                thumbGenerator.running = true
-            }
-        }
+        thumbGenerator.originalPath = job.originalPath
+        thumbGenerator.thumbPath = job.thumbPath
+        thumbGenerator.command = [
+            "convert",
+            job.originalPath,
+            "-resize", root.thumbSize + "x" + root.thumbSize + "^",
+            "-gravity", "center",
+            "-extent", root.thumbSize + "x" + root.thumbSize,
+            "-quality", "85",
+            job.thumbPath
+        ]
+        thumbGenerator.running = true
     }
 
     Process {
@@ -468,13 +472,11 @@ Singleton {
         property string thumbPath: ""
 
         onExited: (exitCode) => {
-            if (exitCode === 0) {
-                console.log("[ServiceWallpaper] Thumbnail generated successfully:", thumbPath)
-            } else {
+            if (exitCode !== 0) {
                 console.error("[ServiceWallpaper] Failed to generate thumbnail for:", originalPath)
                 delete root.wallpaperMap[thumbPath]
             }
-            currentIndex++
+            root.thumbQueue = root.thumbQueue.slice(1)
             processNextThumbnail()
         }
     }

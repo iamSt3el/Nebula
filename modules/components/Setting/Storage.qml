@@ -362,6 +362,7 @@ Item {
                         items: ServiceStorage.children
                         busy: ServiceStorage.mapScanning
                         scanKey: ServiceStorage.currentPath
+                        itemsKey: ServiceStorage.childrenPath
                         onDrill: name => ServiceStorage.drillInto(name)
                     }
 

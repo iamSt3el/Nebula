@@ -17,7 +17,6 @@ Singleton{
     property bool widgetTextFocus: false
     property bool osdOpen: false
     property bool wallpaperOpen: false
-    property bool typingGameOpen: false
     property bool toolsWidgetOpen: false
     property bool shutdownWindow: false
     property bool fileDialogOpen: false
@@ -25,5 +24,6 @@ Singleton{
     property bool cheatSheetOpen: false
     property bool overviewOpen: false
     property bool fileDropOpen: false
+    property bool welcomeOpen: false
     property string areaSelectMode: ""   // "screenshot" or "recording"
 }

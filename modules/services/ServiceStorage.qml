@@ -16,6 +16,9 @@ Singleton {
     property var children: []
     property bool mapScanning: false
 
+    property string childrenPath: ""
+    property string scanTarget: ""
+
     property var pathStack: []
     readonly property string currentPath:
         root.pathStack.length > 0 ? root.pathStack[root.pathStack.length - 1] : ""
@@ -63,7 +66,7 @@ Singleton {
 
     function scanPath(path) {
         if (!path) return
-        root.children = []
+        root.scanTarget = path
         root.mapScanning = true
         childrenProc.rows = []
         childrenProc.dirty = false
@@ -74,6 +77,7 @@ Singleton {
     function publishRows() {
         const rows = childrenProc.rows.slice()
         rows.sort((a, b) => b.bytes - a.bytes)
+        root.childrenPath = root.scanTarget
         if (rows.length <= 40) {
             root.children = rows
             return
@@ -137,7 +141,7 @@ Singleton {
     }
 
     Timer {
-        interval: 150
+        interval: 400
         repeat: true
         running: root.mapScanning
         onTriggered: {

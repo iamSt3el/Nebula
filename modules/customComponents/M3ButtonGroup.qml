@@ -19,6 +19,12 @@ Item {
     property var activeCheck: function(value) { return false }
     signal segmentClicked(var value)
 
+    property bool reorderable: false
+    signal segmentMoved(int from, int to)
+
+    property int dragIndex: -1
+    property int dropIndex: -1
+
     property color activeColor: Colors.primary
     property color activeTextColor: Colors.primaryText
     property color inactiveColor: Colors.surfaceContainerHighest
@@ -59,10 +65,17 @@ Item {
                 readonly property bool hasIcon: !!modelData.icon
                 readonly property bool hasLabel: !!modelData.label
                 readonly property bool isPressed: root.pressedIndex === index
+                readonly property bool isDragged: root.dragIndex === index
+                readonly property bool isDropTarget: root.reorderable
+                    && root.dropIndex === index && root.dragIndex !== index
                 readonly property bool isNeighbour:
                     root.pressedIndex >= 0 && Math.abs(root.pressedIndex - index) === 1
 
                 height: root.height
+                z: seg.isDragged ? 2 : 1
+
+                property real dragShift: 0
+                transform: Translate { x: seg.dragShift }
 
                 readonly property real contentWidth:
                     (seg.hasIcon ? _icon.implicitWidth : 0)
@@ -109,7 +122,10 @@ Item {
 
                 Rectangle {
                     anchors.fill: parent
-                    color: seg.active ? root.activeColor : root.inactiveColor
+                    scale: seg.isDragged ? 1.05 : 1
+                    Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
+                    color: seg.isDropTarget ? Qt.alpha(root.activeColor, 0.35)
+                         : seg.active ? root.activeColor : root.inactiveColor
                     Behavior on color {
                         ColorAnimation { duration: M3Motion.effects.fastDuration }
                     }
@@ -178,7 +194,60 @@ Item {
                     rippleColor: Qt.alpha(seg.active ? root.activeTextColor
                                                      : Colors.primary, 0.25)
                     onPressedChanged: root.pressedIndex = pressed ? seg.index : -1
-                    onClicked: root.segmentClicked(seg.modelData.value)
+                    onClicked: if (!root.reorderable) root.segmentClicked(seg.modelData.value)
+                }
+
+                MouseArea {
+                    id: dragArea
+                    anchors.fill: parent
+                    enabled: root.reorderable
+                    visible: root.reorderable
+                    hoverEnabled: false
+                    cursorShape: Qt.PointingHandCursor
+
+                    property real pressX: 0
+                    property bool moved: false
+
+                    onPressed: mouse => {
+                        dragArea.pressX = mouse.x
+                        dragArea.moved = false
+                        root.dragIndex = seg.index
+                        root.dropIndex = seg.index
+                        root.pressedIndex = seg.index
+                    }
+
+                    onPositionChanged: mouse => {
+                        if (root.dragIndex !== seg.index) return
+                        const dx = mouse.x - dragArea.pressX
+                        if (Math.abs(dx) > 3) dragArea.moved = true
+                        seg.dragShift = dx
+
+                        const p = dragArea.mapToItem(_row, mouse.x, seg.height / 2)
+                        const over = _row.childAt(p.x, seg.height / 2)
+                        if (over && over.index !== undefined)
+                            root.dropIndex = over.index
+                    }
+
+                    onReleased: {
+                        const from = seg.index
+                        const to = root.dropIndex
+                        seg.dragShift = 0
+                        root.dragIndex = -1
+                        root.dropIndex = -1
+                        root.pressedIndex = -1
+
+                        if (dragArea.moved && to >= 0 && to !== from)
+                            root.segmentMoved(from, to)
+                        else if (!dragArea.moved)
+                            root.segmentClicked(seg.modelData.value)
+                    }
+
+                    onCanceled: {
+                        seg.dragShift = 0
+                        root.dragIndex = -1
+                        root.dropIndex = -1
+                        root.pressedIndex = -1
+                    }
                 }
             }
         }

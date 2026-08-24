@@ -36,8 +36,6 @@ Singleton{
         property int clockHeight: 40
         property int wallpaperPanelWidth: 1200
         property int wallpaperPanelHeight: 520
-        property int typingGameWidth: 900
-        property int typingGameHeight: 380
         property int todoPanelWidth: 380
         property int todoPanelHeight: 620
         property int vpnPanelWidth: 340

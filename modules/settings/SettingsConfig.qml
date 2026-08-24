@@ -20,6 +20,8 @@ Singleton {
     property alias dashboard: settingsAdapter.dashboard
     property alias sleep: settingsAdapter.sleep
 
+    property bool settingsReady: false
+
     Timer {
         id: writeTimer
         interval: 100
@@ -40,8 +42,10 @@ Singleton {
         watchChanges: true
         onFileChanged: reloadTimer.restart()
         onAdapterUpdated: writeTimer.restart()
+        onLoaded: root.settingsReady = true
         onLoadFailed: error => {
             if (error == FileViewError.FileNotFound) {
+                root.settingsReady = true
                 writeTimer.restart()
             }
         }
@@ -74,7 +78,8 @@ Singleton {
                 barCenter: "clock",
                 motionScheme: "expressive",
                 holidayCountry: "",
-                fileDropDir: ""
+                fileDropDir: "",
+                welcomeDone: false
             })
 
             property var general: ({
@@ -102,7 +107,8 @@ Singleton {
                 barCenter: "clock",
                 motionScheme: "expressive",
                 holidayCountry: "",
-                fileDropDir: ""
+                fileDropDir: "",
+                welcomeDone: false
             })
 
             onGeneralChanged: {

@@ -20,7 +20,7 @@ hl.bind(mainMod .. " + CTRL + RETURN", hl.dsp.global("quickshell:appLauncher"))
 hl.bind(mainMod .. " + S",             hl.dsp.global("quickshell:toolsWidget"))
 hl.bind(mainMod .. " + V",             hl.dsp.global("quickshell:clipboard"))
 hl.bind(mainMod .. " + CTRL + S",      hl.dsp.global("quickshell:settingOpen"))
-hl.bind(mainMod .. " + A",             hl.dsp.global("quickshell:mangaReader"))
+hl.bind(mainMod .. " + SHIFT + W",     hl.dsp.global("quickshell:welcome"))
 
 -- ─── Applications ─────────────────────────────────────────────────────────────
 hl.bind(mainMod .. " + RETURN",   hl.dsp.exec_cmd(terminal))

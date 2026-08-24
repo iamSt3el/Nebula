@@ -19,6 +19,7 @@ import qs.modules.components.GameMode
 import qs.modules.components.CheatSheet
 import qs.modules.components.Overview
 import qs.modules.components.Ai
+import qs.modules.components.Welcome
 import qs.modules.customComponents
 import qs.modules.services
 import qs.modules.settings
@@ -85,6 +86,8 @@ ShellRoot{
 
     // Type or dictate a prompt into claude.ai — hyprctl dispatch global quickshell:ai
     AiPanel {}
+
+    WelcomePanel {}
 
     // Lock screen - responds to `loginctl lock-session`
     LockScreen {}

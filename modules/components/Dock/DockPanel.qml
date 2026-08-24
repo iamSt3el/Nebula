@@ -29,7 +29,7 @@ Scope {
         anchors.bottom: true
         WlrLayershell.layer: WlrLayer.Overlay
         exclusionMode: ExclusionMode.Normal
-        WlrLayershell.keyboardFocus: (GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.typingGameOpen || GlobalStates.fileDropOpen) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: (GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.fileDropOpen) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
 
         Loader {
@@ -121,7 +121,7 @@ Scope {
             implicitHeight: Math.max(20, child.implicitHeight)
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
-            property bool active: SettingsConfig.general.dockAutoHide ? hover.hovered || GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.typingGameOpen || GlobalStates.fileDropOpen || GlobalStates.osdOpen || contextMenuLoader.active || (dockLoder.item && dockLoder.item.showPreview) : true
+            property bool active: SettingsConfig.general.dockAutoHide ? hover.hovered || GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.fileDropOpen || GlobalStates.osdOpen || contextMenuLoader.active || (dockLoder.item && dockLoder.item.showPreview) : true
             property bool collapsed: false
 
             onActiveChanged: {
@@ -179,7 +179,6 @@ Scope {
                 property bool wantDock: SettingsConfig.general.dock
                     && !GlobalStates.clipboardOpen
                     && !GlobalStates.wallpaperOpen
-                    && !GlobalStates.typingGameOpen
                     && !GlobalStates.fileDropOpen
                     && !container.collapsed
                     && !child.collapsing
@@ -214,15 +213,6 @@ Scope {
                             target: child
                             implicitHeight: Appearance.size.wallpaperPanelHeight
                             implicitWidth:  Appearance.size.wallpaperPanelWidth
-                        }
-                    },
-                    State {
-                        name: "typingGame"
-                        when: GlobalStates.typingGameOpen
-                        PropertyChanges {
-                            target: child
-                            implicitHeight: Appearance.size.typingGameHeight
-                            implicitWidth:  Appearance.size.typingGameWidth
                         }
                     },
                     State {
@@ -266,15 +256,6 @@ Scope {
                         }
                     }
                 ]
-
-                // Loader {
-                //     id: typingGameLoader
-                //     active: GlobalStates.typingGameOpen
-                //     anchors.fill: parent
-                //     sourceComponent: TypingGameContent {
-                //         onClosed: GlobalStates.typingGameOpen = false
-                //     }
-                // }
 
                 Loader{
                     id: osdLoader
@@ -364,7 +345,6 @@ Scope {
             } else {
                 GlobalStates.wallpaperOpen = true
                 GlobalStates.clipboardOpen = false
-                GlobalStates.typingGameOpen = false
                 GlobalStates.fileDropOpen = false
             }
         }
@@ -379,23 +359,9 @@ Scope {
                 GlobalStates.fileDropOpen = true
                 GlobalStates.clipboardOpen = false
                 GlobalStates.wallpaperOpen = false
-                GlobalStates.typingGameOpen = false
                 if (!ServiceFileDrop.running) ServiceFileDrop.start()
             }
         }
     }
 
-    GlobalShortcut {
-        name: "typingGame"
-        onPressed: {
-            if (GlobalStates.typingGameOpen) {
-                GlobalStates.typingGameOpen = false
-            } else {
-                GlobalStates.typingGameOpen = true
-                GlobalStates.clipboardOpen = false
-                GlobalStates.wallpaperOpen = false
-                GlobalStates.fileDropOpen = false
-            }
-        }
-    }
 }
