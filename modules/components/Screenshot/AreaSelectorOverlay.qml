@@ -20,6 +20,7 @@ Scope {
 
             anchors { top: true; left: true; right: true; bottom: true }
             color: "transparent"
+            WlrLayershell.namespace: "quickshell:screenshot"
             WlrLayershell.layer:         WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
             exclusionMode:               ExclusionMode.Ignore
@@ -309,6 +310,7 @@ Scope {
                             anchors.verticalCenter: parent.verticalCenter
                             content: {
                                 if (overlay.isWindowMode) return "window"
+                                if (GlobalStates.areaSelectMode === "ocr") return "text_select_start"
                                 return GlobalStates.areaSelectMode === "screenshot" ? "photo_camera" : "videocam"
                             }
                             iconSize: 14
@@ -322,6 +324,7 @@ Scope {
                                         ? (overlay.windowList[overlay.hoveredIdx]["class"] || "Window")
                                         : "Click a window"
                                 }
+                                if (GlobalStates.areaSelectMode === "ocr") return "Copy text"
                                 return GlobalStates.areaSelectMode === "screenshot" ? "Screenshot" : "Recording"
                             }
                             size: 11; weight: 700; color: Colors.surfaceText
@@ -382,6 +385,7 @@ Scope {
                         var mode = GlobalStates.areaSelectMode
                         GlobalStates.areaSelectOpen = false
                         if (mode === "screenshot") ServiceTools.takeAreaScreenshot(geo)
+                        else if (mode === "ocr") ServiceTools.ocrArea(geo)
                         else if (mode === "recording") ServiceTools.startWithGeometry("Area", geo)
                     }
                 }

@@ -20,6 +20,7 @@ PanelWindow{
 
     // Normally parked behind windows. Arrange mode has to come forward and take
     // the keyboard, otherwise the widgets are unreachable and Esc never arrives.
+    WlrLayershell.namespace: "quickshell:backgroundWidgets"
     WlrLayershell.layer: GlobalStates.widgetEditMode ? WlrLayer.Top : WlrLayer.Bottom
 
     // Three states rather than two. A layer surface with None can be clicked but

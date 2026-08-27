@@ -20,6 +20,7 @@ Scope{
             implicitHeight: Appearance.size.osdHeight
             visible: true
             color: "transparent"
+            WlrLayershell.namespace: "quickshell:osd"
             WlrLayershell.layer: WlrLayer.Top
             exclusionMode: ExclusionMode.Normal
             WlrLayershell.keyboardFocus:WlrKeyboardFocus.None

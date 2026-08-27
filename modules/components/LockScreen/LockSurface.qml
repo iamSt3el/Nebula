@@ -53,8 +53,9 @@ Item {
         anchors.fill: parent
         source: WallpaperTheme.wallpaper
         fillMode: Image.PreserveAspectCrop
-        sourceSize: Qt.size(width, height)
-        asynchronous: false
+        sourceSize.width: 1920
+        sourceSize.height: 1080
+        asynchronous: true
         layer.enabled: true
         layer.effect: MultiEffect {
             blurEnabled: true; blur: 0.8; blurMax: 40; autoPaddingEnabled: false

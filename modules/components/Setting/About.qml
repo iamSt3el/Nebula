@@ -64,6 +64,7 @@ Item {
     }
 
     Flickable {
+        id: pageFlick
         ScrollBar.vertical: CustomScrollBar {}
         anchors.fill: parent
         contentHeight: column.implicitHeight
@@ -98,7 +99,8 @@ Item {
                         Image {
                             anchors.centerIn: parent
                             width: 32; height: 32
-                            sourceSize: Qt.size(width, height)
+                            sourceSize.width: 32
+                            sourceSize.height: 32
                             source: IconUtil.getSystemIconPng("nebula")
                             fillMode: Image.PreserveAspectFit
                         }
@@ -233,6 +235,10 @@ Item {
                 }
             }
         }
+    }
+    ScrollFade {
+        anchors.fill: parent
+        flickable: pageFlick
     }
 
     component InfoRow: CustomCard {

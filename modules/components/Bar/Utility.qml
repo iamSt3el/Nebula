@@ -275,7 +275,8 @@ Item {
 
                             Image {
                                 width: 16; height: 16
-                                sourceSize: Qt.size(width, height)
+                                sourceSize.width: 16
+                                sourceSize.height: 16
                                 source: IconUtil.getSystemIcon(ServiceWeather.weatherIconPath.svg)
                             }
 

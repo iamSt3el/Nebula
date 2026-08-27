@@ -27,6 +27,7 @@ Scope {
             anchors.left: true
             anchors.right: true
             anchors.bottom: true
+            WlrLayershell.namespace: "quickshell:session"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
             exclusionMode: ExclusionMode.Normal

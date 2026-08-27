@@ -176,36 +176,25 @@ Item {
         add: Transition {
             enabled: list.populated
             ParallelAnimation {
-                NumberAnimation {
+                SpatialAnim {
                     property: "x"; from: list.width; to: 0
-                    duration: Appearance.motion.spatialDefault
-                    easing.type: Appearance.motion.spatialEasing
-                    easing.overshoot: Appearance.motion.spatialOvershoot
                 }
-                NumberAnimation {
+                EffectsAnim {
                     property: "opacity"; from: 0; to: 1
-                    duration: Appearance.motion.effectsDefault
-                    easing.type: Appearance.motion.effectsEasing
                 }
             }
         }
 
         addDisplaced: Transition {
             enabled: list.populated
-            NumberAnimation {
+            SpatialAnim {
                 property: "y"
-                duration: Appearance.motion.spatialDefault
-                easing.type: Appearance.motion.spatialEasing
-                easing.overshoot: Appearance.motion.spatialOvershoot
             }
         }
 
         displaced: Transition {
-            NumberAnimation {
+            SpatialAnim {
                 property: "y"
-                duration: Appearance.motion.spatialDefault
-                easing.type: Appearance.motion.spatialEasing
-                easing.overshoot: Appearance.motion.spatialOvershoot
             }
         }
 

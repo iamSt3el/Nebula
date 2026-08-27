@@ -37,10 +37,7 @@ Rectangle {
         radius: 16
         color: pill.active ? Colors.primary : Colors.surfaceContainerHigh
         Behavior on color {
-            ColorAnimation {
-                duration: Appearance.motion.effectsDefault
-                easing.type: Appearance.motion.effectsEasing
-            }
+            EffectsColorAnim {}
         }
 
         RowLayout {
@@ -54,10 +51,7 @@ Rectangle {
                 iconSize: 15
                 customColor: pill.active ? Colors.primaryText : Colors.surfaceVariantText
                 Behavior on customColor {
-                    ColorAnimation {
-                        duration: Appearance.motion.effectsDefault
-                        easing.type: Appearance.motion.effectsEasing
-                    }
+                    EffectsColorAnim {}
                 }
             }
 

@@ -43,6 +43,9 @@ Canvas {
     }
 
     Component.onCompleted: requestPaint()
+    onWidthChanged: requestPaint()
+    onHeightChanged: requestPaint()
+    onVisibleChanged: if (visible) requestPaint()
     onProgressChanged: requestPaint()
     onColorChanged: requestPaint()
     onBorderWidthChanged: requestPaint()

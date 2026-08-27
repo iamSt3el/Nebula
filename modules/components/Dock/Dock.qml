@@ -167,7 +167,8 @@ Item {
                     source: Quickshell.iconPath(
                         DesktopEntries.heuristicLookup(dockItem.modelData.appId)?.icon,
                         "image-missing")
-                    sourceSize: Qt.size(width, height)
+                    sourceSize.width: 32
+                    sourceSize.height: 32
                     fillMode: Image.PreserveAspectFit
 
                     scale: dockIconArea.containsMouse ? 1.12 : 1.0

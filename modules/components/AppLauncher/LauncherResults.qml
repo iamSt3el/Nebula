@@ -61,7 +61,8 @@ ListView {
                 Image {
                     anchors.centerIn: parent
                     width: 26; height: 26
-                    sourceSize: Qt.size(width, height)
+                    sourceSize.width: 26
+                    sourceSize.height: 26
                     source: (item.modelData.iconName ?? "").length > 0
                         ? IconUtil.getIconPath(item.modelData.iconName)
                         : ""

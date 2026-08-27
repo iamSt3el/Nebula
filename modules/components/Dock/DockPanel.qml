@@ -27,6 +27,7 @@ Scope {
         anchors.left: true
         anchors.right: true
         anchors.bottom: true
+        WlrLayershell.namespace: "quickshell:dock"
         WlrLayershell.layer: WlrLayer.Overlay
         exclusionMode: ExclusionMode.Normal
         WlrLayershell.keyboardFocus: (GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.fileDropOpen) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None

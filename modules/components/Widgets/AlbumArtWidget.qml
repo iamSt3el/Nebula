@@ -74,7 +74,8 @@ WidgetHost {
                 anchors.fill: parent
                 source: root.artUrl
                 fillMode: Image.PreserveAspectFit
-                sourceSize: Qt.size(width, height)
+                sourceSize.width: 320
+                sourceSize.height: 320
                 visible: root.hasArt
                 asynchronous: true
             }

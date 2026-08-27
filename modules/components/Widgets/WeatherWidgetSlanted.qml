@@ -46,7 +46,8 @@ WidgetHost {
         Layout.topMargin: 8
         width: 60
         height: 60
-        sourceSize: Qt.size(width, height)
+        sourceSize.width: 60
+        sourceSize.height: 60
         source: IconUtil.getSystemIcon(ServiceWeather.weatherIconPath.svg)
     }
 

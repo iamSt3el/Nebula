@@ -67,7 +67,8 @@ PopupWindow {
                         source: Quickshell.iconPath(
                             DesktopEntries.heuristicLookup(root.appEntry?.appId ?? "")?.icon,
                             "image-missing")
-                        sourceSize: Qt.size(width, height)
+                        sourceSize.width: 32
+                        sourceSize.height: 32
                         fillMode: Image.PreserveAspectFit
                     }
 

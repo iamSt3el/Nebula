@@ -20,6 +20,7 @@ Scope{
             anchors.left: true
             anchors.top: true
             anchors.bottom: true
+            WlrLayershell.namespace: "quickshell:appLauncher"
             WlrLayershell.layer: WlrLayer.Top
             exclusionMode: ExclusionMode.Normal
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand

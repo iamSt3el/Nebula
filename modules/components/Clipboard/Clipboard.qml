@@ -20,6 +20,7 @@ Scope{
             implicitWidth: 400
             implicitHeight: 600
             anchors.bottom: true
+            WlrLayershell.namespace: "quickshell:clipboard"
             WlrLayershell.layer: WlrLayer.Top
             exclusionMode: ExclusionMode.Normal
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand

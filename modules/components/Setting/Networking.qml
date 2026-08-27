@@ -160,6 +160,7 @@ Item {
 
     // ── Main content ─────────────────────────────────────────────
     Flickable {
+        id: pageFlick
         ScrollBar.vertical: CustomScrollBar {}
         anchors.fill: parent
         contentHeight: column.implicitHeight
@@ -432,5 +433,9 @@ Item {
 
             Item { Layout.preferredHeight: 20 }
         }
+    }
+    ScrollFade {
+        anchors.fill: parent
+        flickable: pageFlick
     }
 }

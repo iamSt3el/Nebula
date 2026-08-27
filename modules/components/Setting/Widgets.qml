@@ -530,4 +530,8 @@ Item {
             Item { Layout.preferredHeight: 20 }
         }
     }
+    ScrollFade {
+        anchors.fill: parent
+        flickable: flick
+    }
 }

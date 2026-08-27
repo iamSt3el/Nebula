@@ -668,6 +668,7 @@ def _atomic_write(path: Path, content: str) -> None:
     try:
         with os.fdopen(fd, "w") as f:
             f.write(content)
+        os.chmod(tmp, 0o644)
         os.replace(tmp, path)
     except Exception:
         try:

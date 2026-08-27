@@ -21,6 +21,7 @@ hl.bind(mainMod .. " + S",             hl.dsp.global("quickshell:toolsWidget"))
 hl.bind(mainMod .. " + V",             hl.dsp.global("quickshell:clipboard"))
 hl.bind(mainMod .. " + CTRL + S",      hl.dsp.global("quickshell:settingOpen"))
 hl.bind(mainMod .. " + SHIFT + W",     hl.dsp.global("quickshell:welcome"))
+hl.bind(mainMod .. " + O",             hl.dsp.global("quickshell:ocr"))
 
 -- ─── Applications ─────────────────────────────────────────────────────────────
 hl.bind(mainMod .. " + RETURN",   hl.dsp.exec_cmd(terminal))

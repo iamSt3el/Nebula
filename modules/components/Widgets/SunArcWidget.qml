@@ -175,7 +175,8 @@ WidgetHost {
             Image {
                 anchors.fill: parent
                 source: IconUtil.getSystemIcon("sunny")
-                sourceSize: Qt.size(width, height)
+                sourceSize.width: 68
+                sourceSize.height: 68
                 smooth: true
             }
         }

@@ -28,7 +28,8 @@ Rectangle{
 
             Image{
                 anchors.fill: parent
-                sourceSize: Qt.size(width, height)
+                sourceSize.width: 80
+                sourceSize.height: 80
                 source: SettingsConfig.general.profile
             }
         }

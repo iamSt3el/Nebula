@@ -53,7 +53,8 @@ WidgetHost {
                 Image {
                     width: 44
                     height: 44
-                    sourceSize: Qt.size(width, height)
+                    sourceSize.width: 44
+                    sourceSize.height: 44
                     source: IconUtil.getSystemIcon(ServiceWeather.weatherIconPath.svg)
                 }
 
@@ -134,7 +135,8 @@ WidgetHost {
                                 Layout.alignment: Qt.AlignHCenter
                                 width: 28
                                 height: 28
-                                sourceSize: Qt.size(width, height)
+                                sourceSize.width: 28
+                                sourceSize.height: 28
                                 source: getDayIcon(ServiceWeather.forecastDays[index])
                             }
 

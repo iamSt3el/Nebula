@@ -33,6 +33,7 @@ Scope {
             color: "transparent"
             anchors { top: true; left: true; right: true; bottom: true }
 
+            WlrLayershell.namespace: "quickshell:cheatsheet"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 

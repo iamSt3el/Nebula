@@ -23,7 +23,6 @@ import qs.modules.components.Welcome
 import qs.modules.customComponents
 import qs.modules.services
 import qs.modules.settings
-import qs.modules
 
 ShellRoot{
     DockPanel{}
@@ -77,6 +76,15 @@ ShellRoot{
 
     // Fullscreen area selector (replaces slurp for screenshot/recording area mode)
     AreaSelectorOverlay {}
+
+    // Live Text — hyprctl dispatch global quickshell:ocr
+    LiveTextOverlay {}
+
+    // Post-capture thumbnail with Copy / Edit / Open / Delete
+    ScreenshotPreview {}
+
+    // Delayed-capture countdown
+    CaptureCountdown {}
 
     // Keybinding cheat sheet — hyprctl dispatch global quickshell:cheatsheet
     CheatSheet {}

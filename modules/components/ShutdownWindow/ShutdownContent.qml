@@ -90,7 +90,8 @@ Item {
                 Image {
                     anchors.fill: parent
                     source: SettingsConfig.general.profile
-                    sourceSize: Qt.size(width, height)
+                    sourceSize.width: 144
+                    sourceSize.height: 144
                     fillMode: Image.PreserveAspectCrop
                 }
 

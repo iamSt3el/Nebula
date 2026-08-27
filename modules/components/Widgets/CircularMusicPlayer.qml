@@ -201,7 +201,8 @@ WidgetHost {
 
         Image {
             anchors.fill: parent
-            sourceSize: Qt.size(width, height)
+            sourceSize.width: 300
+            sourceSize.height: 300
             fillMode: Image.PreserveAspectCrop
             source: ServiceMusic.activeTrack?.artUrl ?? ""
         }
@@ -233,7 +234,8 @@ WidgetHost {
         // // Sharp album art
         Image {
             anchors.fill: parent
-            sourceSize: Qt.size(width, height)
+            sourceSize.width: 300
+            sourceSize.height: 300
             fillMode: Image.PreserveAspectCrop
             source: ServiceMusic.activeTrack?.artUrl ?? ""
         }

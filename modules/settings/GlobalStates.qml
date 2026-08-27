@@ -21,6 +21,7 @@ Singleton{
     property bool shutdownWindow: false
     property bool fileDialogOpen: false
     property bool areaSelectOpen: false
+    property bool liveTextOpen: false
     property bool cheatSheetOpen: false
     property bool overviewOpen: false
     property bool fileDropOpen: false

@@ -70,6 +70,7 @@ Item {
     }
 
     Flickable {
+        id: pageFlick
         ScrollBar.vertical: CustomScrollBar {}
         anchors.fill: parent
         contentHeight: column.implicitHeight
@@ -118,7 +119,8 @@ Item {
                         Image {
                             id: profileArt
                             anchors.fill: parent
-                            sourceSize: Qt.size(width, height)
+                            sourceSize.width: 136
+                            sourceSize.height: 136
                             source: SettingsConfig.general.profile
                             fillMode: Image.PreserveAspectCrop
                             visible: false
@@ -881,5 +883,9 @@ Item {
 
             Item { Layout.preferredHeight: 20 }
         }
+    }
+    ScrollFade {
+        anchors.fill: parent
+        flickable: pageFlick
     }
 }

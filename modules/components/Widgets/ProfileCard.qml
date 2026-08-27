@@ -96,7 +96,8 @@ WidgetHost {
 
                     Image {
                         anchors.fill: parent
-                        sourceSize: Qt.size(width, height)
+                        sourceSize.width: 160
+                        sourceSize.height: 160
                         fillMode: Image.PreserveAspectCrop
                         source: SettingsConfig.general.profile ?? ""
                         visible: status === Image.Ready

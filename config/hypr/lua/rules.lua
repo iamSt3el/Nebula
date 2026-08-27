@@ -124,6 +124,7 @@ hl.layer_rule({ name = "qs-bg-blur",        match = { namespace = "quickshell:ba
 hl.layer_rule({ name = "qs-screenshot-noanim", match = { namespace = "quickshell:screenshot"    }, no_anim = true             })
 hl.layer_rule({ name = "qs-corners-popin",  match = { namespace = "quickshell:screenCorners"    }, animation = "popin 120%"   })
 hl.layer_rule({ name = "qs-lock-noanim",    match = { namespace = "quickshell:lockWindowPusher" }, no_anim = true             })
+hl.layer_rule({ name = "qs-livetext-noanim", match = { namespace = "quickshell:livetext"       }, no_anim = true             })
 
 -- Notification / GTK layer blur
 hl.layer_rule({ name = "gtk-blur",        match = { namespace = "gtk%-layer%-shell" }, blur = true })

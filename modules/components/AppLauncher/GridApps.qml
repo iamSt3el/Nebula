@@ -77,7 +77,8 @@ GridView {
                         Image {
                             anchors.centerIn: parent
                             width: 30; height: 30
-                            sourceSize: Qt.size(width, height)
+                            sourceSize.width: 30
+                            sourceSize.height: 30
                             source: IconUtil.getIconPath(modelData.icon)
                             fillMode: Image.PreserveAspectFit
                             asynchronous: true

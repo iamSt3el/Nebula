@@ -4,14 +4,55 @@ import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
+import Quickshell.Hyprland
 
 Item {
     id: root
-    implicitWidth:  300
-    implicitHeight: 300
+    implicitWidth:  cardW + 32
+    implicitHeight: cardH + 32
 
-    // "camera" | "recording"
+    readonly property real cardW: 300
+    readonly property real cardH: 292
+
+    // "camera" | "recording" | "text"
     property string toolMode: "camera"
+
+    readonly property bool showDelay: toolMode === "camera"
+
+    readonly property var optionModel: {
+        if (toolMode === "text")
+            return [ { icon: "text_select_start", label: "Live Text", act: "livetext" },
+                     { icon: "select",            label: "Region",    act: "ocrarea"  } ]
+        if (toolMode === "recording")
+            return [ { icon: "monitor", label: "Screen", act: "screen" },
+                     { icon: "window",  label: "Window", act: "window" },
+                     { icon: "select",  label: "Area",   act: "area"   } ]
+        return [ { icon: "screenshot_monitor", label: "Screen", act: "screen" },
+                 { icon: "window",             label: "Window", act: "window" },
+                 { icon: "select",             label: "Area",   act: "area"   } ]
+    }
+
+    function trigger(act) {
+        const cam = root.toolMode === "camera"
+        const mon = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
+
+        var selectorMode = ""
+        if (act === "window")       selectorMode = cam ? "window-screenshot" : "window-recording"
+        else if (act === "area")    selectorMode = cam ? "screenshot" : "recording"
+        else if (act === "ocrarea") selectorMode = "ocr"
+
+        GlobalStates.toolsWidgetOpen = false
+
+        if (selectorMode !== "") {
+            GlobalStates.areaSelectMode = selectorMode
+            GlobalStates.areaSelectOpen = true
+        } else if (act === "screen") {
+            if (cam) ServiceTools.takeScreenshot("Screen")
+            else     ServiceTools.startDelayed("Screen", "")
+        } else if (act === "livetext") {
+            if (mon !== "") ServiceTools.startLiveText(mon)
+        }
+    }
 
     // ── Card entrance ─────────────────────────────────────────────────────
     property real _cs: 0.88
@@ -25,7 +66,7 @@ Item {
     // ── Elevation shadow ──────────────────────────────────────────────────
     Rectangle {
         anchors.centerIn: parent
-        width: 268; height: 246
+        width: root.cardW; height: root.cardH
         radius: 30
         color: Colors.shadow
         opacity: root._co * 0.08
@@ -37,7 +78,7 @@ Item {
     Rectangle {
         id: card
         anchors.centerIn: parent
-        width: 268; height: 246
+        width: root.cardW; height: root.cardH
         radius: 28
         color: Colors.surfaceContainerLow
         clip: true
@@ -61,7 +102,8 @@ Item {
 
                     MaterialIconSymbol {
                         anchors.centerIn: parent
-                        content:  root.toolMode === "camera" ? "photo_camera" : "screen_record"
+                        content:  root.toolMode === "camera" ? "photo_camera"
+                                 : root.toolMode === "text" ? "text_select_start" : "screen_record"
                         iconSize: 16
                         color:    Colors.primaryContainerText
                     }
@@ -69,7 +111,8 @@ Item {
 
                 CustomText {
                     Layout.fillWidth: true
-                    content: root.toolMode === "camera" ? "Screenshot" : "Recording"
+                    content: root.toolMode === "camera" ? "Screenshot"
+                       : root.toolMode === "text" ? "Live Text" : "Recording"
                     size: 15; weight: 600; color: Colors.surfaceText
                 }
 
@@ -116,8 +159,9 @@ Item {
                     anchors.margins: 3
                     spacing: 3
 
-                    SegBtn { width: (parent.width - 3) / 2; height: parent.height; mode: "camera";     icon: "photo_camera";  label: "Camera" }
-                    SegBtn { width: (parent.width - 3) / 2; height: parent.height; mode: "recording";  icon: "screen_record"; label: "Record" }
+                    SegBtn { width: (parent.width - 6) / 3; height: parent.height; mode: "camera";    icon: "photo_camera";      label: "Camera" }
+                    SegBtn { width: (parent.width - 6) / 3; height: parent.height; mode: "recording"; icon: "screen_record";     label: "Record" }
+                    SegBtn { width: (parent.width - 6) / 3; height: parent.height; mode: "text";      icon: "text_select_start"; label: "Text" }
                 }
             }
 
@@ -131,38 +175,21 @@ Item {
                     anchors.fill: parent
                     spacing: 8
                     opacity: (ServiceTools.isRecording && root.toolMode === "recording") ? 0 : 1
-                    Behavior on opacity { NumberAnimation { duration: 240 } }
+                    Behavior on opacity { EffectsAnim { speed: "default" } }
 
-                    OptionCard {
-                        Layout.fillWidth: true; Layout.fillHeight: true
-                        icon: root.toolMode === "camera" ? "screenshot_monitor" : "monitor"
-                        label: "Screen"; delay: 0
-                        onTriggered: {
-                            if (root.toolMode === "camera") {
-                                GlobalStates.toolsWidgetOpen = false
-                                ServiceTools.takeScreenshot("Screen")
-                            } else {
-                                GlobalStates.toolsWidgetOpen = false
-                                ServiceTools.startDelayed("Screen", "")
-                            }
-                        }
-                    }
-                    OptionCard {
-                        Layout.fillWidth: true; Layout.fillHeight: true
-                        icon: "window"; label: "Window"; delay: 55
-                        onTriggered: {
-                            GlobalStates.toolsWidgetOpen = false
-                            GlobalStates.areaSelectMode  = root.toolMode === "camera" ? "window-screenshot" : "window-recording"
-                            GlobalStates.areaSelectOpen  = true
-                        }
-                    }
-                    OptionCard {
-                        Layout.fillWidth: true; Layout.fillHeight: true
-                        icon: "select"; label: "Area"; delay: 110
-                        onTriggered: {
-                            GlobalStates.toolsWidgetOpen = false
-                            GlobalStates.areaSelectMode  = root.toolMode === "camera" ? "screenshot" : "recording"
-                            GlobalStates.areaSelectOpen  = true
+                    Repeater {
+                        model: root.optionModel
+
+                        delegate: OptionCard {
+                            required property var modelData
+                            required property int index
+
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            icon:  modelData.icon
+                            label: modelData.label
+                            delay: index * 55
+                            onTriggered: root.trigger(modelData.act)
                         }
                     }
                 }
@@ -283,6 +310,34 @@ Item {
                     }
                 }
             }
+
+            // ── Delay chips (camera only) ──────────────────────────────────
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                spacing: 6
+                opacity: root.showDelay ? 1 : 0
+                visible: opacity > 0.01
+                Behavior on opacity { EffectsAnim { speed: "fast" } }
+
+                CustomText {
+                    content: "Delay"
+                    size: 10; weight: 600
+                    color: Colors.surfaceVariantText
+                    Layout.rightMargin: 2
+                }
+
+                Repeater {
+                    model: [ { s: 0, t: "Off" }, { s: 3, t: "3s" }, { s: 5, t: "5s" }, { s: 10, t: "10s" } ]
+
+                    delegate: DelayChip {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        seconds: modelData.s
+                        label:   modelData.t
+                    }
+                }
+            }
         }
     }
 
@@ -400,6 +455,39 @@ Item {
             id: ocMa
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: oc.triggered()
+        }
+    }
+
+    // ── Delay chip ─────────────────────────────────────────────────────────
+    component DelayChip: Rectangle {
+        id: dc
+        implicitHeight: 26
+        radius: 13
+
+        property int    seconds: 0
+        property string label: ""
+
+        readonly property bool active: ServiceTools.captureDelay === dc.seconds
+
+        color: active ? Colors.secondaryContainer
+                      : dcMa.containsMouse ? Qt.alpha(Colors.surfaceText, 0.08) : "transparent"
+        border.width: active ? 0 : 1
+        border.color: Colors.outlineVariant
+        Behavior on color { EffectsColorAnim { speed: "fast" } }
+
+        CustomText {
+            anchors.centerIn: parent
+            content: dc.label
+            size: 10; weight: dc.active ? 700 : 500
+            color: dc.active ? Colors.secondaryContainerText : Colors.surfaceVariantText
+        }
+
+        MouseArea {
+            id: dcMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: ServiceTools.captureDelay = dc.seconds
         }
     }
 }

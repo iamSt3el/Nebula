@@ -43,7 +43,8 @@ Rectangle {
 
                 Image {
                     anchors.fill: parent
-                    sourceSize: Qt.size(width, height)
+                    sourceSize.width: 128
+                    sourceSize.height: 128
                     source: ServiceMusic.activeTrack?.artUrl ?? ""
                     fillMode: Image.PreserveAspectCrop
                     visible: player.hasTrack && source !== ""

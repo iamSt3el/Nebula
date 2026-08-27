@@ -28,6 +28,7 @@ Scope {
             anchors.top: true
             margins.top: 90
 
+            WlrLayershell.namespace: "quickshell:gameModeToast"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
             exclusionMode: ExclusionMode.Ignore

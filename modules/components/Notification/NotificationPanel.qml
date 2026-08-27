@@ -127,20 +127,15 @@ Item {
             add: Transition {
                 enabled: list.populated
                 ParallelAnimation {
-                    NumberAnimation {
+                    SpatialAnim {
                         property: "x"
                         from: list.width
                         to: 0
-                        duration: Appearance.motion.spatialDefault
-                        easing.type: Appearance.motion.spatialEasing
-                        easing.overshoot: Appearance.motion.spatialOvershoot
                     }
-                    NumberAnimation {
+                    EffectsAnim {
                         property: "opacity"
                         from: 0
                         to: 1
-                        duration: Appearance.motion.effectsDefault
-                        easing.type: Appearance.motion.effectsEasing
                     }
                 }
             }
@@ -195,12 +190,10 @@ Item {
                             duration: Appearance.motion.spatialFast
                             easing.type: Easing.InCubic
                         }
-                        NumberAnimation {
+                        EffectsAnim {
                             target: card
                             property: "opacity"
                             to: 0
-                            duration: Appearance.motion.effectsDefault
-                            easing.type: Appearance.motion.effectsEasing
                         }
                         SequentialAnimation {
                             PauseAnimation { duration: Appearance.motion.effectsFast }
@@ -230,17 +223,11 @@ Item {
                     opacity: 1 - 0.25 * slot.depth * (1 - root.fanProgress)
 
                     Behavior on scale {
-                        NumberAnimation {
-                            duration: Appearance.motion.effectsDefault
-                            easing.type: Appearance.motion.effectsEasing
-                        }
+                        EffectsAnim {}
                     }
 
                     Behavior on opacity {
-                        NumberAnimation {
-                            duration: Appearance.motion.effectsDefault
-                            easing.type: Appearance.motion.effectsEasing
-                        }
+                        EffectsAnim {}
                     }
 
                     RowLayout {
@@ -291,7 +278,8 @@ Item {
                                 anchors.fill: parent
                                 anchors.margins: 7
                                 source: iconRect.usesSymbol ? "" : IconUtil.getIconPath(slot.notif?.appIcon ?? "")
-                                sourceSize: Qt.size(width, height)
+                                sourceSize.width: 88
+                                sourceSize.height: 88
                                 fillMode: Image.PreserveAspectFit
                                 visible: !iconRect.usesSymbol && status === Image.Ready
                             }
@@ -374,7 +362,8 @@ Item {
                                 Image {
                                     anchors.fill: parent
                                     source: slot.notif?.image ?? ""
-                                    sourceSize: Qt.size(width, height)
+                                    sourceSize.width: 104
+                                    sourceSize.height: 104
                                     fillMode: Image.PreserveAspectCrop
                                 }
                             }

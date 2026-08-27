@@ -125,6 +125,7 @@ Item {
     }
 
     Flickable {
+        id: pageFlick
         ScrollBar.vertical: CustomScrollBar {}
         anchors.fill: parent
         contentHeight: column.implicitHeight
@@ -378,7 +379,8 @@ Item {
                                     anchors.centerIn: parent
                                     width: 24; height: 24
                                     source: IconUtil.getIconPath(stream.modelData.name)
-                                    sourceSize: Qt.size(width, height)
+                                    sourceSize.width: 24
+                                    sourceSize.height: 24
                                     fillMode: Image.PreserveAspectFit
                                     visible: status === Image.Ready
                                 }
@@ -441,5 +443,9 @@ Item {
 
             Item { Layout.preferredHeight: 20 }
         }
+    }
+    ScrollFade {
+        anchors.fill: parent
+        flickable: pageFlick
     }
 }

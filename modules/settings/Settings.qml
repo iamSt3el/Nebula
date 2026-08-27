@@ -55,6 +55,11 @@ Singleton{
             name: "Mic",
             icon: "mic",
             iconActive: "mic_off"
+        },
+        {
+            name: "Awake",
+            icon: "bedtime",
+            iconActive: "coffee"
         }
 
     ]

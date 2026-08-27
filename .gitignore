@@ -12,3 +12,9 @@ voice-bridge.xpi
 .amo-credentials
 voice-bridge-src.zip
 *.xpi
+
+# CMake build artifacts — rebuild with plugins/<name>/build.sh
+plugins/*/build/
+
+# Python virtualenv
+venv/

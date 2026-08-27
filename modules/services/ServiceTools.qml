@@ -64,22 +64,257 @@ Singleton{
                 if (p !== "") root._screenshotPath = p
             }
         }
-        onExited: {
+        onExited: exitCode => {
             root.playShutterSound()
-            root._sendScreenshotNotif(root._screenshotPath)
+            if (exitCode === 0 && root._screenshotPath !== "")
+                root.screenshotReady(root._screenshotPath)
+            else
+                root._sendScreenshotNotif(root._screenshotPath)
             root._screenshotPath = ""
         }
     }
 
     Process {
         id: areaScreenshotProc
-        onExited: {
+        onExited: exitCode => {
             root.playShutterSound()
-            root._sendScreenshotNotif(root._areaScreenshotPath)
+            if (exitCode === 0 && root._areaScreenshotPath !== "")
+                root.screenshotReady(root._areaScreenshotPath)
+            else
+                root._sendScreenshotNotif(root._areaScreenshotPath)
         }
     }
 
+    property int  captureDelay: 0
+    property int  countdownRemaining: 0
+    readonly property bool countingDown: countdownRemaining > 0
+    signal screenshotReady(string path)
+
+    property string _pendingKind: ""
+    property string _pendingGeo:  ""
+
+    Timer {
+        id: countdownTimer
+        interval: 1000
+        repeat: true
+        onTriggered: {
+            root.countdownRemaining -= 1
+            if (root.countdownRemaining <= 0) {
+                stop()
+                root._runPendingCapture()
+            }
+        }
+    }
+
+    function _beginCapture(kind, geo) {
+        root._pendingKind = kind
+        root._pendingGeo  = geo
+        if (root.captureDelay > 0) {
+            root.countdownRemaining = root.captureDelay
+            countdownTimer.restart()
+        } else {
+            root._runPendingCapture()
+        }
+    }
+
+    function _runPendingCapture() {
+        const k = root._pendingKind, g = root._pendingGeo
+        root._pendingKind = ""
+        root._pendingGeo  = ""
+        if (k === "Screen")    root._doScreenshot()
+        else if (k === "Area") root._doAreaScreenshot(g)
+    }
+
+    function cancelCountdown() {
+        countdownTimer.stop()
+        root.countdownRemaining = 0
+        root._pendingKind = ""
+        root._pendingGeo  = ""
+    }
+
+    function editScreenshot(path) {
+        Quickshell.execDetached(["swappy", "-f", path])
+    }
+
+    function deleteScreenshot(path) {
+        Quickshell.execDetached(["rm", "-f", path])
+    }
+
+    function copyScreenshot(path) {
+        Quickshell.execDetached(["sh", "-c", "wl-copy < " + root._shq(path)])
+    }
+
     property string _areaScreenshotPath: ""
+
+    property string _ocrText: ""
+    readonly property bool ocrBusy: ocrProc.running
+
+    Process {
+        id: ocrProc
+        stdout: StdioCollector {
+            onStreamFinished: root._ocrText = this.text
+        }
+        onExited: exitCode => {
+            var t = (root._ocrText ?? "").trim()
+            if (exitCode !== 0 || t.length === 0) {
+                ServiceNotification.sendNotification(
+                    "No text found", "Nothing recognisable in that region", "OCR", "edit-find")
+                return
+            }
+            Quickshell.execDetached(["sh", "-c",
+                "printf '%s' " + root._shq(t) + " | wl-copy"])
+            var preview = t.length > 140 ? t.substring(0, 140) + "\u2026" : t
+            ServiceNotification.sendNotification("Text copied", preview, "OCR", "edit-copy")
+        }
+    }
+
+    function _shq(v) { return "'" + String(v).replace(/'/g, "'\\''") + "'" }
+
+    property var    ocrLines:   []
+    property string ocrImage:   ""
+    readonly property bool ocrScanning: ocrScanProc.running
+    signal ocrCaptureReady(string path)
+    signal ocrScanFinished(int count)
+
+    Process {
+        id: ocrCaptureProc
+        onExited: exitCode => {
+            if (exitCode !== 0) {
+                root.ocrImage = ""
+                ServiceNotification.sendNotification(
+                    "Live Text failed", "Could not capture the screen", "OCR", "dialog-error")
+                return
+            }
+            root.ocrCaptureReady(root.ocrImage)
+            ocrScanProc.command = ["sh", "-c",
+                "tesseract " + root._shq(root.ocrImage) + " - tsv --psm 11 2>/dev/null"]
+            ocrScanProc.running = true
+        }
+    }
+
+    Process {
+        id: ocrScanProc
+        stdout: StdioCollector {
+            onStreamFinished: root._parseTsv(this.text)
+        }
+        onExited: exitCode => {
+            if (exitCode !== 0) root.ocrLines = []
+            root.ocrScanFinished(root.ocrLines.length)
+        }
+    }
+
+    property string _liveTextOutput: ""
+
+    Timer {
+        id: liveTextSettle
+        interval: 80
+        onTriggered: {
+            ocrCaptureProc.command = ["grim", "-l", "0", "-o", root._liveTextOutput, root.ocrImage]
+            ocrCaptureProc.running = true
+        }
+    }
+
+    function startLiveText(outputName) {
+        if (ocrCaptureProc.running || ocrScanProc.running || liveTextSettle.running) return
+        root.ocrLines = []
+        root._liveTextOutput = outputName
+        root.ocrImage = "/tmp/quickshell-livetext-" + Date.now() + ".png"
+        liveTextSettle.restart()
+    }
+
+    function clearScan() {
+        if (root.ocrImage !== "")
+            Quickshell.execDetached(["rm", "-f", root.ocrImage])
+        root.ocrImage = ""
+        root.ocrLines = []
+    }
+
+    property real ocrSplitRatio: 1.5
+
+    function _parseTsv(tsv) {
+        var rows = String(tsv).split("\n")
+        var byLine = {}
+        var order  = []
+
+        for (var i = 1; i < rows.length; i++) {
+            var f = rows[i].split("\t")
+            if (f.length < 12) continue
+
+            var level = parseInt(f[0])
+            if (level !== 4 && level !== 5) continue
+
+            var key = f[2] + "/" + f[3] + "/" + f[4]
+            if (byLine[key] === undefined) {
+                byLine[key] = { h: 0, words: [] }
+                order.push(key)
+            }
+
+            if (level === 4) {
+                byLine[key].h = parseInt(f[9])
+            } else if (parseFloat(f[10]) >= 40) {
+                var word = f[11]
+                if (word === undefined || word.trim() === "") continue
+                byLine[key].words.push({
+                    x: parseInt(f[6]), y: parseInt(f[7]),
+                    w: parseInt(f[8]), h: parseInt(f[9]),
+                    t: word
+                })
+            }
+        }
+
+        var out = []
+        for (var j = 0; j < order.length; j++) {
+            var e = byLine[order[j]]
+            if (e.words.length === 0) continue
+
+            var ws = e.words.slice().sort(function(a, b) { return a.x - b.x })
+            var ref = e.h > 0 ? e.h : ws[0].h
+            var limit = Math.max(ref, 1) * root.ocrSplitRatio
+
+            var segs = [[ws[0]]]
+            for (var k = 1; k < ws.length; k++) {
+                var prev = ws[k - 1]
+                if (ws[k].x - (prev.x + prev.w) > limit) segs.push([ws[k]])
+                else segs[segs.length - 1].push(ws[k])
+            }
+
+            for (var m = 0; m < segs.length; m++) {
+                var seg = segs[m]
+                var x0 = seg[0].x, y0 = seg[0].y, x1 = seg[0].x + seg[0].w, y1 = seg[0].y + seg[0].h
+                var parts = []
+                for (var n = 0; n < seg.length; n++) {
+                    var t = seg[n]
+                    if (t.x < x0) x0 = t.x
+                    if (t.y < y0) y0 = t.y
+                    if (t.x + t.w > x1) x1 = t.x + t.w
+                    if (t.y + t.h > y1) y1 = t.y + t.h
+                    parts.push(t.t)
+                }
+                if (x1 - x0 < 6 || y1 - y0 < 6) continue
+                out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0, text: parts.join(" ") })
+            }
+        }
+        root.ocrLines = out
+    }
+
+    function copyText(t) {
+        var s = String(t).trim()
+        if (s === "") return
+        Quickshell.execDetached(["sh", "-c", "printf '%s' " + root._shq(s) + " | wl-copy"])
+        var preview = s.length > 140 ? s.substring(0, 140) + "\u2026" : s
+        ServiceNotification.sendNotification("Text copied", preview, "OCR", "edit-copy")
+    }
+
+    // Grab a region, run it through tesseract, put the text on the clipboard.
+    // --psm 6 assumes a uniform block, which suits UI text far better than the
+    // default page-segmentation mode. Capturing at 2x and telling tesseract the
+    // DPI doubled measurably improves accuracy on small antialiased UI text.
+    function ocrArea(geo) {
+        root._ocrText = ""
+        ocrProc.command = ["sh", "-c",
+            "grim -s 2 -g " + root._shq(geo) + " - | tesseract - - --dpi 300 --psm 6 2>/dev/null"]
+        ocrProc.running = true
+    }
 
     function _sendScreenshotNotif(path) {
         if (path === "") return
@@ -253,14 +488,20 @@ Singleton{
     }
 
     function takeScreenshot(mode) {
-        if (mode === "Screen") {
-            screenshotProc.command = ["sh", "-c", "sleep 0.5 && grimblast copysave output"]
-            screenshotProc.running = true
-        }
+        if (mode === "Screen") root._beginCapture("Screen", "")
+    }
+
+    function _doScreenshot() {
+        screenshotProc.command = ["sh", "-c", "sleep 0.5 && grimblast copysave output"]
+        screenshotProc.running = true
     }
 
     // Called after the in-shell area selector provides a geometry string "x,y WxH"
     function takeAreaScreenshot(geo) {
+        root._beginCapture("Area", geo)
+    }
+
+    function _doAreaScreenshot(geo) {
         var now = new Date()
         var ts  = now.getFullYear() + "-" +
                   String(now.getMonth() + 1).padStart(2, "0") + "-" +

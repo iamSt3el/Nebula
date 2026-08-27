@@ -488,7 +488,8 @@ Item {
                             anchors.centerIn: parent
                             width: 26; height: 26
                             source: IconUtil.getIconPath(ctxMenu.targetApp?.icon ?? "")
-                            sourceSize: Qt.size(width, height)
+                            sourceSize.width: 26
+                            sourceSize.height: 26
                             fillMode: Image.PreserveAspectFit
                         }
                     }

@@ -188,7 +188,8 @@ Item{
                             width:  52
                             height:  52
                             source: IconUtil.getSystemIcon(ServiceWeather.weatherIconPath.svg)
-                            sourceSize: Qt.size(width, height)
+                            sourceSize.width: 52
+                            sourceSize.height: 52
                         }
                     }
 
@@ -308,9 +309,40 @@ Item{
                     CustomText{ content: "Hourly forecast"; size: root.compact ? 12 : 14 }
                 }
 
-                ListView{
+                Item{
                     Layout.fillHeight: true
                     Layout.fillWidth: true
+
+                    Rectangle{
+                        anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+                        width: 30
+                        z: 2
+                        opacity: hourlyList.atXEnd ? 0 : 1
+                        Behavior on opacity { EffectsAnim { speed: "fast" } }
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: Qt.alpha(Colors.surfaceContainer, 0) }
+                            GradientStop { position: 1.0; color: Colors.surfaceContainer }
+                        }
+                    }
+
+                    Rectangle{
+                        anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                        width: 30
+                        z: 2
+                        opacity: hourlyList.atXBeginning ? 0 : 1
+                        Behavior on opacity { EffectsAnim { speed: "fast" } }
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: Colors.surfaceContainer }
+                            GradientStop { position: 1.0; color: Qt.alpha(Colors.surfaceContainer, 0) }
+                        }
+                    }
+
+                ListView{
+                    id: hourlyList
+                    anchors.fill: parent
+                    clip: true
                     orientation: Qt.Horizontal
                     spacing: 10
 
@@ -354,7 +386,8 @@ Item{
                                 source: IconUtil.getSystemIcon(ServiceWeather.getWeatherIcon(modelData.weatherCode).svg)
                                 width:   20
                                 height: 20
-                                sourceSize: Qt.size(width, height)
+                                sourceSize.width: 20
+                                sourceSize.height: 20
                             }
 
                             CustomText{
@@ -372,6 +405,7 @@ Item{
                             }
                         }
                     }
+                }
                 }
             }
         }
@@ -418,9 +452,11 @@ Item{
                         }
                         Item{ Layout.fillWidth: true }
                         Image{
-                            width:  root.compact ? 34 : 40
-                            height: root.compact ? 34 : 40
-                            sourceSize: Qt.size(width, height)
+                            Layout.preferredWidth:  root.compact ? 34 : 40
+                            Layout.preferredHeight: root.compact ? 34 : 40
+                            fillMode: Image.PreserveAspectFit
+                            sourceSize.width: 80
+                            sourceSize.height: 80
                             source: IconUtil.getSystemIcon("heavy_rain")
                         }
                     }
@@ -432,6 +468,7 @@ Item{
                 Layout.fillWidth: true
                 radius: width / 2
                 color: Colors.surfaceContainer
+                clip: true
 
                 MaterialShapes.ShapeCanvas{
                     rotation: ServiceWeather.windDegree
@@ -439,7 +476,7 @@ Item{
                     implicitHeight: root.compact ? 145 : 150
                     implicitWidth:  root.compact ? 117 : 135
                     roundedPolygon: MaterialShapeFn.getArrow()
-                    color: Qt.alpha(Colors.primary, 0.5)
+                    color: Qt.alpha(Colors.primary, 0.25)
                 }
 
                 ColumnLayout{
@@ -456,7 +493,8 @@ Item{
                         Layout.alignment: Qt.AlignCenter
                         content: ServiceWeather.windSpeed
                         size: root.compact ? 18 : 20
-                        color: Colors.primaryText
+                        color: Colors.primary
+                        weight: 700
                     }
 
                     CustomText{
@@ -532,12 +570,13 @@ Item{
                 Layout.fillWidth: true
                 radius: width / 2
                 color: Colors.surfaceContainer
+                clip: true
 
                 MaterialShapes.ShapeCanvas{
                     anchors.fill: parent
                     anchors.margins: 10
                     roundedPolygon: MaterialShapeFn.getCookie12Sided()
-                    color: Qt.alpha(Colors.primary, 0.5)
+                    color: Qt.alpha(Colors.primary, 0.25)
                 }
 
                 ColumnLayout{
@@ -556,7 +595,8 @@ Item{
                         CustomText{
                             content: ServiceWeather.visibility
                             size: root.compact ? 36 : 40
-                            color: Colors.primaryText
+                            color: Colors.primary
+                            weight: 700
                         }
                         CustomText{
                             Layout.alignment: Qt.AlignBottom
@@ -590,6 +630,11 @@ Item{
                     anchors.bottom: parent.bottom
                     implicitWidth: parent.width
                     implicitHeight: parent.height * ServiceWeather.humidity / 100
+
+                    onWidthChanged: requestPaint()
+                    onHeightChanged: requestPaint()
+                    onVisibleChanged: if (visible) requestPaint()
+                    onColorChanged: requestPaint()
 
                     onPaint: {
                         var ctx = getContext("2d")
@@ -635,11 +680,12 @@ Item{
                 Layout.fillWidth: true
                 radius: width / 2
                 color: Colors.surfaceContainer
+                clip: true
 
                 CustomGaugeProgress {
                     anchors.centerIn: parent
-                    width:  root.compact ? 145 : 150
-                    height: root.compact ? 145 : 150
+                    width:  Math.max(40, parent.width - 16)
+                    height: width
                     progress: ServiceWeather.pressure
                     thickness: 8
                     gap: 0.1

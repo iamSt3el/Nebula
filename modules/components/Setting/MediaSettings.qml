@@ -57,6 +57,7 @@ Item {
     readonly property var audioSampleRates: [{ name: "44100" }, { name: "48000" }, { name: "96000" }]
 
     Flickable {
+        id: pageFlick
         ScrollBar.vertical: CustomScrollBar {}
         anchors.fill: parent
         contentHeight: column.implicitHeight + 20
@@ -481,5 +482,9 @@ Item {
 
             Item { Layout.preferredHeight: 20 }
         }
+    }
+    ScrollFade {
+        anchors.fill: parent
+        flickable: pageFlick
     }
 }

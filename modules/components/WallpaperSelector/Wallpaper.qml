@@ -23,6 +23,7 @@ Scope{
             implicitHeight: Appearance.size.wallpaperPanelHeight
             implicitWidth: Appearance.size.wallpaperPanelWidth
             anchors.bottom: true
+            WlrLayershell.namespace: "quickshell:wallpaperSelector"
             WlrLayershell.layer: WlrLayer.Top
             exclusionMode: ExclusionMode.Normal
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand

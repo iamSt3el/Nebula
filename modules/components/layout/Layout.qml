@@ -32,6 +32,7 @@ PanelWindow{
     // true = full bar; false = secondary monitor minimal bar
     property bool isPrimary: true
 
+    WlrLayershell.namespace: "quickshell:bar"
     WlrLayershell.keyboardFocus: isPrimary && (utility.isTodoClicked || workspaces.active)
                                  ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 

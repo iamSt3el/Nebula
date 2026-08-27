@@ -308,28 +308,43 @@ Item{
             }
         }
 
-        ColumnLayout {
-            spacing: 0
+        Item {
+            Layout.alignment: Qt.AlignVCenter
+            Layout.preferredWidth:  titleCol.implicitWidth
+            Layout.preferredHeight: titleCol.implicitHeight
 
-            CustomText {
-                Layout.maximumWidth: 200
-                content: ToplevelManager.activeToplevel
-                         ? (ToplevelManager.activeToplevel.appId ?? "")
-                         : "Desktop"
-                size: 10
-                weight: 700
-                customColor: Colors.outline
-                elide: Text.ElideRight
-            }
-            CustomText {
-                Layout.maximumWidth: 200
-                content: ToplevelManager.activeToplevel
-                         ? (ToplevelManager.activeToplevel.title ?? "")
-                         : "Workspace " + (Hyprland.focusedMonitor?.activeWorkspace?.id ?? "")
+            Item {
+                clip: true
+                height: parent.height
+                width: Math.max(0, parent.width
+                    - Math.max(0, root.collapsedWidth - root.implicitWidth))
 
-                size: 13
-                weight: 800
-                elide: Text.ElideRight
+                ColumnLayout {
+                    id: titleCol
+                    width: implicitWidth
+                    spacing: 0
+
+                    CustomText {
+                        Layout.maximumWidth: 200
+                        content: ToplevelManager.activeToplevel
+                                 ? (ToplevelManager.activeToplevel.appId ?? "")
+                                 : "Desktop"
+                        size: 10
+                        weight: 700
+                        customColor: Colors.outline
+                        elide: Text.ElideRight
+                    }
+                    CustomText {
+                        Layout.maximumWidth: 200
+                        content: ToplevelManager.activeToplevel
+                                 ? (ToplevelManager.activeToplevel.title ?? "")
+                                 : "Workspace " + (Hyprland.focusedMonitor?.activeWorkspace?.id ?? "")
+
+                        size: 13
+                        weight: 800
+                        elide: Text.ElideRight
+                    }
+                }
             }
         }
     }

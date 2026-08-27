@@ -30,6 +30,7 @@ Rectangle{
                 if (i === 1) return ServiceNotification.muted
                 if (i === 2) return ServicePipewire.muted
                 if (i === 3) return ServicePipewire.micMuted
+                if (i === 4) return ServiceIdleInhibit.active
                 return false
             }
             onTriggered: i => {
@@ -37,6 +38,7 @@ Rectangle{
                 else if (i === 1) ServiceNotification.toggleMute()
                 else if (i === 2) ServicePipewire.toggleMute()
                 else if (i === 3) ServicePipewire.toggleMicMute()
+                else if (i === 4) ServiceIdleInhibit.toggle()
             }
         }
     }

@@ -42,7 +42,8 @@ Item {
 
                 Image {
                     anchors.fill: parent
-                    sourceSize: Qt.size(width, height)
+                    sourceSize.width: 256
+                    sourceSize.height: 256
                     source: ServiceMusic.activeTrack?.artUrl ?? ""
                     fillMode: Image.PreserveAspectCrop
                     visible: (ServiceMusic.activeTrack?.artUrl?.length ?? 0) > 0

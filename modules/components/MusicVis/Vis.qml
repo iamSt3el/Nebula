@@ -11,6 +11,7 @@ PanelWindow {
     implicitHeight: 200
     visible: true
     color: "transparent"
+    WlrLayershell.namespace: "quickshell:musicVis"
     WlrLayershell.layer: WlrLayer.Bottom
     exclusionMode: ExclusionMode.Normal
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None

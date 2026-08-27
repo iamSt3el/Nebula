@@ -15,10 +15,9 @@ ColumnLayout {
     signal backClicked
 
     opacity: 0
-    NumberAnimation on opacity {
+    EffectsAnim on opacity {
+        speed: "slow"
         from: 0; to: 1
-        duration: Appearance.motion.effectsSlow
-        easing.type: Appearance.motion.effectsEasing
         running: true
     }
 
@@ -54,10 +53,7 @@ ColumnLayout {
                  : modeArea.containsMouse ? Colors.surfaceContainerHighest
                  : Colors.surfaceContainerHigh
             Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.motion.effectsDefault
-                    easing.type: Appearance.motion.effectsEasing
-                }
+                EffectsColorAnim {}
             }
 
             RowLayout {
@@ -72,10 +68,7 @@ ColumnLayout {
                     radius: 17
                     color: modeRow.active ? Colors.primary : Colors.surfaceContainerHighest
                     Behavior on color {
-                        ColorAnimation {
-                            duration: Appearance.motion.effectsDefault
-                            easing.type: Appearance.motion.effectsEasing
-                        }
+                        EffectsColorAnim {}
                     }
 
                     MaterialIconSymbol {

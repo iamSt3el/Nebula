@@ -764,7 +764,8 @@ Rectangle {
                                             id: thumbnail
                                             y: rowContainer.imageY
                                             width: parent.width; height: rowContainer.height
-                                            sourceSize: Qt.size(width, height)
+                                            sourceSize.width: 640
+                                            sourceSize.height: 640
                                             asynchronous: true; smooth: true; cache: true
                                             source: {
                                                 if (!wallpaperItem.itemData) return ""
