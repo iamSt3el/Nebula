@@ -36,7 +36,7 @@ Item {
 
     // Section → page-index mapping
     readonly property var navSections: [
-        { label: "System",  indices: [9, 0, 1, 2, 3, 10, 12] },
+        { label: "System",  indices: [9, 0, 1, 2, 3, 10, 12, 13] },
         { label: "Connect", indices: [4, 5] },
         { label: "Apps",    indices: [6, 7, 11, 8] }
     ]
@@ -85,89 +85,115 @@ Item {
 
                         Item { Layout.preferredHeight: 14 }
 
-                        // ── Nav sections ──────────────────────────
-                        Repeater {
-                            model: root.navSections
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
 
-                            delegate: ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
+                            Flickable {
+                                id: navFlick
+                                anchors.fill: parent
+                                contentHeight: navColumn.implicitHeight
+                                contentWidth: width
+                                clip: true
+                                boundsBehavior: Flickable.StopAtBounds
 
-                                // Separator between sections (skip first)
-                                Rectangle {
-                                    visible: index !== 0
-                                    Layout.fillWidth: true
-                                    Layout.topMargin: 4
-                                    Layout.bottomMargin: 4
-                                    implicitHeight: 1
-                                    color: Colors.surfaceContainerHighest
-                                }
+                                ColumnLayout {
+                                    id: navColumn
+                                    width: navFlick.width
+                                    spacing: 0
 
-                                // Items in this section
-                                Repeater {
-                                    model: modelData.indices
+                                    // ── Nav sections ──────────────────────────
+                                    Repeater {
+                                        model: root.navSections
 
-                                    delegate: Item {
-                                        id: navDelegate
-                                        readonly property int pageIndex: modelData
-                                        readonly property bool active: root.currentPage === pageIndex
-                                        readonly property var pageData: Settings.pages[pageIndex]
-                                        Layout.fillWidth: true
-                                        implicitWidth: parent ? parent.width : 0
-                                        implicitHeight: 38
+                                        delegate: ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 2
 
-                                        // Active / hover background
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            radius: 10
-                                            color: (navDelegate.active || navMouse.containsMouse)
-                                                   ? Colors.primary
-                                                   : "transparent"
-                                            Behavior on color { ColorAnimation { duration: 150 } }
-
-                                            scale: navDelegate.active ? 1.0 : 0.96
-                                            Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-                                        }
-
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.leftMargin: 10
-                                            anchors.rightMargin: 8
-                                            spacing: 8
-
-                                            MaterialIconSymbol {
-                                                content: navDelegate.pageData?.icon ?? ""
-                                                iconSize: 18
-                                                fill: navDelegate.active ? 1 : 0
-                                                customColor: (navDelegate.active || navMouse.containsMouse) ? Colors.primaryText : Colors.surfaceVariantText
-                                                Behavior on fill        { NumberAnimation { duration: 180 } }
-                                                Behavior on customColor { ColorAnimation  { duration: 150 } }
-                                            }
-
-                                            CustomText {
+                                            // Separator between sections (skip first)
+                                            Rectangle {
+                                                visible: index !== 0
                                                 Layout.fillWidth: true
-                                                content: navDelegate.pageData?.name ?? ""
-                                                size: 15
-                                                weight: navDelegate.active ? 700 : 500
-                                                customColor: (navDelegate.active || navMouse.containsMouse) ? Colors.primaryText : Colors.surfaceVariantText
-                                                Behavior on customColor { ColorAnimation { duration: 150 } }
+                                                Layout.topMargin: 4
+                                                Layout.bottomMargin: 4
+                                                implicitHeight: 1
+                                                color: Colors.surfaceContainerHighest
+                                            }
+
+                                            // Items in this section
+                                            Repeater {
+                                                model: modelData.indices
+
+                                                delegate: Item {
+                                                    id: navDelegate
+                                                    readonly property int pageIndex: modelData
+                                                    readonly property bool active: root.currentPage === pageIndex
+                                                    readonly property var pageData: Settings.pages[pageIndex]
+                                                    Layout.fillWidth: true
+                                                    implicitWidth: parent ? parent.width : 0
+                                                    implicitHeight: 38
+
+                                                    // Active / hover background
+                                                    Rectangle {
+                                                        anchors.fill: parent
+                                                        radius: 10
+                                                        color: (navDelegate.active || navMouse.containsMouse)
+                                                               ? Colors.primary
+                                                               : "transparent"
+                                                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                                                        scale: navDelegate.active ? 1.0 : 0.96
+                                                        Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+                                                    }
+
+                                                    RowLayout {
+                                                        anchors.fill: parent
+                                                        anchors.leftMargin: 10
+                                                        anchors.rightMargin: 8
+                                                        spacing: 8
+
+                                                        MaterialIconSymbol {
+                                                            content: navDelegate.pageData?.icon ?? ""
+                                                            iconSize: 18
+                                                            fill: navDelegate.active ? 1 : 0
+                                                            customColor: (navDelegate.active || navMouse.containsMouse) ? Colors.primaryText : Colors.surfaceVariantText
+                                                            Behavior on fill        { NumberAnimation { duration: 180 } }
+                                                            Behavior on customColor { ColorAnimation  { duration: 150 } }
+                                                        }
+
+                                                        CustomText {
+                                                            Layout.fillWidth: true
+                                                            content: navDelegate.pageData?.name ?? ""
+                                                            size: 15
+                                                            weight: navDelegate.active ? 700 : 500
+                                                            customColor: (navDelegate.active || navMouse.containsMouse) ? Colors.primaryText : Colors.surfaceVariantText
+                                                            Behavior on customColor { ColorAnimation { duration: 150 } }
+                                                        }
+                                                    }
+
+                                                    MouseArea {
+                                                        id: navMouse
+                                                        anchors.fill: parent
+                                                        cursorShape: GlobalStates.fileDialogOpen ? Qt.ArrowCursor : Qt.PointingHandCursor
+                                                        hoverEnabled: !GlobalStates.fileDialogOpen
+                                                        enabled: !GlobalStates.fileDialogOpen
+                                                        onClicked: root.currentPage = navDelegate.pageIndex
+                                                    }
+                                                }
                                             }
                                         }
-
-                                        MouseArea {
-                                            id: navMouse
-                                            anchors.fill: parent
-                                            cursorShape: GlobalStates.fileDialogOpen ? Qt.ArrowCursor : Qt.PointingHandCursor
-                                            hoverEnabled: !GlobalStates.fileDialogOpen
-                                            enabled: !GlobalStates.fileDialogOpen
-                                            onClicked: root.currentPage = navDelegate.pageIndex
-                                        }
-                                    }
                                 }
+                                }
+                            }
+
+                            ScrollFade {
+                                anchors.fill: parent
+                                flickable: navFlick
+                                color: Colors.surfaceContainerHigh
                             }
                         }
 
-                        Item { Layout.fillHeight: true }
+                        Item { Layout.preferredHeight: 10 }
 
                         // Edit Config button
                         Rectangle {
@@ -219,6 +245,7 @@ Item {
                     Loader { anchors.fill: parent; active: root.currentPage === 10; visible: active; opacity: active ? 1 : 0; scale: active ? 1 : 0.985; Behavior on opacity { NumberAnimation { duration: M3Motion.effects.defaultDuration } } Behavior on scale { NumberAnimation { duration: M3Motion.spatial.fastDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: M3Motion.spatial.fastCurve } } sourceComponent: Sleep{} }
                     Loader { anchors.fill: parent; active: root.currentPage === 11; visible: active; opacity: active ? 1 : 0; scale: active ? 1 : 0.985; Behavior on opacity { NumberAnimation { duration: M3Motion.effects.defaultDuration } } Behavior on scale { NumberAnimation { duration: M3Motion.spatial.fastDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: M3Motion.spatial.fastCurve } } sourceComponent: Ai{} }
                     Loader { anchors.fill: parent; active: root.currentPage === 12; visible: active; opacity: active ? 1 : 0; scale: active ? 1 : 0.985; Behavior on opacity { NumberAnimation { duration: M3Motion.effects.defaultDuration } } Behavior on scale { NumberAnimation { duration: M3Motion.spatial.fastDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: M3Motion.spatial.fastCurve } } sourceComponent: Storage{} }
+                    Loader { anchors.fill: parent; active: root.currentPage === 13; visible: active; opacity: active ? 1 : 0; scale: active ? 1 : 0.985; Behavior on opacity { NumberAnimation { duration: M3Motion.effects.defaultDuration } } Behavior on scale { NumberAnimation { duration: M3Motion.spatial.fastDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: M3Motion.spatial.fastCurve } } sourceComponent: SystemUpdates{} }
 
                 }
             }

@@ -33,25 +33,6 @@ Scope {
         WlrLayershell.keyboardFocus: (GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.fileDropOpen) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
 
-        Loader {
-            id: contextMenuLoader
-            active: false
-            sourceComponent: CustomContextMenu {
-                onClose: contextMenuLoader.active = false
-            }
-        }
-
-        Connections {
-            target: dockLoder.item
-            function onContextMenuRequested(px, py, appEntry) {
-                contextMenuLoader.active = true
-                const mapped = dockLoder.item.mapToItem(panelWindow.contentItem, px, py)
-                contextMenuLoader.item.appEntry = appEntry
-                contextMenuLoader.item.anchor.rect = Qt.rect(mapped.x, mapped.y, 1, 1)
-                contextMenuLoader.item.visible = true
-            }
-        }
-
         mask: Region {
             item: maskRect
             intersection: Intersection.Xor
@@ -122,7 +103,7 @@ Scope {
             implicitHeight: Math.max(20, child.implicitHeight)
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
-            property bool active: SettingsConfig.general.dockAutoHide ? hover.hovered || GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.fileDropOpen || GlobalStates.osdOpen || contextMenuLoader.active || (dockLoder.item && dockLoder.item.showPreview) : true
+            property bool active: SettingsConfig.general.dockAutoHide ? hover.hovered || GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen || GlobalStates.fileDropOpen || GlobalStates.osdOpen || (dockLoder.item && dockLoder.item.popupOpen) : true
             property bool collapsed: false
 
             onActiveChanged: {

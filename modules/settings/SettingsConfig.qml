@@ -19,6 +19,8 @@ Singleton {
     property alias gameMode: settingsAdapter.gameMode
     property alias dashboard: settingsAdapter.dashboard
     property alias sleep: settingsAdapter.sleep
+    property alias updates: settingsAdapter.updates
+    property alias parallax: settingsAdapter.parallax
 
     property bool settingsReady: false
 
@@ -364,6 +366,64 @@ Singleton {
                 }
                 if (needsPatch)
                     sleep = Object.assign({}, d, cur)
+            }
+
+            readonly property var _parallaxDefaults: ({
+                enabled: true,
+                strength: 0.2,
+                quality: 0.3,
+                mode: "cursor",
+                musicIntensity: 0.6
+            })
+
+            property var parallax: ({
+                enabled: true,
+                strength: 0.2,
+                quality: 0.3,
+                mode: "cursor",
+                musicIntensity: 0.6
+            })
+
+            onParallaxChanged: {
+                const d = _parallaxDefaults
+                const cur = parallax || {}
+                let needsPatch = false
+                for (const k in d) {
+                    if (cur[k] === undefined) { needsPatch = true; break }
+                }
+                if (needsPatch)
+                    parallax = Object.assign({}, d, cur)
+            }
+
+            readonly property var _updatesDefaults: ({
+                autoCheck: true,
+                checkIntervalHours: 3,
+                notifyOnStart: true,
+                includeAur: true,
+                showBarPill: true,
+                cacheKeep: 2,
+                lastNotifiedBoot: ""
+            })
+
+            property var updates: ({
+                autoCheck: true,
+                checkIntervalHours: 3,
+                notifyOnStart: true,
+                includeAur: true,
+                showBarPill: true,
+                cacheKeep: 2,
+                lastNotifiedBoot: ""
+            })
+
+            onUpdatesChanged: {
+                const d = _updatesDefaults
+                const cur = updates || {}
+                let needsPatch = false
+                for (const k in d) {
+                    if (cur[k] === undefined) { needsPatch = true; break }
+                }
+                if (needsPatch)
+                    updates = Object.assign({}, d, cur)
             }
 
             readonly property var _gameModeDefaults: ({

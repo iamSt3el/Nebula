@@ -7,39 +7,19 @@ import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 
-PopupWindow {
+Item {
     id: root
 
     property var appEntry: null
 
     implicitWidth: 210
     implicitHeight: menuCol.implicitHeight + 16
-    color: "transparent"
 
     signal close
 
-    anchor {
-        window: panelWindow
-        edges: Edges.Top
-        gravity: Edges.Top
-    }
-
-    HyprlandFocusGrab {
-        active: true
-        windows: [QsWindow.window]
-        onCleared: root.close()
-    }
-
-    Rectangle {
+    Item {
         id: menuRect
         anchors.fill: parent
-        color: Colors.surfaceContainer
-        radius: 20
-
-        scale: 0.88
-        opacity: 0
-        NumberAnimation on scale   { from: 0.88; to: 1; duration: 180; easing.type: Easing.OutQuad; running: true }
-        NumberAnimation on opacity { from: 0;    to: 1; duration: 150; running: true }
 
         ColumnLayout {
             id: menuCol

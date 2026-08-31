@@ -32,6 +32,14 @@ PanelWindow{
                                : GlobalStates.widgetTextFocus ? WlrKeyboardFocus.OnDemand
                                                               : WlrKeyboardFocus.None
 
+    HoverHandler {
+        onPointChanged: {
+            GlobalStates.desktopCursorX = point.position.x
+            GlobalStates.desktopCursorY = point.position.y
+        }
+        onHoveredChanged: GlobalStates.desktopCursorActive = hovered
+    }
+
     // Parking spot for focus. Clicking empty desktop moves QML focus here, which
     // makes the text field report activeFocus false and releases the keyboard.
     Item { id: focusSink }

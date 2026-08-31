@@ -65,9 +65,8 @@ vec2 depthFlowRayMarch(vec2 gluv, vec2 offset, float aspect, float qualityParam)
     // Relative steady
     float relSteady = steady * height;
 
-    // intersect = vec3(gluv, 1.0) - vec3(offset, 0.0) * (1.0/(1.0 - rel_steady))
-    vec3 rayOrigin = vec3(gluv, 0.0);
-    vec3 intersect = vec3(gluv, 1.0) - vec3(offset, 0.0) * (1.0 / (1.0 - relSteady));
+    vec3 rayOrigin = vec3(gluv, 0.0) + vec3(offset, 0.0) * (1.0 / (1.0 - relSteady));
+    vec3 intersect = vec3(gluv, 1.0);
 
     // Safety: guaranteed relative distance to not hit surface
     float safe = 1.0 - height;
@@ -126,7 +125,7 @@ void main() {
     vec2 gluv = uv2gluv(uv, aspectRatio);
 
     // Mouse offset
-    vec2 offset = vec2(offsetX, -offsetY) * parallaxStrength;
+    vec2 offset = vec2(-offsetX, -offsetY) * parallaxStrength;
 
     // Perform DepthFlow ray marching
     vec2 finalGluv = depthFlowRayMarch(gluv, offset, aspectRatio, quality);
@@ -137,5 +136,5 @@ void main() {
 
     // Sample the image at the parallaxed position
     fragColor = texture(source, finalUV);
-    fragColor.a *= qt_Opacity;
+    fragColor *= qt_Opacity;
 }

@@ -158,87 +158,74 @@ Item {
             Loader {
                 active:  ServiceTools.isRecording
                 visible: active
-                Layout.preferredHeight: 28
+                Layout.preferredHeight: 26
                 Layout.preferredWidth:  active ? implicitWidth : 0
 
                 sourceComponent: Rectangle {
                     id: recPill
-                    implicitWidth:  recRow.implicitWidth + 16
-                    implicitHeight: 28
-                    radius:         14
-                    clip:           true
-                    color:          recHov.hovered
-                                    ? Qt.alpha(Colors.error, 0.22)
-                                    : Qt.alpha(Colors.error, 0.10)
-                    Behavior on color         { ColorAnimation  { duration: 180 } }
-                    Behavior on implicitWidth { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                    implicitWidth:  recRow.implicitWidth + 18
+                    implicitHeight: 26
+                    radius:         13
+                    color:          recHov.containsMouse ? Colors.primaryContainer : "transparent"
 
-                    border.color: Qt.alpha(Colors.error, recHov.hovered ? 0.65 : 0.35)
-                    border.width: 1
-                    Behavior on border.color { ColorAnimation { duration: 180 } }
-
-                    NumberAnimation on opacity { from: 0; to: 1; duration: 220; running: true }
+                    Behavior on color         { ColorAnimation  { duration: 150 } }
+                    Behavior on implicitWidth { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
 
                     RowLayout {
                         id: recRow
                         anchors.centerIn: parent
-                        spacing: 6
+                        spacing: recHov.containsMouse ? 6 : 0
 
-                        // Icon with layered red glow rings
-                        Item {
-                            width: 20; height: 20
+                        MaterialIconSymbol {
+                            content:     "screen_record"
+                            iconSize:    16
+                            customColor: recHov.containsMouse ? Colors.primaryContainerText : Colors.error
+                            Behavior on customColor { ColorAnimation { duration: 150 } }
 
-                            // Outer glow ring — pulses in opacity
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: 20; height: 20; radius: 10
-                                color: Colors.error
-                                SequentialAnimation on opacity {
-                                    running: true; loops: Animation.Infinite
-                                    NumberAnimation { to: 0.20; duration: 850; easing.type: Easing.InOutSine }
-                                    NumberAnimation { to: 0.04; duration: 850; easing.type: Easing.InOutSine }
-                                }
-                            }
-
-                            // Inner ambient glow
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: 13; height: 13; radius: 6.5
-                                color: Colors.error; opacity: 0.18
-                            }
-
-                            MaterialIconSymbol {
-                                anchors.centerIn: parent
-                                content:     "screen_record"
-                                iconSize:    16
-                                customColor: Colors.error
+                            SequentialAnimation on opacity {
+                                running: true
+                                loops: Animation.Infinite
+                                alwaysRunToEnd: true
+                                NumberAnimation { to: 0.45; duration: 850; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 1.00; duration: 850; easing.type: Easing.InOutSine }
                             }
                         }
 
-                        // Timer — revealed on hover
                         CustomText {
-                            visible: recHov.hovered
+                            visible: recHov.containsMouse
                             content: {
                                 const s = ServiceTools.recordingSeconds
                                 return String(Math.floor(s / 60)).padStart(2, "0") + ":" +
                                        String(s % 60).padStart(2, "0")
                             }
-                            size: 11; weight: 500
-                            customColor: Colors.errorContainerText
+                            size: 13; weight: 700
+                            customColor: Colors.primaryContainerText
                         }
                     }
 
-                    HoverHandler { id: recHov }
-
-                    CustomMouseArea {
+                    MouseArea {
+                        id: recHov
                         anchors.fill: parent
-                        radius:       parent.radius
+                        hoverEnabled: true
                         cursorShape:  Qt.PointingHandCursor
                         onClicked:    ServiceTools.stopRecording()
                     }
 
-                    CustomToolTip { content: "Click to stop recording"; visible: recHov.hovered }
+                    CustomToolTip { content: "Click to stop recording"; visible: recHov.containsMouse }
                 }
+            }
+
+            Loader {
+                readonly property bool hasSomethingToShow:
+                    ServiceSystemUpdates.totalCount > 0 || ServiceSystemUpdates.busy
+                    || ServiceSystemUpdates.phase === "done" || ServiceSystemUpdates.phase === "error"
+
+                active: hasSomethingToShow && (SettingsConfig.updates?.showBarPill ?? true)
+                visible: active
+                Layout.preferredHeight: 26
+                Layout.preferredWidth: active ? implicitWidth : 0
+
+                sourceComponent: UpdatesPill {}
             }
 
             // ── System tray ────────────────────────────────────────────────

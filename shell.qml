@@ -20,11 +20,19 @@ import qs.modules.components.CheatSheet
 import qs.modules.components.Overview
 import qs.modules.components.Ai
 import qs.modules.components.Welcome
+import qs.modules.components.Wallpaper
 import qs.modules.customComponents
 import qs.modules.services
 import qs.modules.settings
 
 ShellRoot{
+    Variants{
+        model: Quickshell.screens
+        delegate: WallpaperLayer{}
+    }
+
+    DepthToast{}
+
     DockPanel{}
 
     Variants{

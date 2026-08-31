@@ -23,6 +23,7 @@ Singleton {
     // center to be read later.
     readonly property bool _suppressPopups: (SettingsConfig.notifications?.doNotDisturb ?? false)
                                             || ServiceGameMode.dndActive
+                                            || GlobalStates.notificationCenterOpen
 
     Component.onCompleted: muted = SettingsConfig.toggles?.notificationMuted ?? false
     onMutedChanged: SettingsConfig.toggles = Object.assign({}, SettingsConfig.toggles, { notificationMuted: muted })
@@ -128,6 +129,19 @@ Singleton {
         // Latest notification (shown in collapsed header)
         readonly property var latest: notifications.length > 0
             ? notifications[notifications.length - 1] : null
+    }
+
+    function dismissPopups() {
+        for (var i = 0; i < root.allNotifications.length; i++)
+            root.allNotifications[i].popup = false
+    }
+
+    Connections {
+        target: GlobalStates
+        function onNotificationCenterOpenChanged() {
+            if (GlobalStates.notificationCenterOpen)
+                root.dismissPopups()
+        }
     }
 
     function clear() {

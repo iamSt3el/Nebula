@@ -127,6 +127,8 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
+            clip: true
+
             readonly property real gap: 6
 
             // Roughly square grid, then cells stretch to fill whatever is left.

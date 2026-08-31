@@ -24,13 +24,18 @@ Scope {
         onPressed: GlobalStates.overviewOpen = !GlobalStates.overviewOpen
     }
 
-    Loader {
-        active: GlobalStates.overviewOpen
-        visible: active
+    LazyLoader {
+        id: loader
+        activeAsync: true
 
-        sourceComponent: PanelWindow {
+        component: PanelWindow {
             id: win
-            visible: true
+
+            readonly property bool shouldOpen: GlobalStates.overviewOpen
+            property real openProgress: win.shouldOpen ? 1 : 0
+            Behavior on openProgress { SpatialAnim { speed: "fast" } }
+
+            visible: win.shouldOpen || win.openProgress > 0.01
             color: "transparent"
             anchors { top: true; left: true; right: true; bottom: true }
 
@@ -121,8 +126,7 @@ Scope {
             Rectangle {
                 anchors.fill: parent
                 color: Qt.alpha(Colors.surface, 0.78)
-                opacity: 0
-                NumberAnimation on opacity { from: 0; to: 1; duration: 160; running: true }
+                opacity: win.openProgress
 
                 MouseArea {
                     anchors.fill: parent
@@ -134,6 +138,9 @@ Scope {
             Rectangle {
                 id: card
                 anchors.centerIn: parent
+                opacity: win.openProgress
+                scale: 0.92 + 0.08 * win.openProgress
+                layer.enabled: win.openProgress > 0 && win.openProgress < 1
                 // Wide but short: ten cards in two rows need the width, and
                 // keeping the height down is what stops it feeling like the
                 // full-screen panel it replaced.
@@ -141,11 +148,6 @@ Scope {
                 height: Math.min(parent.height - 220, 580)
                 radius: 24
                 color: Colors.surface
-
-                opacity: 0
-                scale: 0.97
-                NumberAnimation on opacity { from: 0; to: 1; duration: 200; easing.type: Easing.OutQuad; running: true }
-                NumberAnimation on scale   { from: 0.97; to: 1; duration: 220; easing.type: Easing.OutCubic; running: true }
 
                 // Swallow clicks so they don't reach the dismiss scrim
                 MouseArea { anchors.fill: parent }

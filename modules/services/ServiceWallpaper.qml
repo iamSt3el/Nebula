@@ -79,6 +79,69 @@ Singleton {
     }
 
     property string colorsScript: Quickshell.env("HOME") + "/.config/quickshell/scripts/gen_colors.py"
+    property string depthScript: Quickshell.env("HOME") + "/.config/quickshell/scripts/depth_map.py"
+
+    property string depthMapPath: ""
+
+    readonly property bool depthBusy: depthProc.running
+
+    function ensureDepthMap(force) {
+        root.depthMapPath = ""
+        if (!(SettingsConfig.parallax?.enabled ?? true)) return
+        const wp = WallpaperTheme.wallpaper
+        if (!wp || wp.length === 0) return
+        depthProc.running = false
+        depthProc.depth = ""
+        depthProc.command = force
+            ? ["python3", root.depthScript, wp, "--force"]
+            : ["python3", root.depthScript, wp]
+        depthProc.running = true
+    }
+
+    Process {
+        id: depthProc
+        property string depth: ""
+
+        stdout: SplitParser {
+            onRead: line => {
+                const t = line.trim()
+                if (t.startsWith("depth=")) depthProc.depth = t.substring(6)
+            }
+        }
+        stderr: SplitParser {
+            onRead: line => {
+                const t = line.trim()
+                if (t !== "") console.warn("[ServiceWallpaper]", t)
+            }
+        }
+        onExited: code => {
+            root.depthMapPath = code === 0 ? depthProc.depth : ""
+        }
+    }
+
+    Connections {
+        target: SettingsConfig
+        function onParallaxChanged() { splitDebounce.restart() }
+    }
+
+    Timer {
+        id: splitDebounce
+        interval: 400
+        repeat: false
+        onTriggered: root.ensureDepthMap(false)
+    }
+
+    Connections {
+        target: WallpaperTheme
+        function onWallpaperChanged() { root.ensureDepthMap() }
+    }
+
+    Timer {
+        interval: 1500
+        running: true
+        repeat: false
+        onTriggered: root.ensureDepthMap()
+    }
 
     // Re-generates colors for the current wallpaper in the new mode.
     // No awww — wallpaper image isn't changing, only the color scheme.

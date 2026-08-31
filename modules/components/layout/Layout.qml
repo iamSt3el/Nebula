@@ -212,39 +212,69 @@ PanelWindow{
 
             const wBlockH = showArc ? wpH : wH
 
+            const needGap = 2 * dX + 24
+            const mergeWC = (cX - wW) < needGap
+            const mergeCU = (uX - (cX + cW)) < needGap
+
+            function stepDown(atX, fromH, toH) {
+                return L(atX - dX, fromH) + A(CW, atX, fromH + dY)
+                     + L(atX, toH - dY) + A(CCW, atX + dX, toH)
+            }
+            function stepUp(atX, fromH, toH) {
+                return A(CCW, atX, fromH - dY) + L(atX, toH + dY) + A(CW, atX + dX, toH)
+            }
+
             let p = `M 0 ${wBlockH + dY} `
             // bottom-left corner — screen-edge flare, same at every height
             p += A(CW, dX, wBlockH)
-            // workspaces bottom edge + right-bottom corner. Only flares once the
-            // block has landed on the screen bottom, so the curve opens into the
-            // edge instead of hanging in mid-air while it grows.
-            p += atBottom ? L(wW + dX, wBlockH) : L(wW - dX, wBlockH)
-            p += atBottom ? A(CW,  wW, wBlockH - dY)
-                          : A(CCW, wW, wBlockH - dY)
-            // workspaces right wall up to transition point
-            p += L(wW, dY)
-            // ── TRANSITION: workspace → bridge
-            p += T(CW, wW + dX, lD)
-            // bridge across to clock
-            p += L(cX - dX, lD)
-            // ── TRANSITION: bridge → clock left
-            p += T(CW, cX, dY)
-            // clock left wall + bottom corners + bottom edge + right wall
-            p += L(cX, cH - dY)
-            p += A(CCW, cX + dX, cH)
+
+            if (mergeWC) {
+                if (cH - wBlockH >= 2 * dY)
+                    p += stepDown(cX, wBlockH, cH)
+                else if (wBlockH - cH >= 2 * dY)
+                    p += stepUp(wW, wBlockH, cH)
+            } else {
+                // workspaces bottom edge + right-bottom corner. Only flares once the
+                // block has landed on the screen bottom, so the curve opens into the
+                // edge instead of hanging in mid-air while it grows.
+                p += atBottom ? L(wW + dX, wBlockH) : L(wW - dX, wBlockH)
+                p += atBottom ? A(CW,  wW, wBlockH - dY)
+                              : A(CCW, wW, wBlockH - dY)
+                // workspaces right wall up to transition point
+                p += L(wW, dY)
+                // ── TRANSITION: workspace → bridge
+                p += T(CW, wW + dX, lD)
+                // bridge across to clock
+                p += L(cX - dX, lD)
+                // ── TRANSITION: bridge → clock left
+                p += T(CW, cX, dY)
+                // clock left wall + bottom-left corner
+                p += L(cX, cH - dY)
+                p += A(CCW, cX + dX, cH)
+            }
+
+            // clock bottom edge
             p += L(cX + cW - dX, cH)
-            p += A(CCW, cX + cW, cH - dY)
-            p += L(cX + cW, dY)
-            // ── TRANSITION: clock → bridge
-            p += T(CW, cX + cW + dX, lD)
-            // bridge across to utility
-            p += L(uX - dX, lD)
-            // ── TRANSITION: bridge → utility left
-            p += T(CW, uX, dY)
-            // utility left wall + bottom corners + bottom edge + right-bottom corner
-            p += L(uX, uH - dY)
-            p += uAtBottom ? A(CW,  uX - dX, uH)   // merges into the screen bottom
-                           : A(CCW, uX + dX, uH)   // still growing
+
+            if (mergeCU) {
+                if (uH - cH >= 2 * dY)
+                    p += stepDown(uX, cH, uH)
+                else if (cH - uH >= 2 * dY)
+                    p += stepUp(cX + cW, cH, uH)
+            } else {
+                p += A(CCW, cX + cW, cH - dY)
+                p += L(cX + cW, dY)
+                // ── TRANSITION: clock → bridge
+                p += T(CW, cX + cW + dX, lD)
+                // bridge across to utility
+                p += L(uX - dX, lD)
+                // ── TRANSITION: bridge → utility left
+                p += T(CW, uX, dY)
+                // utility left wall + bottom-left corner
+                p += L(uX, uH - dY)
+                p += uAtBottom ? A(CW,  uX - dX, uH)   // merges into the screen bottom
+                               : A(CCW, uX + dX, uH)   // still growing
+            }
             p += L(uX + uW - dX, uH)
             p += A(CW, uX + uW, uH + dY)
             // utility right wall up, top edge, left wall back to start
@@ -369,6 +399,7 @@ PanelWindow{
 
             Workspaces{
                 id: workspaces
+                maxWidth: Math.max(1, clock.x - 12)
             }
 
             Clock{

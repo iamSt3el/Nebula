@@ -8,13 +8,18 @@ import qs.modules.settings
 import qs.modules.customComponents
 
 Scope {
-    Loader {
+    LazyLoader {
         id: loader
-        active: GlobalStates.toolsWidgetOpen
-        visible: active
+        activeAsync: true
 
-        sourceComponent: PanelWindow {
+        component: PanelWindow {
             id: panelWindow
+
+            readonly property bool shouldOpen: GlobalStates.toolsWidgetOpen
+            property real openProgress: panelWindow.shouldOpen ? 1 : 0
+            Behavior on openProgress { SpatialAnim { speed: "fast" } }
+
+            visible: panelWindow.shouldOpen || panelWindow.openProgress > 0.01
             implicitWidth: 600
             implicitHeight: 600
             WlrLayershell.namespace: "quickshell:toolsWidget"
@@ -41,7 +46,7 @@ Scope {
 
             HyprlandFocusGrab {
                 windows: [panelWindow]
-                active: loader.active
+                active: panelWindow.shouldOpen
                 onCleared: GlobalStates.toolsWidgetOpen = false
             }
 
@@ -53,6 +58,10 @@ Scope {
                 ToolsWidgetOverall {
                     id: container
                     anchors.centerIn: parent
+                    opacity: panelWindow.openProgress
+                    scale: 0.92 + 0.08 * panelWindow.openProgress
+                    layer.enabled: panelWindow.openProgress > 0
+                                   && panelWindow.openProgress < 1
                 }
             }
         }

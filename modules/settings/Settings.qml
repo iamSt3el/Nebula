@@ -126,6 +126,10 @@ Singleton{
         {
             name: "Storage",
             icon: "hard_drive"
+        },
+        {
+            name: "Updates",
+            icon: "system_update_alt"
         }
     ]
 

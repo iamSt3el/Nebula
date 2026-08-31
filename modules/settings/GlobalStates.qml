@@ -26,5 +26,10 @@ Singleton{
     property bool overviewOpen: false
     property bool fileDropOpen: false
     property bool welcomeOpen: false
+    property int notificationCenterCount: 0
+    property real desktopCursorX: 0
+    property real desktopCursorY: 0
+    property bool desktopCursorActive: false
+    readonly property bool notificationCenterOpen: root.notificationCenterCount > 0
     property string areaSelectMode: ""   // "screenshot" or "recording"
 }

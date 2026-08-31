@@ -22,6 +22,9 @@ Rectangle {
 
     implicitHeight: root.headerHeight + root.naturalListHeight + root.footerHeight + 12
 
+    Component.onCompleted:   GlobalStates.notificationCenterCount++
+    Component.onDestruction: GlobalStates.notificationCenterCount--
+
     color: "transparent"
     clip: true
 

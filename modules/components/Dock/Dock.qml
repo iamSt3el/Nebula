@@ -15,12 +15,30 @@ Item {
     implicitWidth: dockRow.implicitWidth
     visible: false
 
-    signal contextMenuRequested(real px, real py, var appEntry)
-    property bool showPreview: false
+    property bool popupOpen: false
+    property string popupMode: "preview"
+    readonly property bool menuOpen: root.popupMode === "menu"
     property bool iconHovered: false
     property bool previewHovered: false
     property point previewPos: Qt.point(0, 0)
-    property var hoveredAppEntry: null
+    property string hoveredAppId: ""
+    readonly property var hoveredAppEntry: {
+        if (root.hoveredAppId === "") return null
+        const want = root.hoveredAppId.toLowerCase()
+        return ServiceApps.dockModel.find(e => (e.appId ?? "").toLowerCase() === want) ?? null
+    }
+
+    onPopupOpenChanged: if (!root.popupOpen) root.popupMode = "preview"
+
+    onHoveredAppEntryChanged: {
+        if (!root.popupOpen) return
+        if (!root.hoveredAppEntry) {
+            root.popupOpen = false
+            return
+        }
+        if (!root.menuOpen && root.hoveredAppEntry.toplevels.length === 0)
+            root.popupOpen = false
+    }
     property bool closing: false
 
     states: State {
@@ -38,8 +56,8 @@ Item {
         id: hidePreviewTimer
         interval: 150
         onTriggered: {
-            if (!root.iconHovered && !root.previewHovered)
-                root.showPreview = false
+            if (!root.iconHovered && !root.previewHovered && !root.menuOpen)
+                root.popupOpen = false
         }
     }
 
@@ -55,19 +73,27 @@ Item {
 
     Loader {
         id: previewLoader
-        active: root.showPreview
-        sourceComponent: DockPreview {
+        active: root.popupOpen
+        sourceComponent: DockPopup {
             anchorPoint: root.previewPos
-            appEntry: root.hoveredAppEntry
+            appId: root.hoveredAppId
+            mode:  root.popupMode
             onHoverEntered: {
                 hidePreviewTimer.stop()
                 root.previewHovered = true
             }
             onHoverExited: {
                 root.previewHovered = false
-                if (!root.iconHovered)
+                if (!root.iconHovered && !root.menuOpen)
                     hidePreviewTimer.restart()
             }
+            onMenuDismissed: {
+                if (root.iconHovered || root.previewHovered)
+                    root.popupMode = "preview"
+                else
+                    root.popupOpen = false
+            }
+            onRequestClose: root.popupOpen = false
         }
     }
 
@@ -200,19 +226,21 @@ Item {
                     hoverEnabled: true
 
                     onEntered: {
+                        if (root.menuOpen) return
                         if (modelData.toplevels.length > 0) {
                             hidePreviewTimer.stop()
-                            root.iconHovered    = true
-                            root.hoveredAppEntry = dockItem.modelData
-                            root.showPreview    = true
+                            root.iconHovered  = true
+                            root.hoveredAppId = dockItem.modelData.appId ?? ""
                             var gp = dockItem.mapToItem(panelWindow.container, 0, 0)
                             root.previewPos = Qt.point(gp.x, gp.y)
+                            root.popupMode = "preview"
+                            root.popupOpen = true
                         }
                     }
 
                     onExited: {
                         root.iconHovered = false
-                        if (!root.previewHovered)
+                        if (!root.previewHovered && !root.menuOpen)
                             hidePreviewTimer.restart()
                     }
 
@@ -223,8 +251,12 @@ Item {
                             else
                                 ServiceApps.launch(dockItem.modelData.appId)
                         } else if (mouse.button === Qt.RightButton) {
-                            const pos = dockIconArea.mapToItem(root, mouse.x, mouse.y)
-                            root.contextMenuRequested(pos.x, root.y, dockItem.modelData)
+                            hidePreviewTimer.stop()
+                            root.hoveredAppId = dockItem.modelData.appId ?? ""
+                            var gp = dockItem.mapToItem(panelWindow.container, 0, 0)
+                            root.previewPos = Qt.point(gp.x, gp.y)
+                            root.popupMode = "menu"
+                            root.popupOpen = true
                         }
                     }
                 }
