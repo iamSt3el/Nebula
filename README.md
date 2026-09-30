@@ -39,15 +39,15 @@ Arch Linux only.
 bash <(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/master/install.sh)
 ```
 
-The installer pulls the packages, builds the plugins, sets up Python and links the
-`nebula` command. It never edits your Hyprland config, so start Nebula from your
-autostart yourself:
+The installer pulls the packages, builds the plugins, sets up Python, and compiles the
+`nebula` command and installs it to `/usr/local/bin`. It never edits your Hyprland
+config, so start Nebula from your autostart yourself:
 
 ```lua
-hl.exec_cmd("~/.local/bin/nebula start")
+hl.exec_cmd("nebula start")
 ```
 
-It also starts the wallpaper daemon and the clipboard watcher if they aren't running.
+It also starts the clipboard watcher if it isn't running.
 
 > [!IMPORTANT]
 > Nebula needs **Hyprland 0.56 or newer with a Lua config** (`~/.config/hypr/hyprland.lua`).

@@ -14,8 +14,8 @@ hl.on("hyprland.start", function()
     -- Idle + screen-lock daemon
     hl.exec_cmd("hypridle")
 
-    -- Nebula shell, plus the wallpaper daemon and clipboard watcher
-    hl.exec_cmd("~/.local/bin/nebula start")
+    -- Nebula shell, plus the clipboard watcher
+    hl.exec_cmd("nebula start")
 
     -- Set cursor theme
     hl.exec_cmd("hyprctl setcursor Bibata-Modern-Ice 24")

@@ -34,14 +34,13 @@
 
 <h2>Starting the shell</h2>
 
-<p>One line in your autostart. <code>nebula start</code> also launches the wallpaper
-   daemon and the clipboard watcher if they are not running, and sets the environment
-   the shell needs.</p>
+<p>One line in your autostart. <code>nebula start</code> also launches the clipboard
+   watcher if it is not running, and sets the environment the shell needs.</p>
 
-<div class="code"><span class="lang">lua</span><pre>hl.exec_cmd(<span class="st">"~/.local/bin/nebula start"</span>)</pre></div>
+<div class="code"><span class="lang">lua</span><pre>hl.exec_cmd(<span class="st">"nebula start"</span>)</pre></div>
 
-<p>Use the full path: <code>~/.local/bin</code> is often not on Hyprland&rsquo;s
-   <code>PATH</code> at login.</p>
+<p>The installer puts <code>nebula</code> in <code>/usr/local/bin</code>, so it is on
+   Hyprland&rsquo;s <code>PATH</code> at login.</p>
 
 <h2>Keybinds</h2>
 

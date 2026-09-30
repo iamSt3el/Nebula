@@ -16,6 +16,9 @@ voice-bridge-src.zip
 # CMake build artifacts — rebuild with plugins/<name>/build.sh
 plugins/*/build/
 
+# nebula launcher build output — rebuild with cli/launcher/build.sh
+cli/launcher/build/
+
 # Python virtualenv
 venv/
 

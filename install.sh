@@ -42,6 +42,7 @@ INSTALL_DIR="$XDG_CONFIG_HOME/quickshell"
 VENV_DIR="$XDG_STATE_HOME/quickshell/.venv"
 PLUGIN_DIR="$INSTALL_DIR/plugins/WfRecorder"
 NEBULA_PLUGIN_DIR="$INSTALL_DIR/plugins/Nebula"
+LAUNCHER_DIR="$INSTALL_DIR/cli/launcher"
 
 # ── option defaults ───────────────────────────────────────────────────────────
 ask=true
@@ -309,12 +310,6 @@ v uv venv --prompt nebula "$VENV_DIR" -p 3.12
 v uv pip install materialyoucolor requests Pillow --python "$VENV_DIR/bin/python"
 ok "Python venv ready at $VENV_DIR"
 
-# ── nebula command ────────────────────────────────────────────────────────────
-step "nebula command"
-mkdir -p "$HOME/.local/bin"
-ln -sfn "$INSTALL_DIR/bin/nebula" "$HOME/.local/bin/nebula"
-ok "nebula linked to ~/.local/bin/nebula (run \`nebula help\`)"
-
 # ── WfRecorder plugin ─────────────────────────────────────────────────────────
 step "WfRecorder plugin"
 if [[ -f "$PLUGIN_DIR/build.sh" ]]; then
@@ -332,6 +327,24 @@ if [[ -f "$NEBULA_PLUGIN_DIR/build.sh" ]]; then
   ok "Plugin built"
 else
   warn "No build.sh at $NEBULA_PLUGIN_DIR — stats, sparklines and shapes need it"
+fi
+
+# ── nebula command ────────────────────────────────────────────────────────────
+step "nebula command"
+NEBULA_BIN="/usr/local/bin/nebula"
+NEBULA_CMD="nebula"
+if [[ -f "$LAUNCHER_DIR/build.sh" ]]; then
+  v bash "$LAUNCHER_DIR/build.sh"
+  [[ -x "$LAUNCHER_DIR/build/nebula" ]] && v sudo install -Dm755 "$LAUNCHER_DIR/build/nebula" "$NEBULA_BIN"
+fi
+if [[ -x "$NEBULA_BIN" ]] && cmp -s "$LAUNCHER_DIR/build/nebula" "$NEBULA_BIN"; then
+  [[ -L "$HOME/.local/bin/nebula" ]] && rm -f "$HOME/.local/bin/nebula"
+  ok "nebula installed to $NEBULA_BIN (run \`nebula help\`)"
+else
+  mkdir -p "$HOME/.local/bin"
+  ln -sfn "$INSTALL_DIR/bin/nebula" "$HOME/.local/bin/nebula"
+  NEBULA_CMD="~/.local/bin/nebula"
+  warn "nebula was not installed to $NEBULA_BIN — linked ~/.local/bin/nebula instead"
 fi
 
 # ── wallpaper directory ───────────────────────────────────────────────────────
@@ -427,7 +440,7 @@ echo ""
 echo -e "  ${DIM}autostart + keybinds${RESET}  ${CYAN}$INSTALL_DIR/config/hypr/${RESET}"
 echo ""
 echo -e "  ${DIM}Add one line to your Hyprland autostart (hyprland.lua):${RESET}"
-echo -e "    ${CYAN}hl.exec_cmd(\"~/.local/bin/nebula start\")${RESET}"
+echo -e "    ${CYAN}hl.exec_cmd(\"$NEBULA_CMD start\")${RESET}"
 echo ""
 echo -e "  ${YELLOW}Nebula needs Hyprland 0.56+ with a Lua config.${RESET} ${DIM}hyprland.conf is not supported.${RESET}"
 echo ""

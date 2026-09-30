@@ -420,7 +420,7 @@ footer a{color:var(--surfaceText)}
   <section id="install">
     <div class="sec-head">
       <div><div class="eyebrow">Install</div><h2>Three steps on Arch</h2></div>
-      <p>The installer pulls the packages, builds the plugins, sets up Python and fonts, and links the <code>nebula</code> command. It never edits your Hyprland config.</p>
+      <p>The installer pulls the packages, builds the plugins, sets up Python and fonts, and installs the <code>nebula</code> command to <code>/usr/local/bin</code>. It never edits your Hyprland config.</p>
     </div>
     <div class="install">
       <div class="panel">
@@ -430,7 +430,7 @@ footer a{color:var(--surfaceText)}
       </div>
       <div class="panel">
         <h3><i>2</i>Start it from hyprland.lua</h3>
-        <pre><span class="f">hl.exec_cmd</span>(<span class="s">"~/.local/bin/nebula start"</span>)</pre>
+        <pre><span class="f">hl.exec_cmd</span>(<span class="s">"nebula start"</span>)</pre>
         <p>It also starts the clipboard watcher.</p>
         <div class="warn"><span class="ms">warning</span><span>Lua config only. There is no <code>hyprland.conf</code> version of this step, because Nebula does not work with a <code>.conf</code> setup.</span></div>
       </div>

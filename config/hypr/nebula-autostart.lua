@@ -3,4 +3,4 @@
 -- in your ~/.config/hypr/lua/autostart.lua (or equivalent).
 
 -- Starts the shell, plus the cliphist watcher if it isn't running
-hl.exec_cmd("~/.local/bin/nebula start")
+hl.exec_cmd("nebula start")
