@@ -595,6 +595,54 @@ Item {
 
 
 
+            // ── Wallpaper fit ─────────────────────────────────────────────
+            // Local addition. The shell hardcoded PreserveAspectCrop, which
+            // cuts a lot off a portrait image on a landscape screen.
+            CustomText { Layout.topMargin: 16; content: "Wallpaper"; size: 13; customColor: Colors.primary }
+
+            CustomCard {
+                Layout.topMargin: 6
+                autoRadius: false; topRadius: 20; bottomRadius: 20
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Fit"; size: 14 }
+                        CustomText {
+                            size: 12
+                            customColor: Colors.outline
+                            content: {
+                                const f = SettingsConfig.theme.wallpaperFill ?? "crop"
+                                if (f === "fit") return "Whole image shown — bars appear where the screen is wider"
+                                if (f === "stretch") return "Image stretched to fill — may look distorted"
+                                if (f === "tile") return "Image repeated to fill the screen"
+                                return "Fill the screen — edges are cut off"
+                            }
+                        }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomListNew {
+                        Layout.preferredWidth: 200
+                        Layout.preferredHeight: 30
+                        color: Colors.surfaceContainerHighest
+                        list: [
+                            { name: "crop" },
+                            { name: "fit" },
+                            { name: "stretch" },
+                            { name: "tile" }
+                        ]
+                        Component.onCompleted: currentVal = SettingsConfig.theme.wallpaperFill ?? "crop"
+                        onCurrentValChanged: {
+                            if (!currentVal || currentVal === (SettingsConfig.theme.wallpaperFill ?? "crop")) return
+                            SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, {
+                                wallpaperFill: currentVal
+                            })
+                        }
+                    }
+                }
+            }
+
             // ── Wallhaven ─────────────────────────────────────────────────
             CustomText { Layout.topMargin: 16; content: "Wallhaven"; size: 13; customColor: Colors.primary }
 

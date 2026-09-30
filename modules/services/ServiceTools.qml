@@ -140,6 +140,10 @@ Singleton{
 
     // Captures the path grimblast prints to stdout, then sends a notification with actions
     property string _screenshotPath: ""
+    readonly property bool screenshotActive: GlobalStates.areaSelectOpen
+        || root.countdownRemaining > 0
+        || screenshotProc.running
+        || areaScreenshotProc.running
 
     Process {
         id: screenshotProc

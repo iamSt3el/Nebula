@@ -39,6 +39,32 @@ Scope {
         return t === "none" || t === "random" || root.effects[t] ? t : "ink"
     }
 
+    // How the image is fitted to the screen. "crop" fills the screen and cuts
+    // the overflow, "fit" shows the whole image and letterboxes, "stretch"
+    // distorts to fill, "tile" repeats. A portrait photo on a landscape screen
+    // loses a lot to "crop", which is why this is user-selectable now.
+    readonly property string fillModeName: SettingsConfig.theme.wallpaperFill ?? "crop"
+    readonly property var fillModes: ({
+        crop:    Image.PreserveAspectCrop,
+        fit:     Image.PreserveAspectFit,
+        stretch: Image.Stretch,
+        tile:    Image.Tile
+    })
+    readonly property int fillMode: fillModes[fillModeName] ?? Image.PreserveAspectCrop
+
+    // How the image is fitted to the screen. "crop" fills the screen and cuts
+    // the overflow, "fit" shows the whole image and letterboxes, "stretch"
+    // distorts to fill, "tile" repeats. A portrait photo on a landscape screen
+    // loses a lot to "crop", which is why this is user-selectable now.
+    readonly property string fillModeName: SettingsConfig.theme.wallpaperFill ?? "crop"
+    readonly property var fillModes: ({
+        crop:    Image.PreserveAspectCrop,
+        fit:     Image.PreserveAspectFit,
+        stretch: Image.Stretch,
+        tile:    Image.Tile
+    })
+    readonly property int fillMode: fillModes[fillModeName] ?? Image.PreserveAspectCrop
+
     Variants {
         model: Quickshell.screens
 
@@ -162,7 +188,7 @@ Scope {
                 width: win.imgWidth
                 height: win.height
                 visible: win.frontImg === imgA && !swap.running
-                fillMode: Image.PreserveAspectCrop
+                fillMode: root.fillMode
                 asynchronous: true
                 cache: false
                 onStatusChanged: if (status === Image.Ready) win.ready(imgA)
@@ -174,7 +200,7 @@ Scope {
                 width: win.imgWidth
                 height: win.height
                 visible: win.frontImg === imgB && !swap.running
-                fillMode: Image.PreserveAspectCrop
+                fillMode: root.fillMode
                 asynchronous: true
                 cache: false
                 onStatusChanged: if (status === Image.Ready) win.ready(imgB)

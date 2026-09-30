@@ -15,7 +15,7 @@ Image {
     height: root.size
     sourceSize.width: root.size
     sourceSize.height: root.size
-    source: IconUtil.getIconPath(root.app?.icon ?? "")
+    source: IconUtil.getDesktopIconPath(root.app?.icon ?? "")
     fillMode: Image.PreserveAspectFit
     onSizeChanged: ServiceLauncher.noteIconSize(root.size)
     Component.onCompleted: ServiceLauncher.noteIconSize(root.size)

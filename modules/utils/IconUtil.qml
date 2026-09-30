@@ -25,7 +25,6 @@ Item {
             "quickshell": "Quickshell"
 
         }
-
         if (!windowClass) return ""
         var lowerClass = windowClass.toLowerCase()
         return iconMap[lowerClass] || lowerClass || ""
@@ -33,6 +32,16 @@ Item {
 
     function getIconPath(windowClass, fallback = "application-x-executable") {
         return Quickshell.iconPath(getIconName(windowClass), fallback)
+    }
+
+    // DesktopEntry.icon is already an icon name (or occasionally a file URL).
+    // Do not send it through getIconName(): that helper is for window classes
+    // and may rewrite or lowercase a perfectly valid desktop icon identifier.
+    function getDesktopIconPath(iconName, fallback = "application-x-executable") {
+        const icon = iconName ?? ""
+        if (icon.startsWith("file://") || icon.startsWith("/"))
+            return icon
+        return Quickshell.iconPath(icon, fallback)
     }
 
     function getSystemIcon(iconName) {
@@ -47,4 +56,3 @@ Item {
         return Qt.resolvedUrl("../../assets/" + name)
     }
 }
-

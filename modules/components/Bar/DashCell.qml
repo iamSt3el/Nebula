@@ -102,7 +102,9 @@ Item {
 
     Item {
         anchors.fill: parent
-        clip: true
+        // Slider value pills intentionally float above their cell, like the
+        // Material 3 slider. Other dashboard content remains cell-clipped.
+        clip: cell.base.kind !== "slider"
 
         Loader {
             id: loader

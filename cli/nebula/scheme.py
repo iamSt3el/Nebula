@@ -473,15 +473,29 @@ def _apply_app_templates(our_colors: dict, wallpaper: str, enabled=None) -> None
     print(f"[gen_colors] app templates done in {(time.time()-t0)*1000:.0f}ms", flush=True)
 
 
-# ── Papirus folder color sync ─────────────────────────────────────────────────
+# ── Fluent icon theme sync ────────────────────────────────────────────────────
+# Local change: this was Papirus. The folder-recolouring helper
+# (papirus-folders) had no papirus icon theme on this machine, and the gsettings
+# call below kept overwriting the icon theme. It now only pins the Fluent theme
+# that is actually installed, and skips the papirus-folders recolour entirely.
+# Back up before pulling: this is a tracked file.
 
-_PAPIRUS_PATHS = [
-    Path("/usr/share/icons/Papirus"),
-    Path("/usr/share/icons/Papirus-Dark"),
-    Path("/usr/share/icons/Papirus-Light"),
-    Path.home() / ".local/share/icons/Papirus",
-    Path.home() / ".icons/Papirus",
+# Search roots for icon themes; each candidate is looked up as <root>/<name>.
+_ICON_THEME_ROOTS = [
+    Path("/usr/share/icons"),
+    Path("/usr/local/share/icons"),
+    Path.home() / ".local/share/icons",
+    Path.home() / ".icons",
 ]
+
+
+def _fluent_theme_for(mode: str) -> str:
+    """Return the installed Fluent variant matching the current colour mode."""
+    candidates = ["Fluent-dark", "Fluent"] if mode == "dark" else ["Fluent-light", "Fluent"]
+    for name in candidates:
+        if any((root / name).is_dir() for root in _ICON_THEME_ROOTS):
+            return name
+    return ""
 
 
 def _determine_papirus_hue(r: int, g: int, b: int, brightness: int, use_pale: bool) -> str:
@@ -543,46 +557,51 @@ def _map_to_papirus_color(hex_color: str) -> str:
 
 
 def _sync_papirus_colors(primary_hex: str, mode: str, keep_icon_theme: bool = False, enabled=None) -> None:
-    """Recolor Papirus folder icons and switch GTK icon theme to Papirus."""
-    if enabled is not None and "papirus" not in enabled:
-        return
+    """Pin the GTK icon theme to the installed Fluent variant.
+
+    Local change: was "recolor Papirus folder icons and switch GTK icon theme to
+    Papirus". papirus-folders has nothing to recolour without a papirus icon
+    theme installed, and the gsettings call overwrote the user's icon theme on
+    every colour-scheme regeneration. The papirus-folders invocation is dropped;
+    the icon theme is only set when it differs from what is already active, so
+    this is a no-op on most runs. The function name is kept so the four existing
+    call sites keep working.
+    """
     if keep_icon_theme:
-        # A gowall icon theme is active. Switching back to Papirus would undo it,
-        # and papirus-folders rewriting the source icons would make the generated
-        # copy look stale on every single wallpaper change.
+        # A gowall icon theme is active. Leave it alone.
         print("[gen_colors] gowall icons active — leaving the icon theme alone", flush=True)
         return
 
-    if not any(p.exists() for p in _PAPIRUS_PATHS):
+    icon_theme = _fluent_theme_for(mode)
+    if not icon_theme:
+        print("[gen_colors] no Fluent theme found — leaving the icon theme alone", flush=True)
         return
 
-    if subprocess.run(["which", "papirus-folders"], capture_output=True).returncode != 0:
-        print("[gen_colors] papirus-folders not found — skipping icon sync", flush=True)
+    current = ""
+    try:
+        current = subprocess.run(
+            ["gsettings", "get", "org.gnome.desktop.interface", "icon-theme"],
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip().strip("'")
+    except Exception:
+        pass
+
+    if current == icon_theme:
+        print(f"[gen_colors] icon theme already {icon_theme}", flush=True)
         return
 
-    color = _map_to_papirus_color(primary_hex)
-    icon_theme = "Papirus-Dark" if mode == "dark" else "Papirus-Light"
     if enabled is not None:
-        _report("papirus", "ok", f"Folders set to {color}")
-    print(f"[gen_colors] papirus-folders → {color} ({icon_theme})", flush=True)
+        _report("papirus", "ok", f"Icon theme {current or 'unset'} → {icon_theme}")
+    print(f"[gen_colors] icon theme {current or 'unset'} → {icon_theme}", flush=True)
 
     try:
-        for theme in ("Papirus", "Papirus-Dark", "Papirus-Light"):
-            if not any(p.name == theme and p.exists() for p in _PAPIRUS_PATHS):
-                continue
-            subprocess.Popen(
-                ["sudo", "-n", "papirus-folders", "-C", color, "--theme", theme, "-u"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
         subprocess.Popen(
             ["gsettings", "set", "org.gnome.desktop.interface", "icon-theme", icon_theme],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
     except Exception as e:
-        print(f"[gen_colors] papirus-folders ERROR: {e}", file=sys.stderr)
+        print(f"[gen_colors] icon-theme ERROR: {e}", file=sys.stderr)
 
 
 # ── Font sync ──────────────────────────────────────────────────────────────────

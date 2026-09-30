@@ -42,6 +42,7 @@ INSTALL_DIR="$XDG_CONFIG_HOME/quickshell"
 VENV_DIR="$XDG_STATE_HOME/quickshell/.venv"
 PLUGIN_DIR="$INSTALL_DIR/plugins/WfRecorder"
 NEBULA_PLUGIN_DIR="$INSTALL_DIR/plugins/Nebula"
+FLUENT_ICON_REPO="https://github.com/vinceliuice/Fluent-icon-theme.git"
 
 # ── option defaults ───────────────────────────────────────────────────────────
 ask=true
@@ -231,10 +232,24 @@ PACMAN_PKGS=(
   noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-fira-sans ttf-fira-code ttf-jetbrains-mono
   gcc cmake extra-cmake-modules
 )
-PACMAN_PKGS_OPT=(ddcutil papirus-icon-theme)
 v sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
-sudo pacman -S --needed --noconfirm "${PACMAN_PKGS_OPT[@]}" \
-  || warn "Optional packages failed (ddcutil, papirus-icon-theme)"
+v sudo pacman -S --needed --noconfirm ddcutil \
+  || warn "Optional package failed (ddcutil)"
+
+if sudo pacman -S --needed --noconfirm papirus-icon-theme; then
+  ok "Papirus icon theme installed"
+else
+  warn "Papirus icon theme could not be installed — trying Fluent icons"
+  fluent_tmpdir=$(mktemp -d)
+  if git clone --depth 1 "$FLUENT_ICON_REPO" "$fluent_tmpdir/Fluent-icon-theme" \
+      && (cd "$fluent_tmpdir/Fluent-icon-theme" \
+          && ./install.sh --dest "$HOME/.local/share/icons" standard); then
+    ok "Fluent icon theme installed to $HOME/.local/share/icons"
+  else
+    warn "Fluent icon theme fallback failed; continuing without an icon theme"
+  fi
+  rm -rf "$fluent_tmpdir"
+fi
 
 # ── uv (fast Python package manager) ─────────────────────────────────────────
 step "uv (Python toolchain)"

@@ -15,7 +15,6 @@ local calculator  = "gnome-calculator"
 -- hl.dsp.global() is the native global dispatcher (available in 0.55+).
 hl.bind(mainMod .. " + W",             hl.dsp.global("quickshell:wallpaperLauncher"))
 hl.bind(mainMod .. " + L",             hl.dsp.global("quickshell:lock"),       { locked = true })
-hl.bind(mainMod .. " + SHIFT + S",     hl.dsp.global("quickshell:shutdown"),   { locked = true })
 hl.bind(mainMod .. " + CTRL + RETURN", hl.dsp.global("quickshell:appLauncher"))
 hl.bind(mainMod .. " + S",             hl.dsp.global("quickshell:toolsWidget"))
 hl.bind(mainMod .. " + V",             hl.dsp.global("quickshell:clipboard"))
