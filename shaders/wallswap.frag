@@ -64,8 +64,19 @@ float farCorner(vec2 o) {
                max(length(o - vec2(0.0, itemSize.y)), length(o - itemSize)));
 }
 
-vec4 A(vec2 uv) { return texture(fromTex, fromView.xy + uv * fromView.zw); }
-vec4 B(vec2 uv) { return texture(toTex, toView.xy + uv * toView.zw); }
+float inside(vec2 t) {
+    vec2 e = step(vec2(-0.002), t) * step(t, vec2(1.002));
+    return e.x * e.y;
+}
+
+vec4 A(vec2 uv) {
+    vec2 t = fromView.xy + uv * fromView.zw;
+    return vec4(texture(fromTex, t).rgb * inside(t), 1.0);
+}
+vec4 B(vec2 uv) {
+    vec2 t = toView.xy + uv * toView.zw;
+    return vec4(texture(toTex, t).rgb * inside(t), 1.0);
+}
 
 vec2 cellCenter(vec2 cell, float cs) { return (cell + 0.15 + 0.7 * h22(cell + seed)) * cs; }
 

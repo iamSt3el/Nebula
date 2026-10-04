@@ -91,7 +91,9 @@ void main() {
     float cr = texture(source, view.xy + (uv + off * px * 1.10) * view.zw).r;
     float cg = texture(source, view.xy + (uv + off * px) * view.zw).g;
     float cb = texture(source, view.xy + (uv + off * px * 0.90) * view.zw).b;
-    vec3 col = vec3(cr, cg, cb);
+    vec2 t = view.xy + uv * view.zw;
+    vec2 e = step(vec2(-0.002), t) * step(t, vec2(1.002));
+    vec3 col = vec3(cr, cg, cb) * e.x * e.y;
 
     vec3 n = normalize(vec3(-slope, 1.0));
     vec3 L = normalize(vec3(-0.45, -0.65, 0.62));

@@ -239,13 +239,28 @@ Item {
                     }
 
                     SettingCard {
-                        bottomRadius: 20
+                        bottomRadius: 5
                         title: "Workspace glide"
-                        sub: "The wallpaper slides a little when you switch workspace"
+                        sub: SettingsConfig.general.wallpaperFill === "full"
+                            ? "Off while the whole wallpaper is shown"
+                            : "The wallpaper slides a little when you switch workspace"
                         trailing: CustomToogle {
                             isToggleOn: SettingsConfig.general.wallpaperGlide ?? true
                             onToggled: state => {
                                 SettingsConfig.general = Object.assign({}, SettingsConfig.general, { wallpaperGlide: state })
+                            }
+                        }
+                    }
+
+                    SettingCard {
+                        bottomRadius: 20
+                        title: "Fit"
+                        sub: "Crop covers, Fill stretches, Full shows the whole image"
+                        trailing: M3ButtonGroup {
+                            model: Settings.wallpaperFills
+                            activeCheck: v => Settings.wallpaperFillOrDefault(SettingsConfig.general.wallpaperFill) === v
+                            onSegmentClicked: v => {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { wallpaperFill: v })
                             }
                         }
                     }

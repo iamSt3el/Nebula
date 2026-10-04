@@ -187,6 +187,16 @@ Singleton{
         { name: "none" }
     ]
 
+    property var wallpaperFills: [
+        { value: "crop", label: "Crop", icon: "crop" },
+        { value: "fill", label: "Fill", icon: "open_in_full" },
+        { value: "full", label: "Full", icon: "fit_screen" }
+    ]
+
+    function wallpaperFillOrDefault(f) {
+        return settings.wallpaperFills.some(x => x.value === f) ? f : "crop"
+    }
+
     function transitionOrDefault(t) {
         return settings.transitionTypes.some(x => x.name === t) ? t : "ink"
     }

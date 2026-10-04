@@ -25,7 +25,11 @@ Scope {
         glitch: { mode: 9, duration: 900 },
         mosaic: { mode: 10, duration: 1400 }
     })
-    readonly property bool glideOn: (SettingsConfig.general.wallpaperGlide ?? true) && !ServiceGameMode.active
+    readonly property string fill: Settings.wallpaperFillOrDefault(SettingsConfig.general.wallpaperFill)
+    readonly property int fillMode: root.fill === "full" ? Image.PreserveAspectFit
+        : root.fill === "fill" ? Image.Stretch : Image.PreserveAspectCrop
+    readonly property bool glideOn: (SettingsConfig.general.wallpaperGlide ?? true) && root.fill !== "full"
+        && !ServiceGameMode.active
     readonly property real overscan: root.glideOn ? 0.25 : 0
     readonly property int glideSpan: {
         let top = 1
@@ -89,10 +93,15 @@ Scope {
                 const nw = img.implicitWidth, nh = img.implicitHeight
                 if (nw <= 0 || nh <= 0 || img.width <= 0 || img.height <= 0)
                     return Qt.vector4d(0, 0, 1, 1)
-                const s = Math.max(img.width / nw, img.height / nh)
-                const cx = img.width / (nw * s), cy = img.height / (nh * s)
-                return Qt.vector4d((1 - cx) / 2 - img.x / img.width * cx, (1 - cy) / 2,
-                                   win.width / img.width * cx, win.height / img.height * cy)
+                let sx = img.width / nw, sy = img.height / nh
+                if (img.fillMode !== Image.Stretch) {
+                    const s = img.fillMode === Image.PreserveAspectFit ? Math.min(sx, sy) : Math.max(sx, sy)
+                    sx = s
+                    sy = s
+                }
+                const pw = nw * sx, ph = nh * sy
+                const px = img.x + (img.width - pw) / 2, py = (img.height - ph) / 2
+                return Qt.vector4d(-px / pw, -py / ph, win.width / pw, win.height / ph)
             }
 
             onWantedChanged: win.load()
@@ -162,7 +171,7 @@ Scope {
                 width: win.imgWidth
                 height: win.height
                 visible: win.frontImg === imgA && !swap.running
-                fillMode: Image.PreserveAspectCrop
+                fillMode: root.fillMode
                 asynchronous: true
                 cache: false
                 onStatusChanged: if (status === Image.Ready) win.ready(imgA)
@@ -174,7 +183,7 @@ Scope {
                 width: win.imgWidth
                 height: win.height
                 visible: win.frontImg === imgB && !swap.running
-                fillMode: Image.PreserveAspectCrop
+                fillMode: root.fillMode
                 asynchronous: true
                 cache: false
                 onStatusChanged: if (status === Image.Ready) win.ready(imgB)

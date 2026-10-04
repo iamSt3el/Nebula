@@ -340,7 +340,7 @@ Item {
 
                 // Transition Type
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
@@ -359,6 +359,58 @@ Item {
                                 if (currentVal && currentVal !== SettingsConfig.theme.transitionType) {
                                     SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { transitionType: currentVal })
                                 }
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Workspace glide"; size: 14 }
+                            CustomText {
+                                content: SettingsConfig.general.wallpaperFill === "full"
+                                    ? "Off while the whole wallpaper is shown"
+                                    : "The wallpaper slides a little when you switch workspace"
+                                size: 12; customColor: Colors.outline
+                            }
+                        }
+                        Item { Layout.fillWidth: true }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.general.wallpaperGlide ?? true
+                            onToggled: state => {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { wallpaperGlide: state })
+                            }
+                        }
+                    }
+                }
+
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            spacing: 2
+                            CustomText { content: "Wallpaper fit"; size: 14 }
+                            CustomText {
+                                content: {
+                                    const f = Settings.wallpaperFillOrDefault(SettingsConfig.general.wallpaperFill)
+                                    if (f === "fill") return "Stretched to the screen edges"
+                                    if (f === "full") return "The whole image, with bars where it doesn't reach"
+                                    return "Covers the screen, trimming what doesn't fit"
+                                }
+                                size: 12; customColor: Colors.outline
+                            }
+                        }
+                        Item { Layout.fillWidth: true }
+                        M3ButtonGroup {
+                            model: Settings.wallpaperFills
+                            activeCheck: v => Settings.wallpaperFillOrDefault(SettingsConfig.general.wallpaperFill) === v
+                            onSegmentClicked: v => {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { wallpaperFill: v })
                             }
                         }
                     }

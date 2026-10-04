@@ -72,7 +72,7 @@ Singleton {
             w = Math.max(w, Math.ceil(s.width * s.devicePixelRatio))
             h = Math.max(h, Math.ceil(s.height * s.devicePixelRatio))
         }
-        const over = (SettingsConfig.general.wallpaperGlide ?? true) ? 1.25 : 1
+        const over = (SettingsConfig.general.wallpaperGlide ?? true) && SettingsConfig.general.wallpaperFill !== "full" ? 1.25 : 1
         return Qt.size(Math.ceil((w || 1920) * over), h || 1080)
     }
 
