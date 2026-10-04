@@ -299,7 +299,7 @@ Scope {
                         font.family: scope.display
                         font.pixelSize: 16
                         color: scope.ink
-                        elide: Text.ElideRight
+                        wrapMode: Text.Wrap
                         renderType: Text.QtRendering
                     }
                     Text {

@@ -136,18 +136,25 @@ Item {
             width: paperFlick.width
             spacing: 8
 
-            TextInput {
+            TextEdit {
                 id: titleIn
                 Layout.fillWidth: true
                 font.family: card.display
                 font.pixelSize: 21
                 color: card.ink
+                wrapMode: TextEdit.Wrap
                 selectionColor: Qt.alpha(card.ink, 0.22)
                 selectedTextColor: card.ink
                 renderType: Text.QtRendering
-                clip: true
-                onTextEdited: if (card.note) ServiceNotes.update(card.note.id, { title: text })
+                onTextChanged: {
+                    if (!card.note || !activeFocus)
+                        return
+                    const t = text.replace(/[\r\n]+/g, " ")
+                    if (t !== card.note.title)
+                        ServiceNotes.update(card.note.id, { title: t })
+                }
                 Keys.onReturnPressed: bodyIn.forceActiveFocus()
+                Keys.onEnterPressed: bodyIn.forceActiveFocus()
             }
 
             TextEdit {
