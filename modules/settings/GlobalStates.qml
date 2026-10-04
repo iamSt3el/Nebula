@@ -106,6 +106,7 @@ Singleton{
     // widget layer's keyboard mode so it never holds the keyboard at rest.
     property bool widgetTextFocus: false
     property bool osdOpen: false
+    property string osdKind: "volume"
     property bool liveIsland: false
     property bool wallpaperOpen: false
     property bool lockSelectorOpen: false

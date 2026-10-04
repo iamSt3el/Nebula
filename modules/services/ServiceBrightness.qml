@@ -18,6 +18,7 @@ Singleton {
     signal brightnessChanged()
 
     property var ddcMonitors: []
+    property var changedMonitor: null
     readonly property list<BrightnessMonitor> monitors: Quickshell.screens.map(screen => monitorComp.createObject(root, {
         screen
     }))
@@ -66,10 +67,6 @@ Singleton {
         onExited: root.ddcMonitorsChanged()
     }
 
-    Process {
-        id: setProc
-    }
-
     component BrightnessMonitor: QtObject {
         id: monitor
 
@@ -81,6 +78,7 @@ Singleton {
 
         onBrightnessChanged: {
             if (monitor.ready) {
+                root.changedMonitor = monitor;
                 root.brightnessChanged();
             }
         }
@@ -101,14 +99,29 @@ Singleton {
             }
         }
 
+        property int pending: -1
+
         function setBrightness(value: real): void {
             value = Math.max(0.01, Math.min(1, value));
             const rounded = Math.round(value * 100);
             if (Math.round(brightness * 100) === rounded)
                 return;
             brightness = value;
-            setProc.command = isDdc ? ["ddcutil", "-b", busNum, "setvcp", "10", rounded] : ["brightnessctl", "s", `${rounded}%`, "--quiet"];
-            setProc.startDetached();
+            monitor.pending = rounded;
+            monitor.flush();
+        }
+
+        function flush(): void {
+            if (monitor.writer.running || monitor.pending < 0)
+                return;
+            const v = String(monitor.pending);
+            monitor.pending = -1;
+            monitor.writer.command = isDdc ? ["ddcutil", "-b", busNum, "--noverify", "setvcp", "10", v] : ["brightnessctl", "s", `${v}%`, "--quiet"];
+            monitor.writer.running = true;
+        }
+
+        readonly property Process writer: Process {
+            onExited: monitor.flush()
         }
 
         Component.onCompleted: {

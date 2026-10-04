@@ -13,19 +13,28 @@ Scope {
         onTriggered: GlobalStates.osdOpen = false
     }
 
+    function showOsd(kind) {
+        GlobalStates.osdKind = kind
+        GlobalStates.osdOpen = true
+        osdTimer.restart()
+    }
+
     Connections {
         target: ServicePipewire.sink?.audio ?? null
         function onVolumeChanged() {
-            if (GlobalStates.liveIsland)
-                return
-            GlobalStates.osdOpen = true
-            osdTimer.restart()
+            if (!GlobalStates.liveIsland)
+                root.showOsd("volume")
         }
         function onMutedChanged() {
-            if (GlobalStates.liveIsland)
-                return
-            GlobalStates.osdOpen = true
-            osdTimer.restart()
+            if (!GlobalStates.liveIsland)
+                root.showOsd("volume")
+        }
+    }
+
+    Connections {
+        target: ServiceBrightness
+        function onBrightnessChanged() {
+            root.showOsd("brightness")
         }
     }
 

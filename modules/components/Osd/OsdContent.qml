@@ -19,12 +19,17 @@ Rectangle {
     NumberAnimation on scale   { from: 0.88; to: 1; duration: 220; running: true; easing.type: Easing.OutCubic }
 
     property bool vertical: false
-    readonly property string glyph: ServicePipewire.muted ? "volume_off"
+    readonly property bool bright: GlobalStates.osdKind === "brightness" && !!ServiceBrightness.changedMonitor
+    readonly property real brightLevel: osdRoot.bright ? Math.max(0, Math.min(1, ServiceBrightness.changedMonitor.brightness || 0)) : 0
+    readonly property string glyph: osdRoot.bright
+        ? (osdRoot.brightLevel > 0.66 ? "brightness_7" : osdRoot.brightLevel > 0.33 ? "brightness_6" : "brightness_5")
+        : ServicePipewire.muted ? "volume_off"
         : ServicePipewire.volume > 0.6 ? "volume_up"
         : ServicePipewire.volume > 0.2 ? "volume_down"
         : "volume_mute"
-    readonly property real level: ServicePipewire.muted ? 0 : Math.min(ServicePipewire.volume, 1)
-    readonly property string label: ServicePipewire.muted ? (osdRoot.vertical ? "Mute" : "Muted")
+    readonly property real level: osdRoot.bright ? osdRoot.brightLevel
+        : ServicePipewire.muted ? 0 : Math.min(ServicePipewire.volume, 1)
+    readonly property string label: !osdRoot.bright && ServicePipewire.muted ? (osdRoot.vertical ? "Mute" : "Muted")
         : Math.round(osdRoot.level * 100) + (osdRoot.vertical ? "" : "%")
 
     component Badge: Rectangle {
