@@ -12,8 +12,7 @@ import qs.modules.customComponents
 Item {
     id: root
     readonly property bool atBottom: ServiceGaps.barSide === "bottom"
-    anchors.top:    root.atBottom ? undefined : parent.top
-    anchors.bottom: root.atBottom ? parent.bottom : undefined
+    y: root.atBottom ? parent.height - root.height : 0
     anchors.left:  parent.left
     anchors.right: parent.right
     height: Appearance.size.barHeight

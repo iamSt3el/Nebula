@@ -174,6 +174,8 @@ Item {
                             }
                         }
 
+                        Item { Layout.fillWidth: true }
+
                         Rectangle {
                             implicitWidth: 36; implicitHeight: 36
                             radius: 10

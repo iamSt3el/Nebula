@@ -200,6 +200,8 @@ Item {
                     }
                 }
 
+                Item { Layout.fillWidth: true }
+
                 CustomToogle {
                     id: dndSwitch
                     Layout.preferredWidth: 48
