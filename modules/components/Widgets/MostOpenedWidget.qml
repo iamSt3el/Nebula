@@ -68,7 +68,7 @@ WidgetHost {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     width: step.first ? 32 : 26
                                     height: width
-                                    source: IconUtil.getIconPath(step.modelData.app.icon ?? "")
+                                    source: IconUtil.getDesktopIconPath(step.modelData.app.icon ?? "")
                                     sourceSize.width: 64
                                     sourceSize.height: 64
                                 }

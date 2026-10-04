@@ -131,7 +131,7 @@ Item {
     }
 
     function iconFor(app) {
-        return IconUtil.getIconPath(app?.icon ?? "")
+        return IconUtil.getDesktopIconPath(app?.icon ?? "")
     }
 
     function launch(app) {
@@ -405,7 +405,7 @@ Item {
                         Image {
                             anchors.centerIn: parent
                             width: 26; height: 26
-                            source: IconUtil.getIconPath(ctxMenu.targetApp?.icon ?? "")
+                            source: IconUtil.getDesktopIconPath(ctxMenu.targetApp?.icon ?? "")
                             sourceSize.width: 26
                             sourceSize.height: 26
                             fillMode: Image.PreserveAspectFit

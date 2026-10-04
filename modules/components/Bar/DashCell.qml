@@ -102,7 +102,7 @@ Item {
 
     Item {
         anchors.fill: parent
-        clip: true
+        clip: cell.base.kind !== "slider"
 
         Loader {
             id: loader

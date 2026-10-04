@@ -17,8 +17,57 @@ Singleton{
     property var allApplications: DesktopEntries.applications
     property real totalApps: allApplications.values.length
     property list<DesktopEntry> list: []
+
+    function _isWine(entry): bool {
+        const cmd = entry.command ?? []
+        return cmd.some(p => p === "wine" || p.startsWith("WINEPREFIX="))
+    }
+
+    function _dedupe(entries): var {
+        const byClass = new Map()
+        const rest = []
+        for (const e of entries) {
+            const cls = (e.startupClass ?? "").toLowerCase()
+            if (cls.length === 0) {
+                rest.push(e)
+                continue
+            }
+            const prev = byClass.get(cls)
+            if (!prev || (root._isWine(prev) && !root._isWine(e)))
+                byClass.set(cls, e)
+        }
+
+        const byName = new Map()
+        const kept = []
+        for (const e of Array.from(byClass.values()).concat(rest)) {
+            const key = (e.name ?? "").trim().toLowerCase()
+            if (key.length === 0) {
+                kept.push(e)
+                continue
+            }
+            const prev = byName.get(key)
+            if (prev === undefined) {
+                byName.set(key, e)
+                kept.push(e)
+                continue
+            }
+            if (root._isWine(prev) === root._isWine(e)) {
+                kept.push(e)
+                continue
+            }
+            if (root._isWine(e))
+                continue
+            byName.set(key, e)
+            const i = kept.indexOf(prev)
+            if (i >= 0)
+                kept[i] = e
+        }
+        return kept
+    }
+
     function rebuildList(): void {
-        root.list = Array.from(DesktopEntries.applications.values).sort((a, b) => a.name.localeCompare(b.name))
+        root.list = root._dedupe(Array.from(DesktopEntries.applications.values))
+            .sort((a, b) => a.name.localeCompare(b.name))
     }
     Component.onCompleted: root.rebuildList()
     Connections {

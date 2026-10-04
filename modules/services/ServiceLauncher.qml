@@ -136,7 +136,7 @@ Singleton {
             if (root._iconKept[key])
                 return
             root._iconKept[key] = iconKeeper.createObject(iconShelf, {
-                source: IconUtil.getIconPath(job.icon),
+                source: IconUtil.getDesktopIconPath(job.icon),
                 sourceSize: Qt.size(job.size, job.size)
             })
         }

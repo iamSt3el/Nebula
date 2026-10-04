@@ -35,6 +35,13 @@ Item {
         return Quickshell.iconPath(getIconName(windowClass), fallback)
     }
 
+    function getDesktopIconPath(iconName, fallback = "application-x-executable") {
+        const icon = iconName ?? ""
+        if (icon.startsWith("file://") || icon.startsWith("/"))
+            return icon
+        return Quickshell.iconPath(icon, fallback)
+    }
+
     function getSystemIcon(iconName) {
         return Qt.resolvedUrl("../../assets/" + iconName + ".svg")
     }

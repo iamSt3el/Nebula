@@ -150,7 +150,7 @@ Scope{
                 windows: [panelWindow]
                 active: loader.active && GlobalStates.appLauncherOpen
                 onCleared: () => {
-                    if(!active) {
+                    if (!active && !GlobalStates.toolsWidgetOpen && !ServiceTools.screenshotActive) {
                         GlobalStates.appLauncherOpen = false
                     }
                 }
