@@ -36,7 +36,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         width: root.fill ? fillChip.implicitWidth : root.vertical ? Math.max(root.plate, row.implicitWidth + 8)
             : root.showPercent ? row.implicitWidth + root.padPx : root.plate
-        height: root.fill ? fillChip.implicitHeight : root.vertical && root.showPercent ? row.implicitHeight + 10 : root.plate
+        height: root.fill ? fillChip.implicitHeight : root.plate
         radius: Math.min(width, height) / 2
         color: root.plateless || root.fill ? "transparent" : root.plateColor
         Behavior on color { ColorAnimation { duration: 150 } }
@@ -74,7 +74,7 @@ Item {
             }
 
             CustomText {
-                visible: root.showPercent
+                visible: root.showPercent && !root.vertical
                 Layout.alignment: Qt.AlignHCenter
                 content: Math.round(root.level * 100) + (root.vertical ? "" : "%")
                 size: root.vertical ? root.labelPx - 2 : root.labelPx

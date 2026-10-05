@@ -300,42 +300,15 @@ Item {
                 spacing: 3
 
                 CustomCard {
-                    id: barModeCard
+                    id: barLayoutCard
                     autoRadius: false; topRadius: 20; bottomRadius: 5
-
-                    readonly property string currentBarMode: SettingsConfig.general.barMode
-                        ?? (SettingsConfig.general.flatBarMode === false ? "stepped" : "flat")
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Bar Mode"; size: 14 }
-                            CustomText { content: "Shape of the top bar"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        M3ButtonGroup {
-                            model: [
-                                { value: "stepped", label: "Stepped", icon: "view_agenda" },
-                                { value: "flat",    label: "Flat",    icon: "remove" },
-                                { value: "pill",    label: "Pill",    icon: "circle" }
-                            ]
-                            activeCheck: function(value) { return barModeCard.currentBarMode === value }
-                            onSegmentClicked: function(value) {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { barMode: value })
-                            }
-                        }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    readonly property bool anyPill: BarLayout.edgeShapes("top").indexOf("pill") >= 0
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
                             spacing: 2
                             CustomText { content: "Bar Layout"; size: 14 }
-                            CustomText { content: "Move, add and hide items and blocks on the bar · right-click the bar works too"; size: 12; customColor: Colors.outline }
+                            CustomText { content: "Move, add and hide items and blocks, and pick each block's shape (stepped, flat or pill) · right-click the bar works too"; size: 12; customColor: Colors.outline }
                         }
                         Item { Layout.fillWidth: true }
                         M3Button {
@@ -371,7 +344,7 @@ Item {
 
                 CustomCard {
                     autoRadius: false; topRadius: 5
-                    bottomRadius: barModeCard.currentBarMode === "pill" ? 5 : 20
+                    bottomRadius: barLayoutCard.anyPill ? 5 : 20
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
@@ -410,7 +383,7 @@ Item {
                 }
 
                 SidesEditor {
-                    visible: barModeCard.currentBarMode === "pill"
+                    visible: barLayoutCard.anyPill
                     mode: "pill"
                     sides: ["top", "left", "right"]
                     maxFor: ({ top: 30, left: 10, right: 10 })

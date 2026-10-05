@@ -26,7 +26,7 @@ Item {
     readonly property color ink: root.tint ? Colors.secondaryContainerText : Colors.surfaceText
     readonly property color subInk: root.tint ? Qt.alpha(Colors.secondaryContainerText, 0.75) : Colors.outline
 
-    readonly property real setWidth: BarLayout.opt(root.itemId, "width") ?? 200
+    readonly property real setWidth: BarLayout.opt(root.itemId, "width") ?? 160
     readonly property bool fixed: root.setWidth > 0
     readonly property real target: root.fixed ? root.setWidth : 200
     readonly property real cap: root.host && root.host.maxWidth > 0
@@ -96,7 +96,7 @@ Item {
                 content: ToplevelManager.activeToplevel
                          ? (ToplevelManager.activeToplevel.title ?? "")
                          : "Workspace " + (Hyprland.focusedMonitor?.activeWorkspace?.id ?? "")
-                size: 13
+                size: 12
                 weight: 800
                 customColor: root.ink
                 elide: Text.ElideRight

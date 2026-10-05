@@ -174,29 +174,6 @@ Item {
                 elide: Text.ElideNone
                 font.features: { "tnum": 1 }
             }
-            Item {
-                visible: root.showDate
-                width: 1
-                height: 5
-            }
-            CustomText {
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: root.showDate
-                content: root.dowText.toUpperCase()
-                size: 9
-                weight: 600
-                customColor: Colors.outline
-                elide: Text.ElideNone
-            }
-            CustomText {
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: root.showDate
-                content: String(parseInt(ServiceClock.date))
-                size: 12
-                weight: 700
-                customColor: Colors.surfaceText
-                elide: Text.ElideNone
-            }
         }
     }
 

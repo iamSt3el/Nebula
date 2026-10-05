@@ -54,20 +54,6 @@ ShellRoot{
                     return modelData.name === pm
                 }
             }
-            PanelWindow {
-                screen: modelData
-                visible: !screenLayout.isPrimary && !ServiceGameMode.hideBar
-                    && (ServiceGaps.barSide === "left" || ServiceGaps.barSide === "right")
-                anchors.top: true
-                anchors.left: true
-                anchors.right: true
-                implicitHeight: Appearance.size.barHeight
-                exclusionMode: ExclusionMode.Normal
-                exclusiveZone: Appearance.size.barHeight
-                color: "transparent"
-                mask: Region {}
-                WlrLayershell.namespace: "quickshell:barReserve"
-            }
         }
     }
 

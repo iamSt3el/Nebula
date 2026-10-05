@@ -35,8 +35,8 @@ Item {
     readonly property bool vertical: BarOps.isVerticalSide(surface.side)
     readonly property bool far: BarOps.isFarSide(surface.side)
     readonly property real barH: surface.isDock ? BarLayout.dockHeight : Appearance.size.barHeight
-    readonly property real borderStart: surface.barMode === "pill" ? 0 : ServiceGaps.borderFor(surface.vertical ? "top" : "left")
-    readonly property real borderEnd: surface.barMode === "pill" ? 0 : ServiceGaps.borderFor(surface.vertical ? "bottom" : "right")
+    readonly property real borderStart: ServiceGaps.borderFor(surface.vertical ? "top" : "left") * (1 - surface.startPill)
+    readonly property real borderEnd: ServiceGaps.borderFor(surface.vertical ? "bottom" : "right") * (1 - surface.endPill)
     readonly property real borderFar: ServiceGaps.borderFor(BarOps.oppositeSide(surface.side))
     readonly property real borderNear: surface.isDock ? ServiceGaps.borderFor(surface.side) : 0
     readonly property real edgeInset: surface.far
@@ -62,17 +62,17 @@ Item {
 
     function tabRect(b) {
         const x = sectionsRow.x + b.parent.x + b.x + b.tabX
-        const y = sectionsRow.y + b.parent.y + b.y + (surface.far ? b.barH - b.tabH : 0)
-        return surface.toScreen(x, y, b.tabW, b.tabH)
+        const y = sectionsRow.y + b.parent.y + b.y + (surface.far ? b.barH - b.tabH - b.floatGap : 0)
+        return surface.toScreen(x, y, b.tabW, b.tabH + b.floatGap)
     }
 
-    readonly property rect bandRect: surface.toScreen(0, surface.far ? surface.height - surface.edgeInset - surface.barH : 0,
-                                                      surface.width, surface.edgeInset + surface.barH)
+    readonly property rect bandRect: surface.toScreen(0, surface.far ? surface.height - surface.edgeInset - surface.maxDrop - surface.barH : 0,
+                                                      surface.width, surface.edgeInset + surface.maxDrop + surface.barH)
 
     function inBand(fx, fy, slack) {
         if (surface.far)
-            return fy >= sectionsRow.y + sectionsRow.height - surface.barH - slack
-        return fy <= sectionsRow.y + surface.barH + slack
+            return fy >= sectionsRow.y + sectionsRow.height - surface.maxDrop - surface.barH - slack
+        return fy <= sectionsRow.y + surface.maxDrop + surface.barH + slack
     }
     readonly property Item rowItem: sectionsRow
     readonly property Item leftRepeater: leftRep
@@ -89,27 +89,149 @@ Item {
     property real radX: surface.isDock ? BarLayout.dockRadius : BarLayout.cornerRadius
     property real radY: surface.isDock ? BarLayout.dockRadius : BarLayout.cornerRadius
     property real lineDis: surface.isDock ? 0 : 4
-    property string barMode: surface.isDock ? BarLayout.dockStyle
-        : (SettingsConfig.general.barMode ?? (SettingsConfig.general.flatBarMode === false ? "stepped" : "flat"))
+    readonly property var shapeList: BarLayout.edgeShapes(surface.edge)
+    readonly property bool anyPill: surface.shapeList.indexOf("pill") >= 0
+    readonly property bool allPill: surface.shapeList.every(v => v === "pill")
+    readonly property bool anyFlat: surface.shapeList.indexOf("flat") >= 0
     property real pillMargin: surface.isDock ? BarLayout.dockPillGap : (SettingsConfig.general.pillMargin ?? 6)
     property real pillLeftMargin:  SettingsConfig.general.pillLeftMargin  ?? 6
     property real pillRightMargin: SettingsConfig.general.pillRightMargin ?? 6
 
     readonly property real blockGapSetting: surface.isDock ? BarLayout.dockBlockGap : BarLayout.blockGap
-    property real groupGap: surface.blockGapSetting >= 0 ? surface.blockGapSetting
-        : (surface.barMode === "stepped" ? 2 * surface.disX + 28 : 14)
-    Behavior on groupGap { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
+    readonly property real wideGap: 2 * surface.disX + 28
+    readonly property real groupGap: surface.blockGapSetting >= 0 ? surface.blockGapSetting
+        : surface.shapeList.every(v => v === "stepped") ? surface.wideGap : 14
 
-    readonly property real bridgeTarget: surface.barMode === "stepped" ? surface.lineDis : surface.barH
-    readonly property real endTarget: surface.barMode === "pill" ? surface.barH / 2
-        : surface.bridgeTarget > 0 ? -surface.disX : 0
-    readonly property real flareTarget: surface.barMode === "pill" ? 0 : 1
-    property real bridgeAnim: surface.bridgeTarget
-    property real endAnim: surface.endTarget
-    property real flareAnim: surface.flareTarget
-    Behavior on bridgeAnim { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
-    Behavior on endAnim    { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
-    Behavior on flareAnim  { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
+    readonly property real baseGap: surface.vertical ? 6 : 14
+    readonly property real minGap: 4
+
+    function naturalGap(a, b) {
+        if (surface.blockGapSetting >= 0)
+            return surface.blockGapSetting
+        a = a ?? b
+        b = b ?? a
+        if (!a)
+            return surface.groupGap
+        const stepped = (1 - Math.max(a.pillT, b.pillT)) * (1 - Math.min(a.flatT, b.flatT))
+        const capRoom = (surface.vertical ? 1 : 2) * surface.disX
+        return surface.baseGap + (surface.wideGap - surface.baseGap) * stepped + capRoom * Math.abs(a.pillT - b.pillT)
+    }
+
+    function gapBetween(a, b) {
+        const g = surface.naturalGap(a, b)
+        return g <= surface.minGap ? g : surface.minGap + (g - surface.minGap) * surface.fitT
+    }
+
+    property real fitT: 1
+    readonly property bool dragging: !!surface.editor && surface.editor.mode !== ""
+    property int editPage: 0
+    onDraggingChanged: surface.markGeom()
+
+    function markGeom() {
+        Qt.callLater(surface.recompute)
+    }
+
+    function recompute() {
+        surface.runs = surface.calcRuns()
+        surface.pathBlocks = surface.calcPathBlocks()
+        surface.tabShapes = surface.calcTabShapes()
+        surface.sdfField = surface.calcField()
+        surface.applyFit()
+        surface.applyFold()
+    }
+
+    readonly property var surfSig: [sectionsRow.x, sectionsRow.y, sectionsRow.width, sectionsRow.height,
+        leftGroup.x, centerGroup.x, rightGroup.x, surface.edgeInset, surface.reveal, surface.slide, surface.barH,
+        surface.disX, surface.lineDis, surface.allPill, surface.width, surface.height, surface.borderFar,
+        surface.pillMargin, surface.blockItems, surface.visibleBlocks, GlobalStates.barEditMode, surface.editPage,
+        SettingsConfig.settingsReady, surface.flareAnim, surface.isDock]
+    onSurfSigChanged: surface.markGeom()
+
+    function applyFit() {
+        if (surface.dragging)
+            return
+        const f = surface.calcFit()
+        if (Math.abs(surface.fitT - f) > 0.0005)
+            surface.fitT = f
+    }
+
+    function toggleEditPage() {
+        surface.editPage = surface.editPage === 0 ? 1 : 0
+    }
+
+    Connections {
+        target: GlobalStates
+        function onBarEditModeChanged() { surface.editPage = 0 }
+    }
+    function calcFit() {
+        surface.blockItems
+        let blocks = 0
+        let gaps = 0
+        let n = 0
+        const ends = []
+        for (const rep of [leftRep, centerRep, rightRep]) {
+            let before = 0
+            let first = null
+            let last = null
+            for (let k = 0; k < rep.count; k++) {
+                const o = rep.itemAt(k)
+                if (!o)
+                    continue
+                const pc = Math.min(1, o.pc)
+                if (before > 0 && pc > 0) {
+                    gaps += surface.naturalGap(rep.itemAt(k - 1), o) * Math.min(pc, before)
+                    n += Math.min(pc, before)
+                }
+                blocks += o.fixedWidth * pc
+                before = Math.max(before, pc)
+                if (pc > 0.001) {
+                    first = first ?? o
+                    last = o
+                }
+            }
+            ends.push({ first: first, last: last })
+        }
+        const filled = ends.filter(e => e.first)
+        for (let i = 1; i < filled.length; i++) {
+            gaps += surface.naturalGap(filled[i - 1].last, filled[i].first)
+            n += 1
+        }
+        const avail = sectionsRow.width
+        const floor = surface.minGap * n
+        if (blocks + gaps <= avail || gaps <= floor)
+            return 1
+        return Math.max(0, Math.min(1, (avail - blocks - floor) / (gaps - floor)))
+    }
+
+    function minW(b) {
+        return b && b.isPill ? surface.barH : surface.barH * 2
+    }
+
+    readonly property var orderedBlocks: surface.blockItems.filter(b => b && b.visible)
+    readonly property real startPill: surface.orderedBlocks.length ? surface.orderedBlocks[0].pillT
+        : (surface.allPill ? 1 : 0)
+    readonly property real endPill: surface.orderedBlocks.length ? surface.orderedBlocks[surface.orderedBlocks.length - 1].pillT
+        : (surface.allPill ? 1 : 0)
+    readonly property real maxDrop: {
+        let d = 0
+        for (const b of surface.orderedBlocks)
+            d = Math.max(d, b.drop)
+        return d
+    }
+    readonly property real flareAnim: 1
+
+    function lastOf(rep) {
+        surface.blockItems
+        return rep.count > 0 ? rep.itemAt(rep.count - 1) : null
+    }
+    function firstOf(rep) {
+        surface.blockItems
+        return rep.count > 0 ? rep.itemAt(0) : null
+    }
+    readonly property real gapLC: surface.gapBetween(surface.lastOf(leftRep), surface.firstOf(centerRep))
+    readonly property real gapCR: surface.gapBetween(surface.lastOf(centerRep), surface.firstOf(rightRep))
+    readonly property real gapLCn: surface.naturalGap(surface.lastOf(leftRep), surface.firstOf(centerRep))
+    readonly property real gapCRn: surface.naturalGap(surface.lastOf(centerRep), surface.firstOf(rightRep))
 
     property var leftLeaving: ({})
     property var centerLeaving: ({})
@@ -123,12 +245,28 @@ Item {
         for (let k = 0; k < rep.count; k++) {
             const o = rep.itemAt(k)
             const pc = o ? Math.min(1, o.pc) : 0
-            x += surface.groupGap * Math.min(pc, before)
+            x += surface.gapBetween(k > 0 ? rep.itemAt(k - 1) : null, o) * Math.min(pc, before)
             xs.push(x)
             x += o ? o.width : 0
             before = Math.max(before, pc)
         }
         return { xs: xs, total: x }
+    }
+
+    function offsetOf(rep, idx) {
+        surface.blockItems
+        let x = 0
+        let before = 0
+        for (let k = 0; k < idx && k < rep.count; k++) {
+            const o = rep.itemAt(k)
+            const pc = o ? Math.min(1, o.pc) : 0
+            x += surface.gapBetween(k > 0 ? rep.itemAt(k - 1) : null, o) * Math.min(pc, before)
+            x += o ? o.width : 0
+            before = Math.max(before, pc)
+        }
+        const o = rep.itemAt(idx)
+        const pc = o ? Math.min(1, o.pc) : 0
+        return x + (idx > 0 ? surface.gapBetween(rep.itemAt(idx - 1), o) * Math.min(pc, before) : 0)
     }
 
     function groupNatural(rep) {
@@ -140,7 +278,7 @@ Item {
             if (!o)
                 continue
             const pc = Math.min(1, o.pc)
-            n += surface.groupGap * Math.min(pc, before)
+            n += surface.naturalGap(k > 0 ? rep.itemAt(k - 1) : null, o) * Math.min(pc, before)
             n += o.naturalWidth * pc
             before = Math.max(before, pc)
         }
@@ -153,35 +291,162 @@ Item {
 
     property var blockItems: []
 
-    readonly property var visibleBlocks: surface.blockItems
-        .filter(b => b && b.parent && b.visible)
-        .sort((a, b) => (a.parent.x + a.x) - (b.parent.x + b.x))
+    property var _kept: ({})
 
-    readonly property var pathBlocks: {
+    function keepList(key, list) {
+        const prev = surface._kept[key]
+        if (prev && prev.length === list.length && prev.every((v, i) => v === list[i]))
+            return prev
+        surface._kept[key] = list
+        return list
+    }
+
+    function keepJson(key, value) {
+        const text = JSON.stringify(value)
+        const prev = surface._kept[key]
+        if (prev && prev.text === text)
+            return prev.value
+        surface._kept[key] = { text: text, value: value }
+        return value
+    }
+
+    readonly property var visibleBlocks: surface.keepList("visible", surface.blockItems
+        .filter(b => b && b.parent && b.visible)
+        .sort((a, b) => (a.parent.x + a.x) - (b.parent.x + b.x)))
+
+    function blockX(b) {
+        return sectionsRow.x + b.parent.x + b.x
+    }
+
+    property var runs: []
+    function calcRuns() {
         const out = []
-        const top = surface.edgeInset
-        const bridge = top + surface.bridgeAnim
-        for (let isl = 0; isl < surface.visibleBlocks.length; isl++) {
-            const b = surface.visibleBlocks[isl]
-            const bx = sectionsRow.x + b.parent.x + b.x
-            const p = Math.min(1, b.pc) * (surface.isDock && surface.barMode !== "pill" ? surface.reveal : 1)
-            const bot = bridge + (top + surface.barH - bridge) * p
-            if (!b.tabOpen) {
-                const dd = b.dropSource || b.dropReleasing ? (b.dropDepth ?? 0) : 0
+        let cur = null
+        let prevPill = null
+        for (const b of surface.visibleBlocks) {
+            if (b.isPill) {
+                if (cur) {
+                    const l = cur.blocks[cur.blocks.length - 1]
+                    cur.capR = true
+                    cur.roomR = surface.blockX(b) - surface.blockX(l) - l.width
+                }
+                cur = null
+                out.push({ pill: true, blocks: [b] })
+                prevPill = b
+                continue
+            }
+            if (!cur) {
+                cur = { pill: false, blocks: [], capL: prevPill !== null, capR: false, roomR: Infinity,
+                        roomL: prevPill ? surface.blockX(b) - surface.blockX(prevPill) - prevPill.width : Infinity }
+                out.push(cur)
+            }
+            cur.blocks.push(b)
+        }
+        for (const r of out) {
+            if (r.pill)
+                continue
+            let flat = 1
+            for (const b of r.blocks)
+                flat = Math.min(flat, b.flatT)
+            r.flat = flat
+            r.bridge = surface.lineDis + (surface.barH - surface.lineDis) * flat
+            r.endR = surface.lineDis > 0 ? -surface.disX : -surface.disX * Math.min(1, r.bridge / surface.disX)
+            const f = r.blocks[0]
+            const l = r.blocks[r.blocks.length - 1]
+            r.L = r.capL ? surface.blockX(f) : sectionsRow.x
+            r.R = r.capR ? surface.blockX(l) + l.width : sectionsRow.x + sectionsRow.width
+        }
+        return out
+    }
+
+    function runOf(b) {
+        for (let i = 0; i < surface.runs.length; i++) {
+            if (surface.runs[i].blocks.indexOf(b) >= 0)
+                return i
+        }
+        return -1
+    }
+
+    function blockTop(b) {
+        if (!b.isPill)
+            return surface.edgeInset
+        const lift = surface.isDock && !surface.allPill ? surface.slide : 0
+        return surface.edgeInset + b.drop - lift
+    }
+
+    function blockBridge(b, r) {
+        const top = surface.blockTop(b)
+        return b.isPill || !r ? top + surface.barH : top + r.bridge
+    }
+
+    function blockP(b) {
+        return Math.min(1, b.pc) * (surface.isDock && !b.isPill ? surface.reveal : 1)
+    }
+
+    function tabPullFor(b) {
+        if (b.floating)
+            return 0
+        const r = surface.runs[surface.runOf(b)]
+        if (b.isPill || !r)
+            return surface.disX + surface.barH / 2
+        return surface.disX + Math.min(surface.disX, Math.max(0, surface.barH - r.bridge) / 2)
+    }
+
+    property var pathBlocks: []
+    function calcPathBlocks() {
+        const out = []
+        const runs = surface.runs
+        let isl = 0
+        for (let ri = 0; ri < runs.length; ri++) {
+            const r = runs[ri]
+            const ends = []
+            for (const b of r.blocks) {
+                const top = surface.blockTop(b)
+                const bridge = surface.blockBridge(b, r)
+                const bx = surface.blockX(b)
+                const p = surface.blockP(b)
+                const bot = bridge + (top + surface.barH - bridge) * p
+                ends.push({ b: b, bx: bx, bot: bot, bridge: bridge, isl: isl })
+                const dd = !b.tabOpen && (b.dropSource || b.dropReleasing) ? (b.dropDepth ?? 0) : 0
                 if (dd > 0.5) {
                     const dx = Math.max(bx, bx + b.dropX)
                     const dX = Math.min(bx + b.width, bx + b.dropX + b.dropW)
                     if (dx > bx + 0.01)
-                        out.push({ x: bx, w: dx - bx, bot: bot, isl: isl })
-                    out.push({ x: dx, w: Math.max(0, dX - dx), bot: bot + dd * p, isl: isl, melt: true })
+                        out.push({ x: bx, w: dx - bx, bot: bot, isl: isl, run: ri, top: top })
+                    out.push({ x: dx, w: Math.max(0, dX - dx), bot: bot + dd * p, isl: isl, run: ri, top: top, melt: true })
                     if (bx + b.width > dX + 0.01)
-                        out.push({ x: dX, w: bx + b.width - dX, bot: bot, isl: isl })
-                    continue
+                        out.push({ x: dX, w: bx + b.width - dX, bot: bot, isl: isl, run: ri, top: top })
+                } else {
+                    out.push({ x: bx, w: b.width, bot: bot, isl: isl, run: ri, top: top })
                 }
-                out.push({ x: bx, w: b.width, bot: bot, isl: isl })
-                continue
+                isl++
             }
-            out.push({ x: bx, w: b.width, bot: bot, isl: isl })
+            if (r.pill || r.flat >= 0.999)
+                continue
+            for (let k = 1; k < ends.length; k++) {
+                const a = ends[k - 1]
+                const c = ends[k]
+                const t = Math.min(a.b.flatT, c.b.flatT)
+                const aR = a.bx + a.b.width
+                if (t <= 0.001 || c.bx - aR <= 0.5)
+                    continue
+                const bot = a.bridge + (Math.min(a.bot, c.bot) - a.bridge) * t
+                if (bot > a.bridge + 0.01)
+                    out.push({ x: aR, w: c.bx - aR, bot: bot, isl: a.isl, run: ri, top: surface.edgeInset })
+            }
+            const first = ends[0]
+            const last = ends[ends.length - 1]
+            if (!r.capL && first.b.flatT > 0.001 && first.bx - r.L > 0.5) {
+                const bot = first.bridge + (first.bot - first.bridge) * first.b.flatT
+                if (bot > first.bridge + 0.01)
+                    out.push({ x: r.L, w: first.bx - r.L, bot: bot, isl: first.isl, run: ri, top: surface.edgeInset })
+            }
+            const lR = last.bx + last.b.width
+            if (!r.capR && last.b.flatT > 0.001 && r.R - lR > 0.5) {
+                const bot = last.bridge + (last.bot - last.bridge) * last.b.flatT
+                if (bot > last.bridge + 0.01)
+                    out.push({ x: lR, w: r.R - lR, bot: bot, isl: last.isl, run: ri, top: surface.edgeInset })
+            }
         }
         out.sort((p, q) => p.x - q.x)
         for (let i = 1; i < out.length; i++) {
@@ -207,47 +472,62 @@ Item {
         return out.filter(sg => !sg.trimmed || sg.w > 0.01)
     }
 
-    readonly property var openTabs: surface.visibleBlocks.filter(b => b.tabOpen)
+    readonly property var openTabs: surface.keepList("open", surface.visibleBlocks.filter(b => b.tabOpen))
 
-    readonly property var tabShapes: {
+    property var tabShapes: []
+    function calcTabShapes() {
         const out = []
-        const top = surface.edgeInset
-        const bridge = top + surface.bridgeAnim
         for (const b of surface.openTabs) {
-            const bx = sectionsRow.x + b.parent.x + b.x
-            const p = Math.min(1, b.pc) * (surface.isDock && surface.barMode !== "pill" ? surface.reveal : 1)
+            const r = surface.runs[surface.runOf(b)]
+            const top = surface.blockTop(b)
+            const bridge = surface.blockBridge(b, r)
+            const bx = surface.blockX(b)
+            const p = surface.blockP(b)
+            const open = !b.isPill && r
             out.push({
                 x: bx + b.tabX,
                 w: b.tabW,
                 bot: bridge + (top + b.tabPathH - bridge) * p,
                 bx: bx,
                 bw: b.width,
-                bb: bridge + (top + surface.barH - bridge) * p
+                bb: bridge + (top + surface.barH - bridge) * p,
+                pill: b.isPill,
+                top: top,
+                bridge: bridge - top,
+                endR: open ? r.endR : 0,
+                left: open && !r.capL ? sectionsRow.x : -1e9,
+                right: open && !r.capR ? sectionsRow.x + sectionsRow.width : 1e9,
+                stripL: open ? r.L : 0,
+                stripR: open ? r.R : 0,
+                floating: b.floating,
+                gx: bx + b.gooShape.x,
+                gw: b.gooShape.w,
+                ftop: top + b.gooShape.y,
+                fbot: top + b.gooShape.y + b.gooShape.h,
+                k: b.gooShape.k
             })
         }
-        return BarPath.sdfTabs(out, surface.pathBlocks, Object.assign({}, surface.sdfOpts, { barH: surface.barH }), surface.barMode === "pill")
+        return BarPath.sdfTabs(out, surface.pathBlocks, Object.assign({}, surface.sdfOpts, { barH: surface.barH }))
     }
 
     readonly property var tabRects: {
         const out = []
         for (const b of surface.openTabs) {
-            if (b.tabW <= 0.5)
+            if (b.tabW <= 0.5 || b.floating)
                 continue
             out.push({ id: b.blockId, l: b.absX + b.tabX, r: b.absX + b.tabX + b.tabW })
         }
-        return out
+        return surface.keepJson("tabRects", out)
     }
 
-
-    readonly property real minBlockW: surface.barMode === "pill" ? surface.barH : surface.barH * 2
 
     readonly property real centerNatural: surface.groupNatural(centerRep)
     readonly property real leftLimit: surface.centerNatural > 0
         ? Math.max(0, (sectionsRow.width - surface.centerNatural) / 2 - 12)
         : rightGroup.x - 12
-    readonly property real leftReserve: leftGroup.width > 0 ? leftGroup.width + surface.groupGap : 0
-    readonly property real centerLimit: Math.max(surface.minBlockW,
-        rightGroup.x - surface.groupGap - surface.leftReserve)
+    readonly property real leftReserve: leftGroup.width > 0 ? leftGroup.width + surface.gapLC : 0
+    readonly property real centerLimit: Math.max(surface.minW(surface.lastOf(centerRep)),
+        rightGroup.x - surface.gapCRn - (leftGroup.width > 0 ? leftGroup.width + surface.gapLCn : 0))
 
     property string floatKind: ""
     property real floatCenter: 0
@@ -256,7 +536,7 @@ Item {
 
     HyprlandFocusGrab {
         windows: [QsWindow.window]
-        active: surface.isPrimary && surface.barMode === "pill" && surface.floatKind === "weather"
+        active: surface.isPrimary && surface.anyPill && surface.floatKind === "weather"
         onCleared: if (surface.floatKind === "weather") surface.floatKind = ""
     }
 
@@ -282,10 +562,96 @@ Item {
         surface.blockItems = out
     }
 
+    readonly property int maxBlocks: 14
+    readonly property real moreLen: {
+        surface.blockItems
+        for (const rep of [leftRep, rightRep]) {
+            for (let k = 0; k < rep.count; k++) {
+                const o = rep.itemAt(k)
+                if (o && o.blockId === "__more" && o.fixedWidth > 0)
+                    return o.fixedWidth
+            }
+        }
+        return surface.barH + 20
+    }
+    property var fold: ({ ids: [], right: true })
+    function calcFold() {
+        if (surface.isDock || !SettingsConfig.settingsReady)
+            return { ids: [], right: true }
+        surface.blockItems
+        const pick = rep => {
+            const a = []
+            for (let k = 0; k < rep.count; k++) {
+                const o = rep.itemAt(k)
+                if (o && o.blockId !== "__more" && o.wantedBase && !o.leaving)
+                    a.push(o)
+            }
+            return a
+        }
+        const allL = pick(leftRep)
+        const C = pick(centerRep)
+        const allR = pick(rightRep)
+        let L = allL.slice()
+        let R = allR.slice()
+        const len = g => g.reduce((s, o) => s + o.fixedWidth, 0) + surface.minGap * Math.max(0, g.length - 1)
+        let folded = []
+        const fits = () => {
+            const parts = [L, C, R].filter(g => g.length)
+            const extra = folded.length ? surface.moreLen + surface.minGap : 0
+            const count = L.length + C.length + R.length + (folded.length ? 1 : 0)
+            return count <= surface.maxBlocks
+                && parts.reduce((s, g) => s + len(g), 0) + surface.minGap * Math.max(0, parts.length - 1) + extra
+                    <= sectionsRow.width - 8
+        }
+        while (!fits()) {
+            if (R.length) {
+                folded.push(R.shift())
+            } else if (L.length > 1) {
+                folded.push(L.pop())
+            } else {
+                break
+            }
+        }
+        for (let i = folded.length - 1; i >= 0; i--) {
+            const keep = folded.filter((o, j) => j !== i)
+            const prevL = L
+            const prevR = R
+            const prevF = folded
+            folded = keep
+            L = allL.filter(o => keep.indexOf(o) < 0)
+            R = allR.filter(o => keep.indexOf(o) < 0)
+            if (!fits()) {
+                folded = prevF
+                L = prevL
+                R = prevR
+            }
+        }
+        const right = folded.every(o => o.anchorSide === "right")
+        if (GlobalStates.barEditMode && surface.editPage === 1 && folded.length && right)
+            return { ids: R.map(o => o.blockId), right: true }
+        return { ids: folded.map(o => o.blockId), right: right }
+    }
+    readonly property var foldIds: surface.fold.ids
+    property string foldKey: ""
+
+    function applyFold() {
+        if (surface.dragging)
+            return
+        const f = surface.calcFold()
+        const key = f.ids.join(",") + "|" + f.right
+        if (key === surface.foldKey)
+            return
+        surface.foldKey = key
+        surface.fold = f
+        surface.syncGroups()
+    }
+
     function syncGroups() {
-        BarLayout.syncAnimated(leftModel,   BarLayout.idsFor("left", surface.edge),   "blockId", surface.leftLeaving)
+        const more = surface.foldIds.length ? ["__more"] : []
+        const inRight = surface.fold.right
+        BarLayout.syncAnimated(leftModel,   BarLayout.idsFor("left", surface.edge).concat(inRight ? [] : more), "blockId", surface.leftLeaving)
         BarLayout.syncAnimated(centerModel, BarLayout.idsFor("center", surface.edge), "blockId", surface.centerLeaving)
-        BarLayout.syncAnimated(rightModel,  BarLayout.idsFor("right", surface.edge),  "blockId", surface.rightLeaving)
+        BarLayout.syncAnimated(rightModel,  (inRight ? more : []).concat(BarLayout.idsFor("right", surface.edge)),  "blockId", surface.rightLeaving)
     }
 
     Connections {
@@ -296,7 +662,7 @@ Item {
     }
 
     readonly property bool autoHide: surface.isDock && (SettingsConfig.general.dockAutoHide ?? true)
-        && surface.barMode !== "flat"
+        && !surface.anyFlat
     readonly property bool dockActive: !surface.autoHide || revealHover.hovered || GlobalStates.barEditMode
         || (surface.isDock && GlobalStates.dockPeek)
         || BarLayout.sysPanelOpen || surface.visibleBlocks.some(b => b.hovering || b.tabOpen)
@@ -305,7 +671,7 @@ Item {
     Behavior on reveal {
         SpatialAnim { speed: "default" }
     }
-    readonly property real slide: (1 - surface.reveal) * (surface.barH + surface.edgeInset + 6)
+    readonly property real slide: (1 - surface.reveal) * (surface.barH + surface.edgeInset + surface.maxDrop + 6)
     property Translate rowSlide: Translate { y: surface.far ? surface.slide : -surface.slide }
 
     onDockActiveChanged: {
@@ -327,8 +693,8 @@ Item {
         left: sectionsRow.x,
         right: sectionsRow.x + sectionsRow.width,
         top: surface.edgeInset,
-        bridge: surface.bridgeAnim,
-        endR: surface.endAnim,
+        bridge: surface.lineDis,
+        endR: -surface.disX,
         rMax: surface.disX,
         needGap: 2 * surface.disX + 24,
         screenH: surface.height - surface.borderFar,
@@ -336,36 +702,77 @@ Item {
         bottomFlare: surface.flareAnim
     })
 
-    readonly property var pillGroups: {
+    property var sdfField: ({ pills: [], segs: [], flares: [], tabs: [] })
+    function calcField() {
+        const h = surface.barH
+        const f = BarPath.sdfEmpty()
         const groups = []
         for (const seg of surface.pathBlocks) {
-            if (!groups[seg.isl])
-                groups[seg.isl] = []
-            groups[seg.isl].push(seg)
+            if (!groups[seg.run])
+                groups[seg.run] = []
+            groups[seg.run].push(seg)
         }
-        return groups.filter(g => g && g.length)
-    }
-
-    readonly property var sdfField: {
-        const h = surface.barH
-        const f = surface.barMode !== "pill"
-            ? BarPath.sdfData(surface.pathBlocks, surface.sdfOpts)
-            : BarPath.sdfIslands(surface.pillGroups,
-                Object.assign({}, surface.sdfOpts, { bridge: h, endR: h / 2, bottomFlare: 0 }))
+        for (let ri = 0; ri < surface.runs.length; ri++) {
+            const r = surface.runs[ri]
+            let g = groups[ri]
+            if (!g || !g.length)
+                continue
+            if (r.pill) {
+                if (!surface.allPill && g.length > 1) {
+                    let l = Infinity
+                    let R = -Infinity
+                    let bot = 0
+                    for (const sg of g) {
+                        l = Math.min(l, sg.x)
+                        R = Math.max(R, sg.x + sg.w)
+                        bot = Math.max(bot, sg.bot)
+                    }
+                    g = [{ x: l, w: R - l, bot: bot, top: g[0].top, run: ri }]
+                }
+                const T = g[0].top
+                const e = Math.min(h / 2 * r.blocks[0].pillT, h / 2)
+                if (!surface.allPill && g[0].bot <= T + h + 0.01)
+                    f.pills.push({ l: g[0].x, r: g[0].x + g[0].w, bot: T + h, top: T, rtl: e, rtr: e, rbl: e, rbr: e })
+                else
+                    BarPath.sdfIslands([g], Object.assign({}, surface.sdfOpts,
+                        { top: T, bridge: h, endR: h / 2 * r.blocks[0].pillT, bottomFlare: 0 }), f)
+            } else {
+                BarPath.sdfShape(g, Object.assign({}, surface.sdfOpts,
+                    { left: r.L, right: r.R, bridge: r.bridge, endR: r.endR, capL: r.capL, capR: r.capR,
+                      roomL: r.roomL, roomR: r.roomR }), f)
+            }
+        }
+        f.flares.sort((a, b) => b.r - a.r)
         f.tabs = surface.tabShapes
         return f
     }
 
-    readonly property real sdfTop: surface.edgeInset
-    readonly property real sdfBot: surface.edgeInset
-        + (surface.barMode === "pill" ? surface.barH : surface.bridgeAnim)
+    readonly property real minBridge: {
+        let m = Infinity
+        for (const r of surface.runs) {
+            if (!r.pill)
+                m = Math.min(m, r.bridge)
+        }
+        return m
+    }
+    readonly property real maxBridge: {
+        let m = 0
+        for (const r of surface.runs) {
+            if (!r.pill)
+                m = Math.max(m, r.bridge)
+        }
+        return m
+    }
+    readonly property real sdfTop: surface.edgeInset + (surface.allPill ? surface.maxDrop : 0)
+    readonly property real sdfBot: surface.minBridge < Infinity ? surface.edgeInset + surface.minBridge
+        : surface.sdfTop + surface.barH
     readonly property real sdfRMax: surface.disX
-    readonly property real sdfFlip: surface.height + (surface.barMode === "pill" ? surface.slide : 0)
+    readonly property real sdfFlip: surface.height + (surface.allPill ? surface.slide : 0)
     readonly property vector4d sdfMap: Qt.vector4d(surface.vertical ? 1 : 0, surface.far ? 1 : 0,
-        surface.far ? surface.sdfFlip : surface.isDock && surface.barMode === "pill" ? surface.slide : 0, 0)
+        surface.far ? surface.sdfFlip : surface.isDock && surface.allPill ? surface.slide : 0, 0)
 
     readonly property real sdfCut: {
-        let b = surface.edgeInset + surface.bridgeAnim + Math.abs(surface.endAnim) + surface.barH
+        let b = surface.edgeInset + surface.maxDrop + surface.maxBridge + surface.disX + surface.barH
         for (const s of surface.pathBlocks)
             b = Math.max(b, s.bot)
         for (const t of surface.tabShapes)
@@ -389,9 +796,11 @@ Item {
             l = Math.min(l, t.x - Math.max(t.rfL, t.flL))
             r = Math.max(r, t.x + t.w + Math.max(t.rfR, t.flR))
         }
-        if (surface.barMode !== "pill" && surface.bridgeAnim > 0.5) {
-            l = Math.min(l, sectionsRow.x)
-            r = Math.max(r, sectionsRow.x + sectionsRow.width)
+        for (const run of surface.runs) {
+            if (!run.pill && run.bridge > 0.5) {
+                l = Math.min(l, run.L)
+                r = Math.max(r, run.R)
+            }
         }
         if (!(l < r))
             return Qt.rect(0, 0, 0, 0)
@@ -415,6 +824,7 @@ Item {
     }
 
     Component.onCompleted: {
+        surface.markGeom()
         surface.syncGroups()
         if (!surface.dockActive)
             hideTimer.restart()
@@ -428,15 +838,13 @@ Item {
         anchors.right:  parent.right
         anchors.top:    parent.top
         anchors.bottom: parent.bottom
-        anchors.topMargin:   !surface.far ? (surface.barMode === "pill" ? surface.pillMargin : 0) + surface.borderNear : 0
-        anchors.bottomMargin: surface.far ? (surface.barMode === "pill" ? surface.pillMargin : 0) + surface.borderNear : 0
-        anchors.leftMargin:  surface.barMode === "pill" ? surface.pillLeftMargin  : surface.borderStart
-        anchors.rightMargin: surface.barMode === "pill" ? surface.pillRightMargin : surface.borderEnd
+        anchors.topMargin:   !surface.far ? surface.borderNear : 0
+        anchors.bottomMargin: surface.far ? surface.borderNear : 0
+        anchors.leftMargin:  surface.borderStart + surface.pillLeftMargin * surface.startPill
+        anchors.rightMargin: surface.borderEnd + surface.pillRightMargin * surface.endPill
 
         Behavior on anchors.topMargin   { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
         Behavior on anchors.bottomMargin { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
-        Behavior on anchors.leftMargin  { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
-        Behavior on anchors.rightMargin { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
 
         ListModel { id: leftModel }
         ListModel { id: centerModel }
@@ -463,7 +871,7 @@ Item {
                     coverTabs: surface.tabRects
                     spanL: sectionsRow.x
                     spanR: sectionsRow.x + sectionsRow.width
-                    maxWidth: leftBlock.index === leftModel.count - 1 ? Math.max(surface.minBlockW, surface.leftLimit - leftBlock.x) : -1
+                    maxWidth: leftBlock.index === leftModel.count - 1 ? Math.max(surface.minW(leftBlock), surface.leftLimit - surface.offsetOf(leftRep, leftBlock.index)) : -1
                     floatOpenerId: surface.floatKind !== "" && surface.floatBlock === leftBlock.blockId ? surface.floatItem : ""
                     onFloatRequested: (kind, cx, id) => surface.openFloating(kind, cx, leftBlock.blockId, id)
                     onFloatCloseRequested: surface.floatKind = ""
@@ -478,7 +886,7 @@ Item {
             id: centerGroup
             x: {
                 const ideal = (sectionsRow.width - centerGroup.width) / 2
-                const limit = rightGroup.x - centerGroup.width - surface.groupGap
+                const limit = rightGroup.x - centerGroup.width - surface.gapCR
                 return Math.round(Math.max(surface.leftReserve, Math.min(ideal, limit)))
             }
             readonly property var lay: surface.groupLayout(centerRep)
@@ -499,7 +907,7 @@ Item {
                     coverTabs: surface.tabRects
                     spanL: sectionsRow.x
                     spanR: sectionsRow.x + sectionsRow.width
-                    maxWidth: centerBlock.index === centerModel.count - 1 ? Math.max(surface.minBlockW, surface.centerLimit - centerBlock.x) : -1
+                    maxWidth: centerBlock.index === centerModel.count - 1 ? Math.max(surface.minW(centerBlock), surface.centerLimit - surface.offsetOf(centerRep, centerBlock.index)) : -1
                     floatOpenerId: surface.floatKind !== "" && surface.floatBlock === centerBlock.blockId ? surface.floatItem : ""
                     onFloatRequested: (kind, cx, id) => surface.openFloating(kind, cx, centerBlock.blockId, id)
                     onFloatCloseRequested: surface.floatKind = ""
@@ -554,7 +962,7 @@ Item {
 
     Rectangle {
         id: pillDashPanel
-        visible: surface.isPrimary && surface.barMode === "pill" && surface.floatKind === "dashboard"
+        visible: surface.isPrimary && surface.anyPill && surface.floatKind === "dashboard"
 
         x:      Math.max(surface.pillLeftMargin, Math.min(parent.width - width - surface.pillRightMargin, surface.floatCenter - width / 2))
         y:      surface.far ? ServiceGaps.topFinal + 8 : surface.pillMargin + surface.barH + 8
@@ -600,7 +1008,7 @@ Item {
 
     Rectangle {
         id: pillWeatherPanel
-        visible: surface.isPrimary && surface.barMode === "pill" && surface.floatKind === "weather"
+        visible: surface.isPrimary && surface.anyPill && surface.floatKind === "weather"
 
         x:      Math.max(surface.pillLeftMargin, Math.min(parent.width - width - surface.pillRightMargin, surface.floatCenter - width / 2))
         y:      surface.far ? parent.height - surface.pillMargin - surface.barH - 8 - height

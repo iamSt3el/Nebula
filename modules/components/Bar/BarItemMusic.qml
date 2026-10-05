@@ -49,17 +49,15 @@ Item {
 
     readonly property bool shown: root.hasTrack || !root.hideIdle
     readonly property bool vertical: !!root.host && root.host.vertical === true
-    readonly property bool verticalReady: true
+    readonly property bool verticalReady: false
 
-    implicitWidth: root.vertical ? root.h : face.item ? face.item.implicitWidth : 0
-    implicitHeight: root.vertical ? (face.item ? face.item.implicitHeight : 0) : root.h
+    implicitWidth: face.item ? face.item.implicitWidth : 0
+    implicitHeight: root.h
 
     Loader {
         id: face
         anchors.centerIn: parent
         sourceComponent: {
-            if (root.vertical)
-                return root.hasTrack ? columnComp : columnIdleComp
             if (!root.hasTrack)
                 return idleComp
             switch (root.style) {
@@ -215,50 +213,6 @@ Item {
                     onTapped: ServiceMusic.togglePlaying()
                 }
                 Btn { icon: "skip_next"; onTapped: ServiceMusic.next() }
-            }
-        }
-    }
-
-    Component {
-        id: columnComp
-        Rectangle {
-            implicitWidth: root.h - 10
-            implicitHeight: col.implicitHeight + 8
-            radius: implicitWidth / 2
-            color: Colors.surfaceContainerHigh
-
-            Column {
-                id: col
-                anchors.centerIn: parent
-                spacing: 4
-                Art {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    side: root.h - 18
-                    radius: (root.h - 18) / 2
-                }
-                Btn {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    icon: root.playing ? "pause" : "play_arrow"
-                    primary: true
-                    side: root.h - 18
-                    onTapped: ServiceMusic.togglePlaying()
-                }
-            }
-        }
-    }
-
-    Component {
-        id: columnIdleComp
-        Rectangle {
-            implicitWidth: 24
-            implicitHeight: 24
-            radius: 12
-            color: Colors.surfaceContainerHigh
-            MaterialIconSymbol {
-                anchors.centerIn: parent
-                content: "music_off"
-                iconSize: 14
-                customColor: Colors.outline
             }
         }
     }

@@ -20,6 +20,7 @@ Item {
     property bool previewRight: true
 
     readonly property string sel: chrome.editor ? chrome.editor.selectedItem : ""
+    readonly property string selBlock: chrome.editor ? chrome.editor.selectedBlock : ""
     readonly property bool dragging: chrome.editor !== null && chrome.editor.mode !== ""
     readonly property bool stage: chrome.editor !== null && chrome.editor.panelStage
     readonly property bool drawerShown: chrome.editor !== null && chrome.editor.drawerMode !== ""
@@ -38,6 +39,7 @@ Item {
         if (chrome.editing) chrome.resetHistory()
     }
     onSelChanged: chrome.pop = ""
+    onSelBlockChanged: chrome.pop = ""
 
     readonly property rect shelfRect: shelf.visible ? Qt.rect(shelf.x, shelf.y, shelf.width, shelf.height) : Qt.rect(0, 0, 0, 0)
 
@@ -171,6 +173,37 @@ Item {
         triggeredOnStart: true
         onTriggered: chrome.locate()
     }
+
+    property rect blockRect: Qt.rect(0, 0, 0, 0)
+    property string blockEdge: "top"
+    property bool blockFound: false
+
+    function locateBlock() {
+        for (const surf of [chrome.topSurface, chrome.bottomSurface]) {
+            if (!surf || !surf.visible) continue
+            const b = surf.visibleBlocks.find(v => v.blockId === chrome.selBlock)
+            if (!b) continue
+            chrome.blockRect = b.mapToItem(chrome, 0, 0, b.width, b.barH)
+            chrome.blockEdge = surf.side
+            chrome.blockFound = true
+            return
+        }
+        chrome.blockFound = false
+    }
+
+    Timer {
+        interval: 60
+        repeat: true
+        running: chrome.editing && chrome.selBlock !== ""
+        triggeredOnStart: true
+        onTriggered: chrome.locateBlock()
+    }
+
+    readonly property var shapeChoices: [
+        { value: "stepped", label: "Stepped", icon: "view_agenda" },
+        { value: "flat",    label: "Flat",    icon: "remove" },
+        { value: "pill",    label: "Pill",    icon: "circle" }
+    ]
 
     function addTarget(id) {
         const dockOnly = !BarLayout.allows(id, "bar")
@@ -683,6 +716,92 @@ Item {
                     chrome.editor.selectedItem = ""
                     Qt.callLater(() => BarLayout.hideItem(id))
                 }
+            }
+        }
+    }
+
+    Card {
+        id: blockBar
+        readonly property string shape: chrome.selBlock !== "" ? BarLayout.blockShape(chrome.selBlock) : ""
+        readonly property var blockInfo: chrome.selBlock !== "" ? BarLayout.blockById(chrome.selBlock) : null
+        readonly property string panels: blockBar.blockInfo ? BarLayout.blockPanels(chrome.selBlock, blockBar.blockInfo.edge) : ""
+        readonly property bool shown: chrome.editing && chrome.selBlock !== "" && chrome.blockFound && !chrome.dragging
+                                      && !chrome.stage && !chrome.drawerShown && !chrome.shelfOpen
+        readonly property bool side: chrome.blockEdge === "left" || chrome.blockEdge === "right"
+        readonly property bool below: chrome.blockEdge !== "bottom"
+
+        property real showT: blockBar.shown ? 1 : 0
+        Behavior on showT {
+            NumberAnimation {
+                duration: blockBar.shown ? 340 : 200
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: blockBar.shown ? [0.2, 0, 0, 1, 1, 1] : [0.3, 0, 0.8, 0.15, 1, 1]
+            }
+        }
+        visible: blockBar.showT > 0.01
+        opacity: Math.min(1, blockBar.showT * 1.5)
+        transform: Scale {
+            origin.x: chrome.blockRect.x + chrome.blockRect.width / 2 - blockBar.x
+            origin.y: blockBar.side ? blockBar.height / 2 : blockBar.below ? -44 : blockBar.height + 44
+            xScale: 0.2 + 0.8 * blockBar.showT
+            yScale: 0.3 + 0.7 * blockBar.showT
+        }
+        x: Math.max(12, Math.min(chrome.width - width - 12,
+            chrome.blockEdge === "left" ? chrome.blockRect.x + chrome.blockRect.width + 44
+            : chrome.blockEdge === "right" ? chrome.blockRect.x - width - 44
+            : chrome.blockRect.x + chrome.blockRect.width / 2 - width / 2))
+        y: blockBar.side ? Math.max(12, Math.min(capsule.y - height - 12, chrome.blockRect.y + chrome.blockRect.height / 2 - height / 2))
+            : blockBar.below ? chrome.blockRect.y + chrome.blockRect.height + 48
+            : Math.min(chrome.blockRect.y - height - 48, capsule.y - height - 12)
+        height: 52
+        width: blockRow.implicitWidth + 12
+        radius: 26
+
+        RowLayout {
+            id: blockRow
+            anchors.centerIn: parent
+            spacing: 2
+
+            CustomText {
+                Layout.leftMargin: 12
+                Layout.rightMargin: 6
+                content: chrome.selBlock !== "" ? BarLayout.blockLabel(chrome.selBlock) : ""
+                size: 13
+                weight: 600
+            }
+
+            Repeater {
+                model: chrome.shapeChoices
+
+                Pill {
+                    required property var modelData
+                    icon: modelData.icon
+                    label: modelData.label
+                    lit: blockBar.shape === modelData.value
+                    onClicked: BarLayout.setBlockShape(chrome.selBlock, modelData.value)
+                }
+            }
+
+            Divider {
+                visible: blockBar.shape === "pill"
+                Layout.leftMargin: 4
+                Layout.rightMargin: 4
+            }
+
+            Pill {
+                visible: blockBar.shape === "pill"
+                icon: "vertical_align_top"
+                label: "Attached"
+                lit: blockBar.panels === "attached"
+                onClicked: BarLayout.setBlockStyle(chrome.selBlock, "panels", "attached")
+            }
+
+            Pill {
+                visible: blockBar.shape === "pill"
+                icon: "bubble_chart"
+                label: "Floating"
+                lit: blockBar.panels === "floating"
+                onClicked: BarLayout.setBlockStyle(chrome.selBlock, "panels", "floating")
             }
         }
     }

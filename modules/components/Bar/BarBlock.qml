@@ -74,17 +74,80 @@ Item {
 
     readonly property bool editMode: GlobalStates.barEditMode && layout.isPrimary
     readonly property bool editing: barBlock.editMode && !barBlock.leaving
+    readonly property bool blockSelected: !!barBlock.editor && barBlock.editor.selectedBlock === barBlock.blockId
     // this block's slice of the edit-mode sweep, from its own place on the screen
     readonly property real revealT: GlobalStates.barRevealAt(barBlock.absX + barBlock.width / 2,
                                                              barBlock.frameW)
     readonly property bool handlesIn: barBlock.revealT > 0.55
-    readonly property bool isPill: barBlock.bottomEdge ? BarLayout.dockStyle === "pill" : ServiceGaps.isPill
+    readonly property string shape: BarLayout.blockShape(barBlock.blockId, barBlock.edge)
+    readonly property bool isPill: barBlock.shape === "pill"
+    property real pillT: barBlock.isPill ? 1 : 0
+    property real flatT: barBlock.shape === "flat" ? 1 : 0
+    Behavior on pillT { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
+    Behavior on flatT { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
+    readonly property real drop: (barBlock.frame ? barBlock.frame.pillMargin : 0) * barBlock.pillT
+    readonly property var geomSig: [barBlock.x, barBlock.y, barBlock.width, barBlock.visible, barBlock.pc,
+        barBlock.pillT, barBlock.flatT, barBlock.drop, barBlock.tabOpen, barBlock.tabX, barBlock.tabW, barBlock.tabH,
+        barBlock.goo, barBlock.gooX, barBlock.gooW, barBlock.gooH, barBlock.srcX, barBlock.srcW, barBlock.dropDepth,
+        barBlock.dropX, barBlock.dropW, !!barBlock.dropSource, barBlock.dropReleasing, barBlock.fixedWidth,
+        barBlock.wantedBase, barBlock.leaving, barBlock.shape, barBlock.floating, barBlock.anchorSide]
+    onGeomSigChanged: if (barBlock.frame && barBlock.frame.markGeom) barBlock.frame.markGeom()
+    readonly property bool floating: barBlock.isPill
+        && BarLayout.blockPanels(barBlock.blockId, barBlock.edge) === "floating"
+    readonly property real floatGap: barBlock.floating ? 8 : 0
+    property real goo: barBlock.floating && barBlock.shownKind !== "" ? 1 : 0
+    Behavior on goo {
+        enabled: barBlock.floating
+        NumberAnimation {
+            duration: barBlock.shownKind !== "" ? 520 : 400
+            easing.type: Easing.InOutCubic
+        }
+    }
+    property real gooX: 0
+    property real gooW: 0
+    property real gooH: 0
+    function trackGoo() {
+        if (barBlock.shownKind === "")
+            return
+        barBlock.gooX = barBlock.tabX
+        barBlock.gooW = barBlock.tabW
+        barBlock.gooH = Math.max(0, barBlock.tabH - barBlock.barH)
+    }
+    onShownKindChanged: barBlock.trackGoo()
+    onTabXChanged: barBlock.trackGoo()
+    onTabWChanged: barBlock.trackGoo()
+    onTabHChanged: barBlock.trackGoo()
+    readonly property real contentT: barBlock.floating ? Math.max(0, Math.min(1, (barBlock.goo - 0.75) / 0.25)) : 1
+    readonly property var gooShape: {
+        const g = barBlock.goo
+        const s1 = Math.min(1, g / 0.45)
+        const s2 = Math.max(0, (g - 0.45) / 0.55)
+        const fw = barBlock.gooW
+        const fh = barBlock.gooH
+        const fx = barBlock.gooX
+        const fy = barBlock.barH + barBlock.floatGap
+        const cx = barBlock.srcX + barBlock.srcW / 2
+        const w0 = Math.min(Math.max(barBlock.srcW, 24), 44)
+        const h0 = Math.max(8, barBlock.barH - 12)
+        const x0 = cx - w0 / 2
+        const y0 = (barBlock.barH - h0) / 2
+        const mw = fw * 0.8
+        const mh = fh * 0.76
+        const mx = fx + (fw - mw) / 2
+        const my = barBlock.barH + barBlock.floatGap * 0.5
+        const early = g < 0.45
+        return {
+            x: early ? x0 + (mx - x0) * s1 : mx + (fx - mx) * s2,
+            y: early ? y0 + (my - y0) * s1 : my + (fy - my) * s2,
+            w: early ? w0 + (mw - w0) * s1 : mw + (fw - mw) * s2,
+            h: early ? h0 + (mh - h0) * s1 : mh + (fh - mh) * s2,
+            k: 16 * (1 - s2)
+        }
+    }
+    y: barBlock.far ? -barBlock.drop : barBlock.drop
     readonly property real barH: barBlock.bottomEdge ? BarLayout.dockHeight : Appearance.size.barHeight
     readonly property real pad: barBlock.anchorSide === "center" ? 15 : 10
 
-    readonly property string tintRole: BarLayout.blockStyle(barBlock.blockId, "tint", "none")
-    readonly property real tintPad: BarLayout.blockStyle(barBlock.blockId, "pad", 4)
-    readonly property real tintRadius: BarLayout.blockStyle(barBlock.blockId, "radius", -1)
     readonly property real gap: barBlock.bottomEdge ? BarLayout.dockItemGap : BarLayout.itemGap
 
     property string clickedKind: ""
@@ -129,7 +192,7 @@ Item {
         : barBlock.hovering ? barBlock.hoverKind : ""
 
     readonly property real openHeight: barBlock.frameH - (barBlock.isPill ? ServiceGaps.pillMargin * 2 : 0)
-    readonly property real panelRoom: barBlock.openHeight - barBlock.barH - (barBlock.frame ? barBlock.frame.borderFar : 0)
+    readonly property real panelRoom: barBlock.openHeight - barBlock.barH - barBlock.floatGap - (barBlock.frame ? barBlock.frame.borderFar : 0)
     readonly property real heightRoom: barBlock.vertical ? barBlock.spanR - barBlock.spanL : barBlock.panelRoom
     readonly property real widthRoom: barBlock.vertical ? barBlock.panelRoom : barBlock.frameW - 32
 
@@ -368,6 +431,7 @@ Item {
         case "powerMode": return 320
         case "battery":   return 400
         case "power":     return 340
+        case "more":      return barBlock.itemOf("more") ? barBlock.itemOf("more").implicitWidth : 240
         case "notifications": return 400
         case "dockPreview": return barBlock.dockPreviewWidth
         case "dockMenu":  return 210
@@ -408,6 +472,7 @@ Item {
         case "brightness": return barBlock.itemOf("brightness") ? barBlock.itemOf("brightness").implicitHeight : 150
         case "powerMode": return barBlock.itemOf("powerMode") ? barBlock.itemOf("powerMode").implicitHeight + 28 : 316
         case "power":     return barBlock.itemOf("power") ? barBlock.itemOf("power").implicitHeight : 460
+        case "more":      return barBlock.itemOf("more") ? barBlock.itemOf("more").implicitHeight : 120
         case "notifications": return barBlock.itemOf("notifications") ? barBlock.itemOf("notifications").implicitHeight : 480
         case "battery":   return barBlock.itemOf("battery") ? barBlock.itemOf("battery").implicitHeight : 520
         case "dockPreview": return barBlock.itemOf("dockPreview") ? barBlock.itemOf("dockPreview").implicitHeight : 90
@@ -437,12 +502,14 @@ Item {
     readonly property var dropCurve: barBlock.sizeCurve
 
     readonly property real panelCorner: barBlock.frame ? barBlock.frame.disX : 0
+    readonly property real snapReach: barBlock.frame && barBlock.frame.tabPullFor
+        ? barBlock.frame.tabPullFor(barBlock) : barBlock.panelCorner
     function snapInL(x) {
-        return x > 0.5 && x < barBlock.panelCorner
+        return x > 0.5 && x < barBlock.snapReach
     }
     function snapInR(r) {
         const g = barBlock.width - r
-        return g > 0.5 && g < barBlock.panelCorner
+        return g > 0.5 && g < barBlock.snapReach
     }
     readonly property real tabNaturalW: barBlock.alongOf(barBlock.shownKind)
     readonly property real tabNaturalX: barBlock.alignX(barBlock.tabNaturalW, barBlock.srcX + barBlock.srcW / 2)
@@ -528,6 +595,7 @@ Item {
     }
     readonly property bool tabMoving: tabXAnim.running || tabWAnim.running || tabHAnim.running
     readonly property bool tabOpen: barBlock.shownKind !== "" || barBlock.tabH > barBlock.barH + 0.5
+        || (barBlock.floating && barBlock.goo > 0.001)
 
     property Item dropSource: null
     property Item dropOwner: null
@@ -712,7 +780,7 @@ Item {
         ? 96 + Math.max(0, barBlock.dragExtra)
         : barBlock.slotLayout.total + barBlock.pad * 2 + barBlock.dragExtra
     readonly property real collapsedWidth: barBlock.maxWidth > 0
-        ? Math.min(barBlock.naturalWidth, barBlock.maxWidth)
+        ? Math.min(barBlock.naturalWidth, Math.max(barBlock.maxWidth, barBlock.fixedWidth))
         : barBlock.naturalWidth
 
     readonly property bool isDropTarget: !!barBlock.editor && barBlock.editor.mode === "item"
@@ -722,8 +790,11 @@ Item {
     readonly property bool isDraggedBlock: !!barBlock.editor && barBlock.editor.mode === "block"
         && barBlock.editor.fromBlock === barBlock.blockId
 
-    readonly property bool wanted: !barBlock.leaving && SettingsConfig.settingsReady
+    readonly property bool wantedBase: !barBlock.leaving && SettingsConfig.settingsReady
         && (barBlock.editMode || barBlock.panelKind !== "" || barBlock.shownCount > 0)
+    readonly property bool folded: !!barBlock.frame && !!barBlock.frame.foldIds
+        && barBlock.frame.foldIds.indexOf(barBlock.blockId) >= 0
+    readonly property bool wanted: barBlock.wantedBase && !barBlock.folded
     property real presence: 0
     readonly property real pc: Math.max(0, barBlock.presence)
     Behavior on presence {
@@ -975,9 +1046,9 @@ Item {
     Item {
         id: tabHost
         x: barBlock.tabX
-        y: barBlock.far ? barBlock.barH - barBlock.tabH : 0
+        y: barBlock.far ? barBlock.barH - barBlock.tabH - barBlock.floatGap : 0
         width: barBlock.tabW
-        height: barBlock.tabH
+        height: barBlock.tabH + barBlock.floatGap
         visible: barBlock.tabOpen
         clip: true
 
@@ -989,9 +1060,10 @@ Item {
         Item {
             id: panelClip
             x: 0
-            y: barBlock.far ? 0 : barBlock.barH
+            y: barBlock.far ? 0 : barBlock.barH + barBlock.floatGap
+            opacity: barBlock.contentT
             width: tabHost.width
-            height: Math.max(0, tabHost.height - barBlock.barH)
+            height: Math.max(0, tabHost.height - barBlock.barH - barBlock.floatGap)
             clip: true
             layer.enabled: barBlock.tabMoving && barBlock.panelCorner > 0
             layer.smooth: true
@@ -1008,10 +1080,10 @@ Item {
             width: panelClip.width
             height: panelClip.height
             color: "white"
-            topLeftRadius: barBlock.far ? panelCornerMask.r : 0
-            topRightRadius: barBlock.far ? panelCornerMask.r : 0
-            bottomLeftRadius: barBlock.far ? 0 : panelCornerMask.r
-            bottomRightRadius: barBlock.far ? 0 : panelCornerMask.r
+            topLeftRadius: barBlock.far || barBlock.floating ? panelCornerMask.r : 0
+            topRightRadius: barBlock.far || barBlock.floating ? panelCornerMask.r : 0
+            bottomLeftRadius: barBlock.far && !barBlock.floating ? 0 : panelCornerMask.r
+            bottomRightRadius: barBlock.far && !barBlock.floating ? 0 : panelCornerMask.r
         }
 
     }
@@ -1055,7 +1127,7 @@ Item {
         ? barBlock.shownKind : ""
     readonly property bool sizeHandles: barBlock.sizeKind !== "" && (barBlock.resizing
         || (!tabXAnim.running && !tabWAnim.running && !tabHAnim.running))
-    readonly property real tabContentTop: barBlock.far ? barBlock.barH - barBlock.tabH : barBlock.barH
+    readonly property real tabContentTop: barBlock.far ? barBlock.barH - barBlock.tabH - barBlock.floatGap : barBlock.barH + barBlock.floatGap
     readonly property real tabContentH: Math.max(0, barBlock.tabH - barBlock.barH)
     readonly property bool flushL: Math.abs(barBlock.tabX - (barBlock.spanL - barBlock.absX)) <= 0.5
     readonly property bool flushR: Math.abs(barBlock.tabX + barBlock.tabW - (barBlock.spanR - barBlock.absX)) <= 0.5
@@ -1195,27 +1267,6 @@ Item {
                 customColor: Colors.inverseSurfaceText
                 font.features: { "tnum": 1 }
             }
-        }
-    }
-
-    Rectangle {
-        z: -1
-        x: 0
-        y: barBlock.tintPad
-        width: barBlock.width
-        height: Math.max(0, barBlock.barH - barBlock.tintPad * 2)
-        visible: barBlock.tintRole !== "none" && barBlock.itemIds.length > 0
-        radius: barBlock.tintRadius < 0 ? height / 2 : barBlock.tintRadius
-        color: Qt.alpha(BarLayout.roleColor(barBlock.tintRole), 0.18)
-        opacity: barBlock.coveredAt(0, barBlock.width) ? 0 : 1
-
-        Behavior on opacity {
-            enabled: BarLayout.settled
-            EffectsAnim { speed: "fast" }
-        }
-
-        Behavior on color {
-            EffectsColorAnim {}
         }
     }
 
@@ -1602,6 +1653,7 @@ Item {
             case "brightness": return brightnessComp
             case "powerMode": return powerModeComp
             case "power":     return powerComp
+            case "more":      return moreComp
             case "notifications": return notificationsComp
             case "battery":   return batteryComp
             case "dockPreview": return dockPreviewComp
@@ -1686,6 +1738,13 @@ Item {
     Component { id: brightnessComp; BarBrightnessPanel {} }
     Component { id: powerModeComp; ModesPanel { onBackClicked: barBlock.closePanel() } }
     Component { id: powerComp;     BarPowerPanel {} }
+    Component {
+        id: moreComp
+        BarOverflowContent {
+            hostBlock: barBlock
+            blockIds: barBlock.frame && barBlock.frame.foldIds ? barBlock.frame.foldIds : []
+        }
+    }
     Component {
         id: notificationsComp
         BarNotificationsPanel {
@@ -1899,6 +1958,11 @@ Item {
                 barBlock.editor.finish()
             else if (app !== "" && !pinned)
                 Qt.callLater(() => ServiceApps.pinById(app))
+            else if (barBlock.blockId === "__more") {
+                if (barBlock.frame && barBlock.frame.toggleEditPage)
+                    barBlock.frame.toggleEditPage()
+            } else if (id === "")
+                barBlock.editor.selectedBlock = barBlock.blockSelected ? "" : barBlock.blockId
             else
                 barBlock.editor.selectedItem = id
         }
@@ -1921,7 +1985,7 @@ Item {
 
         Rectangle {
             id: gripPill
-            readonly property bool shown: barBlock.handlesIn && !barBlock.tabOpen
+            readonly property bool shown: barBlock.handlesIn && !barBlock.tabOpen && barBlock.blockId !== "__more"
                 && GlobalStates.panelPreview === "" && !GlobalStates.launcherPreview
             property real slide: gripPill.shown ? 1 : 0
             Behavior on slide { SpatialAnim { speed: "fast" } }
@@ -1979,6 +2043,31 @@ Item {
                     }
 
                     CustomToolTip { content: "Drag to move this block"; visible: gripArea.containsMouse && !gripArea.pressed }
+                }
+
+                Rectangle {
+                    width: 24
+                    height: 24
+                    radius: 12
+                    color: barBlock.blockSelected ? Colors.secondaryContainer
+                        : tuneArea.containsMouse ? Qt.alpha(Colors.primary, 0.16) : "transparent"
+
+                    MaterialIconSymbol {
+                        anchors.centerIn: parent
+                        content: "tune"
+                        iconSize: 16
+                        customColor: barBlock.blockSelected ? Colors.secondaryContainerText : Colors.surfaceText
+                    }
+
+                    MouseArea {
+                        id: tuneArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: barBlock.editor.selectedBlock = barBlock.blockSelected ? "" : barBlock.blockId
+                    }
+
+                    CustomToolTip { content: "Block shape and tint"; visible: tuneArea.containsMouse }
                 }
 
                 Rectangle {

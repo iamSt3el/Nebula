@@ -41,7 +41,7 @@ Rectangle {
 
     implicitWidth: root.fill ? fillChip.implicitWidth : root.vertical ? Math.max(root.plate, battRow.implicitWidth + 8)
         : root.showPercent ? battRow.implicitWidth + root.padPx : root.plate
-    implicitHeight: root.fill ? fillChip.implicitHeight : root.vertical && root.showPercent ? battRow.implicitHeight + 10 : root.plate
+    implicitHeight: root.fill ? fillChip.implicitHeight : root.plate
     radius: Math.min(width, height) / 2
     color: root.plateless || root.fill ? "transparent" : root.plateColor
     Behavior on color { ColorAnimation { duration: 150 } }
@@ -91,7 +91,7 @@ Rectangle {
         }
 
         CustomText {
-            visible: root.showPercent
+            visible: root.showPercent && !root.vertical
             content: Math.round(ServiceUPower.powerLevel * 100) + (root.vertical ? "" : "%")
             size: root.vertical ? root.labelPx - 2 : root.labelPx
             weight: 700

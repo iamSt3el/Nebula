@@ -170,16 +170,64 @@ function dockStyleOf(dockCfg, general) {
     return g.barMode ?? (g.flatBarMode === false ? "stepped" : "flat")
 }
 
-function dockReserve(dockCfg, general, hidden, hasDock) {
+const SHAPES = ["flat", "stepped", "pill"]
+
+function isShape(s) {
+    return SHAPES.indexOf(s) >= 0
+}
+
+function edgeOf(block) {
+    return isBottom(block && block.edge) ? "bottom" : "top"
+}
+
+function legacyShape(edge, barCfg, general) {
+    const g = general ?? {}
+    if (isBottom(edge))
+        return dockStyleOf(barCfg ? barCfg.dock : null, g)
+    return g.barMode ?? (g.flatBarMode === false ? "stepped" : "flat")
+}
+
+function blockShapes(barCfg, general, sanitized) {
+    const blocks = sanitized || (barCfg && barCfg.blocks) || []
+    const styles = (barCfg && barCfg.blockStyles) || {}
+    const out = { ids: {}, edges: {} }
+    for (const e of ["top", "bottom"]) {
+        const list = blocks.filter(b => edgeOf(b) === e)
+        const own = list.map(b => {
+            const s = styles[b.id] ? styles[b.id].shape : undefined
+            return isShape(s) ? s : ""
+        })
+        const legacy = legacyShape(e, barCfg, general)
+        for (let i = 0; i < list.length; i++) {
+            let s = own[i]
+            for (let d = 1; !s && d < list.length; d++)
+                s = own[i - d] || own[i + d] || ""
+            out.ids[list[i].id] = s || legacy
+        }
+        out.edges[e] = list.map(b => out.ids[b.id])
+        if (!out.edges[e].length)
+            out.edges[e] = [legacy]
+    }
+    return out
+}
+
+function shapeIn(shapes, id, edge) {
+    const s = shapes.ids[id]
+    if (s)
+        return s
+    return shapes.edges[isBottom(edge) ? "bottom" : "top"][0]
+}
+
+function dockReserve(barCfg, general, hidden, hasDock) {
     const g = general ?? {}
     if (hidden || hasDock === false || g.dock === false)
         return 0
-    const d = dockCfg ?? {}
+    const d = (barCfg && barCfg.dock) ?? {}
     const h = d.height ?? 60
-    const style = dockStyleOf(d, g)
-    if (style === "flat")
+    const shapes = blockShapes(barCfg, g).edges.bottom
+    if (shapes.indexOf("flat") >= 0)
         return Math.round(h)
-    if (style === "pill" && !(g.dockAutoHide ?? true))
+    if (shapes.indexOf("pill") >= 0 && !(g.dockAutoHide ?? true))
         return Math.round(h + (d.pillGap ?? g.pillMargin ?? 6) + 10)
     return 0
 }

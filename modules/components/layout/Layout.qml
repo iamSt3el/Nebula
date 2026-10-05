@@ -80,7 +80,7 @@ PanelWindow{
         ? layout.dashAnchor !== "left"
         : ServiceLauncher.position === "item"
           && BarLayout.allBlocks.some(b => b.anchor === "right" && b.items.indexOf("launcher") >= 0)
-    readonly property real popupY: topSurface.rowItem.y + Appearance.size.barHeight + (topSurface.barMode === "pill" ? 8 : 4)
+    readonly property real popupY: topSurface.rowItem.y + topSurface.maxDrop + Appearance.size.barHeight + (topSurface.anyPill ? 8 : 4)
 
     WlrLayershell.namespace: "quickshell:bar"
     exclusionMode: ExclusionMode.Ignore
@@ -244,6 +244,150 @@ PanelWindow{
             height: r.height
             intersection: Intersection.Subtract
         }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[8] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[9] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[10] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[11] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[12] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[13] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[14] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[15] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[16] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[17] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[18] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[19] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[20] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[21] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[22] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[23] ?? null) : null
+            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
 
         Region {
             readonly property Item tb: isPrimary ? (topSurface.openTabs[0] ?? null) : null
@@ -329,6 +473,60 @@ PanelWindow{
         }
         Region {
             readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[5] ?? null) : null
+            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[6] ?? null) : null
+            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[7] ?? null) : null
+            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[8] ?? null) : null
+            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[9] ?? null) : null
+            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[10] ?? null) : null
+            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
+            x: r.x
+            y: r.y
+            width: r.width
+            height: r.height
+            intersection: Intersection.Subtract
+        }
+        Region {
+            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[11] ?? null) : null
             readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
             x: r.x
             y: r.y
@@ -580,6 +778,7 @@ PanelWindow{
             property int dropBlockIndex: 0
             property real caretX: -1
             property string selectedItem: ""
+            property string selectedBlock: ""
             property string dropEdge: "top"
             property real caretY: 0
             property real caretW: 3
@@ -603,7 +802,14 @@ PanelWindow{
                     barEditor.drawerMode = "inspector"
             }
 
+            onSelectedBlockChanged: {
+                if (barEditor.selectedBlock !== "")
+                    barEditor.selectedItem = ""
+            }
+
             onSelectedItemChanged: {
+                if (barEditor.selectedItem !== "")
+                    barEditor.selectedBlock = ""
                 if (barEditor.selectedItem === "") {
                     barEditor.panelStage = false
                     if (barEditor.drawerMode === "options" || barEditor.drawerMode === "inspector") barEditor.drawerMode = ""
@@ -732,9 +938,10 @@ PanelWindow{
                         return
                     if (editChrome && editChrome.closeAll())
                         return
-                    if (barEditor.selectedItem !== "")
+                    if (barEditor.selectedItem !== "" || barEditor.selectedBlock !== "") {
                         barEditor.selectedItem = ""
-                    else if (!root.surfaceAt(mouse.x, mouse.y))
+                        barEditor.selectedBlock = ""
+                    } else if (!root.surfaceAt(mouse.x, mouse.y))
                         GlobalStates.barEditMode = false
                 }
             }
@@ -747,7 +954,7 @@ PanelWindow{
             preferredRendererType: Shape.CurveRenderer
 
             function base(s, side) {
-                if (!s || !s.visible || s.barMode === "pill" || s.side !== side)
+                if (!s || !s.visible || s.allPill || s.side !== side)
                     return 0
                 return s.sdfBot * (s.isDock ? s.reveal : 1)
             }
@@ -1014,6 +1221,7 @@ PanelWindow{
                 if (barEditor.mode !== "") barEditor.cancel()
                 else if (editChrome && editChrome.closeAll()) return
                 else if (barEditor.selectedItem !== "") barEditor.selectedItem = ""
+                else if (barEditor.selectedBlock !== "") barEditor.selectedBlock = ""
                 else GlobalStates.barEditMode = false
             }
             Keys.onPressed: event => {

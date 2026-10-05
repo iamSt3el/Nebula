@@ -50,6 +50,7 @@ Item {
             }
 
             CustomText {
+                visible: !root.vertical
                 Layout.alignment: Qt.AlignHCenter
                 content: ServiceWeather.temperature
                 size: BarLayout.scaleFor(root.iconPx, 16, root.vertical ? 11 : 13, 8); weight: 700

@@ -27,7 +27,7 @@ Item {
         const k = sdf.packed
         const n = k.bp.length
         const q = i < n ? k.bp[i] : k.dp[i - n]
-        return q ? Qt.vector4d(q.l, q.r, q.bot, i < n ? 0 : 1) : sdf.z4
+        return q ? Qt.vector4d(q.l, q.r, i < n ? q.bot : -q.bot, q.top) : sdf.z4
     }
     function pillRad(i) {
         const k = sdf.packed
@@ -65,10 +65,12 @@ Item {
     }
     function tab(i) {
         const t = sdf.tabAt(i)
-        return t ? Qt.vector4d(t.x, t.w, t.bot, i < sdf.packed.bt.length ? 0 : 1) : sdf.z4
+        return t ? Qt.vector4d(t.x, t.w, i < sdf.packed.bt.length ? t.bot : -t.bot, t.top) : sdf.z4
     }
     function tabRad(i) {
         const t = sdf.tabAt(i)
+        if (t && t.goo)
+            return Qt.vector4d(t.rtl, t.k, 0, 0)
         return t ? Qt.vector4d(t.rtl, t.rtr, t.rbl, t.rbr) : sdf.z4
     }
     function tabFil(i) {
@@ -82,6 +84,10 @@ Item {
     function tabFlare(i) {
         const t = sdf.tabAt(i)
         return t ? Qt.vector4d(t.flL, t.mL, t.flR, t.mR) : sdf.z4
+    }
+    function tabGoo(i) {
+        const t = sdf.tabAt(i)
+        return t && t.goo ? Qt.vector4d(t.hostL, t.hostR, t.hostT, t.hostB) : sdf.z4
     }
     function flare(i) {
         const k = sdf.packed
@@ -126,7 +132,7 @@ Item {
     }
 
     readonly property color fillColor: Colors.surface
-    readonly property real pillCount: sdf.packed.bp.length + sdf.packed.dp.length
+    readonly property real pillCount: Math.min(16, sdf.packed.bp.length + sdf.packed.dp.length)
     readonly property real segCount: sdf.packed.bs.length + sdf.packed.ds.length
     readonly property real flareCount: sdf.packed.bf.length + sdf.packed.df.length
     readonly property real tabCount: Math.min(4, sdf.packed.bt.length + sdf.packed.dt.length)
@@ -150,6 +156,10 @@ Item {
     readonly property vector4d tbf3: sdf.tabFil(3)
     readonly property vector4d tbx3: sdf.tabFlare(3)
     readonly property vector4d tbc3: sdf.tabCon(3)
+    readonly property vector4d tbg0: sdf.tabGoo(0)
+    readonly property vector4d tbg1: sdf.tabGoo(1)
+    readonly property vector4d tbg2: sdf.tabGoo(2)
+    readonly property vector4d tbg3: sdf.tabGoo(3)
     readonly property real topA: sdf.barField ? sdf.bar.sdfTop : 0
     readonly property real rMaxA: sdf.barField ? sdf.bar.sdfRMax : 1
     readonly property real botA: sdf.barField ? sdf.bar.sdfBot : 0
@@ -169,6 +179,14 @@ Item {
     readonly property vector4d pil5: sdf.pill(5)
     readonly property vector4d pil6: sdf.pill(6)
     readonly property vector4d pil7: sdf.pill(7)
+    readonly property vector4d pil8: sdf.pill(8)
+    readonly property vector4d pil9: sdf.pill(9)
+    readonly property vector4d pil10: sdf.pill(10)
+    readonly property vector4d pil11: sdf.pill(11)
+    readonly property vector4d pil12: sdf.pill(12)
+    readonly property vector4d pil13: sdf.pill(13)
+    readonly property vector4d pil14: sdf.pill(14)
+    readonly property vector4d pil15: sdf.pill(15)
     readonly property vector4d pir0: sdf.pillRad(0)
     readonly property vector4d pir1: sdf.pillRad(1)
     readonly property vector4d pir2: sdf.pillRad(2)
@@ -177,6 +195,14 @@ Item {
     readonly property vector4d pir5: sdf.pillRad(5)
     readonly property vector4d pir6: sdf.pillRad(6)
     readonly property vector4d pir7: sdf.pillRad(7)
+    readonly property vector4d pir8: sdf.pillRad(8)
+    readonly property vector4d pir9: sdf.pillRad(9)
+    readonly property vector4d pir10: sdf.pillRad(10)
+    readonly property vector4d pir11: sdf.pillRad(11)
+    readonly property vector4d pir12: sdf.pillRad(12)
+    readonly property vector4d pir13: sdf.pillRad(13)
+    readonly property vector4d pir14: sdf.pillRad(14)
+    readonly property vector4d pir15: sdf.pillRad(15)
     readonly property vector4d seg0: sdf.seg(0)
     readonly property vector4d seg1: sdf.seg(1)
     readonly property vector4d seg2: sdf.seg(2)
@@ -288,6 +314,10 @@ Item {
         property vector4d tbf3: sdf.tbf3
         property vector4d tbx3: sdf.tbx3
         property vector4d tbc3: sdf.tbc3
+        property vector4d tbg0: sdf.tbg0
+        property vector4d tbg1: sdf.tbg1
+        property vector4d tbg2: sdf.tbg2
+        property vector4d tbg3: sdf.tbg3
         property real topA: sdf.topA
         property real rMaxA: sdf.rMaxA
         property real botA: sdf.botA
@@ -307,6 +337,14 @@ Item {
         property vector4d pil5: sdf.pil5
         property vector4d pil6: sdf.pil6
         property vector4d pil7: sdf.pil7
+        property vector4d pil8: sdf.pil8
+        property vector4d pil9: sdf.pil9
+        property vector4d pil10: sdf.pil10
+        property vector4d pil11: sdf.pil11
+        property vector4d pil12: sdf.pil12
+        property vector4d pil13: sdf.pil13
+        property vector4d pil14: sdf.pil14
+        property vector4d pil15: sdf.pil15
         property vector4d pir0: sdf.pir0
         property vector4d pir1: sdf.pir1
         property vector4d pir2: sdf.pir2
@@ -315,6 +353,14 @@ Item {
         property vector4d pir5: sdf.pir5
         property vector4d pir6: sdf.pir6
         property vector4d pir7: sdf.pir7
+        property vector4d pir8: sdf.pir8
+        property vector4d pir9: sdf.pir9
+        property vector4d pir10: sdf.pir10
+        property vector4d pir11: sdf.pir11
+        property vector4d pir12: sdf.pir12
+        property vector4d pir13: sdf.pir13
+        property vector4d pir14: sdf.pir14
+        property vector4d pir15: sdf.pir15
         property vector4d seg0: sdf.seg0
         property vector4d seg1: sdf.seg1
         property vector4d seg2: sdf.seg2

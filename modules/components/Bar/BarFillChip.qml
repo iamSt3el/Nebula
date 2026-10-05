@@ -74,15 +74,6 @@ Item {
         verticalItemAlignment: Grid.AlignVCenter
         layoutDirection: Qt.LeftToRight
 
-        CustomText {
-            visible: root.vertical && root.shownLabel !== ""
-            font.features: { "tnum": 1 }
-            content: root.shownLabel
-            size: root.labelPx - 1
-            weight: 700
-            customColor: root.ink
-        }
-
         MaterialIconSymbol {
             visible: root.icon !== ""
             content: root.icon

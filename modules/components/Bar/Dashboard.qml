@@ -32,7 +32,7 @@ Item{
     property real srcRadius: 20
 
 
-    readonly property bool isPill: SettingsConfig.general.barMode === "pill"
+    readonly property bool isPill: BarLayout.edgeShapes("top").indexOf("pill") >= 0
 
     readonly property int morphOpen: M3Motion.spatial.slowDuration
     readonly property int morphClose: M3Motion.spatial.defaultDuration

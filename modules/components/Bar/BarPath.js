@@ -23,11 +23,20 @@ function sdfShape(bs, o, out) {
     const e = clamp(o.endR, -rMax, Math.max(0, (B - T) / 2))
     const ec = Math.max(0, e)
     if (!n) {
-        out.pills.push({ l: L, r: R, bot: B, rtl: ec, rtr: ec, rbl: ec, rbr: ec })
+        out.pills.push({ l: L, r: R, bot: B, top: T, rtl: ec, rtr: ec, rbl: ec, rbr: ec })
         return out
     }
 
+    const capL = o.capL === true
+    const capR = o.capR === true
+    const eCap = Math.min(rMax, Math.max(0, (B - T) / 2))
+    const eL = capL ? eCap : e
+    const eR = capR ? eCap : e
     const edgeFlare = clamp(-o.endR / rMax, 0, 1)
+    const flareL = capL ? 0 : edgeFlare
+    const flareR = capR ? 0 : edgeFlare
+    const touchL = capL ? -Infinity : L
+    const touchR = capR ? Infinity : R
     const bot = i => Math.max(B, bs[i].bot)
 
     const gaps = []
@@ -44,23 +53,33 @@ function sdfShape(bs, o, out) {
         reach.push(g / 2 + m * rMax)
     }
 
-    const endFactor = (gap, h) => {
+    const endFactor = (ex, gap, h) => {
         const g = clamp(gap / (2 * rMax), 0, 1)
-        return e >= 0 ? Math.max(g, clamp(1 - h / rMax, 0, 1)) : g
+        return ex >= 0 ? Math.max(g, clamp(1 - h / rMax, 0, 1)) : g
     }
-    const es = e * endFactor(gaps[0], bot(0) - B)
-    const ee = e * endFactor(gaps[n], bot(n - 1) - B)
+    const es = eL * endFactor(eL, gaps[0], bot(0) - B)
+    const ee = eR * endFactor(eR, gaps[n], bot(n - 1) - B)
     const esA = Math.abs(es)
     const eeA = Math.abs(ee)
 
     if (B - T > 0.5)
-        out.pills.push({ l: L, r: R, bot: B,
-                         rtl: ec, rtr: ec,
+        out.pills.push({ l: L, r: R, bot: B, top: T,
+                         rtl: capL ? 0 : ec, rtr: capR ? 0 : ec,
                          rbl: Math.max(0, es), rbr: Math.max(0, ee) })
     if (es < -0.01)
         out.flares.push({ x: L, y: B, r: esA, mode: 1 })
     if (ee < -0.01)
         out.flares.push({ x: R, y: B, r: eeA, mode: 3 })
+    if (capL) {
+        const r = Math.min(rMax, Math.max(0, bot(0) - T) / 2, Math.max(0, ((o.roomL ?? Infinity) - 2) / 2))
+        if (r > 0.01)
+            out.flares.push({ x: L, y: T, r: r, mode: 3 })
+    }
+    if (capR) {
+        const r = Math.min(rMax, Math.max(0, bot(n - 1) - T) / 2, Math.max(0, ((o.roomR ?? Infinity) - 2) / 2))
+        if (r > 0.01)
+            out.flares.push({ x: R, y: T, r: r, mode: 1 })
+    }
 
     const share = []
     for (let k = 0; k <= n; k++) {
@@ -76,11 +95,11 @@ function sdfShape(bs, o, out) {
         entry.push(Math.min(rMax, Math.max(0, bot(i) - lines[i]) / 2, reach[i], share[i]))
     }
 
-    const sideTouch = px => Math.max(clamp(1 - (px - L) / rMax, 0, 1),
-                                     clamp(1 - (R - px) / rMax, 0, 1))
+    const sideTouch = px => Math.max(clamp(1 - (px - touchL) / rMax, 0, 1),
+                                     clamp(1 - (touchR - px) / rMax, 0, 1))
 
-    const factor = (edgeTouch, b, px, melt) => {
-        const fE = edgeFlare * edgeTouch
+    const factor = (edgeTouch, b, px, melt, ef) => {
+        const fE = ef * edgeTouch
         const fB = o.bottomFlare * clamp(1 - (o.screenH - b) / rMax, 0, 1)
             * (melt ? 1 : sideTouch(px))
         return { s: 1 - 2 * Math.max(fE, fB), vertical: fE >= fB }
@@ -104,7 +123,7 @@ function sdfShape(bs, o, out) {
 
         let rl = 0
         let rr = 0
-        const cl = factor(i === 0 ? clamp(1 - gaps[0] / rMax, 0, 1) : 0, y, x, melt)
+        const cl = factor(i === 0 ? clamp(1 - gaps[0] / rMax, 0, 1) : 0, y, x, melt, flareL)
         if (cl.s >= 0) {
             rl = Math.min(rMax, hL - raL, w / 2) * cl.s
         } else {
@@ -113,7 +132,7 @@ function sdfShape(bs, o, out) {
             if (r > 0.01)
                 out.flares.push({ x: x, y: y, r: r, mode: cl.vertical ? 1 : 2 })
         }
-        const cr = factor(i === n - 1 ? clamp(1 - gaps[n] / rMax, 0, 1) : 0, y, X, melt)
+        const cr = factor(i === n - 1 ? clamp(1 - gaps[n] / rMax, 0, 1) : 0, y, X, melt, flareR)
         if (cr.s >= 0) {
             rr = Math.min(rMax, hR - raR, w / 2) * cr.s
         } else {
@@ -138,8 +157,8 @@ function sdfData(bs, o) {
     return sdfShape(bs, o, sdfEmpty())
 }
 
-function sdfIslands(groups, o) {
-    const out = sdfEmpty()
+function sdfIslands(groups, o, into) {
+    const out = into || sdfEmpty()
     const T = o.top
     const B = o.top + o.bridge
     const e = clamp(o.endR, 0, (B - T) / 2)
@@ -161,7 +180,7 @@ function sdfIslands(groups, o) {
             const half = (R - L) / 2
             const rTop = Math.min(e, half)
             const rBot = Math.max(0, Math.min(e + (o.rMax - e) * t, half, (bot - T) - rTop))
-            out.pills.push({ l: L, r: R, bot: bot, rtl: rTop, rtr: rTop, rbl: rBot, rbr: rBot })
+            out.pills.push({ l: L, r: R, bot: bot, top: T, rtl: rTop, rtr: rTop, rbl: rBot, rbr: rBot })
             continue
         }
         sdfShape(g, Object.assign({}, o, { left: L, right: R }), out)
@@ -169,16 +188,33 @@ function sdfIslands(groups, o) {
     return out
 }
 
-function sdfTabs(ts, segs, o, pill) {
+function sdfTabs(ts, segs, o) {
     const out = []
     const rMax = o.rMax
-    const T = o.top
-    const B = pill ? T + o.barH : T + o.bridge
-    const strip = !pill && o.bridge > 0.5
-    const e = pill ? o.barH / 2 : 0
-    const edgeFlare = pill ? 0 : clamp(-o.endR / rMax, 0, 1)
-    const melt = pill ? 0 : o.bottomFlare * 1
     for (let t of ts) {
+        if (t.floating) {
+            const h = t.fbot - t.ftop
+            if (t.gw < 0.5 || h < 0.5)
+                continue
+            const r = Math.min(rMax, t.gw / 2, h / 2)
+            out.push({
+                x: t.gx, w: t.gw, bot: t.fbot, top: t.ftop,
+                rtl: r, rtr: r, rbl: r, rbr: r,
+                lineL: -1, rfL: 0, lineR: -1, rfR: 0,
+                flL: 0, mL: 0, flR: 0, mR: 0,
+                conL: 0, onL: 0, conR: 0, onR: 0,
+                goo: 1, k: t.k,
+                hostL: t.bx, hostR: t.bx + t.bw, hostT: t.top, hostB: t.top + o.barH
+            })
+            continue
+        }
+        const pill = t.pill === true
+        const T = t.top
+        const B = pill ? T + o.barH : T + t.bridge
+        const strip = !pill && t.bridge > 0.5
+        const e = pill ? o.barH / 2 : 0
+        const edgeFlare = pill ? 0 : clamp(-t.endR / rMax, 0, 1)
+        const melt = pill ? 0 : o.bottomFlare * 1
         if (t.w < 0.5 || t.bot <= B + 0.01)
             continue
         const blockCorner = pill ? e : Math.min(rMax, Math.max(0, t.bb - B) / 2)
@@ -194,8 +230,11 @@ function sdfTabs(ts, segs, o, pill) {
             const d = (edge - blockEdge) * inward
             if (d > 0.5)
                 return { line: t.bb, room: d }
-            if (d < -0.5 && strip)
+            const onStrip = !(edge < t.stripL - 0.5 || edge > t.stripR + 0.5)
+            if (d < -0.5 && strip && onStrip)
                 return { line: B, room: Infinity }
+            if (d < -0.5 && strip)
+                return { line: T, room: Infinity }
             return { line: -1, room: 0 }
         }
         const near = (edge, dir) => {
@@ -241,11 +280,11 @@ function sdfTabs(ts, segs, o, pill) {
             const r = vertical ? Math.min(rMax * -s, t.w) : Math.min(rMax, t.bot - T) * -s
             return { corner: 0, r: r > 0.01 ? r : 0, mode: vertical ? vMode : hMode }
         }
-        const fl = flare(clamp(1 - (t.x - o.left) / rMax, 0, 1), corner(sl), 1, 2)
-        const fr = flare(clamp(1 - (o.right - X) / rMax, 0, 1), corner(sr), 3, 4)
+        const fl = flare(clamp(1 - (t.x - t.left) / rMax, 0, 1), corner(sl), 1, 2)
+        const fr = flare(clamp(1 - (t.right - X) / rMax, 0, 1), corner(sr), 3, 4)
         const top = pill ? Math.min(e, half) : 0
         out.push({
-            x: t.x, w: t.w, bot: t.bot,
+            x: t.x, w: t.w, bot: t.bot, top: T,
             rtl: top * (1 - mL), rtr: top * (1 - mR), rbl: fl.corner, rbr: fr.corner,
             lineL: sl.line, rfL: fillet(sl), lineR: sr.line, rfR: fillet(sr),
             flL: fl.r, mL: fl.mode, flR: fr.r, mR: fr.mode,

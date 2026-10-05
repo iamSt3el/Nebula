@@ -117,7 +117,7 @@ Singleton {
         { id: "windowTitle",   label: "Window title",  icon: "web_asset",            group: "Core", surfaces: ["bar"],
           options: [{ key: "lines", label: "Lines", type: "choice", default: "two",
                       choices: [{ value: "two", label: "Two" }, { value: "one", label: "One" }] },
-                    { key: "width", label: "Width", type: "slider", min: 100, max: 360, step: 20, default: 200, auto: "Fit text" },
+                    { key: "width", label: "Width", type: "slider", min: 100, max: 360, step: 20, default: 160, auto: "Fit text" },
                     { key: "icon", label: "Icon", type: "choice", default: "app",
                       choices: [{ value: "app", label: "App icon" }, { value: "generic", label: "Generic" }] },
                     { key: "tint", label: "Tinted chip", type: "toggle", default: false }] },
@@ -359,7 +359,18 @@ Singleton {
         return BarOps.allows(root.entry(id), surface)
     }
 
-    readonly property var dockConfig: (SettingsConfig.bar ?? {}).dock ?? ({})
+    property var _stableCache: ({})
+
+    function _stable(key, value) {
+        const text = JSON.stringify(value)
+        const hit = root._stableCache[key]
+        if (hit && hit.text === text)
+            return hit.value
+        root._stableCache[key] = { text: text, value: value }
+        return value
+    }
+
+    readonly property var dockConfig: root._stable("dockConfig", (SettingsConfig.bar ?? {}).dock ?? ({}))
 
     function _list(v) {
         return (v !== undefined && v !== null && typeof v.length === "number")
@@ -368,17 +379,17 @@ Singleton {
 
     readonly property var allBlocks: {
         const saved = root._list(SettingsConfig.bar?.blocks)
-        return BarOps.sanitize((saved && saved.length) ? saved : root.defaultBlocks(), {
+        return root._stable("allBlocks", BarOps.sanitize((saved && saved.length) ? saved : root.defaultBlocks(), {
             migrated: root.dockConfig.edgeModel === true,
             dockItems: root._list(root.dockConfig.items),
             musicOn: (SettingsConfig.general ?? {}).dockMusicPlayer ?? true
-        }, id => root.entry(id), root.anchorNames)
+        }, id => root.entry(id), root.anchorNames))
     }
 
     readonly property var blocks: root.allBlocks.filter(b => b.edge === "top")
     readonly property var bottomBlocks: root.allBlocks.filter(b => b.edge === "bottom")
     readonly property bool dockOn: (SettingsConfig.general ?? {}).dock ?? true
-    readonly property var sides: BarOps.sidesOf(SettingsConfig.bar)
+    readonly property var sides: root._stable("sides", BarOps.sidesOf(SettingsConfig.bar))
     readonly property string barSide: root.sides.bar
     readonly property string dockSide: root.sides.dock
 
@@ -397,7 +408,7 @@ Singleton {
         value: root.dockPresent
     }
 
-    readonly property var itemGroups: SettingsConfig.bar?.groups ?? ({})
+    readonly property var itemGroups: root._stable("itemGroups", SettingsConfig.bar?.groups ?? ({}))
     readonly property var placedIds: {
         const out = {}
         for (const b of root.allBlocks)
@@ -441,9 +452,13 @@ Singleton {
     }
     readonly property var sysHostBlock: ({ id: "__sys", anchor: "center", edge: "bottom", items: [] })
 
+    readonly property var moreBlock: ({ id: "__more", anchor: "right", edge: "top", items: ["more"] })
+
     function blockById(id) {
         if (id === "__sys")
             return root.sysHostBlock
+        if (id === "__more")
+            return root.moreBlock
         return root.allBlocks.find(b => b.id === id) ?? null
     }
 
@@ -593,7 +608,7 @@ Singleton {
         root._write(kept)
     }
 
-    readonly property var blockStyles: SettingsConfig.bar?.blockStyles ?? ({})
+    readonly property var blockStyles: root._stable("blockStyles", SettingsConfig.bar?.blockStyles ?? ({}))
 
     function blockStyle(blockId, key, def) {
         const st = root.blockStyles[blockId]
@@ -607,6 +622,51 @@ Singleton {
         root._patch({ blockStyles: all })
     }
 
+    readonly property var shapes: root._stable("shapes", BarOps.blockShapes(SettingsConfig.bar, SettingsConfig.general, root.allBlocks))
+
+    function blockShape(blockId, edge) {
+        if (blockId === "__more") {
+            const r = root.allBlocks.find(b => b.anchor === "right" && b.edge === "top")
+            return BarOps.shapeIn(root.shapes, r ? r.id : blockId, "top")
+        }
+        return BarOps.shapeIn(root.shapes, blockId, edge)
+    }
+
+    function blockPanels(blockId, edge) {
+        const v = root.blockStyle(blockId, "panels", "")
+        if (v === "floating" || v === "attached")
+            return v
+        return BarOps.isBottom(edge) ? "attached" : "floating"
+    }
+
+    function edgeShapes(edge) {
+        return root.shapes.edges[BarOps.isBottom(edge) ? "bottom" : "top"]
+    }
+
+    function _setShapes(edge, pick) {
+        const e = BarOps.isBottom(edge) ? "bottom" : "top"
+        const all = Object.assign({}, root.blockStyles)
+        for (const b of root.allBlocks) {
+            if (BarOps.edgeOf(b) !== e)
+                continue
+            const s = pick(b.id) ?? root.blockShape(b.id, e)
+            all[b.id] = Object.assign({}, all[b.id] ?? {}, { shape: s })
+        }
+        root._patch({ blockStyles: all })
+    }
+
+    function setBlockShape(blockId, shape) {
+        const b = root.blockById(blockId)
+        if (!b || !BarOps.isShape(shape))
+            return
+        root._setShapes(b.edge, id => id === blockId ? shape : undefined)
+    }
+
+    function setEdgeShape(edge, shape) {
+        if (BarOps.isShape(shape))
+            root._setShapes(edge, () => shape)
+    }
+
     function blockLabel(blockId) {
         const b = root.blockById(blockId)
         if (!b)
@@ -618,7 +678,7 @@ Singleton {
         return name + " " + (same.findIndex(x => x.id === blockId) + 1)
     }
 
-    readonly property var margins: SettingsConfig.bar?.margins ?? ({})
+    readonly property var margins: root._stable("margins", SettingsConfig.bar?.margins ?? ({}))
 
     function marginsFor(id) {
         const m = root.margins[id]
@@ -634,7 +694,7 @@ Singleton {
         root._patch({ margins: next })
     }
 
-    readonly property var itemStyles: SettingsConfig.bar?.itemStyles ?? ({})
+    readonly property var itemStyles: root._stable("itemStyles", SettingsConfig.bar?.itemStyles ?? ({}))
 
     function itemStyle(id, key, def) {
         const st = root.itemStyles[id]
@@ -843,7 +903,7 @@ Singleton {
                        "maxH": ServiceLauncher.maxHeight, "defH": ServiceLauncher.defaultHeight }
     })
     readonly property var panelOpeners: ({ "clock": "calendar", "weather": "weather", "dashboard": "dashboard", "launcher": "launcher", "wallpaper": "wallpaper", "clipboard": "clipboard" })
-    readonly property var panelSizes: SettingsConfig.bar?.panelSizes ?? ({})
+    readonly property var panelSizes: root._stable("panelSizes", SettingsConfig.bar?.panelSizes ?? ({}))
     property var panelDraft: null
 
     function draftOf(kind) {
@@ -988,7 +1048,7 @@ Singleton {
         root._patch({ panelSizes: next })
     }
 
-    readonly property var itemOptions: SettingsConfig.bar?.options ?? ({})
+    readonly property var itemOptions: root._stable("itemOptions", SettingsConfig.bar?.options ?? ({}))
 
     function specFor(id, key) {
         const e = root.entry(id)
@@ -1060,10 +1120,6 @@ Singleton {
     readonly property real dockRadius: root.dockSize("radius", 18)
     readonly property real dockBlockGap: root.dockSize("blockGap", -1)
     readonly property real dockPillGap: root.dockSize("pillGap", (SettingsConfig.general ?? {}).pillMargin ?? 6)
-    readonly property string dockStyleSetting: root.dockSize("style", "match")
-    readonly property string barStyle: (SettingsConfig.general ?? {}).barMode
-        ?? ((SettingsConfig.general ?? {}).flatBarMode === false ? "stepped" : "flat")
-    readonly property string dockStyle: BarOps.dockStyleOf(root.dockConfig, SettingsConfig.general)
 
     readonly property bool dockMusic: BarOps.hasDockMusic(root.allBlocks)
 

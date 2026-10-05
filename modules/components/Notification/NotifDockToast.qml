@@ -16,7 +16,7 @@ Item {
     readonly property real floor: root.host.topSurface && root.host.topSurface.side === "bottom"
         ? root.host.height - root.host.topSurface.bandRect.height : root.host.height
     readonly property real reveal: root.dock ? (root.dock.reveal ?? 1) : 0
-    readonly property real slide: root.dock ? (1 - root.reveal) * (root.dock.barH + root.dock.edgeInset + 6) : 0
+    readonly property real slide: root.dock ? root.dock.slide : 0
     readonly property real edge: {
         if (!root.dock) return root.floor
         const b = root.dock.bandRect

@@ -15,7 +15,11 @@ Item {
     property real maxHeight: 600
     property string tab: "add"
 
-    readonly property string barMode: SettingsConfig.general.barMode
+    readonly property var shapeChoices: [
+        { value: "stepped", label: "Stepped", icon: "view_agenda" },
+        { value: "flat",    label: "Flat",    icon: "remove" },
+        { value: "pill",    label: "Pill",    icon: "circle" }
+    ]
         ?? (SettingsConfig.general.flatBarMode === false ? "stepped" : "flat")
     readonly property bool dragOut: !!drawer.editor && drawer.editor.mode !== ""
         && (drawer.editor.fromBlock !== "" || (drawer.editor.mode === "app" && drawer.editor.appPinned))
@@ -205,74 +209,6 @@ Item {
         { value: "tertiary",    label: "Tertiary" },
         { value: "surfaceText", label: "Neutral" }
     ]
-
-    component BlockTintRow: ColumnLayout {
-        id: btr
-        property string blockId: ""
-        readonly property string tint: BarLayout.blockStyle(btr.blockId, "tint", "none")
-        readonly property real radius: BarLayout.blockStyle(btr.blockId, "radius", -1)
-        readonly property real pad: BarLayout.blockStyle(btr.blockId, "pad", 4)
-
-        spacing: 6
-
-        CustomText {
-            Layout.fillWidth: true
-            content: BarLayout.blockLabel(btr.blockId)
-            size: 13
-            weight: 600
-            customColor: Colors.surfaceVariantText
-        }
-
-        EditChoice {
-            Layout.fillWidth: true
-            maxPerRow: 5
-            minCell: 76
-            choices: drawer.tintChoices
-            value: btr.tint
-            onPicked: v => BarLayout.setBlockStyle(btr.blockId, "tint", v)
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.leftMargin: 106
-            visible: btr.tint !== "none"
-            spacing: 12
-
-            CustomText { Layout.preferredWidth: 60; content: "Radius"; size: 12 }
-            M3Slider {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 30
-                stepCount: 14
-                currentStep: btr.radius < 0 ? 0 : Math.round(btr.radius / 2) + 1
-                valueText: currentStep === 0 ? "Pill" : String((currentStep - 1) * 2)
-                onStepChanged: st => {
-                    const v = st === 0 ? -1 : (st - 1) * 2
-                    if (v !== btr.radius)
-                        BarLayout.setBlockStyle(btr.blockId, "radius", v)
-                }
-            }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.leftMargin: 106
-            visible: btr.tint !== "none"
-            spacing: 12
-
-            CustomText { Layout.preferredWidth: 60; content: "Inset"; size: 12 }
-            M3Slider {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 30
-                stepCount: 7
-                currentStep: Math.round(btr.pad / 2)
-                valueText: String(currentStep * 2) + "px"
-                onStepChanged: st => {
-                    if (st * 2 !== btr.pad)
-                        BarLayout.setBlockStyle(btr.blockId, "pad", st * 2)
-                }
-            }
-        }
-    }
 
     function edgeRadius(card, dir) {
         const p = card ? card.parent : null
@@ -1274,7 +1210,14 @@ ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 8
 
-                                    CustomText { Layout.fillWidth: true; content: "Style"; size: 13; weight: 600; customColor: Colors.surfaceVariantText }
+                                    CustomText { Layout.fillWidth: true; content: "Shape of every block"; size: 13; weight: 600; customColor: Colors.surfaceVariantText }
+                                    CustomText {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.WordWrap
+                                        content: "Click a block on the bar (or its tune button) to give it its own shape and tint. Flat and stepped blocks next to each other join; a pill floats on its own."
+                                        size: 11
+                                        customColor: Colors.outline
+                                    }
                                     M3ButtonGroup {
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: 38
@@ -1283,15 +1226,9 @@ ColumnLayout {
                                         textSize: 12
                                         activeColor: Colors.secondaryContainer
                                         activeTextColor: Colors.secondaryContainerText
-                                        model: [
-                                            { value: "stepped", label: "Stepped", icon: "view_agenda" },
-                                            { value: "flat",    label: "Flat",    icon: "remove" },
-                                            { value: "pill",    label: "Pill",    icon: "circle" }
-                                        ]
-                                        activeCheck: function(value) { return drawer.barMode === value }
-                                        onSegmentClicked: function(value) {
-                                            SettingsConfig.general = Object.assign({}, SettingsConfig.general, { barMode: value })
-                                        }
+                                        model: drawer.shapeChoices
+                                        activeCheck: function(value) { return BarLayout.edgeShapes("top").every(v => v === value) }
+                                        onSegmentClicked: function(value) { BarLayout.setEdgeShape("top", value) }
                                     }
                                 }
     }
@@ -1528,37 +1465,6 @@ EditHeading {
     Layout.fillWidth: true
     Layout.topMargin: 10
     visible: true
-    content: "Block tint"
-    size: 13
-    customColor: Colors.primary
-}
-ColumnLayout {
-    id: drawerGroup9
-    Layout.fillWidth: true
-    visible: true
-    spacing: 8
-    EditRow {
-        id: drawerBlock21
-        autoRadius: false
-        visible: true
-        topRadius: drawer.edgeRadius(drawerBlock21, -1)
-        bottomRadius: drawer.edgeRadius(drawerBlock21, 1)
-                                Repeater {
-                                    model: BarLayout.blocks
-
-                                    delegate: BlockTintRow {
-                                        required property var modelData
-                                        Layout.fillWidth: true
-                                        blockId: modelData.id
-                                    }
-                                }
-    }
-}
-
-EditHeading {
-    Layout.fillWidth: true
-    Layout.topMargin: 10
-    visible: true
     content: "Blocks"
     size: 13
     customColor: Colors.primary
@@ -1654,7 +1560,7 @@ ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 10
                                     visible: BarLayout.dockOn
-                                    enabled: BarLayout.dockStyle !== "flat"
+                                    enabled: BarLayout.edgeShapes("bottom").indexOf("flat") < 0
                                     opacity: enabled ? 1 : 0.5
 
                                     ColumnLayout {
@@ -1664,8 +1570,8 @@ ColumnLayout {
 
                                         CustomText { content: "Auto-hide"; size: 13 }
                                         CustomText {
-                                            content: BarLayout.dockStyle === "flat"
-                                                ? "Not available while the dock is full width"
+                                            content: BarLayout.edgeShapes("bottom").indexOf("flat") >= 0
+                                                ? "Not available while a dock block is flat"
                                                 : "Slide away until the pointer reaches the edge"
                                             size: 11
                                             customColor: Colors.outline
@@ -1674,7 +1580,7 @@ ColumnLayout {
 
                                     CustomToogle {
                                         isToggleOn: (SettingsConfig.general.dockAutoHide ?? true)
-                                                    && BarLayout.dockStyle !== "flat"
+                                                    && BarLayout.edgeShapes("bottom").indexOf("flat") < 0
                                         onToggled: state => SettingsConfig.general =
                                             Object.assign({}, SettingsConfig.general, { dockAutoHide: state })
                                     }
@@ -1691,7 +1597,7 @@ ColumnLayout {
                                     spacing: 8
                                     visible: BarLayout.dockOn
 
-                                    CustomText { Layout.fillWidth: true; content: "Style"; size: 13; weight: 600; customColor: Colors.surfaceVariantText }
+                                    CustomText { Layout.fillWidth: true; content: "Shape of every dock block"; size: 13; weight: 600; customColor: Colors.surfaceVariantText }
                                     M3ButtonGroup {
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: 38
@@ -1700,14 +1606,9 @@ ColumnLayout {
                                         textSize: 12
                                         activeColor: Colors.secondaryContainer
                                         activeTextColor: Colors.secondaryContainerText
-                                        model: [
-                                            { value: "match",   label: "Match bar" },
-                                            { value: "stepped", label: "Stepped" },
-                                            { value: "flat",    label: "Full" },
-                                            { value: "pill",    label: "Pill" }
-                                        ]
-                                        activeCheck: function(value) { return BarLayout.dockStyleSetting === value }
-                                        onSegmentClicked: function(value) { BarLayout.setDockSize("style", value) }
+                                        model: drawer.shapeChoices
+                                        activeCheck: function(value) { return BarLayout.edgeShapes("bottom").every(v => v === value) }
+                                        onSegmentClicked: function(value) { BarLayout.setEdgeShape("bottom", value) }
                                     }
                                 }
     }
@@ -1769,7 +1670,7 @@ ColumnLayout {
                                         { key: "itemGap",  label: "Item gap",      min: 0,  max: 16, step: 1, def: 2 },
                                         { key: "blockGap", label: "Block gap",     min: 16, max: 120, step: 8, def: -1, auto: true },
                                         { key: "radius",   label: "Corner radius", min: 8,  max: 28, step: 1, def: 18 }
-                                    ].concat(BarLayout.dockStyle === "pill"
+                                    ].concat(BarLayout.edgeShapes("bottom").indexOf("pill") >= 0
                                         ? [{ key: "pillGap", label: "Bottom gap", min: 0, max: 40, step: 1, def: BarLayout.dockPillGap }]
                                         : []) : []
 
@@ -1810,37 +1711,6 @@ ColumnLayout {
                                             size: 12
                                             customColor: Colors.outline
                                         }
-                                    }
-                                }
-    }
-}
-
-EditHeading {
-    Layout.fillWidth: true
-    Layout.topMargin: 10
-    visible: BarLayout.dockOn
-    content: "Block tint"
-    size: 13
-    customColor: Colors.primary
-}
-ColumnLayout {
-    id: drawerGroup13
-    Layout.fillWidth: true
-    visible: BarLayout.dockOn
-    spacing: 8
-    EditRow {
-        id: drawerBlock28
-        autoRadius: false
-        visible: true
-        topRadius: drawer.edgeRadius(drawerBlock28, -1)
-        bottomRadius: drawer.edgeRadius(drawerBlock28, 1)
-                                Repeater {
-                                    model: BarLayout.bottomBlocks
-
-                                    delegate: BlockTintRow {
-                                        required property var modelData
-                                        Layout.fillWidth: true
-                                        blockId: modelData.id
                                     }
                                 }
     }

@@ -62,7 +62,9 @@ Item {
     readonly property real k: Math.max(1, Math.min(root.sizePct / 100, root.room))
 
     readonly property bool vertical: !!root.host && root.host.vertical === true
-    readonly property bool verticalReady: root.vertical && root.cozyStyles.indexOf(root.style) < 0
+    readonly property var turningStyles: ["goo", "bounce", "pill", "shapes", "worm", "ring", "viewfinder"]
+    readonly property bool rotatesWithBar: root.vertical && root.turningStyles.indexOf(root.style) >= 0
+    readonly property bool verticalReady: root.vertical && !root.rotatesWithBar && root.cozyStyles.indexOf(root.style) < 0
 
     implicitWidth: face.item ? face.item.implicitWidth : 0
     implicitHeight: root.verticalReady && face.item ? face.item.implicitHeight : 30 * root.k

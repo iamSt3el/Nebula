@@ -20,7 +20,7 @@ Item {
     }
     readonly property real rightInset: root.side === "right" ? 0 : root.bandOn("right")
     readonly property real topInset: root.side === "top" ? 0 : root.bandOn("top")
-    readonly property bool joined: !!root.bar && root.bar.barMode !== "pill"
+    readonly property bool joined: !!root.bar && !root.bar.allPill
     readonly property real edge: {
         if (!root.bar) return ServiceGaps.topFinal
         const b = root.bar.bandRect

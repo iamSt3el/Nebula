@@ -33,6 +33,14 @@ layout(std140, binding = 0) uniform buf {
     vec4 pil5;
     vec4 pil6;
     vec4 pil7;
+    vec4 pil8;
+    vec4 pil9;
+    vec4 pil10;
+    vec4 pil11;
+    vec4 pil12;
+    vec4 pil13;
+    vec4 pil14;
+    vec4 pil15;
     vec4 pir0;
     vec4 pir1;
     vec4 pir2;
@@ -41,6 +49,14 @@ layout(std140, binding = 0) uniform buf {
     vec4 pir5;
     vec4 pir6;
     vec4 pir7;
+    vec4 pir8;
+    vec4 pir9;
+    vec4 pir10;
+    vec4 pir11;
+    vec4 pir12;
+    vec4 pir13;
+    vec4 pir14;
+    vec4 pir15;
     vec4 seg0;
     vec4 seg1;
     vec4 seg2;
@@ -134,6 +150,10 @@ layout(std140, binding = 0) uniform buf {
     vec4 tbf3;
     vec4 tbx3;
     vec4 tbc3;
+    vec4 tbg0;
+    vec4 tbg1;
+    vec4 tbg2;
+    vec4 tbg3;
 };
 
 const float weld = 2.0;
@@ -154,6 +174,13 @@ float sdCorners(vec2 p, vec2 lo, vec2 hi, vec4 rr) {
     r = min(r, min(h.x, h.y));
     vec2 e = abs(p - c) - h + r;
     return min(max(e.x, e.y), 0.0) + length(max(e, 0.0)) - r;
+}
+
+float smin(float a, float b, float r) {
+    if (r < 0.01)
+        return min(a, b);
+    float h = clamp(0.5 + 0.5 * (b - a) / r, 0.0, 1.0);
+    return mix(b, a, h) - r * h * (1.0 - h);
 }
 
 float unionRound(float a, float b, float r) {
@@ -207,10 +234,10 @@ float flareDist(vec4 f, float m, vec2 p) {
 void addPill(inout float dA, inout float dB, vec4 q, vec4 rr, float idx, vec2 pa, vec2 pb) {
     if (idx >= pillCount)
         return;
-    if (q.w < 0.5)
-        dA = min(dA, sdCorners(pa, vec2(q.x, topA), vec2(q.y, q.z), rr));
+    if (q.z >= 0.0)
+        dA = min(dA, sdCorners(pa, vec2(q.x, q.w), vec2(q.y, q.z), rr));
     else
-        dB = min(dB, sdCorners(pb, vec2(q.x, topB), vec2(q.y, q.z), rr));
+        dB = min(dB, sdCorners(pb, vec2(q.x, q.w), vec2(q.y, -q.z), rr));
 }
 
 void addFlareFill(inout float dA, inout float dB, vec4 f, float idx, vec2 pa, vec2 pb) {
@@ -288,12 +315,24 @@ void addCon(inout float dA, inout float dB, vec4 s, vec4 f, float idx, vec2 pa, 
     }
 }
 
-void addTab(inout float dA, inout float dB, vec4 t, vec4 rr, vec4 fl, vec4 fx, vec4 cn, float idx, vec2 pa, vec2 pb) {
+void addTab(inout float dA, inout float dB, vec4 t, vec4 rr, vec4 fl, vec4 fx, vec4 cn, vec4 g, float idx, vec2 pa, vec2 pb) {
     if (idx >= tabCount || t.y <= 0.0)
         return;
-    bool dock = t.w > 0.5;
+    bool dock = t.z < 0.0;
     vec2 p = dock ? pb : pa;
-    float top = dock ? topB : topA;
+    float top = t.w;
+    float bot = abs(t.z);
+    if (g.y > g.x) {
+        float hr = (g.w - g.z) * 0.5;
+        float hd = sdCorners(p, g.xz, g.yw, vec4(hr));
+        float bd = sdCorners(p, vec2(t.x, top), vec2(t.x + t.y, bot), vec4(rr.x));
+        float gd = smin(hd, bd, rr.y);
+        if (dock)
+            dB = min(dB, gd);
+        else
+            dA = min(dA, gd);
+        return;
+    }
     float X = t.x + t.y;
     float f = 1.0e5;
     float c = -1.0e5;
@@ -306,12 +345,12 @@ void addTab(inout float dA, inout float dB, vec4 t, vec4 rr, vec4 fl, vec4 fx, v
         c = max(c, fl.w - length(p - vec2(X + fl.w, fl.z + fl.w)));
     }
     if (fx.x > 0.0) {
-        vec4 g = vec4(t.x, t.z, fx.x, fx.y);
+        vec4 g = vec4(t.x, bot, fx.x, fx.y);
         f = min(f, flareDist(g, fx.y, p));
         c = max(c, fx.x - length(p - flareHub(g, fx.y)));
     }
     if (fx.z > 0.0) {
-        vec4 g = vec4(X, t.z, fx.z, fx.w);
+        vec4 g = vec4(X, bot, fx.z, fx.w);
         f = min(f, flareDist(g, fx.w, p));
         c = max(c, fx.z - length(p - flareHub(g, fx.w)));
     }
@@ -320,7 +359,7 @@ void addTab(inout float dA, inout float dB, vec4 t, vec4 rr, vec4 fl, vec4 fx, v
         f = min(f, sdRect(p, vec2(cn.x, top), vec2(t.x + weld, fl.x)));
     if (cn.w > 0.5)
         f = min(f, sdRect(p, vec2(X - weld, top), vec2(cn.z, fl.z)));
-    float d = min(sdCorners(p, vec2(t.x, top), vec2(X, t.z), rr), f);
+    float d = min(sdCorners(p, vec2(t.x, top), vec2(X, bot), rr), f);
     d = max(d, top - p.y);
     if (dock)
         dB = min(dB, d);
@@ -354,6 +393,14 @@ void main() {
     addPill(dA, dB, pil5, pir5, 5.0, pa, pb);
     addPill(dA, dB, pil6, pir6, 6.0, pa, pb);
     addPill(dA, dB, pil7, pir7, 7.0, pa, pb);
+    addPill(dA, dB, pil8, pir8, 8.0, pa, pb);
+    addPill(dA, dB, pil9, pir9, 9.0, pa, pb);
+    addPill(dA, dB, pil10, pir10, 10.0, pa, pb);
+    addPill(dA, dB, pil11, pir11, 11.0, pa, pb);
+    addPill(dA, dB, pil12, pir12, 12.0, pa, pb);
+    addPill(dA, dB, pil13, pir13, 13.0, pa, pb);
+    addPill(dA, dB, pil14, pir14, 14.0, pa, pb);
+    addPill(dA, dB, pil15, pir15, 15.0, pa, pb);
 
     addFlareFill(dA, dB, fc0, 0.0, pa, pb);
     addFlareFill(dA, dB, fc1, 1.0, pa, pb);
@@ -480,10 +527,10 @@ void main() {
     addCon(dA, dB, seg21, fil21, 21.0, pa, pb);
     addCon(dA, dB, seg22, fil22, 22.0, pa, pb);
     addCon(dA, dB, seg23, fil23, 23.0, pa, pb);
-    addTab(dA, dB, tb0, tbr0, tbf0, tbx0, tbc0, 0.0, pa, pb);
-    addTab(dA, dB, tb1, tbr1, tbf1, tbx1, tbc1, 1.0, pa, pb);
-    addTab(dA, dB, tb2, tbr2, tbf2, tbx2, tbc2, 2.0, pa, pb);
-    addTab(dA, dB, tb3, tbr3, tbf3, tbx3, tbc3, 3.0, pa, pb);
+    addTab(dA, dB, tb0, tbr0, tbf0, tbx0, tbc0, tbg0, 0.0, pa, pb);
+    addTab(dA, dB, tb1, tbr1, tbf1, tbx1, tbc1, tbg1, 1.0, pa, pb);
+    addTab(dA, dB, tb2, tbr2, tbf2, tbx2, tbc2, tbg2, 2.0, pa, pb);
+    addTab(dA, dB, tb3, tbr3, tbf3, tbx3, tbc3, tbg3, 3.0, pa, pb);
     if (strokeW > 0.0) {
         float ws = clamp(length(vec2(dFdx(dA), dFdy(dA))), 1.0e-5, 1.0);
         float sa = clamp(0.5 - (abs(dA) - strokeW * 0.5) / ws, 0.0, 1.0) * strokeColor.a;

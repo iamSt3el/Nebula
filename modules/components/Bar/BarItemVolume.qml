@@ -33,7 +33,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         width: root.fill ? fillChip.implicitWidth : root.vertical ? Math.max(root.plate, volRow.implicitWidth + 8)
             : volRow.implicitWidth + root.padPx
-        height: root.fill ? fillChip.implicitHeight : root.vertical ? volRow.implicitHeight + 10 : root.plate
+        height: root.fill ? fillChip.implicitHeight : root.plate
         radius: Math.min(width, height) / 2
         color: root.plateless || root.fill ? "transparent" : root.plateColor
         Behavior on color { ColorAnimation { duration: 150 } }
@@ -72,7 +72,7 @@ Item {
             }
 
             CustomText {
-                visible: BarLayout.opt(root.itemId, "showPercent") !== false && !(root.vertical && ServicePipewire.muted)
+                visible: BarLayout.opt(root.itemId, "showPercent") !== false && !root.vertical
                 Layout.alignment: Qt.AlignHCenter
                 content: ServicePipewire.muted ? "Muted"
                        : Math.round(ServicePipewire.volume * 100) + (root.vertical ? "" : "%")
