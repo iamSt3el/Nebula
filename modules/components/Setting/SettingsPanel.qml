@@ -33,7 +33,7 @@ Scope {
         activeAsync: scope.loaded
 
         component: FloatingWindow {
-            implicitWidth: 1000
+            implicitWidth: 1000 + ((SettingsConfig.general.settingsRailWide ?? false) ? 138 : 0)
             implicitHeight: 700
             title: "Settings"
             color: "transparent"

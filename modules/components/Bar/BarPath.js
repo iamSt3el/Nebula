@@ -168,3 +168,90 @@ function sdfIslands(groups, o) {
     }
     return out
 }
+
+function sdfTabs(ts, segs, o, pill) {
+    const out = []
+    const rMax = o.rMax
+    const T = o.top
+    const B = pill ? T + o.barH : T + o.bridge
+    const strip = !pill && o.bridge > 0.5
+    const e = pill ? o.barH / 2 : 0
+    const edgeFlare = pill ? 0 : clamp(-o.endR / rMax, 0, 1)
+    const melt = pill ? 0 : o.bottomFlare * 1
+    for (let t of ts) {
+        if (t.w < 0.5 || t.bot <= B + 0.01)
+            continue
+        const blockCorner = pill ? e : Math.min(rMax, Math.max(0, t.bb - B) / 2)
+        const pull = rMax + blockCorner
+        const dl = t.x - t.bx
+        const dr = t.bx + t.bw - (t.x + t.w)
+        const x0 = dl > 0.5 && dl < pull ? t.bx : t.x
+        const x1 = dr > 0.5 && dr < pull ? t.bx + t.bw : t.x + t.w
+        t = Object.assign({}, t, { x: x0, w: x1 - x0 })
+        const half = t.w / 2
+        const X = t.x + t.w
+        const sideOf = (edge, blockEdge, inward) => {
+            const d = (edge - blockEdge) * inward
+            if (d > 0.5)
+                return { line: t.bb, room: d }
+            if (d < -0.5 && strip)
+                return { line: B, room: Infinity }
+            return { line: -1, room: 0 }
+        }
+        const near = (edge, dir) => {
+            let best = null
+            for (const s of segs) {
+                if (Math.abs(s.x - t.bx) < 0.5 && Math.abs(s.w - t.bw) < 0.5)
+                    continue
+                const reach = dir < 0 ? s.x + s.w : s.x
+                const g = (edge - reach) * -dir
+                const covers = dir < 0 ? s.x < edge : s.x + s.w > edge
+                if (!covers || g > rMax)
+                    continue
+                if (!best || g < best.g)
+                    best = { g: g, s: s, reach: reach }
+            }
+            if (!best)
+                return null
+            const m = best.g <= 0 ? 1 : smooth((rMax - best.g) / rMax)
+            const room = dir < 0 ? edge - best.s.x : best.s.x + best.s.w - edge
+            return { m: m, line: B + (best.s.bot - B) * m, room: room,
+                     con: dir < 0 ? Math.min(best.reach, edge) - rMax : Math.max(best.reach, edge) + rMax }
+        }
+        const nl = near(t.x, -1)
+        const nr = near(X, 1)
+        const sl = nl && nl.m > 0.001 ? { line: nl.line, room: nl.room } : sideOf(t.x, t.bx, 1)
+        const sr = nr && nr.m > 0.001 ? { line: nr.line, room: nr.room } : sideOf(X, t.bx + t.bw, -1)
+        const mL = nl ? nl.m : 0
+        const mR = nr ? nr.m : 0
+        const fillet = s => s.line < 0 ? 0 : Math.max(0, Math.min(rMax, (t.bot - s.line) / 2, s.room))
+        const corner = s => {
+            if (pill && s.line < 0)
+                return Math.min(e + (rMax - e) * clamp((t.bot - B) / rMax, 0, 1), half)
+            const from = s.line < 0 ? B : s.line
+            return Math.min(rMax, half, Math.max(0, t.bot - from) / 2)
+        }
+        const fB = melt * clamp(1 - (o.screenH - t.bot) / rMax, 0, 1)
+        const flare = (edgeTouch, r0, vMode, hMode) => {
+            const fE = edgeFlare * edgeTouch
+            const s = 1 - 2 * Math.max(fE, fB)
+            if (s >= 0)
+                return { corner: r0 * s, r: 0, mode: 0 }
+            const vertical = fE >= fB
+            const r = vertical ? Math.min(rMax * -s, t.w) : Math.min(rMax, t.bot - T) * -s
+            return { corner: 0, r: r > 0.01 ? r : 0, mode: vertical ? vMode : hMode }
+        }
+        const fl = flare(clamp(1 - (t.x - o.left) / rMax, 0, 1), corner(sl), 1, 2)
+        const fr = flare(clamp(1 - (o.right - X) / rMax, 0, 1), corner(sr), 3, 4)
+        const top = pill ? Math.min(e, half) : 0
+        out.push({
+            x: t.x, w: t.w, bot: t.bot,
+            rtl: top * (1 - mL), rtr: top * (1 - mR), rbl: fl.corner, rbr: fr.corner,
+            lineL: sl.line, rfL: fillet(sl), lineR: sr.line, rfR: fillet(sr),
+            flL: fl.r, mL: fl.mode, flR: fr.r, mR: fr.mode,
+            conL: mL > 0.001 ? nl.con : 0, onL: mL > 0.001 ? 1 : 0,
+            conR: mR > 0.001 ? nr.con : 0, onR: mR > 0.001 ? 1 : 0
+        })
+    }
+    return out
+}

@@ -87,7 +87,6 @@ PanelWindow{
     WlrLayershell.keyboardFocus: layout.barEditing ? WlrKeyboardFocus.Exclusive
                                : isPrimary && ((GlobalStates.clipboardOpen && (SettingsConfig.general.clipboardPanelMode ?? "dock") !== "center")
                                                || (GlobalStates.wallpaperOpen && (SettingsConfig.general.wallpaperPanelMode ?? "dock") !== "center")
-                                               || GlobalStates.fileDropOpen
                                                || GlobalStates.powerPanelOpen
                                                || GlobalStates.scenesPanelOpen
                                                || GlobalStates.dockSearchActive
@@ -111,7 +110,20 @@ PanelWindow{
 
     readonly property bool drawerWanted: layout.barEditing && barEditor.drawerMode !== "" && barEditor.drawerMode !== "inspector"
         && !(barEditor.drawerMode === "options" && barEditor.selectedItem === "dashboard")
-    onDrawerWantedChanged: layout.syncDrawer()
+    onDrawerWantedChanged: {
+        layout.syncDrawer()
+        if (!layout.drawerWanted && layout.barEditing)
+            editKeys.forceActiveFocus()
+    }
+
+    Connections {
+        target: layout.editChrome
+        ignoreUnknownSignals: true
+        function onShelfOpenChanged() {
+            if (layout.editChrome && !layout.editChrome.shelfOpen && layout.barEditing)
+                editKeys.forceActiveFocus()
+        }
+    }
     function syncDrawer() {
         const d = layout.drawerHost
         if (!d)
@@ -578,6 +590,13 @@ PanelWindow{
             property int appDropIndex: -1
             property bool panelStage: false
             property string drawerMode: ""
+            property rect drawerFrom: Qt.rect(0, 0, 0, 0)
+            property string liftUrl: ""
+            property string liftFor: ""
+            property real liftDX: 0
+            property real liftDY: 0
+            property real liftW: 0
+            property real liftH: 0
 
             onDrawerModeChanged: {
                 if (barEditor.drawerMode === "options" && barEditor.selectedItem.indexOf("dash:") === 0)
@@ -597,6 +616,8 @@ PanelWindow{
 
             function beginItem(id, blockId, idx, w) {
                 const e = BarLayout.entry(id)
+                if (blockId === "")
+                    barEditor.liftUrl = ""
                 barEditor.itemId = id
                 barEditor.fromBlock = blockId
                 barEditor.fromIndex = idx
@@ -652,6 +673,8 @@ PanelWindow{
                 const appId = barEditor.appId
                 const appPinned = barEditor.appPinned
                 const appIndex = barEditor.appDropIndex
+                if (mode === "item" && !hide && toBlock !== "")
+                    dragGhost.beginLanding(id)
                 barEditor.cancel()
                 if (mode === "app") {
                     if (hide) {
@@ -704,6 +727,7 @@ PanelWindow{
             MouseArea {
                 anchors.fill: parent
                 onClicked: mouse => {
+                    editKeys.forceActiveFocus()
                     if (barEditor.mode !== "")
                         return
                     if (editChrome && editChrome.closeAll())
@@ -837,39 +861,153 @@ PanelWindow{
             }
         }
 
-        Rectangle {
+        Item {
             id: dragGhost
             z: 300
-            visible: barEditor.mode !== ""
-            x: barEditor.px - width / 2
-            y: barEditor.py - height / 2
-            width: ghostRow.implicitWidth + 20
-            height: 32
-            radius: 16
-            color: Colors.primaryContainer
+            readonly property bool lifted: barEditor.mode === "item" && barEditor.liftUrl !== ""
+                && barEditor.liftFor === barEditor.itemId
+            property bool landing: false
+            property bool landLifted: false
+            property string landUrl: ""
+            property string landId: ""
+            property real landX: 0
+            property real landY: 0
+            readonly property bool useImage: dragGhost.landing ? dragGhost.landLifted : dragGhost.lifted
 
-            Row {
-                id: ghostRow
-                anchors.centerIn: parent
-                spacing: 6
+            visible: barEditor.mode !== "" || dragGhost.landing
+            width: dragGhost.useImage ? liftBox.width : labelPill.width
+            height: dragGhost.useImage ? liftBox.height : labelPill.height
+            x: dragGhost.landing ? dragGhost.landX
+                : dragGhost.useImage ? barEditor.px - barEditor.liftDX - 6 : barEditor.px - width / 2
+            y: dragGhost.landing ? dragGhost.landY
+                : dragGhost.useImage ? barEditor.py - barEditor.liftDY - 12 : barEditor.py - height / 2
+            Behavior on x { enabled: dragGhost.landing; SpatialAnim {} }
+            Behavior on y { enabled: dragGhost.landing; SpatialAnim {} }
 
-                MaterialIconSymbol {
-                    anchors.verticalCenter: parent.verticalCenter
-                    content: barEditor.icon
-                    iconSize: 16
-                    customColor: Colors.primaryContainerText
+            function beginLanding(id) {
+                dragGhost.landLifted = dragGhost.lifted
+                dragGhost.landUrl = barEditor.liftUrl
+                dragGhost.landId = id
+                dragGhost.landX = dragGhost.x
+                dragGhost.landY = dragGhost.y
+                dragGhost.opacity = 1
+                dragGhost.landing = true
+                landFind.restart()
+            }
+
+            function cancelLanding() {
+                landFind.stop()
+                landFade.stop()
+                dragGhost.landing = false
+                dragGhost.opacity = 1
+            }
+
+            Connections {
+                target: barEditor
+                function onModeChanged() {
+                    if (barEditor.mode !== "" && dragGhost.landing)
+                        dragGhost.cancelLanding()
                 }
-                CustomText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    content: barEditor.label
-                    size: 12
-                    weight: 700
-                    customColor: Colors.primaryContainerText
+            }
+
+            function itemRect(id) {
+                for (const surf of [topSurface, bottomSurface]) {
+                    if (!surf || !surf.visible)
+                        continue
+                    for (const b of surf.visibleBlocks) {
+                        if (!b.hasItem(id))
+                            continue
+                        const it = b.itemFor(id)
+                        if (it)
+                            return it.mapToItem(dragGhost.parent, 0, 0, it.width, it.height)
+                    }
+                }
+                return null
+            }
+
+            Timer {
+                id: landFind
+                interval: 90
+                onTriggered: {
+                    const r = dragGhost.itemRect(dragGhost.landId)
+                    if (r) {
+                        dragGhost.landX = dragGhost.landLifted ? r.x - 6 : r.x + r.width / 2 - dragGhost.width / 2
+                        dragGhost.landY = dragGhost.landLifted ? r.y - 6 : r.y + r.height / 2 - dragGhost.height / 2
+                    }
+                    landFade.restart()
+                }
+            }
+
+            SequentialAnimation {
+                id: landFade
+                PauseAnimation { duration: 340 }
+                NumberAnimation { target: dragGhost; property: "opacity"; to: 0; duration: 140 }
+                ScriptAction {
+                    script: {
+                        dragGhost.landing = false
+                        dragGhost.opacity = 1
+                    }
+                }
+            }
+
+            Rectangle {
+                id: liftBox
+                visible: dragGhost.useImage
+                width: barEditor.liftW + 12
+                height: barEditor.liftH + 12
+                radius: 14
+                color: Colors.surfaceContainerHighest
+                layer.enabled: dragGhost.useImage
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: Qt.rgba(0, 0, 0, 0.45)
+                    shadowBlur: 0.8
+                    shadowVerticalOffset: 6
+                    autoPaddingEnabled: true
+                }
+
+                Image {
+                    x: 6
+                    y: 6
+                    width: barEditor.liftW
+                    height: barEditor.liftH
+                    source: dragGhost.landing ? dragGhost.landUrl : barEditor.liftUrl
+                    cache: false
+                }
+            }
+
+            Rectangle {
+                id: labelPill
+                visible: !dragGhost.useImage
+                width: ghostRow.implicitWidth + 20
+                height: 32
+                radius: 16
+                color: Colors.primaryContainer
+
+                Row {
+                    id: ghostRow
+                    anchors.centerIn: parent
+                    spacing: 6
+
+                    MaterialIconSymbol {
+                        anchors.verticalCenter: parent.verticalCenter
+                        content: barEditor.icon
+                        iconSize: 16
+                        customColor: Colors.primaryContainerText
+                    }
+                    CustomText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        content: barEditor.label
+                        size: 12
+                        weight: 700
+                        customColor: Colors.primaryContainerText
+                    }
                 }
             }
         }
 
         Item {
+            id: editKeys
             anchors.fill: parent
             focus: layout.barEditing
             Keys.onEscapePressed: {

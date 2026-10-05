@@ -17,9 +17,9 @@ PASSTHROUGH = {
     "claude-usage":  ("nebula.claude_usage",  "[--days N] [--rescan]", "Claude Code token usage"),
     "claude-limits": ("nebula.claude_limits", "[--ttl S]", "Claude plan limits"),
     "art-palette":   ("nebula.art",           "<art-url>", "colours from album art"),
-    "drop":          ("nebula.filedrop",      "[options]", "Nebula Drop phone file server"),
     "gowall":        ("nebula.gowall",        "<image> <theme> | --palette <theme>", "recolour an image with gowall"),
     "gowall-icons":  ("nebula.gowall_icons",  "<theme> [--apply|--preview|--restore]", "recolour the icon theme"),
+    "phone-thumbs":  ("nebula.phonethumbs",   "<file>...", "cached thumbnails for files on the phone"),
 }
 
 SHELL_TOOLS = {
@@ -55,6 +55,7 @@ Layouts (~/.config/nebula/layouts/*.json)
   nebula layout                    list saved layouts
   nebula layout save <name> [--only bar,widgets,...]   save the current layout
   nebula layout load <name|file.json> [--only ...]     apply one (the current layout is kept for undo)
+  nebula layout update <name>      save the current settings into an existing layout
   nebula layout undo               go back to the layout before the last load
   nebula layout delete <name>      remove a saved layout
   nebula layout import <file.json> [--rename N]        add someone else's layout
@@ -242,6 +243,8 @@ def cmd_layout(a) -> int:
         return layouts.save(a.name, only)
     if act == "load":
         return layouts.load(a.name, only)
+    if act == "update":
+        return layouts.update(a.name)
     if act == "undo":
         return layouts.undo()
     if act == "delete":
@@ -512,7 +515,7 @@ def build_parser() -> argparse.ArgumentParser:
     su.add_argument("--close", action="store_true")
 
     lo = sub.add_parser("layout", help="save and load whole-shell layouts")
-    lo.add_argument("action", nargs="?", choices=["list", "save", "load", "undo", "delete", "import", "export"])
+    lo.add_argument("action", nargs="?", choices=["list", "save", "load", "update", "undo", "delete", "import", "export"])
     lo.add_argument("name", nargs="?", default="")
     lo.add_argument("dest", nargs="?", default=".")
     lo.add_argument("--only", help="comma-separated: bar,widgets,dashboard,panels,lockscreen,look")

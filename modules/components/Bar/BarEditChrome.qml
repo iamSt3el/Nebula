@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Controls
 import qs.modules.utils
@@ -320,21 +321,87 @@ Item {
         readonly property Item floor: chrome.bottomSurface && chrome.bottomSurface.visible && chrome.bottomSurface.side === "bottom"
             ? chrome.bottomSurface : chrome.topSurface && chrome.topSurface.side === "bottom" ? chrome.topSurface : null
         readonly property real dockTop: capsule.floor ? capsule.floor.bandRect.y : chrome.height
-        anchors.horizontalCenter: parent.horizontalCenter
         readonly property bool raised: chrome.stage && chrome.dashLow
-        y: capsule.raised ? (BarLayout.barSide === "top" && chrome.topSurface ? chrome.topSurface.rowItem.y + Appearance.size.barHeight + 16 : 20) - 40 * (1 - chrome.t) : capsule.dockTop - height - 22 + 40 * (1 - chrome.t)
-        Behavior on y { SpatialAnim { speed: "default" } }
-        opacity: chrome.t * (chrome.shelfOpen ? 0 : 1)
+        readonly property real restY: capsule.raised
+            ? (BarLayout.barSide === "top" && chrome.topSurface ? chrome.topSurface.rowItem.y + Appearance.size.barHeight + 16 : 20)
+            : capsule.dockTop - 56 - 22
+        property real restYAnim: capsule.restY
+        Behavior on restYAnim { SpatialAnim { speed: "default" } }
+        readonly property real fullW: capRow.implicitWidth + 12
+        readonly property real restX: (chrome.width - capsule.fullW) / 2
+
+        property real capT: chrome.editing ? 1 : 0
+        Behavior on capT {
+            NumberAnimation {
+                duration: chrome.editing ? 560 : 300
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: chrome.editing ? [0.2, 0, 0, 1, 1, 1] : [0.3, 0, 0.8, 0.15, 1, 1]
+            }
+        }
+        readonly property real wipe: Math.max(0, Math.min(1, (capsule.capT - 0.5) / 0.5))
+        readonly property rect dockRect: {
+            chrome.editing
+            const f = capsule.floor
+            if (!f)
+                return Qt.rect(0, 0, 0, 0)
+            let l = 1e9
+            let r = -1e9
+            let top = 1e9
+            for (const blk of f.visibleBlocks) {
+                const q = blk.mapToItem(chrome, 0, 0, blk.width, blk.height)
+                l = Math.min(l, q.x)
+                r = Math.max(r, q.x + q.width)
+                top = Math.min(top, q.y)
+            }
+            return l < r ? Qt.rect(l, top, r - l, 0) : Qt.rect(0, 0, 0, 0)
+        }
+        readonly property bool fromDock: capsule.dockRect.width > 0 && !capsule.raised
+        readonly property real startW: capsule.fromDock ? Math.min(capsule.fullW, capsule.dockRect.width) : capsule.fullW * 0.6
+        readonly property real startX: capsule.fromDock ? capsule.dockRect.x + capsule.dockRect.width / 2 - capsule.startW / 2
+                                                        : (chrome.width - capsule.startW) / 2
+        readonly property real startY: capsule.fromDock ? capsule.dockRect.y - 4 : capsule.restYAnim + 26
+
+        property real shelfFactor: chrome.shelfOpen ? 0 : 1
+        Behavior on shelfFactor { EffectsAnim { speed: "fast" } }
+
+        x: capsule.startX + (capsule.restX - capsule.startX) * capsule.capT
+        y: capsule.startY + (capsule.restYAnim - capsule.startY) * capsule.capT
+        width: capsule.startW + (capsule.fullW - capsule.startW) * capsule.capT
+        height: 4 + 52 * capsule.capT
+        radius: height / 2
+        opacity: Math.min(1, capsule.capT * 5) * capsule.shelfFactor
         visible: opacity > 0.01
-        height: 56
-        width: capRow.implicitWidth + 12
-        radius: 28
-        Behavior on opacity { EffectsAnim { speed: "fast" } }
+
+        Item {
+            id: capWipe
+            anchors.fill: capRow
+            visible: false
+            layer.enabled: true
+
+            Rectangle {
+                width: capWipe.width * 2
+                height: capWipe.height
+                x: -capWipe.width * 2 * (1 - capsule.wipe)
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: "white" }
+                    GradientStop { position: 0.6; color: "white" }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
+        }
 
         RowLayout {
             id: capRow
             anchors.centerIn: parent
             spacing: 4
+            layer.enabled: capsule.wipe < 0.999
+            layer.effect: MultiEffect {
+                maskEnabled: true
+                maskSource: capWipe
+                maskThresholdMin: 0.5
+                maskSpreadAtMin: 1.0
+            }
 
             Rectangle {
                 id: logoBtn
@@ -404,6 +471,7 @@ Item {
                 }
             }
             Pill {
+                id: capSettings
                 icon: "tune"
                 label: "Bar & dock"
                 box: 44
@@ -417,6 +485,7 @@ Item {
                     }
                     e.panelStage = false
                     e.selectedItem = ""
+                    e.drawerFrom = capSettings.mapToItem(chrome, 0, 0, capSettings.width, capSettings.height)
                     e.drawerMode = "settings"
                 }
             }
@@ -452,7 +521,24 @@ Item {
         readonly property bool side: chrome.selEdge === "left" || chrome.selEdge === "right"
         readonly property bool below: chrome.selEdge !== "bottom"
 
-        visible: toolbar.shown
+        property real showT: toolbar.shown ? 1 : 0
+        Behavior on showT {
+            NumberAnimation {
+                duration: toolbar.shown ? 340 : 200
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: toolbar.shown ? [0.2, 0, 0, 1, 1, 1] : [0.3, 0, 0.8, 0.15, 1, 1]
+            }
+        }
+        visible: toolbar.showT > 0.01
+        opacity: Math.min(1, toolbar.showT * 1.5)
+        transform: Scale {
+            origin.x: chrome.selEdge === "left" ? -44
+                : chrome.selEdge === "right" ? toolbar.width + 44
+                : chrome.selRect.x + chrome.selRect.width / 2 - toolbar.x
+            origin.y: toolbar.side ? toolbar.height / 2 : toolbar.below ? -44 : toolbar.height + 44
+            xScale: 0.2 + 0.8 * toolbar.showT
+            yScale: 0.3 + 0.7 * toolbar.showT
+        }
         x: Math.max(12, Math.min(chrome.width - width - 12,
             chrome.selEdge === "left" ? chrome.selRect.x + chrome.selRect.width + 44
             : chrome.selEdge === "right" ? chrome.selRect.x - width - 44
@@ -579,8 +665,14 @@ Item {
                 onClicked: chrome.openStage(chrome.sel)
             }
             Pill {
+                id: toolTune
                 icon: "tune"
-                onClicked: if (chrome.editor) chrome.editor.drawerMode = "options"
+                onClicked: {
+                    if (!chrome.editor)
+                        return
+                    chrome.editor.drawerFrom = toolTune.mapToItem(chrome, 0, 0, toolTune.width, toolTune.height)
+                    chrome.editor.drawerMode = "options"
+                }
             }
             Pill {
                 visible: toolbar.placed
@@ -597,7 +689,23 @@ Item {
 
     Card {
         id: styleCard
-        visible: chrome.pop === "style" && toolbar.visible && toolbar.styleSpec !== null
+        readonly property bool shown: chrome.pop === "style" && toolbar.shown && toolbar.styleSpec !== null
+        property real showT: styleCard.shown ? 1 : 0
+        Behavior on showT {
+            NumberAnimation {
+                duration: styleCard.shown ? 300 : 180
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: styleCard.shown ? [0.2, 0, 0, 1, 1, 1] : [0.3, 0, 0.8, 0.15, 1, 1]
+            }
+        }
+        visible: styleCard.showT > 0.01
+        opacity: Math.min(1, styleCard.showT * 1.5)
+        transform: Scale {
+            origin.x: toolbar.x + 6 + nameBtn.width / 2 - styleCard.x
+            origin.y: toolbar.below ? -8 : styleCard.height + 8
+            xScale: 0.5 + 0.5 * styleCard.showT
+            yScale: 0.15 + 0.85 * styleCard.showT
+        }
         x: Math.max(12, Math.min(chrome.width - width - 12, toolbar.x))
         y: toolbar.below ? toolbar.y + toolbar.height + 8 : toolbar.y - height - 8
         width: 380
@@ -893,7 +1001,7 @@ Item {
         readonly property string kind: stageCard.panel ? stageCard.panel.kind : ""
         readonly property var spec: stageCard.kind !== "" ? BarLayout.panelSpecs[stageCard.kind] ?? null : null
         readonly property var styleOpt: {
-            const map = { weather: ["weather", "panel"], launcher: ["launcher", "style"], wallpaper: ["wallpaper", "style"], clipboard: ["clipboard", "style"] }
+            const map = { launcher: ["launcher", "style"], wallpaper: ["wallpaper", "style"], clipboard: ["clipboard", "style"] }
             const m = map[stageCard.kind]
             if (!m) return null
             const s = BarLayout.specFor(m[0], m[1])
@@ -1055,9 +1163,13 @@ Item {
                 }
 
                 Pill {
+                    id: stageMore
                     icon: "tune"
                     label: "More"
-                    onClicked: chrome.editor.drawerMode = "options"
+                    onClicked: {
+                        chrome.editor.drawerFrom = stageMore.mapToItem(chrome, 0, 0, stageMore.width, stageMore.height)
+                        chrome.editor.drawerMode = "options"
+                    }
                 }
             }
         }
@@ -1065,16 +1177,42 @@ Item {
 
     Card {
         id: shelf
-        property real openT: chrome.shelfOpen && chrome.editing ? 1 : 0
-        Behavior on openT { SpatialAnim { speed: "default" } }
+        readonly property bool wanted: chrome.shelfOpen && chrome.editing
+        property real openT: shelf.wanted ? 1 : 0
+        Behavior on openT {
+            NumberAnimation {
+                duration: shelf.wanted ? 520 : 400
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: shelf.wanted ? [0.2, 0, 0, 1, 1, 1] : [0.3, 0, 0.8, 0.15, 1, 1]
+            }
+        }
+        readonly property real fullW: Math.min(1180, chrome.width - 64)
+        readonly property real fullX: (chrome.width - shelf.fullW) / 2
+        readonly property real fullY: chrome.height - 360 - 24
+        readonly property real inT: Math.max(0, Math.min(1, (shelf.openT - 0.6) / 0.4))
+        property real cardsT: 1
+
+        onWantedChanged: {
+            if (!shelf.wanted)
+                return
+            shelf.cardsT = 0
+            cascade.restart()
+        }
+
+        SequentialAnimation {
+            id: cascade
+            PauseAnimation { duration: 380 }
+            NumberAnimation { target: shelf; property: "cardsT"; from: 0; to: 1; duration: 640 }
+        }
 
         visible: shelf.openT > 0.01
-        opacity: Math.min(1, shelf.openT * 1.6)
-        width: Math.min(1180, chrome.width - 64)
-        height: 360
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: chrome.height - height - 24 + 60 * (1 - shelf.openT)
-        radius: 30
+        opacity: Math.min(1, shelf.openT * 4)
+        clip: true
+        x: capsule.restX + (shelf.fullX - capsule.restX) * shelf.openT
+        y: capsule.restYAnim + (shelf.fullY - capsule.restYAnim) * shelf.openT
+        width: capsule.fullW + (shelf.fullW - capsule.fullW) * shelf.openT
+        height: 56 + 304 * shelf.openT
+        radius: 28 + 2 * shelf.openT
         border.width: shelf.dropping ? 2 : 1
         border.color: shelf.dropping ? Colors.error : Qt.alpha(Colors.outline, 0.18)
 
@@ -1097,11 +1235,12 @@ Item {
         }
 
         ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 20
-            anchors.topMargin: 16
+            x: 20
+            y: 16
+            width: shelf.fullW - 40
+            height: 324
             spacing: 14
-            opacity: shelf.dropping ? 0.25 : 1
+            opacity: (shelf.dropping ? 0.25 : 1) * shelf.inT
 
             RowLayout {
                 Layout.fillWidth: true
@@ -1247,6 +1386,14 @@ Item {
                             Rectangle {
                                 id: part
                                 required property string modelData
+                                required property int index
+                                readonly property real delay: Math.floor(part.index / Math.max(1, partGrid.columns)) * 70
+                                    + (part.index % Math.max(1, partGrid.columns)) * 30
+                                readonly property real landT: {
+                                    const t = Math.max(0, Math.min(1, (shelf.cardsT * 640 - part.delay) / 260))
+                                    return 1 - Math.pow(1 - t, 3)
+                                }
+                                transform: Translate { y: 12 * (1 - part.landT) }
                                 readonly property var entry: BarLayout.entry(part.modelData)
                                 readonly property bool multi: !!part.entry && !!part.entry.multi
                                 readonly property bool dockOnly: !!part.entry && !BarLayout.allows(part.modelData, "bar")
@@ -1255,7 +1402,7 @@ Item {
                                 Layout.preferredHeight: 126
                                 radius: 20
                                 color: partArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
-                                opacity: chrome.editor && chrome.editor.mode === "item" && chrome.editor.itemId === part.modelData ? 0.35 : 1
+                                opacity: (chrome.editor && chrome.editor.mode === "item" && chrome.editor.itemId === part.modelData ? 0.35 : 1) * part.landT
 
                                 Item {
                                     id: partStub

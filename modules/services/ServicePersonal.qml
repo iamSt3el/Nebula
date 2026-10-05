@@ -159,49 +159,4 @@ Singleton {
         while (keys.length > 400) delete next[keys.shift()]
         root._save({ moods: next })
     }
-
-    property string phoneId: ""
-    property string phoneName: ""
-    property bool phoneReachable: false
-    property int phoneBattery: -1
-    property bool phoneCharging: false
-    property int phoneNotifs: 0
-
-    Process {
-        id: phoneProc
-        command: ["bash", "-c",
-            "id=$(kdeconnect-cli -l --id-only 2>/dev/null | head -n1); [ -z \"$id\" ] && exit 0;"
-            + "name=$(kdeconnect-cli -l 2>/dev/null | sed -n \"s/^- \\(.*\\): $id.*/\\1/p\" | head -n1);"
-            + "base=/modules/kdeconnect/devices/$id;"
-            + "r=$(busctl --user get-property org.kde.kdeconnect $base org.kde.kdeconnect.device isReachable 2>/dev/null | awk '{print $2}');"
-            + "c=$(busctl --user get-property org.kde.kdeconnect $base/battery org.kde.kdeconnect.device.battery charge 2>/dev/null | awk '{print $2}');"
-            + "ch=$(busctl --user get-property org.kde.kdeconnect $base/battery org.kde.kdeconnect.device.battery isCharging 2>/dev/null | awk '{print $2}');"
-            + "n=$(busctl --user call org.kde.kdeconnect $base/notifications org.kde.kdeconnect.device.notifications activeNotifications 2>/dev/null | awk '{print $2}');"
-            + "printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' \"$id\" \"$name\" \"${r:-false}\" \"${c:--1}\" \"${ch:-false}\" \"${n:-0}\""]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const f = text.trim().split("\t")
-                if (f.length < 6) return
-                root.phoneId = f[0]
-                root.phoneName = f[1]
-                root.phoneReachable = f[2] === "true"
-                root.phoneBattery = parseInt(f[3])
-                root.phoneCharging = f[4] === "true"
-                root.phoneNotifs = parseInt(f[5]) || 0
-            }
-        }
-    }
-
-    Timer {
-        interval: root.phoneReachable ? 60000 : 180000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: if (!phoneProc.running) phoneProc.running = true
-    }
-
-    function phone(args) {
-        if (root.phoneId === "") return
-        Quickshell.execDetached(["kdeconnect-cli", "-d", root.phoneId].concat(args))
-    }
 }

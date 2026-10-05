@@ -11,6 +11,7 @@ from nebula.paths import COLORS, HOME, SETTINGS
 
 DIR = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config")) / "nebula" / "layouts"
 PREVIOUS = DIR / ".previous.json"
+ACTIVE = DIR / ".active"
 FORMAT = 1
 
 SECTIONS = ["bar", "widgets", "dashboard", "panels", "lockscreen", "look"]
@@ -135,6 +136,33 @@ def _load_doc(path: Path) -> dict:
     return doc
 
 
+def _get_active():
+    try:
+        ref = ACTIVE.read_text().strip()
+    except Exception:
+        return None
+    return ref if ref and (DIR / f"{ref}.json").is_file() else None
+
+
+def _set_active(ref) -> None:
+    if ref:
+        DIR.mkdir(parents=True, exist_ok=True)
+        ACTIVE.write_text(ref)
+    elif ACTIVE.exists():
+        ACTIVE.unlink()
+
+
+def _covers(now, saved) -> bool:
+    if isinstance(saved, dict):
+        return isinstance(now, dict) and all(k in now and _covers(now[k], v) for k, v in saved.items())
+    return now == saved
+
+
+def _differs(sections: dict, now=None) -> bool:
+    now = now if now is not None else capture(list(sections.keys()))
+    return any(not _covers(now.get(k), v) for k, v in sections.items())
+
+
 def save(name: str, only=None) -> int:
     sections = capture(only)
     if not sections:
@@ -142,6 +170,27 @@ def save(name: str, only=None) -> int:
         return 1
     path = DIR / f"{slug(name)}.json"
     _atomic_json(path, _doc(name.strip() or "Layout", sections))
+    _set_active(path.stem)
+    print(str(path))
+    return 0
+
+
+def update(ref: str) -> int:
+    path = _resolve(ref)
+    if path.parent != DIR or not path.is_file():
+        print(f"[nebula] no layout '{ref}'", file=sys.stderr)
+        return 1
+    try:
+        doc = _load_doc(path)
+    except Exception as e:
+        print(f"[nebula] {e}", file=sys.stderr)
+        return 1
+    sections = capture(list(doc["sections"].keys()))
+    if not sections:
+        print("[nebula] nothing to save", file=sys.stderr)
+        return 1
+    _atomic_json(path, _doc(doc.get("name", path.stem), sections))
+    _set_active(path.stem)
     print(str(path))
     return 0
 
@@ -188,8 +237,11 @@ def load(ref: str, only=None) -> int:
         print(f"[nebula] {e}", file=sys.stderr)
         return 1
     touched = [k for k in doc["sections"] if not only or k in only]
-    _atomic_json(PREVIOUS, _doc("Before " + doc.get("name", path.stem), capture(touched)))
+    before = _doc("Before " + doc.get("name", path.stem), capture(touched))
+    before["active"] = _get_active()
+    _atomic_json(PREVIOUS, before)
     applied = apply_sections(doc["sections"], only)
+    _set_active(path.stem if path.parent == DIR else None)
     print(json.dumps({"loaded": doc.get("name", path.stem), "sections": applied}))
     return 0
 
@@ -201,6 +253,7 @@ def undo() -> int:
     doc = _load_doc(PREVIOUS)
     apply_sections(doc["sections"])
     PREVIOUS.unlink()
+    _set_active(doc.get("active"))
     print(json.dumps({"restored": doc.get("name", "")}))
     return 0
 
@@ -211,6 +264,8 @@ def delete(ref: str) -> int:
         print(f"[nebula] no layout '{ref}'", file=sys.stderr)
         return 1
     path.unlink()
+    if _get_active() is None:
+        _set_active(None)
     return 0
 
 
@@ -244,28 +299,43 @@ def export(ref: str, dest: str) -> int:
 
 def entries() -> list:
     rows = []
+    active = _get_active()
+    now = capture()
+    docs = {}
     if DIR.is_dir():
         for p in sorted(DIR.glob("*.json")):
+            if p.name.startswith("."):
+                continue
             try:
                 doc = _load_doc(p)
             except Exception:
                 continue
+            docs[p.stem] = doc
             rows.append({"id": p.stem, "name": doc.get("name", p.stem), "file": str(p),
                          "saved": doc.get("saved", ""), "sections": list(doc["sections"].keys()),
+                         "current": p.stem == active,
+                         "modified": p.stem == active and _differs(doc["sections"], now),
                          **summary(doc["sections"])})
     rows.sort(key=lambda r: r["saved"], reverse=True)
+    if active is None:
+        for r in rows:
+            if not _differs(docs[r["id"]]["sections"], now):
+                r["current"] = True
+                break
     return rows
 
 
 def print_list(as_json: bool) -> int:
     rows = entries()
     if as_json:
-        print(json.dumps({"dir": str(DIR), "canUndo": PREVIOUS.is_file(), "layouts": rows}))
+        current = next((r["id"] for r in rows if r["current"]), "")
+        print(json.dumps({"dir": str(DIR), "canUndo": PREVIOUS.is_file(), "active": current, "layouts": rows}))
         return 0
     if not rows:
         print(f"No layouts yet. Save one with `nebula layout save <name>` ({DIR})")
         return 0
     for r in rows:
         parts = [LABELS[s] for s in r["sections"] if s in LABELS]
-        print(f"  {r['name']:<24} {r['saved'][:16].replace('T', ' ')}   {', '.join(parts)}")
+        mark = "*" if r["current"] else " "
+        print(f"{mark} {r['name']:<24} {r['saved'][:16].replace('T', ' ')}   {', '.join(parts)}")
     return 0

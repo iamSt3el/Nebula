@@ -520,14 +520,40 @@ PanelWindow{
         Component { id: battRing;  BatteryWidgetRing  {} }
 
         Loader {
-            active: SettingsConfig.widgets.showProfileCard ?? false
+            active: SettingsConfig.widgets.showProfileBadge ?? false
             visible: active
-            sourceComponent: (SettingsConfig.widgets.profileCardStyle ?? "card") === "tile"
-                ? profileTile : profileCardComp
+            sourceComponent: ProfileBadgeWidget {}
         }
 
-        Component { id: profileCardComp; ProfileCard {} }
-        Component { id: profileTile;     ProfileTile {} }
+        Loader {
+            active: SettingsConfig.widgets.showProfileDay ?? false
+            visible: active
+            sourceComponent: ProfileDayWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showProfileStatus ?? false
+            visible: active
+            sourceComponent: ProfileStatusWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showProfileMachine ?? false
+            visible: active
+            sourceComponent: ProfileMachineWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showProfileShape ?? false
+            visible: active
+            sourceComponent: ProfileShapeWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showProfileRings ?? false
+            visible: active
+            sourceComponent: ProfileRingsWidget {}
+        }
 
         Loader {
             active: SettingsConfig.widgets.showMoonPhase ?? false
@@ -641,6 +667,12 @@ PanelWindow{
             active: SettingsConfig.widgets.showSysFlask ?? false
             visible: active
             sourceComponent: SysFlaskWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showLavaLamp ?? false
+            visible: active
+            sourceComponent: LavaLampWidget {}
         }
 
         Loader {

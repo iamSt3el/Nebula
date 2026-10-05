@@ -45,7 +45,7 @@ Scope {
                 return
             GlobalStates.clipboardOpen = false
             GlobalStates.wallpaperOpen = false
-            GlobalStates.fileDropOpen = false
+            GlobalStates.phoneOpen = false
             GlobalStates.appLauncherOpen = false
         }
         function onAppLauncherOpenChanged() {
@@ -53,24 +53,24 @@ Scope {
                 return
             GlobalStates.clipboardOpen = false
             GlobalStates.wallpaperOpen = false
-            GlobalStates.fileDropOpen = false
+            GlobalStates.phoneOpen = false
         }
         function onClipboardOpenChanged() {
             if (!GlobalStates.clipboardOpen)
                 return
             GlobalStates.wallpaperOpen = false
-            GlobalStates.fileDropOpen = false
+            GlobalStates.phoneOpen = false
             GlobalStates.appLauncherOpen = false
         }
         function onWallpaperOpenChanged() {
             if (!GlobalStates.wallpaperOpen)
                 return
             GlobalStates.clipboardOpen = false
-            GlobalStates.fileDropOpen = false
+            GlobalStates.phoneOpen = false
             GlobalStates.appLauncherOpen = false
         }
-        function onFileDropOpenChanged() {
-            if (!GlobalStates.fileDropOpen)
+        function onPhoneOpenChanged() {
+            if (!GlobalStates.phoneOpen)
                 return
             GlobalStates.clipboardOpen = false
             GlobalStates.wallpaperOpen = false
@@ -86,7 +86,7 @@ Scope {
             } else {
                 GlobalStates.clipboardOpen = true
                 GlobalStates.wallpaperOpen = false
-                GlobalStates.fileDropOpen = false
+                GlobalStates.phoneOpen = false
             }
         }
     }
@@ -99,7 +99,7 @@ Scope {
             } else {
                 GlobalStates.wallpaperOpen = true
                 GlobalStates.clipboardOpen = false
-                GlobalStates.fileDropOpen = false
+                GlobalStates.phoneOpen = false
             }
         }
     }
@@ -107,14 +107,13 @@ Scope {
     GlobalShortcut {
         name: "filedrop"
         onPressed: {
-            if (GlobalStates.fileDropOpen) {
-                GlobalStates.fileDropOpen = false
+            if (GlobalStates.phoneOpen) {
+                GlobalStates.phoneOpen = false
             } else {
-                GlobalStates.fileDropOpen = true
+                GlobalStates.phoneOpen = true
                 GlobalStates.clipboardOpen = false
                 GlobalStates.wallpaperOpen = false
-                if (!ServiceFileDrop.running)
-                    ServiceFileDrop.start()
+                ServicePhone.refresh()
             }
         }
     }

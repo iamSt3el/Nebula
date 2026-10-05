@@ -51,16 +51,21 @@ Item {
     readonly property string screenName: layout.screen.name
     readonly property real screenW: layout.screen.width
     readonly property real screenH: layout.screen.height
-    readonly property var cozyStyles: ["lanterns", "books", "house", "moons", "stars", "map", "dial", "candles"]
-    readonly property var quietStyles: ["ruler", "ring", "viewfinder", "focus", "cards"]
+    readonly property var cozyStyles: ["lanterns", "house", "stars", "map", "dial"]
+    readonly property var quietStyles: ["ring", "viewfinder"]
+    readonly property var motionStyles: ["goo", "bounce"]
     readonly property var wsIds: Array.from({ length: root.wsCount }, (_, i) => i + 1)
     readonly property var shapeCycle: ["cookie4", "clover4", "sunny", "cookie6", "softBurst", "cookie9", "flower", "cookie7"]
+
+    readonly property real sizePct: BarLayout.opt(root.itemId, "size") ?? 100
+    readonly property real room: root.host && root.host.barH > 0 ? (root.host.barH - 4) / 30 : 1
+    readonly property real k: Math.max(1, Math.min(root.sizePct / 100, root.room))
 
     readonly property bool vertical: !!root.host && root.host.vertical === true
     readonly property bool verticalReady: root.vertical && root.cozyStyles.indexOf(root.style) < 0
 
     implicitWidth: face.item ? face.item.implicitWidth : 0
-    implicitHeight: root.verticalReady && face.item ? face.item.implicitHeight : 30
+    implicitHeight: root.verticalReady && face.item ? face.item.implicitHeight : 30 * root.k
 
     function focusWs(id, ws) {
         if (ws)
@@ -89,11 +94,12 @@ Item {
                 return cozyComp
             if (root.quietStyles.indexOf(root.style) >= 0)
                 return quietComp
+            if (root.motionStyles.indexOf(root.style) >= 0)
+                return motionComp
             switch (root.style) {
             case "shapes":  return shapesComp
             case "worm":    return wormComp
             case "numbers": return numbersComp
-            case "strip":   return stripComp
             case "kanji":   return kanjiComp
             }
             return pillComp
@@ -102,16 +108,14 @@ Item {
 
     Component {
         id: columnComp
-        Rectangle {
-            implicitWidth: 30
-            implicitHeight: col.implicitHeight + 6
-            radius: 15
-            color: Colors.surfaceContainer
+        Item {
+            implicitWidth: 30 * root.k
+            implicitHeight: col.implicitHeight
 
             Column {
                 id: col
                 anchors.centerIn: parent
-                spacing: 4
+                spacing: 4 * root.k
 
                 Repeater {
                     model: root.wsIds
@@ -119,11 +123,11 @@ Item {
                         id: wsCell
                         required property int modelData
                         WsState { id: st; wsId: wsCell.modelData }
-                        width: 24
-                        height: st.active ? 34 : 24
-                        radius: 12
+                        width: 28 * root.k
+                        height: st.active ? 42 * root.k : 28 * root.k
+                        radius: 14 * root.k
                         color: st.active ? Colors.primary : st.occupied ? Colors.surfaceContainerHighest : "transparent"
-                        border.width: st.onOther ? 1 : 0
+                        border.width: st.onOther ? 1 * root.k : 0
                         border.color: Qt.alpha(Colors.outline, 0.35)
                         Behavior on height { SpatialAnim { speed: "fast" } }
                         Behavior on color { EffectsColorAnim {} }
@@ -131,9 +135,9 @@ Item {
                         Rectangle {
                             visible: !st.active && !st.occupied
                             anchors.centerIn: parent
-                            width: 5
-                            height: 5
-                            radius: 2.5
+                            width: 6 * root.k
+                            height: 6 * root.k
+                            radius: 3 * root.k
                             color: st.onOther ? Qt.alpha(Colors.outline, 0.45) : Colors.outline
                         }
 
@@ -141,7 +145,7 @@ Item {
                             anchors.centerIn: parent
                             visible: st.active || st.occupied
                             content: wsCell.modelData.toString()
-                            size: 10
+                            size: Math.round(10 * root.k)
                             weight: st.active ? 800 : 600
                             customColor: st.active ? Colors.primaryText : Colors.surfaceText
                         }
@@ -174,19 +178,25 @@ Item {
     }
 
     Component {
+        id: motionComp
+        BarWsMotion {
+            owner: root
+            style: root.style
+        }
+    }
+
+    Component {
         id: pillComp
 
-        Rectangle {
+        Item {
             id: wsPill
-            implicitWidth: row.implicitWidth + 6
-            implicitHeight: 30
-            radius: 15
-            color: Colors.surfaceContainer
+            implicitWidth: row.implicitWidth
+            implicitHeight: 30 * root.k
 
             RowLayout {
                 id: row
                 anchors.centerIn: parent
-                spacing: 6
+                spacing: 6 * root.k
 
                 Repeater {
                     model: ScriptModel {
@@ -212,16 +222,16 @@ Item {
                             : (!!currentWorkspace && currentWorkspace.active))
 
                         Layout.alignment: Qt.AlignVCenter
-                        Layout.preferredHeight: 25
+                        Layout.preferredHeight: 30 * root.k
                         Layout.preferredWidth: occupiedHere
-                            ? Math.max(25, (topLevels.appList?.width ?? 0) + 12)
-                            : 25
-                        radius: 15
+                            ? Math.max(30 * root.k, (topLevels.appList?.width ?? 0) + 14 * root.k)
+                            : 30 * root.k
+                        radius: 15 * root.k
                         color: isActive     ? Colors.primary
                              : occupiedHere ? Colors.surfaceContainerHighest
                                             : "transparent"
 
-                        border.width: (occupiedHere && !isActive) || onOtherMonitor ? 1 : 0
+                        border.width: (occupiedHere && !isActive) || onOtherMonitor ? 1 * root.k : 0
                         border.color: onOtherMonitor ? Qt.alpha(Colors.outline, 0.35)
                                                      : Qt.alpha(Colors.outline, 0.15)
 
@@ -230,8 +240,8 @@ Item {
 
                         Rectangle {
                             visible: !occupiedHere
-                            implicitWidth: 5
-                            implicitHeight: 5
+                            implicitWidth: 6 * root.k
+                            implicitHeight: 6 * root.k
                             color: onOtherMonitor ? Qt.alpha(Colors.outline, 0.45) : Colors.outline
                             radius: width / 2
                             anchors.centerIn: parent
@@ -242,7 +252,7 @@ Item {
                             anchors.fill: parent
                             active: occupiedHere && !showNumbers
                             visible: active
-                            sourceComponent: TopLevels {}
+                            sourceComponent: TopLevels { k: root.k }
                             property var appList: item ? item.appList : null
                         }
 
@@ -250,7 +260,7 @@ Item {
                             anchors.centerIn: parent
                             visible: showNumbers && occupiedHere
                             content: workspaceId.toString()
-                            size: 10
+                            size: Math.round(10 * root.k)
                             weight: isActive ? 800 : 600
                             customColor: isActive ? Colors.primaryText : Colors.surfaceText
                             Behavior on customColor { ColorAnimation { duration: 200 } }
@@ -269,13 +279,13 @@ Item {
 
                 Rectangle {
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredHeight: 25
-                    Layout.preferredWidth: root.showOtherIndicator ? 25 : 0
+                    Layout.preferredHeight: 30 * root.k
+                    Layout.preferredWidth: root.showOtherIndicator ? 30 * root.k : 0
                     opacity: root.showOtherIndicator ? 1 : 0
                     visible: Layout.preferredWidth > 0
-                    radius: 12
+                    radius: 15 * root.k
                     color: root.otherFocused ? Colors.primary : "transparent"
-                    border.width: root.otherFocused ? 0 : 1
+                    border.width: root.otherFocused ? 0 : 1 * root.k
                     border.color: Qt.alpha(Colors.outline, 0.35)
 
                     Behavior on color                 { ColorAnimation  { duration: 200 } }
@@ -285,7 +295,7 @@ Item {
                     MaterialIconSymbol {
                         anchors.centerIn: parent
                         content: "tv_displays"
-                        iconSize: 12
+                        iconSize: 12 * root.k
                         customColor: root.otherFocused ? Colors.primaryText : Colors.outline
                         Behavior on customColor { ColorAnimation { duration: 200 } }
                     }
@@ -303,7 +313,7 @@ Item {
     Component {
         id: shapesComp
         Row {
-            spacing: 4
+            spacing: 4 * root.k
             Repeater {
                 model: root.wsIds
                 delegate: Item {
@@ -311,9 +321,9 @@ Item {
                     required property int modelData
                     required property int index
                     WsState { id: st; wsId: cell.modelData }
-                    readonly property real side: st.active ? 28 : st.occupied ? 17 : 12
-                    width: 30
-                    height: 30
+                    readonly property real side: (st.active ? 28 : st.occupied ? 17 : 12) * root.k
+                    width: 30 * root.k
+                    height: 30 * root.k
 
                     MaterialShapes.ShapeCanvas {
                         id: shape
@@ -350,7 +360,7 @@ Item {
                         anchors.centerIn: parent
                         visible: st.active
                         content: cell.modelData.toString()
-                        size: 10
+                        size: Math.round(10 * root.k)
                         weight: 800
                         customColor: Colors.primaryText
                     }
@@ -367,16 +377,14 @@ Item {
 
     Component {
         id: wormComp
-        Rectangle {
+        Item {
             id: track
-            readonly property real dot: 8
-            readonly property real pill: 22
-            readonly property real gap: 12
+            readonly property real dot: 11 * root.k
+            readonly property real pill: 32 * root.k
+            readonly property real gap: 11 * root.k
             readonly property int activeIndex: root.wsIds.indexOf(root.activeWsId)
-            implicitWidth: (root.wsCount - 1) * (track.dot + track.gap) + track.pill + 16
-            implicitHeight: 30
-            radius: 15
-            color: Colors.surfaceContainer
+            implicitWidth: (root.wsCount - 1) * (track.dot + track.gap) + track.pill
+            implicitHeight: 30 * root.k
 
             Repeater {
                 model: root.wsIds
@@ -386,13 +394,13 @@ Item {
                     required property int index
                     WsState { id: st; wsId: dotItem.modelData }
                     readonly property bool before: track.activeIndex >= 0 && dotItem.index > track.activeIndex
-                    x: 8 + dotItem.index * (track.dot + track.gap) + (dotItem.before ? track.pill - track.dot : 0)
-                    y: 11
+                    x: dotItem.index * (track.dot + track.gap) + (dotItem.before ? track.pill - track.dot : 0)
+                    y: (track.height - height) / 2
                     width: st.active ? track.pill : track.dot
-                    height: 8
-                    radius: 4
+                    height: track.dot
+                    radius: track.dot / 2
                     color: st.active ? Colors.primary : st.occupied ? Colors.outline : "transparent"
-                    border.width: st.active || st.occupied ? 0 : 1.5
+                    border.width: st.active || st.occupied ? 0 : 1.5 * root.k
                     border.color: Colors.outlineVariant
                     Behavior on x { SpatialAnim { speed: "fast" } }
                     Behavior on width { SpatialAnim { speed: "fast" } }
@@ -400,7 +408,7 @@ Item {
 
                     MouseArea {
                         anchors.fill: parent
-                        anchors.margins: -5
+                        anchors.margins: -5 * root.k
                         cursorShape: Qt.PointingHandCursor
                         onClicked: root.focusWs(dotItem.modelData, st.ws)
                     }
@@ -413,10 +421,10 @@ Item {
         id: numbersComp
         Item {
             id: nums
-            readonly property real cell: 24
+            readonly property real cell: 24 * root.k
             readonly property int activeIndex: root.wsIds.indexOf(root.activeWsId)
             implicitWidth: root.wsCount * nums.cell
-            implicitHeight: 30
+            implicitHeight: 30 * root.k
 
             Row {
                 Repeater {
@@ -426,12 +434,12 @@ Item {
                         required property int modelData
                         WsState { id: st; wsId: numItem.modelData }
                         width: nums.cell
-                        height: 30
+                        height: 30 * root.k
 
                         CustomText {
                             anchors.centerIn: parent
                             content: numItem.modelData.toString()
-                            size: 13
+                            size: Math.round(13 * root.k)
                             weight: st.active ? 800 : 600
                             customColor: st.active ? Colors.primary
                                        : st.occupied ? Colors.surfaceText : Colors.outlineVariant
@@ -450,10 +458,10 @@ Item {
             Rectangle {
                 visible: nums.activeIndex >= 0
                 x: Math.max(0, nums.activeIndex) * nums.cell + (nums.cell - width) / 2
-                y: 25
-                width: 12
-                height: 3
-                radius: 1.5
+                y: 25 * root.k
+                width: 12 * root.k
+                height: 3 * root.k
+                radius: 1.5 * root.k
                 color: Colors.primary
                 Behavior on x { SpatialAnim { speed: "fast" } }
             }
@@ -461,82 +469,18 @@ Item {
     }
 
     Component {
-        id: stripComp
-        Rectangle {
-            implicitWidth: stripRow.implicitWidth + 6
-            implicitHeight: 30
-            radius: 15
-            color: Colors.surfaceContainer
-
-            Row {
-                id: stripRow
-                anchors.centerIn: parent
-                spacing: 3
-
-                Repeater {
-                    model: root.wsIds
-                    delegate: Rectangle {
-                        id: seg
-                        required property int modelData
-                        WsState { id: st; wsId: seg.modelData }
-                        width: st.occupied ? Math.max(24, icons.implicitWidth + 14) : st.active ? 25 : 10
-                        height: 24
-                        radius: 12
-                        color: st.active ? Colors.primaryContainer
-                             : st.occupied ? Colors.surfaceContainerHigh : "transparent"
-                        Behavior on width { SpatialAnim { speed: "fast" } }
-                        Behavior on color { EffectsColorAnim {} }
-                        Component.onCompleted: ServiceWorkspaces.refreshToplevels()
-
-                        Rectangle {
-                            anchors.centerIn: parent
-                            visible: !st.occupied
-                            width: 2
-                            height: st.active ? 10 : 12
-                            radius: 1
-                            color: st.active ? Colors.primaryContainerText : Colors.outlineVariant
-                        }
-
-                        Row {
-                            id: icons
-                            anchors.centerIn: parent
-                            spacing: 5
-                            visible: st.occupied
-                            Repeater {
-                                model: st.occupied && st.ws ? st.ws.toplevels : null
-                                delegate: IconImage {
-                                    required property var modelData
-                                    implicitSize: 15
-                                    source: Quickshell.iconPath(DesktopEntries.heuristicLookup(modelData.wayland?.appId)?.icon,
-                                                                "image-missing")
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.focusWs(seg.modelData, st.ws)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Component {
         id: kanjiComp
         Row {
-            spacing: 3
+            spacing: 3 * root.k
             Repeater {
                 model: root.wsIds
                 delegate: Rectangle {
                     id: kan
                     required property int modelData
                     WsState { id: st; wsId: kan.modelData }
-                    width: 26
-                    height: 26
-                    radius: 13
+                    width: 26 * root.k
+                    height: 26 * root.k
+                    radius: 13 * root.k
                     color: st.active ? Colors.primary : "transparent"
                     Behavior on color { EffectsColorAnim {} }
 
@@ -544,7 +488,7 @@ Item {
                         anchors.centerIn: parent
                         content: ServiceJp.count(kan.modelData)
                         family: ServiceJp.serif
-                        size: String(ServiceJp.count(kan.modelData)).length > 1 ? 10 : 14
+                        size: Math.round((String(ServiceJp.count(kan.modelData)).length > 1 ? 10 : 14) * root.k)
                         weight: 700
                         customColor: st.active ? Colors.primaryText
                                    : st.occupied ? Colors.surfaceText : Colors.outlineVariant

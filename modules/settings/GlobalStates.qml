@@ -118,7 +118,8 @@ Singleton{
     property bool sessionLocked: false
     property bool cheatSheetOpen: false
     property bool overviewOpen: false
-    property bool fileDropOpen: false
+    property bool phoneOpen: false
+    property bool phoneBrowserOpen: false
     property bool powerPanelOpen: false
     property bool scenesPanelOpen: false
     property bool dockSearchActive: false

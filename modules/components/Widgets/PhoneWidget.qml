@@ -12,10 +12,10 @@ WidgetHost {
     tile: WidgetSizes.small
     defaultPos: Qt.point(365, 385)
 
-    readonly property bool near: root.preview || ServicePersonal.phoneReachable
-    readonly property int battery: root.preview ? 64 : ServicePersonal.phoneBattery
-    readonly property bool paired: root.preview || ServicePersonal.phoneId !== ""
-    readonly property string name: root.preview ? "Phone" : (ServicePersonal.phoneName || "Phone")
+    readonly property bool near: root.preview || ServicePhone.ready
+    readonly property int battery: root.preview ? 64 : ServicePhone.battery
+    readonly property bool paired: root.preview || ServicePhone.paired
+    readonly property string name: root.preview ? "Phone" : (ServicePhone.name || "Phone")
 
     component PhoneButton: Rectangle {
         id: pb
@@ -99,7 +99,7 @@ WidgetHost {
                         }
                         MaterialIconSymbol {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            visible: ServicePersonal.phoneCharging && !root.preview
+                            visible: ServicePhone.charging && !root.preview
                             content: "bolt"
                             iconSize: 14
                             customColor: Colors.tertiary
@@ -129,15 +129,15 @@ WidgetHost {
             Row {
                 Layout.alignment: Qt.AlignHCenter
                 spacing: 8
-                PhoneButton { icon: "volume_up"; tip: "Ring phone"; onActivated: ServicePersonal.phone(["--ring"]) }
-                PhoneButton { icon: "upload_file"; tip: "Send a file"; onActivated: GlobalStates.fileDropOpen = true }
-                PhoneButton { icon: "content_paste"; tip: "Send clipboard"; onActivated: ServicePersonal.phone(["--send-clipboard"]) }
+                PhoneButton { icon: "volume_up"; tip: "Ring phone"; onActivated: ServicePhone.ring() }
+                PhoneButton { icon: "upload_file"; tip: "Send a file"; onActivated: GlobalStates.phoneOpen = true }
+                PhoneButton { icon: "content_paste"; tip: "Send clipboard"; onActivated: ServicePhone.sendClipboard() }
             }
 
             CustomText {
                 Layout.alignment: Qt.AlignHCenter
-                visible: root.near && (root.preview || ServicePersonal.phoneNotifs > 0)
-                content: (root.preview ? 3 : ServicePersonal.phoneNotifs) + " notifications"
+                visible: root.near && (root.preview || ServicePhone.notifs > 0)
+                content: (root.preview ? 3 : ServicePhone.notifs) + " notifications"
                 size: 11
                 customColor: Colors.outline
             }

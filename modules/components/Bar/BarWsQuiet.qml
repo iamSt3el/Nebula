@@ -1,6 +1,5 @@
 import Quickshell
 import Quickshell.Hyprland
-import Quickshell.Widgets
 import QtQuick
 import QtQuick.Shapes
 import qs.modules.utils
@@ -11,16 +10,17 @@ Item {
     id: quiet
 
     property Item owner: null
-    property string style: "ruler"
+    property string style: "ring"
 
     readonly property var ids: quiet.owner ? quiet.owner.wsIds : []
     readonly property int count: quiet.ids.length
     readonly property int activeId: quiet.owner ? quiet.owner.activeWsId : -1
     readonly property int activeIndex: quiet.ids.indexOf(quiet.activeId)
-    readonly property bool needsApps: quiet.style === "focus" || quiet.style === "ring"
+    readonly property real k: quiet.owner ? quiet.owner.k : 1
+    readonly property bool needsApps: quiet.style === "ring"
 
     implicitWidth: face.item ? face.item.implicitWidth : 0
-    implicitHeight: 30
+    implicitHeight: 30 * quiet.k
 
     function go(id, ws) {
         if (quiet.owner)
@@ -55,10 +55,6 @@ Item {
             return ""
         const entry = DesktopEntries.heuristicLookup(appId)
         return entry?.name ?? appId
-    }
-
-    function appIcon(appId) {
-        return Quickshell.iconPath(DesktopEntries.heuristicLookup(appId)?.icon, "image-missing")
     }
 
     component Slot: QtObject {
@@ -102,68 +98,7 @@ Item {
         id: face
         anchors.verticalCenter: parent.verticalCenter
         sourceComponent: {
-            switch (quiet.style) {
-            case "ring":       return ringComp
-            case "viewfinder": return viewfinderComp
-            case "focus":      return focusComp
-            case "cards":      return cardsComp
-            }
-            return rulerComp
-        }
-    }
-
-    Component {
-        id: rulerComp
-
-        Item {
-            id: ruler
-            readonly property real pitch: 11
-            implicitWidth: quiet.count * ruler.pitch + 12
-            implicitHeight: 30
-
-            Repeater {
-                model: quiet.ids
-                delegate: Item {
-                    id: tickCell
-                    required property int modelData
-                    required property int index
-                    Slot { id: st; wsId: tickCell.modelData; owner: quiet.owner }
-                    x: tickCell.index * ruler.pitch
-                    width: ruler.pitch
-                    height: 30
-
-                    Rectangle {
-                        x: (ruler.pitch - width) / 2
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: 5
-                        width: 2
-                        radius: 1
-                        height: st.active ? 18 : st.occupied ? 11 : 5
-                        color: st.active ? Colors.primary
-                             : st.occupied ? Colors.surfaceVariantText
-                             : st.onOther ? Qt.alpha(Colors.outlineVariant, 0.5) : Colors.outlineVariant
-                        Behavior on height { SpatialAnim { speed: "fast" } }
-                        Behavior on color { EffectsColorAnim {} }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: quiet.go(tickCell.modelData, st.ws)
-                    }
-                }
-            }
-
-            CustomText {
-                visible: quiet.activeIndex >= 0
-                x: Math.max(0, quiet.activeIndex) * ruler.pitch + ruler.pitch / 2 + 3
-                y: 2
-                content: quiet.activeId.toString()
-                size: 9
-                weight: 800
-                customColor: Colors.primary
-                Behavior on x { SpatialAnim { speed: "fast" } }
-            }
+            return quiet.style === "viewfinder" ? viewfinderComp : ringComp
         }
     }
 
@@ -172,10 +107,10 @@ Item {
 
         Item {
             id: ringFace
-            readonly property real side: 28
+            readonly property real side: 28 * quiet.k
             readonly property real gap: quiet.count > 6 ? 11 : 14
-            implicitWidth: ringFace.side + 8 + caption.implicitWidth + 4
-            implicitHeight: 30
+            implicitWidth: ringFace.side + 8 * quiet.k + caption.implicitWidth + 4 * quiet.k
+            implicitHeight: 30 * quiet.k
 
             Item {
                 id: dial
@@ -197,7 +132,7 @@ Item {
                         ShapePath {
                             fillColor: "transparent"
                             capStyle: ShapePath.FlatCap
-                            strokeWidth: st.active ? 4.5 : 3
+                            strokeWidth: st.active ? 4.5 * quiet.k : 3 * quiet.k
                             strokeColor: st.active ? Colors.primary
                                        : st.occupied ? Colors.secondary
                                        : Colors.surfaceContainerHighest
@@ -207,8 +142,8 @@ Item {
                             PathAngleArc {
                                 centerX: ringFace.side / 2
                                 centerY: ringFace.side / 2
-                                radiusX: ringFace.side / 2 - 3
-                                radiusY: ringFace.side / 2 - 3
+                                radiusX: ringFace.side / 2 - 3 * quiet.k
+                                radiusY: ringFace.side / 2 - 3 * quiet.k
                                 startAngle: -90 + arc.index * arc.span + ringFace.gap / 2
                                 sweepAngle: arc.span - ringFace.gap
                             }
@@ -219,7 +154,7 @@ Item {
                 CustomText {
                     anchors.centerIn: parent
                     content: quiet.activeIndex >= 0 ? quiet.activeId.toString() : ""
-                    size: 10
+                    size: Math.round(10 * quiet.k)
                     weight: 800
                     customColor: Colors.surfaceText
                 }
@@ -245,14 +180,14 @@ Item {
 
             CustomText {
                 id: caption
-                x: ringFace.side + 8
+                x: ringFace.side + 8 * quiet.k
                 anchors.verticalCenter: parent.verticalCenter
                 content: quiet.currentApp ? quiet.appName(quiet.currentApp) : "Empty"
-                size: 11
+                size: Math.round(11 * quiet.k)
                 weight: 500
                 customColor: quiet.currentApp ? Colors.surfaceVariantText : Colors.outline
                 elide: Text.ElideRight
-                width: Math.min(implicitWidth, 110)
+                width: Math.min(implicitWidth, 110 * quiet.k)
             }
         }
     }
@@ -262,9 +197,9 @@ Item {
 
         Item {
             id: vf
-            readonly property real cell: 20
+            readonly property real cell: 20 * quiet.k
             implicitWidth: quiet.count * vf.cell
-            implicitHeight: 30
+            implicitHeight: 30 * quiet.k
 
             Row {
                 Repeater {
@@ -274,12 +209,12 @@ Item {
                         required property int modelData
                         Slot { id: st; wsId: vfCell.modelData; owner: quiet.owner }
                         width: vf.cell
-                        height: 30
+                        height: 30 * quiet.k
 
                         CustomText {
                             anchors.centerIn: parent
                             content: vfCell.modelData.toString()
-                            size: 12
+                            size: Math.round(12 * quiet.k)
                             weight: st.active ? 700 : 500
                             customColor: st.active ? Colors.primary
                                        : st.occupied ? Colors.surfaceVariantText : Colors.outline
@@ -301,9 +236,9 @@ Item {
                 id: frame
                 visible: quiet.activeIndex >= 0
                 x: Math.max(0, quiet.activeIndex) * vf.cell
-                y: 3
+                y: 3 * quiet.k
                 width: vf.cell
-                height: 24
+                height: 24 * quiet.k
                 Behavior on x { SpatialAnim { speed: "fast" } }
 
                 Repeater {
@@ -315,178 +250,23 @@ Item {
                         readonly property bool atBottom: corner.index > 1
                         x: corner.atRight ? frame.width - width : 0
                         y: corner.atBottom ? frame.height - height : 0
-                        width: 6
-                        height: 6
+                        width: 6 * quiet.k
+                        height: 6 * quiet.k
 
                         Rectangle {
-                            y: corner.atBottom ? parent.height - 2 : 0
+                            y: corner.atBottom ? parent.height - 2 * quiet.k : 0
                             width: parent.width
-                            height: 2
-                            radius: 1
+                            height: 2 * quiet.k
+                            radius: 1 * quiet.k
                             color: Colors.primary
                         }
 
                         Rectangle {
-                            x: corner.atRight ? parent.width - 2 : 0
-                            width: 2
+                            x: corner.atRight ? parent.width - 2 * quiet.k : 0
+                            width: 2 * quiet.k
                             height: parent.height
-                            radius: 1
+                            radius: 1 * quiet.k
                             color: Colors.primary
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Component {
-        id: focusComp
-
-        Row {
-            spacing: 5
-
-            Repeater {
-                model: quiet.ids
-                delegate: Item {
-                    id: fp
-                    required property int modelData
-                    Slot { id: st; wsId: fp.modelData; owner: quiet.owner }
-                    width: pill.width
-                    height: 30
-
-                    Rectangle {
-                        id: pill
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: st.active ? content.implicitWidth + 16 : st.occupied ? 8 : 6
-                        height: st.active ? 24 : st.occupied ? 8 : 6
-                        radius: height / 2
-                        clip: true
-                        color: st.active ? Colors.primary
-                             : st.occupied ? Colors.surfaceVariantText
-                             : st.onOther ? Qt.alpha(Colors.outlineVariant, 0.5) : Colors.outlineVariant
-                        Behavior on width { SpatialAnim { speed: "fast" } }
-                        Behavior on height { SpatialAnim { speed: "fast" } }
-                        Behavior on color { EffectsColorAnim {} }
-
-                        Row {
-                            id: content
-                            x: 6
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 5
-                            opacity: st.active ? 1 : 0
-                            visible: opacity > 0
-                            Behavior on opacity { EffectsAnim {} }
-
-                            IconImage {
-                                visible: !!quiet.currentApp
-                                anchors.verticalCenter: parent.verticalCenter
-                                implicitSize: 15
-                                source: quiet.currentApp && st.active ? quiet.appIcon(quiet.currentApp) : ""
-                            }
-
-                            MaterialIconSymbol {
-                                visible: !quiet.currentApp
-                                anchors.verticalCenter: parent.verticalCenter
-                                content: "add"
-                                iconSize: 15
-                                customColor: Colors.primaryText
-                            }
-
-                            CustomText {
-                                anchors.verticalCenter: parent.verticalCenter
-                                content: quiet.currentApp ? quiet.appName(quiet.currentApp) : "Empty"
-                                size: 11
-                                weight: 600
-                                customColor: Colors.primaryText
-                                elide: Text.ElideRight
-                                width: Math.min(implicitWidth, 96)
-                            }
-
-                            CustomText {
-                                visible: current.windows > 1
-                                anchors.verticalCenter: parent.verticalCenter
-                                content: current.windows.toString()
-                                size: 10
-                                weight: 500
-                                customColor: Qt.alpha(Colors.primaryText, 0.7)
-                            }
-
-                            Item { width: 2; height: 1 }
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        anchors.leftMargin: -2
-                        anchors.rightMargin: -2
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: quiet.go(fp.modelData, st.ws)
-                    }
-                }
-            }
-        }
-    }
-
-    Component {
-        id: cardsComp
-
-        Rectangle {
-            id: deck
-            readonly property real cardW: 20
-            readonly property real overlap: 5
-            implicitWidth: deckRow.implicitWidth + deck.overlap + 10
-            implicitHeight: 30
-            radius: 15
-            color: Colors.surfaceContainer
-
-            Row {
-                id: deckRow
-                x: 5
-                anchors.verticalCenter: parent.verticalCenter
-
-                Repeater {
-                    model: quiet.ids
-                    delegate: Item {
-                        id: slot
-                        required property int modelData
-                        required property int index
-                        Slot { id: st; wsId: slot.modelData; owner: quiet.owner }
-                        readonly property bool shownCard: st.occupied || st.active
-                        width: slot.shownCard ? deck.cardW - deck.overlap + (st.active ? 3 : 0) : 0
-                        height: 30
-                        z: st.active ? 50 : 40 - Math.abs(slot.index - Math.max(0, quiet.activeIndex))
-                        Behavior on width { SpatialAnim { speed: "fast" } }
-
-                        Rectangle {
-                            id: card
-                            width: deck.cardW + (st.active ? 3 : 0)
-                            height: 22
-                            y: st.active ? 2 : 5
-                            radius: 6
-                            opacity: slot.shownCard ? 1 : 0
-                            color: st.active ? Colors.primary : Colors.surfaceContainerHighest
-                            border.width: 2
-                            border.color: Colors.surfaceContainer
-                            Behavior on y { SpatialAnim { speed: "fast" } }
-                            Behavior on width { SpatialAnim { speed: "fast" } }
-                            Behavior on opacity { EffectsAnim {} }
-                            Behavior on color { EffectsColorAnim {} }
-
-                            CustomText {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                y: 3
-                                content: slot.modelData.toString()
-                                size: 9
-                                weight: 700
-                                customColor: st.active ? Colors.primaryText : Colors.surfaceVariantText
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: card
-                            enabled: slot.shownCard
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: quiet.go(slot.modelData, st.ws)
                         }
                     }
                 }

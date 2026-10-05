@@ -226,7 +226,7 @@ PACMAN_PKGS=(
   networkmanager bluez bluez-utils upower
   python grim slurp wf-recorder swappy wl-clipboard wtype ffmpeg
   cava brightnessctl curl unzip jq xdg-utils libnotify
-  imagemagick qrencode mpv tesseract tesseract-data-eng gperftools
+  imagemagick kdeconnect sshfs mpv tesseract tesseract-data-eng gperftools
   qt6-base qt6-declarative qt6-wayland qt6-svg qt6-multimedia
   libqalculate
   noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-fira-sans ttf-fira-code ttf-jetbrains-mono

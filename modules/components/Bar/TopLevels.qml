@@ -9,6 +9,7 @@ Item{
     id: toplevels
     anchors.fill: parent
     property alias appList : appList
+    property real k: 1
     
     
     ListView{
@@ -16,7 +17,7 @@ Item{
         width: contentWidth
         height: parent.height
         orientation: Qt.Horizontal
-        spacing: 2
+        spacing: 2 * toplevels.k
         interactive: false
         anchors.centerIn: parent
         model: currentWorkspace && currentWorkspace.toplevels
@@ -24,7 +25,7 @@ Item{
         delegate: Item{
             id: iconItem
             height: 40
-            width: 25
+            width: 25 * toplevels.k
             anchors.verticalCenter: parent?.verticalCenter
 
 
@@ -47,7 +48,7 @@ Item{
             IconImage{
                 id: icon
                 anchors.centerIn: parent
-                implicitSize: 16
+                implicitSize: 16 * toplevels.k
                 //source: modelData && modelData.lastIpcObject ? IconUtil.getIconPath(modelData.lastIpcObject.class) : ""
                 source: Quickshell.iconPath(DesktopEntries.heuristicLookup(modelData.wayland?.appId)?.icon, "image-missing")
 

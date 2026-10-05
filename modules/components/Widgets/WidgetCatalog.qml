@@ -8,8 +8,12 @@ import qs.modules.utils
 Singleton {
     id: root
 
-    readonly property Component cProfileCard:   Component { ProfileCard            { preview: true } }
-    readonly property Component cProfileTile:   Component { ProfileTile            { preview: true } }
+    readonly property Component cProfileBadge:   Component { ProfileBadgeWidget   { preview: true } }
+    readonly property Component cProfileDay:     Component { ProfileDayWidget     { preview: true } }
+    readonly property Component cProfileStatus:  Component { ProfileStatusWidget  { preview: true } }
+    readonly property Component cProfileMachine: Component { ProfileMachineWidget { preview: true } }
+    readonly property Component cProfileShape:   Component { ProfileShapeWidget   { preview: true } }
+    readonly property Component cProfileRings:   Component { ProfileRingsWidget   { preview: true } }
     readonly property Component cPhotoFrame:    Component { PhotoFrameWidget       { preview: true } }
     readonly property Component cClockVeil:      Component { ClockVeil      { preview: true } }
     readonly property Component cClockBloom:     Component { ClockBloom     { preview: true } }
@@ -44,6 +48,7 @@ Singleton {
     readonly property Component cSysVitals: Component { SysVitalsWidget { preview: true } }
     readonly property Component cSysForecast: Component { SysForecastWidget { preview: true } }
     readonly property Component cSysFlask: Component { SysFlaskWidget { preview: true } }
+    readonly property Component cLavaLamp: Component { LavaLampWidget { preview: true } }
     readonly property Component cSysThermo: Component { SysThermoWidget { preview: true } }
     readonly property Component cSysCreature: Component { SysCreatureWidget { preview: true } }
     readonly property Component cDayRibbon: Component { DayRibbonWidget { preview: true } }
@@ -91,8 +96,12 @@ Singleton {
     // def       — the family's default variant, for the ?? fallback
     readonly property var catalog: [
         { section: "Personal", icon: "person", items: [
-            { label: "Card", key: "profileCard", comp: root.cProfileCard, show: "showProfileCard", styleKey: "profileCardStyle", style: "card", def: "card" },
-            { label: "Tile", key: "profileCard", comp: root.cProfileTile, show: "showProfileCard", styleKey: "profileCardStyle", style: "tile", def: "card" },
+            { label: "Badge", key: "profileBadge", comp: root.cProfileBadge, show: "showProfileBadge" },
+            { label: "Your day", key: "profileDay", comp: root.cProfileDay, show: "showProfileDay" },
+            { label: "Status", key: "profileStatus", comp: root.cProfileStatus, show: "showProfileStatus" },
+            { label: "Machine", key: "profileMachine", comp: root.cProfileMachine, show: "showProfileMachine" },
+            { label: "Shape", key: "profileShape", comp: root.cProfileShape, show: "showProfileShape" },
+            { label: "Rings", key: "profileRings", comp: root.cProfileRings, show: "showProfileRings" },
             { label: "Photo Frame", key: "photoFrame", comp: root.cPhotoFrame, show: "showPhotoFrame" },
             { label: "Commit garden", key: "commitGarden", comp: root.cCommitGarden, show: "showCommitGarden" },
             { label: "Notebook", key: "notebook", comp: root.cNotebook, show: "showNotebook" },
@@ -178,6 +187,7 @@ Singleton {
             { label: "Vitals", key: "sysVitals", comp: root.cSysVitals, show: "showSysVitals" },
             { label: "Forecast", key: "sysForecast", comp: root.cSysForecast, show: "showSysForecast" },
             { label: "Flask", key: "sysFlask", comp: root.cSysFlask, show: "showSysFlask" },
+            { label: "Lava Lamp", key: "lavaLamp", comp: root.cLavaLamp, show: "showLavaLamp" },
             { label: "Thermometer", key: "sysThermo", comp: root.cSysThermo, show: "showSysThermo" },
             { label: "Creature", key: "sysCreature", comp: root.cSysCreature, show: "showSysCreature" },
             { label: "Day Ribbon", key: "dayRibbon", comp: root.cDayRibbon, show: "showDayRibbon" },

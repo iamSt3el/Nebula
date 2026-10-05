@@ -1,5 +1,6 @@
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Widgets
 import QtQuick
 import Qt5Compat.GraphicalEffects as GE
 import QtQuick.Shapes
@@ -8,7 +9,6 @@ import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
 import qs.modules.components.Clipboard
-import qs.modules.components.FileDrop
 import qs.modules.components.WallpaperSelector
 import qs.modules.components.Osd
 import qs.modules.components.AppLauncher
@@ -108,10 +108,9 @@ Item {
     readonly property string sysKind: !barBlock.sysHost ? ""
         : GlobalStates.clipboardOpen && (SettingsConfig.general.clipboardPanelMode ?? "dock") !== "center" ? "clipboard"
         : GlobalStates.wallpaperOpen && (SettingsConfig.general.wallpaperPanelMode ?? "dock") !== "center" ? "wallpaper"
-        : GlobalStates.fileDropOpen ? "filedrop"
         : GlobalStates.osdOpen ? "osd" : ""
     function isSys(k) {
-        return k === "clipboard" || k === "wallpaper" || k === "filedrop" || k === "osd"
+        return k === "clipboard" || k === "wallpaper" || k === "osd"
     }
     readonly property bool launchHost: layout.isPrimary && !barBlock.leaving
         && ServiceLauncher.position === "item" && barBlock.hasItem("launcher")
@@ -334,14 +333,14 @@ Item {
     HyprlandFocusGrab {
         windows: [QsWindow.window]
         active: barBlock.panelKind === "trayMenu" || barBlock.panelKind === "dockMenu"
-            || (["sound", "network", "bluetooth", "brightness", "powerMode", "power", "battery", "soundscape", "scenes", "notifications", "dashboard"].indexOf(barBlock.panelKind) >= 0
+            || (["sound", "network", "bluetooth", "brightness", "powerMode", "power", "battery", "soundscape", "scenes", "notifications", "dashboard", "weather"].indexOf(barBlock.panelKind) >= 0
                 && barBlock.clickedKind === barBlock.panelKind
                 && !barBlock.panelHeld)
             || (barBlock.panelKind === "tray" && barBlock.clickedKind === "tray")
         onCleared: {
             if (barBlock.panelHeld)
                 return
-            if (["trayMenu", "dockMenu", "tray", "sound", "network", "bluetooth", "brightness", "powerMode", "power", "battery", "soundscape", "scenes", "notifications", "dashboard"].indexOf(barBlock.panelKind) >= 0)
+            if (["trayMenu", "dockMenu", "tray", "sound", "network", "bluetooth", "brightness", "powerMode", "power", "battery", "soundscape", "scenes", "notifications", "dashboard", "weather"].indexOf(barBlock.panelKind) >= 0)
                 barBlock.closePanel()
         }
     }
@@ -352,11 +351,12 @@ Item {
         case "weather":   return BarLayout.panelW("weather")
         case "calendar":  return BarLayout.panelW("calendar")
         case "music":     return 440
-        case "musicWave": return 560
-        case "musicIsland": return 560
-        case "musicFill": return 420
-        case "musicType": return 400
-        case "musicSources": return 440
+        case "musicDevelop": return 460
+        case "musicDrop": return 400
+        case "musicButtons": return 480
+        case "musicShelf": return Math.min(900, barBlock.widthRoom)
+        case "musicCounter": return 420
+        case "musicShape": return 440
         case "tray":      return 28 + barBlock.trayCols * 36 + (barBlock.trayCols - 1) * 6
         case "trayMenu":  return 260
         case "sound":     return 360
@@ -373,7 +373,6 @@ Item {
         case "dockMenu":  return 210
         case "clipboard": return Appearance.size.wallpaperPanelWidth
         case "wallpaper": return Math.min(ServiceWallpaper.panelWidth, barBlock.widthRoom)
-        case "filedrop":  return 460
         case "osd":       return barBlock.vertical ? 60 : 300
         case "launcher":  return BarLayout.panelW("launcher")
         }
@@ -393,11 +392,12 @@ Item {
                                                          barBlock.heightCap("weather"))
         case "calendar":  return BarLayout.panelHeightIn("calendar", Appearance.size.calanderHeight, barBlock.heightRoom)
         case "music":     return 200
-        case "musicWave": return 262
-        case "musicIsland": return 136
-        case "musicFill": return 268
-        case "musicType": return 250
-        case "musicSources": return barBlock.itemOf("musicSources") ? barBlock.itemOf("musicSources").implicitHeight : 200
+        case "musicDevelop": return 230
+        case "musicDrop": return 380
+        case "musicButtons": return 300
+        case "musicShelf": return 108
+        case "musicCounter": return 272
+        case "musicShape": return 240
         case "tray":      return 28 + barBlock.trayRows * 36 + (barBlock.trayRows - 1) * 6
         case "trayMenu":  return barBlock.itemOf("trayMenu") ? barBlock.itemOf("trayMenu").implicitHeight : 160
         case "sound":     return barBlock.itemOf("sound") ? barBlock.itemOf("sound").implicitHeight : 420
@@ -414,7 +414,6 @@ Item {
         case "dockMenu":  return barBlock.itemOf("dockMenu") ? barBlock.itemOf("dockMenu").implicitHeight : 150
         case "clipboard": return Appearance.size.wallpaperPanelHeight
         case "wallpaper": return ServiceWallpaper.panelHeight
-        case "filedrop":  return 560
         case "osd":       return barBlock.vertical ? 280 : 60
         case "launcher":  return Math.max(320, Math.min(BarLayout.panelH("launcher"), barBlock.heightRoom))
         }
@@ -437,7 +436,25 @@ Item {
     readonly property int dropDuration: barBlock.spanDuration
     readonly property var dropCurve: barBlock.sizeCurve
 
-    readonly property real tabTargetW: barBlock.alongOf(barBlock.shownKind)
+    readonly property real panelCorner: barBlock.frame ? barBlock.frame.disX : 0
+    function snapInL(x) {
+        return x > 0.5 && x < barBlock.panelCorner
+    }
+    function snapInR(r) {
+        const g = barBlock.width - r
+        return g > 0.5 && g < barBlock.panelCorner
+    }
+    readonly property real tabNaturalW: barBlock.alongOf(barBlock.shownKind)
+    readonly property real tabNaturalX: barBlock.alignX(barBlock.tabNaturalW, barBlock.srcX + barBlock.srcW / 2)
+    readonly property real tabTargetW: {
+        let l = barBlock.tabNaturalX
+        let r = l + barBlock.tabNaturalW
+        if (barBlock.snapInL(l))
+            l = 0
+        if (barBlock.snapInR(r))
+            r = barBlock.width
+        return r - l
+    }
     function alignX(w, cx) {
         const x = cx - w / 2
         const sl = barBlock.spanL - barBlock.absX
@@ -445,7 +462,10 @@ Item {
         return Math.max(sl, Math.min(sr, x))
     }
 
-    readonly property real tabTargetX: barBlock.alignX(barBlock.tabTargetW, barBlock.srcX + barBlock.srcW / 2)
+    readonly property real tabTargetX: barBlock.snapInL(barBlock.tabNaturalX) ? 0 : barBlock.tabNaturalX
+    readonly property real srcEdgeX: barBlock.snapInL(barBlock.srcX) ? 0 : barBlock.srcX
+    readonly property real srcEdgeW: (barBlock.snapInR(barBlock.srcX + barBlock.srcW) ? barBlock.width : barBlock.srcX + barBlock.srcW)
+        - barBlock.srcEdgeX
 
     property string revealMode: ""
     property real revealX: 0
@@ -469,10 +489,10 @@ Item {
     }
 
     property real tabX: barBlock.shownKind !== "" ? barBlock.tabTargetX
-        : barBlock.revealMode === "" ? barBlock.srcX
+        : barBlock.revealMode === "" ? barBlock.srcEdgeX
         : barBlock.revealMode === "end" ? barBlock.revealX + barBlock.revealW : barBlock.revealX
     property real tabW: barBlock.shownKind !== "" ? barBlock.tabTargetW
-        : barBlock.revealMode === "" ? barBlock.srcW
+        : barBlock.revealMode === "" ? barBlock.srcEdgeW
         : barBlock.revealMode === "across" ? barBlock.revealW : 0
     property real tabH: barBlock.shownKind !== "" ? barBlock.barH + barBlock.acrossOf(barBlock.shownKind)
         : barBlock.revealMode === "start" || barBlock.revealMode === "end" ? barBlock.revealH : barBlock.barH
@@ -506,7 +526,53 @@ Item {
             onRunningChanged: if (!running) barBlock.checkSettled()
         }
     }
+    readonly property bool tabMoving: tabXAnim.running || tabWAnim.running || tabHAnim.running
     readonly property bool tabOpen: barBlock.shownKind !== "" || barBlock.tabH > barBlock.barH + 0.5
+
+    property Item dropSource: null
+    property Item dropOwner: null
+    property bool dropReleasing: false
+    property real dropCenterHeld: 0
+    readonly property real dropW: 32
+    readonly property real dropHang: 26
+    readonly property real dropCenter: {
+        barBlock.slotLayout
+        barBlock.width
+        const s = barBlock.dropSource
+        if (!s || !barBlock.dropOwner)
+            return barBlock.dropReleasing ? barBlock.dropCenterHeld : 0
+        let n = s
+        for (let i = 0; i < 8 && n && n !== barBlock; i++) {
+            n.x
+            n.width
+            n = n.parent
+        }
+        return s.mapToItem(barBlock, s.width / 2, 0).x
+    }
+    readonly property real dropX: barBlock.dropCenter - barBlock.dropW / 2
+    readonly property bool dropWanted: !!barBlock.dropSource && !!barBlock.dropOwner && barBlock.dropOwner.playing
+        && !barBlock.tabOpen && !barBlock.vertical && !barBlock.editing
+        && !barBlock.coveredAt(barBlock.dropX, barBlock.dropW)
+    property real dropDepth: barBlock.dropWanted ? barBlock.dropHang : 0
+    Behavior on dropDepth { SpatialAnim {} }
+    onDropDepthChanged: if (barBlock.dropReleasing && barBlock.dropDepth < 0.5) barBlock.dropReleasing = false
+
+    function registerDrop(source, owner) {
+        barBlock.dropReleasing = false
+        barBlock.dropOwner = owner
+        barBlock.dropSource = source
+    }
+
+    function releaseDrop(source) {
+        if (barBlock.dropSource !== source)
+            return
+        if (barBlock.dropDepth > 0.5) {
+            barBlock.dropCenterHeld = barBlock.dropCenter
+            barBlock.dropReleasing = true
+        }
+        barBlock.dropSource = null
+        barBlock.dropOwner = null
+    }
     readonly property real tabPathH: barBlock.tabH
 
     function slotShift(listIndex) {
@@ -585,10 +651,16 @@ Item {
     }
 
     function slotGone(id) {
-        Qt.callLater(() => BarLayout.dropLeaving(itemModel, barBlock.itemIds, "itemId", barBlock.itemLeaving, id))
+        Qt.callLater(() => {
+            BarLayout.dropLeaving(itemModel, barBlock.itemIds, "itemId", barBlock.itemLeaving, id)
+            barBlock.slotRev++
+        })
     }
 
+    property int slotRev: 0
+
     readonly property var slotLayout: {
+        barBlock.slotRev
         const xs = []
         let x = 0
         let before = 0
@@ -873,11 +945,15 @@ Item {
 
     ListModel { id: itemModel }
 
-    onItemIdsChanged: BarLayout.syncAnimated(itemModel, barBlock.itemIds, "itemId", barBlock.itemLeaving)
+    onItemIdsChanged: {
+        BarLayout.syncAnimated(itemModel, barBlock.itemIds, "itemId", barBlock.itemLeaving)
+        barBlock.slotRev++
+    }
 
     Component.onCompleted: {
         barBlock.lastInfo = barBlock.liveInfo
         BarLayout.syncModel(itemModel, barBlock.itemIds, "itemId", barBlock.itemLeaving)
+        barBlock.slotRev++
         barBlock.presence = Qt.binding(() => barBlock.wanted ? 1 : 0)
     }
 
@@ -917,11 +993,58 @@ Item {
             width: tabHost.width
             height: Math.max(0, tabHost.height - barBlock.barH)
             clip: true
+            layer.enabled: barBlock.tabMoving && barBlock.panelCorner > 0
+            layer.smooth: true
+            layer.effect: GE.OpacityMask { maskSource: panelCornerMask }
 
             PanelSlot { id: slotA }
             PanelSlot { id: slotB }
         }
 
+        Rectangle {
+            id: panelCornerMask
+            readonly property real r: Math.min(barBlock.panelCorner, width / 2, height / 2)
+            visible: false
+            width: panelClip.width
+            height: panelClip.height
+            color: "white"
+            topLeftRadius: barBlock.far ? panelCornerMask.r : 0
+            topRightRadius: barBlock.far ? panelCornerMask.r : 0
+            bottomLeftRadius: barBlock.far ? 0 : panelCornerMask.r
+            bottomRightRadius: barBlock.far ? 0 : panelCornerMask.r
+        }
+
+    }
+
+    Item {
+        id: dropArt
+        readonly property real t: barBlock.dropDepth / barBlock.dropHang
+        readonly property real side: barBlock.barH - 18 + 4 * dropArt.t
+        readonly property real cy: barBlock.far
+            ? barBlock.barH / 2 - (barBlock.barH / 2 + 10) * dropArt.t
+            : barBlock.barH / 2 + (barBlock.barH / 2 + 10) * dropArt.t
+        z: 2
+        visible: (!!barBlock.dropSource || barBlock.dropReleasing) && !barBlock.editing && !barBlock.coveredAt(barBlock.dropX, barBlock.dropW)
+        opacity: barBlock.dropSource ? 1 : dropArt.t
+        x: Math.round(barBlock.dropCenter - dropArt.side / 2)
+        y: Math.round(dropArt.cy - dropArt.side / 2)
+        width: dropArt.side
+        height: dropArt.side
+
+        ClippingWrapperRectangle {
+            anchors.fill: parent
+            radius: width / 2
+            color: Colors.surfaceContainerHighest
+
+            Image {
+                source: ServiceMusic.activeTrack?.artUrl ?? ""
+                sourceSize.width: 96
+                sourceSize.height: 96
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                opacity: barBlock.dropOwner && barBlock.dropOwner.playing ? 1 : 0.7
+            }
+        }
     }
 
     property bool resizing: false
@@ -1288,6 +1411,20 @@ Item {
                         color: "transparent"
                         border.width: 2
                         border.color: Colors.primary
+                        property real settle: 1
+                        scale: 1 + 0.22 * (1 - selRing.settle)
+                        onVisibleChanged: if (selRing.visible) ringSettle.restart()
+
+                        NumberAnimation {
+                            id: ringSettle
+                            target: selRing
+                            property: "settle"
+                            from: 0
+                            to: 1
+                            duration: 340
+                            easing.type: Easing.OutBack
+                            easing.overshoot: 1.4
+                        }
 
                         SequentialAnimation {
                             running: slot.selected
@@ -1394,11 +1531,17 @@ Item {
             height: slot.height
 
             Rectangle {
-                readonly property real nearY: (slot.reveal - 1) * wipe.height
+                id: wipeEdge
+                readonly property real feather: 48
+                readonly property real span: wipe.height + feather
                 width: wipe.width
-                height: wipe.height
-                y: barBlock.far ? -nearY : nearY
-                color: "white"
+                height: span
+                y: barBlock.far ? (1 - slot.reveal) * span - feather : (slot.reveal - 1) * span
+                gradient: Gradient {
+                    GradientStop { position: 0; color: barBlock.far ? "transparent" : "white" }
+                    GradientStop { position: barBlock.far ? wipeEdge.feather / wipeEdge.span : 1 - wipeEdge.feather / wipeEdge.span; color: "white" }
+                    GradientStop { position: 1; color: barBlock.far ? "white" : "transparent" }
+                }
             }
         }
         transform: barBlock.vertical ? [slotFlip] : []
@@ -1408,7 +1551,7 @@ Item {
         onShownChanged: {
             if (slot.shown) {
                 slotCache.stop()
-                slot.homeX = Qt.binding(() => barBlock.tabTargetX + (barBlock.tabTargetW - slot.fw) / 2)
+                slot.homeX = Qt.binding(() => barBlock.tabX + (barBlock.tabW - slot.fw) / 2)
                 slot.enter()
             } else {
                 slotCache.restart()
@@ -1418,14 +1561,6 @@ Item {
 
         width: barBlock.kindWidth(slot.kind)
         height: barBlock.contentHeight(slot.kind)
-        Behavior on homeX {
-            enabled: slot.shown && slot.opacity > 0.99 && !barBlock.resizing
-            NumberAnimation {
-                duration: barBlock.spanDuration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: barBlock.spanCurve
-            }
-        }
 
         x: Math.round(slot.homeX) - slot.clipX
         y: Math.round(slot.clipY + (slot.shown ? slot.pinY + (barBlock.far ? slot.drift : -slot.drift) : slot.slideY)) - slot.clipY
@@ -1451,11 +1586,12 @@ Item {
             switch (slot.kind) {
             case "calendar":  return calendarComp
             case "music":     return musicComp
-            case "musicWave": return musicWaveComp
-            case "musicIsland": return musicIslandComp
-            case "musicFill": return musicFillComp
-            case "musicType": return musicTypeComp
-            case "musicSources": return musicSourcesComp
+            case "musicDevelop": return musicDevelopComp
+            case "musicDrop": return musicDropComp
+            case "musicButtons": return musicButtonsComp
+            case "musicShelf": return musicShelfComp
+            case "musicCounter": return musicCounterComp
+            case "musicShape": return musicShapeComp
             case "tray":      return trayComp
             case "trayMenu":  return trayMenuComp
             case "sound":     return soundComp
@@ -1475,7 +1611,6 @@ Item {
             case "clipboard": return (SettingsConfig.general.clipboardStyle ?? "list") === "fan" ? clipFanComp
                 : (SettingsConfig.general.clipboardStyle ?? "list") === "board" ? clipBoardComp : clipComp
             case "wallpaper": return wallComp
-            case "filedrop":  return fileDropComp
             case "osd":       return osdComp
             case "launcher":  return launcherComp
             }
@@ -1498,11 +1633,12 @@ Item {
         }
     }
     Component { id: musicComp;     BarMusicPanel {} }
-    Component { id: musicWaveComp; BarMusicPanelWave {} }
-    Component { id: musicIslandComp; BarMusicPanelIsland {} }
-    Component { id: musicFillComp; BarMusicPanelFill {} }
-    Component { id: musicTypeComp; BarMusicPanelType {} }
-    Component { id: musicSourcesComp; BarMusicPanelSources {} }
+    Component { id: musicDevelopComp; BarMusicPanelDevelop {} }
+    Component { id: musicDropComp; BarMusicPanelDrop {} }
+    Component { id: musicButtonsComp; BarMusicPanelButtons {} }
+    Component { id: musicShelfComp; BarMusicPanelShelf {} }
+    Component { id: musicCounterComp; BarMusicPanelCounter {} }
+    Component { id: musicShapeComp; BarMusicPanelShape {} }
     Component {
         id: trayComp
         Item {
@@ -1618,14 +1754,6 @@ Item {
         }
     }
     Component {
-        id: fileDropComp
-        FileDropContent {
-            bottomLeftRadius: barBlock.isPill ? 20 : 0
-            bottomRightRadius: barBlock.isPill ? 20 : 0
-            onClosed: GlobalStates.fileDropOpen = false
-        }
-    }
-    Component {
         id: wallComp
         WallpaperContent {
             bottomLeftRadius: barBlock.isPill ? Appearance.radius.large : 0
@@ -1684,6 +1812,8 @@ Item {
 
         property string pressId: ""
         property int pressList: -1
+        property Item pressGrab: null
+        property string pressGrabId: ""
         property real pressW: 28
         property real pressX: 0
         property real pressY: 0
@@ -1696,6 +1826,8 @@ Item {
             editArea.pressList = -1
             editArea.pressApp = ""
             editArea.pressAppPinned = false
+            editArea.pressGrab = null
+            editArea.pressGrabId = ""
         }
 
         onPressed: mouse => {
@@ -1716,6 +1848,24 @@ Item {
             }
             editArea.pressX = mouse.x
             editArea.pressY = mouse.y
+            const ed = barBlock.editor
+            if (ed) {
+                ed.liftUrl = ""
+                ed.liftFor = ""
+                const it = s && editArea.pressApp === "" ? s.loaderItem : null
+                if (it && it.width > 0 && it.height > 0) {
+                    const lp = editArea.mapToItem(it, mouse.x, mouse.y)
+                    ed.liftDX = lp.x
+                    ed.liftDY = lp.y
+                    ed.liftW = it.width
+                    ed.liftH = it.height
+                    editArea.pressGrab = it
+                    editArea.pressGrabId = s.itemId
+                } else {
+                    editArea.pressGrab = null
+                    editArea.pressGrabId = ""
+                }
+            }
         }
         onPositionChanged: mouse => {
             if (!editArea.pressed)
@@ -1724,8 +1874,16 @@ Item {
             if (e.mode === "" && Math.hypot(mouse.x - editArea.pressX, mouse.y - editArea.pressY) > 4) {
                 if (editArea.pressApp !== "")
                     e.beginApp(editArea.pressApp, editArea.pressAppPinned, editArea.pressAppW)
-                else if (editArea.pressList >= 0)
+                else if (editArea.pressList >= 0) {
+                    const it = editArea.pressGrab
+                    const want = editArea.pressGrabId
+                    if (it && it.width > 0 && it.height > 0)
+                        it.grabToImage(r => {
+                            e.liftUrl = r.url
+                            e.liftFor = want
+                        })
                     e.beginItem(editArea.pressId, barBlock.blockId, editArea.pressList, editArea.pressW)
+                }
             }
             if (e.mode !== "") {
                 const p = editArea.mapToItem(null, mouse.x, mouse.y)
@@ -1750,94 +1908,106 @@ Item {
         }
     }
 
-    Rectangle {
-        id: gripPill
+    Item {
+        id: gripClip
         z: 60
-        readonly property bool shown: barBlock.handlesIn && !barBlock.tabOpen
-            && GlobalStates.panelPreview === "" && !GlobalStates.launcherPreview
-        visible: barBlock.revealT > 0.001 && opacity > 0.01
-        opacity: shown ? 1 : 0
-        Behavior on opacity { EffectsAnim { speed: "fast" } }
-        readonly property real across: barBlock.vertical ? width : height
-        y: (barBlock.far ? -6 - across : barBlock.barH + 6) + (across - height) / 2
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: handleRow.implicitWidth + 8
-        height: 28
-        transform: barBlock.vertical ? [gripFlip] : []
+        readonly property real across: barBlock.vertical ? gripPill.width : gripPill.height
+        x: -60
+        width: barBlock.width + 120
+        y: barBlock.far ? -(gripClip.across + 12) : barBlock.barH
+        height: gripClip.across + 12
+        clip: true
+        visible: barBlock.revealT > 0.001 && gripPill.slide > 0.01
 
-        Matrix4x4 { id: gripFlip; matrix: barBlock.flipAbout(gripPill.width, gripPill.height) }
-        radius: 14
-        color: Colors.surfaceContainerHigh
-        border.width: 1
-        border.color: Qt.alpha(Colors.outline, 0.25)
+        Rectangle {
+            id: gripPill
+            readonly property bool shown: barBlock.handlesIn && !barBlock.tabOpen
+                && GlobalStates.panelPreview === "" && !GlobalStates.launcherPreview
+            property real slide: gripPill.shown ? 1 : 0
+            Behavior on slide { SpatialAnim { speed: "fast" } }
+            opacity: Math.max(0, Math.min(1, gripPill.slide * 2))
+            readonly property real across: barBlock.vertical ? width : height
+            readonly property real off: (1 - gripPill.slide) * (gripPill.across + 8) * (barBlock.far ? 1 : -1)
+            y: (barBlock.far ? gripClip.height - 6 - across : 6) + (across - height) / 2 + gripPill.off
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: handleRow.implicitWidth + 8
+            height: 28
+            transform: barBlock.vertical ? [gripFlip] : []
 
-        Row {
-            id: handleRow
-            anchors.centerIn: parent
-            spacing: 2
+            Matrix4x4 { id: gripFlip; matrix: barBlock.flipAbout(gripPill.width, gripPill.height) }
+            radius: 14
+            color: Colors.surfaceContainerHigh
+            border.width: 1
+            border.color: Qt.alpha(Colors.outline, 0.25)
 
-            Rectangle {
-                width: 24
-                height: 24
-                radius: 12
-                color: gripArea.containsMouse || gripArea.pressed ? Qt.alpha(Colors.primary, 0.16) : "transparent"
+            Row {
+                id: handleRow
+                anchors.centerIn: parent
+                spacing: 2
 
-                MaterialIconSymbol {
-                    anchors.centerIn: parent
-                    content: "drag_indicator"
-                    iconSize: 16
-                    customColor: Colors.surfaceText
-                }
+                Rectangle {
+                    width: 24
+                    height: 24
+                    radius: 12
+                    color: gripArea.containsMouse || gripArea.pressed ? Qt.alpha(Colors.primary, 0.16) : "transparent"
 
-                MouseArea {
-                    id: gripArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-                    onPressed: mouse => {
-                        barBlock.editor.beginBlock(barBlock.blockId)
-                        const p = gripArea.mapToItem(null, mouse.x, mouse.y)
-                        barBlock.editor.update(p.x, p.y)
+                    MaterialIconSymbol {
+                        anchors.centerIn: parent
+                        content: "drag_indicator"
+                        iconSize: 16
+                        customColor: Colors.surfaceText
                     }
-                    onPositionChanged: mouse => {
-                        if (!gripArea.pressed)
-                            return
-                        const p = gripArea.mapToItem(null, mouse.x, mouse.y)
-                        barBlock.editor.update(p.x, p.y)
+
+                    MouseArea {
+                        id: gripArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                        onPressed: mouse => {
+                            barBlock.editor.beginBlock(barBlock.blockId)
+                            const p = gripArea.mapToItem(null, mouse.x, mouse.y)
+                            barBlock.editor.update(p.x, p.y)
+                        }
+                        onPositionChanged: mouse => {
+                            if (!gripArea.pressed)
+                                return
+                            const p = gripArea.mapToItem(null, mouse.x, mouse.y)
+                            barBlock.editor.update(p.x, p.y)
+                        }
+                        onReleased: barBlock.editor.finish()
+                        onCanceled: barBlock.editor.cancel()
                     }
-                    onReleased: barBlock.editor.finish()
-                    onCanceled: barBlock.editor.cancel()
+
+                    CustomToolTip { content: "Drag to move this block"; visible: gripArea.containsMouse && !gripArea.pressed }
                 }
 
-                CustomToolTip { content: "Drag to move this block"; visible: gripArea.containsMouse && !gripArea.pressed }
-            }
+                Rectangle {
+                    visible: barBlock.bottomEdge || BarLayout.blocks.length > 1
+                    width: 24
+                    height: 24
+                    radius: 12
+                    color: removeArea.containsMouse ? Qt.alpha(Colors.error, 0.16) : "transparent"
 
-            Rectangle {
-                visible: barBlock.bottomEdge || BarLayout.blocks.length > 1
-                width: 24
-                height: 24
-                radius: 12
-                color: removeArea.containsMouse ? Qt.alpha(Colors.error, 0.16) : "transparent"
-
-                MaterialIconSymbol {
-                    anchors.centerIn: parent
-                    content: "close"
-                    iconSize: 16
-                    customColor: removeArea.containsMouse ? Colors.error : Colors.surfaceText
-                }
-
-                MouseArea {
-                    id: removeArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        const id = barBlock.blockId
-                        Qt.callLater(() => BarLayout.removeBlock(id))
+                    MaterialIconSymbol {
+                        anchors.centerIn: parent
+                        content: "close"
+                        iconSize: 16
+                        customColor: removeArea.containsMouse ? Colors.error : Colors.surfaceText
                     }
-                }
 
-                CustomToolTip { content: "Remove block · its items go to the drawer"; visible: removeArea.containsMouse }
+                    MouseArea {
+                        id: removeArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            const id = barBlock.blockId
+                            Qt.callLater(() => BarLayout.removeBlock(id))
+                        }
+                    }
+
+                    CustomToolTip { content: "Remove block · its items go to the drawer"; visible: removeArea.containsMouse }
+                }
             }
         }
     }

@@ -167,19 +167,21 @@ Item {
             const p = Math.min(1, b.pc) * (surface.isDock && surface.barMode !== "pill" ? surface.reveal : 1)
             const bot = bridge + (top + surface.barH - bridge) * p
             if (!b.tabOpen) {
+                const dd = b.dropSource || b.dropReleasing ? (b.dropDepth ?? 0) : 0
+                if (dd > 0.5) {
+                    const dx = Math.max(bx, bx + b.dropX)
+                    const dX = Math.min(bx + b.width, bx + b.dropX + b.dropW)
+                    if (dx > bx + 0.01)
+                        out.push({ x: bx, w: dx - bx, bot: bot, isl: isl })
+                    out.push({ x: dx, w: Math.max(0, dX - dx), bot: bot + dd * p, isl: isl, melt: true })
+                    if (bx + b.width > dX + 0.01)
+                        out.push({ x: dX, w: bx + b.width - dX, bot: bot, isl: isl })
+                    continue
+                }
                 out.push({ x: bx, w: b.width, bot: bot, isl: isl })
                 continue
             }
-            const tx = bx + b.tabX
-            const tX = tx + b.tabW
-            const ux = Math.min(bx, tx)
-            const uX = Math.max(bx + b.width, tX)
-            const tbot = bridge + (top + b.tabPathH - bridge) * p
-            if (tx > ux + 0.01)
-                out.push({ x: ux, w: tx - ux, bot: bot, isl: isl })
-            out.push({ x: tx, w: b.tabW, bot: tbot, isl: isl, melt: true })
-            if (uX > tX + 0.01)
-                out.push({ x: tX, w: uX - tX, bot: bot, isl: isl })
+            out.push({ x: bx, w: b.width, bot: bot, isl: isl })
         }
         out.sort((p, q) => p.x - q.x)
         for (let i = 1; i < out.length; i++) {
@@ -207,6 +209,25 @@ Item {
 
     readonly property var openTabs: surface.visibleBlocks.filter(b => b.tabOpen)
 
+    readonly property var tabShapes: {
+        const out = []
+        const top = surface.edgeInset
+        const bridge = top + surface.bridgeAnim
+        for (const b of surface.openTabs) {
+            const bx = sectionsRow.x + b.parent.x + b.x
+            const p = Math.min(1, b.pc) * (surface.isDock && surface.barMode !== "pill" ? surface.reveal : 1)
+            out.push({
+                x: bx + b.tabX,
+                w: b.tabW,
+                bot: bridge + (top + b.tabPathH - bridge) * p,
+                bx: bx,
+                bw: b.width,
+                bb: bridge + (top + surface.barH - bridge) * p
+            })
+        }
+        return BarPath.sdfTabs(out, surface.pathBlocks, Object.assign({}, surface.sdfOpts, { barH: surface.barH }), surface.barMode === "pill")
+    }
+
     readonly property var tabRects: {
         const out = []
         for (const b of surface.openTabs) {
@@ -232,6 +253,12 @@ Item {
     property real floatCenter: 0
     property string floatBlock: ""
     property string floatItem: ""
+
+    HyprlandFocusGrab {
+        windows: [QsWindow.window]
+        active: surface.isPrimary && surface.barMode === "pill" && surface.floatKind === "weather"
+        onCleared: if (surface.floatKind === "weather") surface.floatKind = ""
+    }
 
     function openFloating(kind, centerX, blockId, itemId) {
         if (surface.floatKind === kind && surface.floatBlock === blockId) {
@@ -320,11 +347,13 @@ Item {
     }
 
     readonly property var sdfField: {
-        if (surface.barMode !== "pill")
-            return BarPath.sdfData(surface.pathBlocks, surface.sdfOpts)
         const h = surface.barH
-        return BarPath.sdfIslands(surface.pillGroups,
-            Object.assign({}, surface.sdfOpts, { bridge: h, endR: h / 2, bottomFlare: 0 }))
+        const f = surface.barMode !== "pill"
+            ? BarPath.sdfData(surface.pathBlocks, surface.sdfOpts)
+            : BarPath.sdfIslands(surface.pillGroups,
+                Object.assign({}, surface.sdfOpts, { bridge: h, endR: h / 2, bottomFlare: 0 }))
+        f.tabs = surface.tabShapes
+        return f
     }
 
     readonly property real sdfTop: surface.edgeInset
@@ -339,6 +368,8 @@ Item {
         let b = surface.edgeInset + surface.bridgeAnim + Math.abs(surface.endAnim) + surface.barH
         for (const s of surface.pathBlocks)
             b = Math.max(b, s.bot)
+        for (const t of surface.tabShapes)
+            b = Math.max(b, t.bot + Math.max(t.flL, t.flR))
         return b + surface.disX * 2 + 2
     }
 
@@ -353,6 +384,10 @@ Item {
         for (const f of surface.sdfField.flares) {
             l = Math.min(l, f.x - f.r)
             r = Math.max(r, f.x + f.r)
+        }
+        for (const t of surface.tabShapes) {
+            l = Math.min(l, t.x - Math.max(t.rfL, t.flL))
+            r = Math.max(r, t.x + t.w + Math.max(t.rfR, t.flR))
         }
         if (surface.barMode !== "pill" && surface.bridgeAnim > 0.5) {
             l = Math.min(l, sectionsRow.x)

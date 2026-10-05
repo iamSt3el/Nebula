@@ -11,7 +11,7 @@ Item {
     anchors.fill: parent
     signal closed
 
-    implicitHeight: column.implicitHeight + 20
+    implicitHeight: root.fullH
 
     opacity: 0
     property real _slideX: 400
@@ -20,10 +20,7 @@ Item {
     NumberAnimation on opacity { from: 0; to: 1; duration: 300; easing.type: Easing.OutQuad;   running: true }
     NumberAnimation on _slideX { from: 400; to: 0; duration: 300; easing.type: Easing.OutCubic; running: true }
 
-    readonly property string style: BarLayout.opt("weather", "panel") ?? "curve"
-    readonly property bool fixedHeight: BarLayout.panelH("weather") >= 0
     readonly property real maxContentH: root.implicitHeight
-        + (styleLoader.item && styleLoader.item.growRoom !== undefined ? styleLoader.item.growRoom : 0)
 
     readonly property bool metric: ServiceWeather.useMetric
     readonly property var cur: ServiceWeather.currentCondition
@@ -49,36 +46,8 @@ Item {
         return isNaN(n) ? 0 : n
     }
 
-    function iconFor(code, night) {
-        return IconUtil.getSystemIcon(ServiceWeather.getWeatherIcon(code, night).svg)
-    }
-
-    function dayName(dateStr, i) {
-        if (i === 0) return "Today"
-        if (i === 1) return "Tomorrow"
-        return Qt.formatDate(new Date(dateStr + "T00:00:00"), "dddd")
-    }
-
-    function dayShort(dateStr, i) {
-        if (i === 0) return "Today"
-        return Qt.formatDate(new Date(dateStr + "T00:00:00"), "ddd")
-    }
-
-    function dayLetter(dateStr) {
-        return Qt.formatDate(new Date(dateStr + "T00:00:00"), "ddd").charAt(0)
-    }
-
-    function dayCode(d) {
-        const h = d ? d.hourly : null
-        return h && h.length > 4 ? h[4].weatherCode : "113"
-    }
-
-    function dayRain(d) {
-        let m = 0
-        const h = d ? (d.hourly ?? []) : []
-        for (let i = 0; i < h.length; i++)
-            m = Math.max(m, parseInt(h[i].chanceofrain) || 0)
-        return m
+    function celsius(t) {
+        return root.metric ? t : (t - 32) * 5 / 9
     }
 
     function dayHi(d) {
@@ -106,21 +75,63 @@ Item {
         return (hh % 12 === 0 ? 12 : hh % 12) + (hh < 12 ? " AM" : " PM")
     }
 
-    function uvLabel(v) {
-        const n = parseInt(v)
-        if (isNaN(n)) return ""
-        if (n <= 2) return "Low"
-        if (n <= 5) return "Moderate"
-        if (n <= 7) return "High"
-        if (n <= 10) return "Very high"
-        return "Extreme"
+    function kind(code) {
+        const c = parseInt(code)
+        if ([200, 386, 389, 392, 395].indexOf(c) >= 0) return "storm"
+        if ([179, 227, 230, 323, 326, 329, 332, 335, 338, 368, 371].indexOf(c) >= 0) return "snow"
+        if ([182, 185, 281, 284, 311, 314, 317, 320, 350, 362, 365, 374, 377].indexOf(c) >= 0) return "ice"
+        if ([176, 263, 266, 293, 296, 299, 302, 305, 308, 353, 356, 359].indexOf(c) >= 0) return "rain"
+        if ([143, 248, 260].indexOf(c) >= 0) return "fog"
+        if ([119, 122].indexOf(c) >= 0) return "cloud"
+        if (c === 116) return "partly"
+        return "clear"
     }
 
-    function span(mins) {
-        const h = Math.floor(mins / 60)
-        const m = mins % 60
-        if (h === 0) return m + " min"
-        return m === 0 ? h + " h" : h + " h " + m + " min"
+    function kindWord(k, night) {
+        switch (k) {
+        case "storm":  return "Stormy"
+        case "snow":   return "Snowy"
+        case "ice":    return "Icy"
+        case "rain":   return "Rainy"
+        case "fog":    return "Foggy"
+        case "cloud":  return "Cloudy"
+        case "partly": return "Partly cloudy"
+        }
+        return night ? "Clear" : "Sunny"
+    }
+
+    function kindSky(k) {
+        switch (k) {
+        case "storm":  return "with storms around"
+        case "snow":   return "with snow"
+        case "ice":    return "with sleet"
+        case "rain":   return "with some rain"
+        case "fog":    return "after a foggy start"
+        case "cloud":  return "under cloudy skies"
+        case "partly": return "with some cloud"
+        }
+        return "under clear skies"
+    }
+
+    function feelWord(t) {
+        const c = root.celsius(t)
+        if (c < 5) return "cold"
+        if (c < 15) return "cool"
+        if (c < 24) return "mild"
+        if (c < 33) return "warm"
+        return "hot"
+    }
+
+    function partOfDay(h) {
+        if (h < 5) return "night"
+        if (h < 12) return "morning"
+        if (h < 17) return "afternoon"
+        if (h < 21) return "evening"
+        return "night"
+    }
+
+    function strong(v) {
+        return "<font color=\"" + Colors.surfaceText + "\"><b>" + v + "</b></font>"
     }
 
     readonly property string updatedText: {
@@ -128,10 +139,11 @@ Item {
         if (ServiceWeather.isLoading) return "Updating…"
         if (ServiceWeather.hasError && !root.cur) return "Offline"
         if (!ServiceWeather.lastUpdated) return "—"
-        const mins = Math.floor((new Date() - ServiceWeather.lastUpdated) / 60000)
-        if (mins < 1) return "Updated just now"
-        if (mins < 60) return "Updated " + mins + "m ago"
-        return "Updated " + Math.floor(mins / 60) + "h ago"
+        const mins = Math.floor((root.now - ServiceWeather.lastUpdated) / 60000)
+        if (mins < 1) return "Just now"
+        if (mins < 60) return mins + "m ago"
+        if (mins < 1440) return Math.floor(mins / 60) + "h ago"
+        return Math.floor(mins / 1440) + "d ago"
     }
 
     readonly property int nowMin: root.now.getHours() * 60 + root.now.getMinutes()
@@ -140,225 +152,409 @@ Item {
     readonly property bool sunKnown: root.riseMin >= 0 && root.setMin > root.riseMin
     readonly property bool night: root.sunKnown ? (root.nowMin < root.riseMin || root.nowMin >= root.setMin)
                                                 : ServiceWeather.isNightTime()
-    readonly property string sunriseText: root.shortTime(root.astro ? root.astro.sunrise : null)
-    readonly property string sunsetText: root.shortTime(root.astro ? root.astro.sunset : null)
-
-    readonly property real daylight: root.sunKnown
-        ? Math.max(0, Math.min(1, (root.nowMin - root.riseMin) / (root.setMin - root.riseMin))) : 0
-
-    readonly property real nightProgress: {
-        if (!root.sunKnown) return 0
-        const len = 1440 - root.setMin + root.riseMin
-        const t = root.nowMin >= root.setMin ? root.nowMin - root.setMin : root.nowMin + 1440 - root.setMin
-        return Math.max(0, Math.min(1, t / len))
-    }
-
-    readonly property string sunEventText: {
-        if (!root.sunKnown) return ""
-        if (!root.night) {
-            const left = root.setMin - root.nowMin
-            return left <= 180 ? "Sunset in " + root.span(left) : "Sunset at " + root.sunsetText
-        }
-        const left = root.nowMin < root.riseMin ? root.riseMin - root.nowMin : root.riseMin + 1440 - root.nowMin
-        return left <= 180 ? "Sunrise in " + root.span(left) : "Sunrise at " + root.sunriseText
-    }
 
     readonly property int curTemp: root.num(root.pick(root.cur, "temp_C", "temp_F"))
     readonly property int feels: root.num(root.pick(root.cur, "FeelsLikeC", "FeelsLikeF"))
     readonly property int todayHi: root.dayHi(root.days[0])
     readonly property int todayLo: root.dayLo(root.days[0])
-    readonly property string curIcon: root.iconFor(ServiceWeather.weatherCode, root.night)
-    readonly property string description: ServiceWeather.description.trim()
 
     readonly property var upcoming: {
         const out = []
-        const cc = root.cur
-        if (cc)
-            out.push({ label: "Now", hour: root.now.getHours(), temp: root.curTemp, rain: root.num(cc.chanceofrain),
-                       code: cc.weatherCode, night: root.night, abs: root.nowMin,
-                       hum: root.num(cc.humidity), wind: root.num(cc.windspeedKmph), isNow: true })
-        for (let d = 0; d < Math.min(3, root.days.length); d++) {
-            const day = root.days[d]
-            const a = day.astronomy ? day.astronomy[0] : null
-            const rise = root.minutesOf(a ? a.sunrise : "")
-            const set = root.minutesOf(a ? a.sunset : "")
-            const hs = day.hourly ?? []
+        for (let d = 0; d < root.days.length; d++) {
+            const hs = root.days[d].hourly ?? []
             for (let i = 0; i < hs.length; i++) {
                 const h = hs[i]
                 const hr = Math.floor(parseInt(h.time) / 100)
                 const abs = d * 1440 + hr * 60
                 if (abs <= root.nowMin)
                     continue
-                const m = hr * 60
-                out.push({ label: root.hourLabel(hr), hour: hr, temp: root.num(root.metric ? h.tempC : h.tempF),
-                           rain: root.num(h.chanceofrain), code: h.weatherCode,
-                           night: rise >= 0 && set > rise ? (m < rise || m >= set) : (hr < 6 || hr >= 18),
-                           abs: abs, hum: root.num(h.humidity), wind: root.num(h.windspeedKmph), isNow: false })
+                out.push({ day: d, hour: hr, abs: abs, temp: root.num(root.metric ? h.tempC : h.tempF),
+                           rain: root.num(h.chanceofrain), code: h.weatherCode })
             }
         }
         return out
     }
 
-    readonly property var sunEvents: {
-        const out = []
-        for (let d = 0; d < Math.min(3, root.days.length); d++) {
-            const a = root.days[d].astronomy ? root.days[d].astronomy[0] : null
-            if (!a) continue
-            const r = root.minutesOf(a.sunrise)
-            const s = root.minutesOf(a.sunset)
-            if (r >= 0 && d * 1440 + r > root.nowMin)
-                out.push({ abs: d * 1440 + r, sunrise: true, label: root.shortTime(a.sunrise) })
-            if (s >= 0 && d * 1440 + s > root.nowMin)
-                out.push({ abs: d * 1440 + s, sunrise: false, label: root.shortTime(a.sunset) })
-        }
-        return out.sort((x, y) => x.abs - y.abs)
-    }
-
-    readonly property real weekLo: {
-        let lo = Infinity
-        for (let i = 0; i < root.days.length; i++) lo = Math.min(lo, root.dayLo(root.days[i]))
-        return isFinite(lo) ? lo : 0
-    }
-
-    readonly property real weekHi: {
-        let hi = -Infinity
-        for (let i = 0; i < root.days.length; i++) hi = Math.max(hi, root.dayHi(root.days[i]))
-        return isFinite(hi) ? hi : 1
-    }
-
     readonly property string headline: {
-        let mid = null
-        let wet = null
-        for (let i = 1; i < root.upcoming.length && root.upcoming[i].abs <= root.nowMin + 720; i++) {
-            const e = root.upcoming[i]
-            if (!mid && e.hour === 0) mid = e
-            if (!wet && e.rain >= 40) wet = e
-        }
-        if (wet) return root.description + " now, rain likely around " + wet.label + "."
-        if (mid) return root.description + " now, " + mid.temp + "° by midnight."
-        return root.description + " now, feels like " + root.feels + "°."
+        if (!root.cur) return "No weather yet."
+        const h = root.now.getHours()
+        const when = h >= 21 || h < 5 || (root.night && h >= 17) ? "tonight" : "this " + root.partOfDay(h)
+        return root.kindWord(root.kind(ServiceWeather.weatherCode), root.night) + " and "
+             + root.feelWord(root.feels) + " " + when + "."
     }
 
-    readonly property string subline: {
+    readonly property string nextLine: {
+        if (root.upcoming.length === 0) return ""
+        if (root.night) {
+            const until = root.riseMin >= 0
+                ? (root.nowMin < root.riseMin ? root.riseMin : 1440 + root.riseMin) : root.nowMin + 600
+            let lo = null
+            for (let i = 0; i < root.upcoming.length && root.upcoming[i].abs <= until; i++)
+                if (!lo || root.upcoming[i].temp < lo.temp) lo = root.upcoming[i]
+            return lo ? "Cools to " + root.strong(lo.temp + "°") + " by sunrise." : ""
+        }
+        const until = root.setMin >= 0 ? root.setMin : 18 * 60
+        let hi = null
+        for (let i = 0; i < root.upcoming.length && root.upcoming[i].abs <= until; i++)
+            if (!hi || root.upcoming[i].temp > hi.temp) hi = root.upcoming[i]
+        if (hi && hi.temp > root.curTemp)
+            return "Warms to " + root.strong(hi.temp + "°") + " around " + root.hourLabel(hi.hour) + "."
+        const mid = root.upcoming.find(e => e.day === 1 && e.hour === 0)
+        return mid ? "Cools to " + root.strong(mid.temp + "°") + " by midnight." : ""
+    }
+
+    readonly property string tomorrowLine: {
         const t = root.days[1]
-        let s = root.sunEventText !== "" ? root.sunEventText + ". " : ""
-        if (t) {
-            const r = root.dayRain(t)
-            s += "Tomorrow " + root.dayLo(t) + "°–" + root.dayHi(t) + "°, " + (r >= 30 ? r + "% chance of rain." : "dry.")
+        if (!t) return ""
+        const hs = t.hourly ?? []
+        let peak = null
+        for (let i = 0; i < hs.length; i++) {
+            const v = root.num(root.metric ? hs[i].tempC : hs[i].tempF)
+            if (!peak || v > peak.v) peak = { v: v, hour: Math.floor(parseInt(hs[i].time) / 100), code: hs[i].weatherCode }
         }
-        return s
+        if (!peak) return ""
+        const verb = peak.v >= root.todayHi ? "climbs to " : "reaches "
+        return "Tomorrow " + verb + root.strong(peak.v + "°") + " around " + root.hourLabel(peak.hour)
+             + " " + root.kindSky(root.kind(peak.code)) + "."
     }
 
-    readonly property var stats: [
-        { icon: "air", label: "Wind · " + ServiceWeather.windDirection, short: "Wind",
-          value: String(root.pick(root.cur, "windspeedKmph", "windspeedMiles")), unit: root.metric ? "km/h" : "mph",
-          frac: Math.min(1, root.num(root.cur ? root.cur.windspeedKmph : 0) / 40) },
-        { icon: "humidity_percentage", label: "Humidity", short: "Humidity",
-          value: String(root.cur ? root.cur.humidity : "--"), unit: "%",
-          frac: root.num(root.cur ? root.cur.humidity : 0) / 100 },
-        { icon: "umbrella", label: "Chance of rain", short: "Rain",
-          value: String(root.cur ? (root.cur.chanceofrain ?? "0") : "--"), unit: "%",
-          frac: root.num(root.cur ? root.cur.chanceofrain : 0) / 100 },
-        { icon: "wb_sunny", label: "UV index", short: "UV",
-          value: String(ServiceWeather.uvindex), unit: root.uvLabel(ServiceWeather.uvindex),
-          frac: Math.min(1, root.num(ServiceWeather.uvindex) / 11) },
-        { icon: "visibility", label: "Visibility", short: "Visibility",
-          value: String(root.pick(root.cur, "visibility", "visibilityMiles")), unit: root.metric ? "km" : "mi",
-          frac: Math.min(1, root.num(root.cur ? root.cur.visibility : 0) / 20) },
-        { icon: "compress", label: "Pressure", short: "Pressure",
-          value: String(root.pick(root.cur, "pressure", "pressureInches")), unit: root.metric ? "hPa" : "inHg",
-          frac: Math.max(0, Math.min(1, ServiceWeather.pressure)) }
-    ]
+    readonly property string rainLine: {
+        let wet = null
+        let best = null
+        for (let i = 0; i < root.upcoming.length; i++) {
+            const e = root.upcoming[i]
+            if (!wet && e.rain >= 30) wet = e
+            if (!best || e.rain > best.rain) best = e
+        }
+        const whenOf = e => {
+            const part = root.partOfDay(e.hour)
+            if (e.day === 0) return part === "night" ? "tonight" : "this " + part
+            if (e.day === 1) return part === "night" && e.hour < 5 ? "overnight" : "tomorrow " + part
+            const name = Qt.formatDate(new Date(root.days[e.day].date + "T00:00:00"), "dddd")
+            return name + " " + part
+        }
+        if (wet) return "Rain is likely " + whenOf(wet) + ", " + root.strong(wet.rain + "%") + "."
+        if (best && best.rain > 0)
+            return "The best chance of rain is " + whenOf(best) + ", and it is only " + root.strong(best.rain + "%") + "."
+        return root.upcoming.length > 0 ? "No rain in the forecast." : ""
+    }
 
-    Flickable {
-        id: scroller
+    readonly property string story: [root.nextLine, root.tomorrowLine, root.rainLine].filter(s => s !== "").join(" ")
+
+    readonly property var facts: {
+        const c = root.cur
+        if (!c) return []
+        const hum = root.num(c.humidity)
+        const diff = root.feels - root.curTemp
+        const out = [
+            { icon: "thermostat", label: "Feels like", value: root.feels + "°",
+              note: Math.abs(diff) <= 1 ? "same" : diff > 0 ? "warmer" : "cooler" },
+            { icon: "humidity_percentage", label: "Humidity", value: hum + "%",
+              note: hum < 40 ? "dry" : hum < 65 ? "comfortable" : "humid" },
+            { icon: "air", label: "Wind", value: root.pick(c, "windspeedKmph", "windspeedMiles") + (root.metric ? " km/h" : " mph"),
+              note: "from " + ServiceWeather.windDirection },
+            { icon: "compress", label: "Pressure", value: String(root.pick(c, "pressure", "pressureInches")),
+              note: root.metric ? "hPa" : "inHg" },
+            { icon: "visibility", label: "Visibility", value: root.pick(c, "visibility", "visibilityMiles") + (root.metric ? " km" : " mi"),
+              note: root.num(c.visibility) >= 10 ? "clear" : root.num(c.visibility) >= 4 ? "hazy" : "poor" }
+        ]
+        if (root.sunKnown) {
+            const rise = root.night
+            const at = rise ? root.riseMin : root.setMin
+            const left = at > root.nowMin ? at - root.nowMin : at + 1440 - root.nowMin
+            out.push({ icon: rise ? "wb_twilight" : "nights_stay", label: rise ? "Sunrise" : "Sunset",
+                       value: root.shortTime(rise ? root.astro.sunrise : root.astro.sunset),
+                       note: left >= 60 ? "in " + Math.round(left / 60) + " h" : "in " + left + " min" })
+        }
+        return out
+    }
+
+    readonly property real pad: 18
+    readonly property real gap: 14
+    readonly property real rowH: 42
+    readonly property real innerW: Math.max(0, root.width - root.pad * 2)
+    readonly property real availH: Math.max(0, root.height - root.pad * 2)
+    readonly property bool wide: root.innerW >= 520
+    readonly property real leftW: root.wide ? Math.round((root.innerW - 24) * 0.55) : root.innerW
+    readonly property real factsW: root.wide ? root.innerW - 24 - root.leftW : root.innerW
+    readonly property real storyH: root.story !== "" ? storyProbe.implicitHeight : 0
+    readonly property real weekH: root.days.length > 0 ? week.implicitHeight : 0
+    readonly property real topH: header.implicitHeight + root.gap + hero.implicitHeight
+
+    readonly property real fullH: {
+        const story = root.storyH > 0 ? root.gap + root.storyH : 0
+        const facts = root.facts.length * root.rowH
+        const week = root.weekH > 0 ? root.gap + root.weekH : 0
+        const body = root.wide
+            ? root.gap + Math.max(hero.implicitHeight + story, facts) + header.implicitHeight
+            : root.topH + story + (facts > 0 ? root.gap + facts : 0)
+        return root.pad * 2 + body + week
+    }
+
+    readonly property bool showWeek: {
+        if (root.weekH <= 0) return false
+        return root.availH - root.topH >= root.gap + root.weekH
+    }
+
+    readonly property real bodyH: root.availH - header.implicitHeight - root.gap
+                                  - (root.showWeek ? root.gap + root.weekH : 0)
+
+    readonly property bool showStory: root.storyH > 0 && root.bodyH - hero.implicitHeight >= root.gap + root.storyH
+
+    readonly property int factCount: {
+        const room = root.wide
+            ? root.bodyH
+            : root.bodyH - hero.implicitHeight - (root.showStory ? root.gap + root.storyH : 0) - root.gap
+        return Math.max(0, Math.min(root.facts.length, Math.floor(room / root.rowH)))
+    }
+
+    readonly property int weekCount: Math.max(1, Math.min(root.days.length, Math.floor((root.innerW - 12) / 40)))
+
+    CustomText {
+        id: storyProbe
+        visible: false
+        width: root.leftW
+        content: root.story
+        textFormat: Text.StyledText
+        size: 14
+        weight: 400
+        lineHeight: 1.35
+        wrapMode: Text.WordWrap
+        elide: Text.ElideNone
+    }
+
+    ColumnLayout {
+        id: column
         anchors.fill: parent
-        anchors.margins: 10
-        contentWidth: width
-        contentHeight: column.height
-        interactive: column.implicitHeight > scroller.height + 1
-        boundsBehavior: Flickable.StopAtBounds
-        clip: interactive
+        anchors.margins: root.pad
+        spacing: root.gap
+        clip: true
 
-        ColumnLayout {
-            id: column
-            width: scroller.width
-            height: root.fixedHeight ? Math.max(column.implicitHeight, scroller.height) : column.implicitHeight
-            spacing: 8
+        RowLayout {
+            id: header
+            Layout.fillWidth: true
+            spacing: 6
+
+            CustomText {
+                Layout.fillWidth: true
+                content: ((ServiceWeather.cityName !== "Unknown" ? ServiceWeather.cityName : ServiceWeather.location)
+                          + "  ·  " + Qt.formatDate(root.now, "ddd d MMM")).toUpperCase()
+                size: 11
+                weight: 600
+                font.letterSpacing: 1.2
+                customColor: Colors.outline
+                elide: Text.ElideRight
+            }
+
+            CustomText {
+                content: root.updatedText
+                size: 11
+                customColor: ServiceWeather.isLoading ? Colors.primary : Colors.outline
+            }
+
+            M3IconButton {
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 30
+                icon: "refresh"
+                iconSize: 16
+                iconColor: ServiceWeather.isLoading ? Colors.primary : Colors.surfaceVariantText
+                onClicked: ServiceWeather.refresh()
+            }
+        }
+
+        GridLayout {
+            Layout.fillWidth: true
+            columns: root.wide ? 2 : 1
+            columnSpacing: 24
+            rowSpacing: root.gap
+
+            ColumnLayout {
+                Layout.preferredWidth: root.leftW
+                Layout.maximumWidth: root.leftW
+                Layout.alignment: Qt.AlignTop
+                spacing: root.gap
+
+                RowLayout {
+                    id: hero
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    CustomText {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 100
+                        Layout.minimumWidth: 0
+                        Layout.alignment: Qt.AlignTop
+                        content: root.headline
+                        size: root.wide ? 30 : 26
+                        weight: 400
+                        family: SettingsConfig.general.displayFont ?? "Titan One"
+                        renderType: Text.QtRendering
+                        wrapMode: Text.WordWrap
+                        elide: Text.ElideNone
+                        lineHeight: 1.1
+                        verticalAlignment: Text.AlignTop
+                    }
+
+                    ColumnLayout {
+                        Layout.alignment: Qt.AlignTop
+                        spacing: 4
+
+                        CustomText {
+                            Layout.alignment: Qt.AlignRight
+                            content: root.cur ? root.curTemp + "°" : "--"
+                            size: root.wide ? 64 : 56
+                            weight: 400
+                            family: SettingsConfig.general.displayFont ?? "Titan One"
+                            renderType: Text.QtRendering
+                            customColor: Colors.primary
+                        }
+
+                        CustomText {
+                            Layout.alignment: Qt.AlignRight
+                            visible: root.days.length > 0
+                            content: "H " + root.todayHi + "°  ·  L " + root.todayLo + "°"
+                            size: 12
+                            customColor: Colors.surfaceVariantText
+                        }
+                    }
+                }
+
+                CustomText {
+                    Layout.fillWidth: true
+                    visible: root.showStory
+                    content: root.story
+                    textFormat: Text.StyledText
+                    size: 14
+                    weight: 400
+                    lineHeight: 1.35
+                    wrapMode: Text.WordWrap
+                    elide: Text.ElideNone
+                    customColor: Colors.surfaceVariantText
+                }
+            }
+
+            ColumnLayout {
+                Layout.preferredWidth: root.factsW
+                Layout.maximumWidth: root.factsW
+                Layout.alignment: Qt.AlignTop
+                visible: root.factCount > 0
+                spacing: 0
+
+                Repeater {
+                    model: root.facts.slice(0, root.factCount)
+
+                    delegate: Item {
+                        id: factRow
+                        required property var modelData
+                        Layout.fillWidth: true
+                        implicitHeight: root.rowH
+
+                        Rectangle {
+                            width: parent.width
+                            height: 1
+                            color: Colors.outlineVariant
+                        }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.topMargin: 1
+                            spacing: 12
+
+                            MaterialIconSymbol {
+                                content: factRow.modelData.icon
+                                iconSize: 18
+                                customColor: Colors.outline
+                            }
+
+                            CustomText {
+                                Layout.fillWidth: true
+                                content: factRow.modelData.label
+                                size: 13
+                                weight: 400
+                                customColor: Colors.surfaceVariantText
+                            }
+
+                            CustomText {
+                                content: factRow.modelData.value
+                                size: 13
+                                weight: 600
+                            }
+
+                            CustomText {
+                                visible: root.factsW >= 280
+                                Layout.preferredWidth: 78
+                                horizontalAlignment: Text.AlignRight
+                                content: factRow.modelData.note
+                                size: 11
+                                weight: 400
+                                customColor: Colors.outline
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Item {
+            Layout.fillHeight: true
+        }
+
+        Rectangle {
+            id: week
+            Layout.fillWidth: true
+            visible: root.showWeek
+            implicitHeight: weekRow.implicitHeight + 24
+            radius: 18
+            color: Colors.surfaceContainerHigh
 
             RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 6
-                Layout.preferredHeight: 44
-                spacing: 6
+                id: weekRow
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: 6
+                anchors.rightMargin: 6
+                spacing: 2
 
-                MaterialIconSymbol {
-                    Layout.alignment: Qt.AlignVCenter
-                    content: "location_on"
-                    iconSize: 18
-                    customColor: Colors.primary
-                }
+                Repeater {
+                    model: root.days.slice(0, root.weekCount)
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignVCenter
-                    spacing: 0
-
-                    CustomText {
+                    delegate: ColumnLayout {
+                        id: dayCol
+                        required property var modelData
+                        required property int index
                         Layout.fillWidth: true
-                        content: ServiceWeather.cityName !== "Unknown" ? ServiceWeather.cityName : ServiceWeather.location
-                        size: 14
-                        weight: 700
-                        elide: Text.ElideRight
-                    }
-                    CustomText {
-                        Layout.fillWidth: true
-                        content: Qt.formatDate(root.now, "ddd, MMM d") + "  ·  " + root.updatedText
-                        size: 11
-                        customColor: Colors.outline
-                        elide: Text.ElideRight
-                    }
-                }
+                        Layout.preferredWidth: 1
+                        Layout.minimumWidth: 0
+                        Layout.maximumWidth: Infinity
+                        spacing: 4
 
-                M3IconButton {
-                    Layout.preferredWidth: 34
-                    Layout.preferredHeight: 34
-                    icon: "refresh"
-                    iconSize: 18
-                    iconColor: ServiceWeather.isLoading ? Colors.primary : Colors.surfaceText
-                    onClicked: ServiceWeather.refresh()
-                }
+                        CustomText {
+                            Layout.alignment: Qt.AlignHCenter
+                            content: dayCol.index === 0 ? "Today"
+                                   : Qt.formatDate(new Date(dayCol.modelData.date + "T00:00:00"), "ddd")
+                            size: 11
+                            weight: 600
+                            customColor: dayCol.index === 0 ? Colors.primary : Colors.outline
+                        }
 
-                M3IconButton {
-                    Layout.preferredWidth: 34
-                    Layout.preferredHeight: 34
-                    icon: "close"
-                    iconSize: 18
-                    onClicked: root.closed()
-                }
-            }
+                        CustomText {
+                            Layout.alignment: Qt.AlignHCenter
+                            content: root.dayHi(dayCol.modelData) + "°"
+                            size: 14
+                            weight: 600
+                        }
 
-            Loader {
-                id: styleLoader
-                Layout.fillWidth: true
-                Layout.fillHeight: root.fixedHeight
-                Layout.preferredHeight: item ? item.implicitHeight : 0
-                sourceComponent: {
-                    switch (root.style) {
-                    case "dial":     return dialComp
-                    case "shapes":   return shapesComp
-                    case "timeline": return timelineComp
-                    case "glance":   return glanceComp
+                        CustomText {
+                            Layout.alignment: Qt.AlignHCenter
+                            content: root.dayLo(dayCol.modelData) + "°"
+                            size: 11
+                            weight: 400
+                            customColor: Colors.outline
+                        }
                     }
-                    return curveComp
                 }
             }
         }
     }
-
-    Component { id: curveComp;    WeatherStyleCurve    { panel: root } }
-    Component { id: dialComp;     WeatherStyleDial     { panel: root } }
-    Component { id: shapesComp;   WeatherStyleShapes   { panel: root } }
-    Component { id: timelineComp; WeatherStyleTimeline { panel: root } }
-    Component { id: glanceComp;   WeatherStyleGlance   { panel: root } }
 }

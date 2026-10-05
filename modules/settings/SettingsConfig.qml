@@ -83,6 +83,7 @@ Singleton {
                 profile: "",
                 displayName: "",
                 settingsSections: true,
+                settingsRailWide: false,
                 defaultFont: "Rubik",
                 displayFont: "Titan One",
                 notesSide: "L",
@@ -109,7 +110,6 @@ Singleton {
                 barWeatherPanel: true,
                 motionScheme: "expressive",
                 holidayCountry: "",
-                fileDropDir: ""
             })
 
             property var general: ({
@@ -129,6 +129,7 @@ Singleton {
                 profile: "",
                 displayName: "",
                 settingsSections: true,
+                settingsRailWide: false,
                 defaultFont: "Rubik",
                 displayFont: "Titan One",
                 notesSide: "L",
@@ -155,7 +156,6 @@ Singleton {
                 barWeatherPanel: true,
                 motionScheme: "expressive",
                 holidayCountry: "",
-                fileDropDir: ""
             })
 
             onGeneralChanged: {
@@ -269,10 +269,24 @@ Singleton {
                 analogClockStyle: "classic",
                 dateWidgetStyle: "bold",
                 digitalClockStyle: "veil",
-                showProfileCard: false,
-                profileCardStyle: "card",
-                profileCardX: 100,
-                profileCardY: 400,
+                showProfileBadge: false,
+                profileBadgeX: 100,
+                profileBadgeY: 400,
+                showProfileDay: false,
+                profileDayX: 365,
+                profileDayY: 165,
+                showProfileStatus: false,
+                profileStatusX: 915,
+                profileStatusY: 165,
+                showProfileMachine: false,
+                profileMachineX: 915,
+                profileMachineY: 400,
+                showProfileShape: false,
+                profileShapeX: 1135,
+                profileShapeY: 620,
+                showProfileRings: false,
+                profileRingsX: 585,
+                profileRingsY: 620,
                 showSunArc: false,
                 sunArcX: 100,
                 sunArcY: 620,
@@ -382,6 +396,9 @@ Singleton {
                 showSysFlask: false,
                 sysFlaskX: 145,
                 sysFlaskY: 165,
+                showLavaLamp: false,
+                lavaLampX: 1575,
+                lavaLampY: 165,
                 showSysThermo: false,
                 sysThermoX: 365,
                 sysThermoY: 165,

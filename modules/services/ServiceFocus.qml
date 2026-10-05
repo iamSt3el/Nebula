@@ -73,12 +73,16 @@ Singleton {
             root.toggle()
     }
 
-    function reset() {
+    function stop() {
         root.running = false
         root.phase = "idle"
-        root.done = 0
         root.remaining = 0
         root.total = 1
+    }
+
+    function reset() {
+        root.stop()
+        root.done = 0
     }
 
     function _finish() {

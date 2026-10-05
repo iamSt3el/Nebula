@@ -4,6 +4,7 @@ import qs.modules.settings
 import qs.modules.services
 import qs.modules.components.Clipboard
 import qs.modules.components.WallpaperSelector
+import qs.modules.components.FileDrop
 
 Scope {
     CenterPanel {
@@ -23,6 +24,32 @@ Scope {
         content: (SettingsConfig.general.clipboardStyle ?? "list") === "fan" ? fanComp
             : (SettingsConfig.general.clipboardStyle ?? "list") === "board" ? boardComp : listComp
         onDismissed: GlobalStates.clipboardOpen = false
+    }
+
+    CenterPanel {
+        name: "phone"
+        open: GlobalStates.phoneOpen
+        panelWidth: 440
+        panelHeight: 720
+        content: Component { PhonePanel { onClosed: GlobalStates.phoneOpen = false } }
+        onDismissed: GlobalStates.phoneOpen = false
+    }
+
+    CenterPanel {
+        name: "phoneFiles"
+        open: GlobalStates.phoneBrowserOpen
+        panelWidth: 1040
+        panelHeight: 660
+        content: Component {
+            PhoneBrowser {
+                onClosed: GlobalStates.phoneBrowserOpen = false
+                onBack: {
+                    GlobalStates.phoneBrowserOpen = false
+                    GlobalStates.phoneOpen = true
+                }
+            }
+        }
+        onDismissed: GlobalStates.phoneBrowserOpen = false
     }
 
     Component {

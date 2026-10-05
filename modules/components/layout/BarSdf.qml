@@ -18,7 +18,8 @@ Item {
         return {
             bp: b ? b.pills : [], dp: d ? d.pills : [],
             bs: b ? b.segs : [], ds: d ? d.segs : [],
-            bf: b ? b.flares : [], df: d ? d.flares : []
+            bf: b ? b.flares : [], df: d ? d.flares : [],
+            bt: b ? b.tabs : [], dt: d ? d.tabs : []
         }
     }
 
@@ -56,6 +57,31 @@ Item {
         if (!a && !b)
             return sdf.z4
         return Qt.vector4d(a ? a.rl : 0, a ? a.rr : 0, b ? b.rl : 0, b ? b.rr : 0)
+    }
+    function tabAt(i) {
+        const k = sdf.packed
+        const n = k.bt.length
+        return i < n ? k.bt[i] : k.dt[i - n]
+    }
+    function tab(i) {
+        const t = sdf.tabAt(i)
+        return t ? Qt.vector4d(t.x, t.w, t.bot, i < sdf.packed.bt.length ? 0 : 1) : sdf.z4
+    }
+    function tabRad(i) {
+        const t = sdf.tabAt(i)
+        return t ? Qt.vector4d(t.rtl, t.rtr, t.rbl, t.rbr) : sdf.z4
+    }
+    function tabFil(i) {
+        const t = sdf.tabAt(i)
+        return t ? Qt.vector4d(t.lineL, t.rfL, t.lineR, t.rfR) : sdf.z4
+    }
+    function tabCon(i) {
+        const t = sdf.tabAt(i)
+        return t ? Qt.vector4d(t.conL, t.onL, t.conR, t.onR) : sdf.z4
+    }
+    function tabFlare(i) {
+        const t = sdf.tabAt(i)
+        return t ? Qt.vector4d(t.flL, t.mL, t.flR, t.mR) : sdf.z4
     }
     function flare(i) {
         const k = sdf.packed
@@ -103,6 +129,27 @@ Item {
     readonly property real pillCount: sdf.packed.bp.length + sdf.packed.dp.length
     readonly property real segCount: sdf.packed.bs.length + sdf.packed.ds.length
     readonly property real flareCount: sdf.packed.bf.length + sdf.packed.df.length
+    readonly property real tabCount: Math.min(4, sdf.packed.bt.length + sdf.packed.dt.length)
+    readonly property vector4d tb0: sdf.tab(0)
+    readonly property vector4d tbr0: sdf.tabRad(0)
+    readonly property vector4d tbf0: sdf.tabFil(0)
+    readonly property vector4d tbx0: sdf.tabFlare(0)
+    readonly property vector4d tbc0: sdf.tabCon(0)
+    readonly property vector4d tb1: sdf.tab(1)
+    readonly property vector4d tbr1: sdf.tabRad(1)
+    readonly property vector4d tbf1: sdf.tabFil(1)
+    readonly property vector4d tbx1: sdf.tabFlare(1)
+    readonly property vector4d tbc1: sdf.tabCon(1)
+    readonly property vector4d tb2: sdf.tab(2)
+    readonly property vector4d tbr2: sdf.tabRad(2)
+    readonly property vector4d tbf2: sdf.tabFil(2)
+    readonly property vector4d tbx2: sdf.tabFlare(2)
+    readonly property vector4d tbc2: sdf.tabCon(2)
+    readonly property vector4d tb3: sdf.tab(3)
+    readonly property vector4d tbr3: sdf.tabRad(3)
+    readonly property vector4d tbf3: sdf.tabFil(3)
+    readonly property vector4d tbx3: sdf.tabFlare(3)
+    readonly property vector4d tbc3: sdf.tabCon(3)
     readonly property real topA: sdf.barField ? sdf.bar.sdfTop : 0
     readonly property real rMaxA: sdf.barField ? sdf.bar.sdfRMax : 1
     readonly property real botA: sdf.barField ? sdf.bar.sdfBot : 0
@@ -220,6 +267,27 @@ Item {
         property real pillCount: sdf.pillCount
         property real segCount: sdf.segCount
         property real flareCount: sdf.flareCount
+        property real tabCount: sdf.tabCount
+        property vector4d tb0: sdf.tb0
+        property vector4d tbr0: sdf.tbr0
+        property vector4d tbf0: sdf.tbf0
+        property vector4d tbx0: sdf.tbx0
+        property vector4d tbc0: sdf.tbc0
+        property vector4d tb1: sdf.tb1
+        property vector4d tbr1: sdf.tbr1
+        property vector4d tbf1: sdf.tbf1
+        property vector4d tbx1: sdf.tbx1
+        property vector4d tbc1: sdf.tbc1
+        property vector4d tb2: sdf.tb2
+        property vector4d tbr2: sdf.tbr2
+        property vector4d tbf2: sdf.tbf2
+        property vector4d tbx2: sdf.tbx2
+        property vector4d tbc2: sdf.tbc2
+        property vector4d tb3: sdf.tb3
+        property vector4d tbr3: sdf.tbr3
+        property vector4d tbf3: sdf.tbf3
+        property vector4d tbx3: sdf.tbx3
+        property vector4d tbc3: sdf.tbc3
         property real topA: sdf.topA
         property real rMaxA: sdf.rMaxA
         property real botA: sdf.botA

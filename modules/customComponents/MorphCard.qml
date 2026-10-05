@@ -22,6 +22,7 @@ Item {
     property bool opened: false
     property bool contentVisible: false
     property bool fadeCard: false
+    property bool instant: false
 
     readonly property int morphDuration: M3Motion.spatialDuration("default")
     property var morphCurve: [0.2, 0.0, 0.0, 1.0, 1, 1]
@@ -86,6 +87,7 @@ Item {
         }
 
         Behavior on width {
+            enabled: !morph.instant
             NumberAnimation {
                 duration: morph.morphDuration
                 easing.type: Easing.BezierSpline
@@ -93,6 +95,7 @@ Item {
             }
         }
         Behavior on height {
+            enabled: !morph.instant
             NumberAnimation {
                 duration: morph.morphDuration
                 easing.type: Easing.BezierSpline
@@ -100,6 +103,7 @@ Item {
             }
         }
         Behavior on x {
+            enabled: !morph.instant
             NumberAnimation {
                 duration: morph.morphDuration
                 easing.type: Easing.BezierSpline
@@ -107,6 +111,7 @@ Item {
             }
         }
         Behavior on y {
+            enabled: !morph.instant
             NumberAnimation {
                 duration: morph.morphDuration
                 easing.type: Easing.BezierSpline
@@ -114,6 +119,7 @@ Item {
             }
         }
         Behavior on radius {
+            enabled: !morph.instant
             NumberAnimation {
                 duration: morph.morphDuration
                 easing.type: Easing.BezierSpline

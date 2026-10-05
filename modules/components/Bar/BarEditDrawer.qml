@@ -1,4 +1,5 @@
 import Quickshell
+import Quickshell.Widgets
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.utils
@@ -308,6 +309,27 @@ Item {
     height: Math.min(contentLoader.item ? contentLoader.item.contentHeight : 0, drawer.maxHeight)
 
     function open() {
+        if (!morph.opened) {
+            const f = drawer.editor ? drawer.editor.drawerFrom : Qt.rect(0, 0, 0, 0)
+            morph.instant = true
+            if (f.width > 0 && drawer.parent) {
+                const p = drawer.parent.mapToItem(drawer, f.x, f.y)
+                morph.srcWidth = f.width
+                morph.srcHeight = f.height
+                morph.srcRadius = f.height / 2
+                morph.srcX = p.x
+                morph.srcY = p.y
+            } else {
+                morph.srcWidth = 140
+                morph.srcHeight = 32
+                morph.srcRadius = 16
+                morph.srcX = (drawer.width - 140) / 2
+                morph.srcY = 0
+            }
+            morph.instant = false
+            if (drawer.editor)
+                drawer.editor.drawerFrom = Qt.rect(0, 0, 0, 0)
+        }
         drawer.alive = true
         Qt.callLater(morph.open)
     }
@@ -1996,11 +2018,16 @@ ColumnLayout {
                 }
             }
 
-            ScrollFade {
+            ClippingRectangle {
                 anchors.fill: parent
-                anchors.leftMargin: 24
-                anchors.rightMargin: 24
-                flickable: flick
+                radius: 24
+                color: "transparent"
+
+                ScrollFade {
+                    anchors.fill: parent
+                    flickable: flick
+                    size: 28
+                }
             }
 
             Rectangle {

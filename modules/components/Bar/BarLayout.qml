@@ -67,16 +67,18 @@ Singleton {
 
     function musicOptions(style) {
         return [{ key: "style", label: "Style", type: "grid", default: style,
-                  choices: [{ value: "pill",   label: "Transport", icon: "skip_next" },
-                            { value: "wave",   label: "Waveform",  icon: "graphic_eq" },
-                            { value: "island", label: "Island",    icon: "pill" },
-                            { value: "fill",   label: "Fill",      icon: "linear_scale" },
-                            { value: "type",   label: "Type",      icon: "title" },
-                            { value: "sources", label: "Sources",  icon: "queue_music" }] },
-                { key: "panel", label: "Panel", type: "choice", default: "side",
-                  choices: [{ value: "side", label: "Side by side" }, { value: "wave", label: "Waveform" },
-                            { value: "island", label: "Island" }, { value: "fill", label: "Fill" },
-                            { value: "type", label: "Type" }, { value: "sources", label: "Sources" }] },
+                  choices: [{ value: "pill",    label: "Transport", icon: "skip_next" },
+                            { value: "develop", label: "Develop",   icon: "filter_b_and_w" },
+                            { value: "drop",    label: "Drop",      icon: "water_drop" },
+                            { value: "buttons", label: "Buttons",   icon: "view_week" },
+                            { value: "shelf",   label: "Shelf",     icon: "shelves" },
+                            { value: "counter", label: "Counter",   icon: "timer" },
+                            { value: "shape",   label: "Shape",     icon: "interests" }] },
+                { key: "panel", label: "Panel", type: "choice", default: "match",
+                  choices: [{ value: "match", label: "Same as style" }, { value: "side", label: "Side by side" },
+                            { value: "develop", label: "Develop" }, { value: "drop", label: "Drop" },
+                            { value: "buttons", label: "Buttons" }, { value: "shelf", label: "Shelf" },
+                            { value: "counter", label: "Counter" }, { value: "shape", label: "Shape" }] },
                 { key: "hideIdle", label: "Hide when nothing plays", type: "toggle", default: false }]
     }
 
@@ -96,22 +98,20 @@ Singleton {
                       choices: [{ value: "pill",    label: "Pill",      icon: "view_week" },
                                 { value: "shapes",  label: "Shapes",    icon: "interests" },
                                 { value: "worm",    label: "Worm",      icon: "more_horiz" },
+                                { value: "goo",     label: "Goo",       icon: "bubble_chart" },
+                                { value: "bounce",  label: "Bounce",    icon: "sports_basketball" },
                                 { value: "numbers", label: "Numbers",   icon: "pin" },
-                                { value: "strip",   label: "App strip", icon: "apps" },
                                 { value: "kanji",   label: "Kanji",     icon: "translate" },
                                 { value: "lanterns", label: "Lanterns", icon: "light" },
-                                { value: "books",   label: "Bookshelf", icon: "shelves" },
                                 { value: "house",   label: "House",     icon: "cottage" },
-                                { value: "moons",   label: "Moons",     icon: "bedtime" },
                                 { value: "stars",   label: "Stars",     icon: "auto_awesome" },
                                 { value: "map",     label: "Window map", icon: "dashboard" },
                                 { value: "dial",    label: "Dial",      icon: "speed" },
-                                { value: "candles", label: "Candles",   icon: "local_fire_department" },
-                                { value: "ruler",   label: "Ruler",     icon: "straighten" },
                                 { value: "ring",    label: "Segment ring", icon: "donut_large" },
-                                { value: "viewfinder", label: "Viewfinder", icon: "center_focus_weak" },
-                                { value: "focus",   label: "Focus pill", icon: "label" },
-                                { value: "cards",   label: "Card stack", icon: "filter_none" }] },
+                                { value: "viewfinder", label: "Viewfinder", icon: "center_focus_weak" }] },
+                    { key: "size", label: "Size (%)", type: "slider", min: 100, step: 10, default: 100,
+                      max: Math.max(100, Math.floor((Appearance.size.barHeight - 4) / 3) * 10),
+                      sub: "Grows up to the bar's height (" + Appearance.size.barHeight + " px). Raise the bar height to go bigger." },
                     { key: "numbers", label: "Show numbers", type: "toggle", setting: "showWorkspaceNumbers", default: false,
                       onlyIf: { key: "style", values: ["pill"] } }] },
         { id: "windowTitle",   label: "Window title",  icon: "web_asset",            group: "Core", surfaces: ["bar"],
@@ -149,13 +149,7 @@ Singleton {
         { id: "tray",          label: "System tray",   icon: "apps",                 group: "Core", surfaces: ["bar"],
           options: [{ key: "visible", label: "Visible icons", type: "slider", min: 1, max: 8, step: 1, default: 3, auto: "All" }] },
         { id: "weather",       label: "Weather",       icon: "partly_cloudy_day",    group: "Core",
-          options: [{ key: "showIcon", label: "Show icon", type: "toggle", default: true },
-                    { key: "panel", label: "Panel style", type: "grid", default: "curve",
-                      choices: [{ value: "curve",    label: "Curve",    icon: "show_chart" },
-                                { value: "dial",     label: "Sky dial", icon: "wb_twilight" },
-                                { value: "shapes",   label: "Shapes",   icon: "interests" },
-                                { value: "timeline", label: "Timeline", icon: "view_timeline" },
-                                { value: "glance",   label: "Glance",   icon: "short_text" }] }] },
+          options: [{ key: "showIcon", label: "Show icon", type: "toggle", default: true }] },
         { id: "volume",        label: "Volume",        icon: "volume_up",            group: "Core",
           options: [{ key: "style", label: "Style", type: "choice", default: "icon",
                       choices: [{ value: "icon", label: "Icon" }, { value: "fill", label: "Fill" }] },
@@ -436,7 +430,7 @@ Singleton {
 
     readonly property bool sysPanelOpen: GlobalStates.clipboardOpen || GlobalStates.wallpaperOpen
         || GlobalStates.panelPreview === "wallpaper" || GlobalStates.panelPreview === "clipboard"
-        || GlobalStates.fileDropOpen || GlobalStates.osdOpen
+        || GlobalStates.osdOpen
     readonly property bool needSysHost: root.sysPanelOpen
         && (!root.dockOn || !root.bottomBlocks.some(b => b.anchor === "center"))
     readonly property string sysHostId: {
@@ -1080,6 +1074,7 @@ Singleton {
     function reset() {
         root.panelDraft = null
         root._patch({ blocks: [], dock: {}, margins: {}, options: {}, groups: {}, panelSizes: {},
+                      itemStyles: {}, blockStyles: {},
                       height: 40, itemGap: 6, blockGap: -1, radius: 18 })
     }
 

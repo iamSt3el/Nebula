@@ -12,6 +12,7 @@ Item {
     property var note: null
     property real maxHeight: 600
     property string shownId: ""
+    property real contentOpacity: 1
     readonly property color paper: card.note ? (ServiceNotes.colors[card.note.c] ?? ServiceNotes.colors.butter) : "transparent"
     readonly property color ink: "#2e2410"
     readonly property string display: SettingsConfig.general.displayFont || "Titan One"
@@ -72,10 +73,12 @@ Item {
         radius: 20
         fold: 26
         tape: true
+        Behavior on paper { ColorAnimation { duration: 260 } }
     }
 
     RowLayout {
         id: head
+        opacity: card.contentOpacity
         x: 16
         y: 16
         width: parent.width - 28
@@ -120,6 +123,7 @@ Item {
 
     Flickable {
         id: paperFlick
+        opacity: card.contentOpacity
         x: 20
         anchors.top: head.bottom
         anchors.topMargin: 10
@@ -278,6 +282,7 @@ Item {
 
     ColumnLayout {
         id: foot
+        opacity: card.contentOpacity
         x: 20
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 16

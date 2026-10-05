@@ -60,6 +60,25 @@ Item {
 
     readonly property var railOrder: root.navSections.reduce((all, g) => all.concat(g.indices), [])
     readonly property bool showSections: SettingsConfig.general.settingsSections ?? true
+    readonly property bool railWide: SettingsConfig.general.settingsRailWide ?? false
+    readonly property real railTarget: root.railWide ? 196 : 58
+    property real railW: root.railTarget
+    Behavior on railW { enabled: root.t > 0.5; SpatialAnim {} }
+    property real heldPageW: -1
+    readonly property real pageW: root.heldPageW >= 0 ? root.heldPageW : frame.width - root.railTarget
+
+    onRailWideChanged: {
+        if (root.t < 0.5)
+            return
+        root.heldPageW = frame.width - (root.railWide ? 58 : 196)
+        pageRelease.restart()
+    }
+
+    Timer {
+        id: pageRelease
+        interval: M3Motion.spatialDuration("default") + 120
+        onTriggered: root.heldPageW = -1
+    }
     property int shownPage: firstPage
     property int swapDir: 1
 
@@ -450,9 +469,10 @@ Item {
         property bool active: false
         signal clicked()
 
-        Layout.alignment: Qt.AlignHCenter
+        Layout.fillWidth: true
         implicitWidth: 38
         implicitHeight: 34
+        clip: true
 
         Rectangle {
             anchors.fill: parent
@@ -463,7 +483,8 @@ Item {
         }
 
         MaterialIconSymbol {
-            anchors.centerIn: parent
+            x: 10
+            anchors.verticalCenter: parent.verticalCenter
             content: railButton.icon
             iconSize: 18
             fill: railButton.active ? 1 : 0
@@ -472,13 +493,26 @@ Item {
             Behavior on fill { NumberAnimation { duration: 180 } }
         }
 
+        CustomText {
+            x: 40
+            anchors.verticalCenter: parent.verticalCenter
+            opacity: root.railWide ? 1 : 0
+            visible: opacity > 0
+            Behavior on opacity { EffectsAnim {} }
+            content: railButton.label
+            size: 13
+            weight: railButton.active ? 600 : 500
+            customColor: railButton.active ? Colors.primaryText
+                       : railMouse.containsMouse ? Colors.surfaceText : Colors.surfaceVariantText
+        }
+
         MouseArea {
             id: railMouse
             anchors.fill: parent
             cursorShape: GlobalStates.fileDialogOpen ? Qt.ArrowCursor : Qt.PointingHandCursor
             hoverEnabled: !GlobalStates.fileDialogOpen
             enabled: !GlobalStates.fileDialogOpen
-            onEntered: root.showTip(railButton, railButton.label, false)
+            onEntered: if (!root.railWide) root.showTip(railButton, railButton.label, false)
             onExited: root.hideTip(railButton)
             onClicked: railButton.clicked()
         }
@@ -496,19 +530,22 @@ Item {
             radius: 20
             color: Colors.surfaceContainer
 
-            RowLayout {
+            Item {
                 anchors.fill: parent
-                spacing: 0
+                clip: true
 
                 Rectangle {
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: 58
+                    width: root.railW
+                    height: parent.height
                     radius: 20
                     color: Colors.surfaceContainerHigh
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 8
+                        anchors.topMargin: 8
+                        anchors.bottomMargin: 8
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
                         spacing: 6
 
                         Item {
@@ -539,7 +576,7 @@ Item {
                                             Rectangle {
                                                 visible: index !== 0
                                                 Layout.alignment: Qt.AlignHCenter
-                                                Layout.preferredWidth: 26
+                                                Layout.preferredWidth: Math.max(26, navColumn.width - 12)
                                                 Layout.topMargin: 4
                                                 Layout.bottomMargin: 4
                                                 implicitHeight: 1
@@ -570,6 +607,16 @@ Item {
                         }
 
                         RailButton {
+                            id: railToggle
+                            icon: root.railWide ? "left_panel_close" : "left_panel_open"
+                            label: root.railWide ? "Collapse sidebar" : "Expand sidebar"
+                            onClicked: {
+                                root.hideTip(railToggle)
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { settingsRailWide: !root.railWide })
+                            }
+                        }
+
+                        RailButton {
                             icon: "edit"
                             label: "Edit Config"
                             onClicked: Quickshell.execDetached(["kitty", "-e", "nvim",
@@ -577,6 +624,12 @@ Item {
                         }
                     }
                 }
+
+                RowLayout {
+                x: root.railW
+                width: root.pageW
+                height: parent.height
+                spacing: 0
 
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -798,6 +851,7 @@ Item {
                     }
 
                     Item { Layout.fillHeight: true }
+                }
                 }
             }
 

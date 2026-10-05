@@ -29,7 +29,7 @@ A Material You desktop shell for Hyprland, built with [Quickshell](https://quick
 - **Dashboard and desktop widgets** laid out on grids you build yourself.
 - **Launcher** for apps, maths (`=`), shell commands (`>`), emoji (`:`) and open windows (`w`).
 - **Lock screen** with seven animated layouts, and an optional greetd greeter.
-- **Everyday tools:** notifications, clipboard history, screenshots and recording, a wallpaper browser with Wallhaven search, and Nebula Drop for moving files between your phone and PC over Wi-Fi.
+- **Everyday tools:** notifications, clipboard history, screenshots and recording, a wallpaper browser with Wallhaven search, and a Phone panel for files, links and clipboard to and from your phone via KDE Connect.
 
 ## Install
 

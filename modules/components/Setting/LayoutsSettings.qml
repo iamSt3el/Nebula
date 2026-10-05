@@ -23,6 +23,9 @@ Item {
     property string toast: ""
     property string busyId: ""
     property string armedDelete: ""
+    property string active: ""
+    readonly property string typedId: root.slug(nameIn.text)
+    readonly property var clash: nameIn.text.trim() === "" ? null : (root.layouts.find(l => l.id === root.typedId) ?? null)
 
     readonly property var sectionMeta: [
         { id: "bar", label: "Bar and dock", icon: "toolbar" },
@@ -32,6 +35,11 @@ Item {
         { id: "lockscreen", label: "Lock screen", icon: "lock" },
         { id: "look", label: "Wallpaper", icon: "wallpaper" }
     ]
+
+    function slug(name) {
+        const s = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+        return s || "layout"
+    }
 
     function iconFor(id) {
         const m = root.sectionMeta.find(s => s.id === id)
@@ -116,6 +124,7 @@ Item {
                     root.layouts = d.layouts ?? []
                     root.dir = d.dir ?? ""
                     root.canUndo = !!d.canUndo
+                    root.active = d.active ?? ""
                 } catch (e) {
                     root.layouts = []
                 }
@@ -136,6 +145,21 @@ Item {
             toastTimer.restart()
             root.refresh()
         }
+    }
+
+    Timer {
+        id: settingsSettled
+        interval: 600
+        onTriggered: if (!actProc.running) root.refresh()
+    }
+
+    Connections {
+        target: SettingsConfig
+        function onBarChanged() { settingsSettled.restart() }
+        function onWidgetsChanged() { settingsSettled.restart() }
+        function onDashboardChanged() { settingsSettled.restart() }
+        function onLockscreenChanged() { settingsSettled.restart() }
+        function onGeneralChanged() { settingsSettled.restart() }
     }
 
     Timer {
@@ -218,13 +242,13 @@ Item {
                         importPicker.open()
                     }
                 }
-                Pill { icon: "save"; label: "Save current"; filled: true; onClicked: root.saving = !root.saving }
+                Pill { icon: "add"; label: "Save as new"; filled: true; onClicked: root.saving = !root.saving }
             }
 
             CustomText {
                 Layout.topMargin: 6
                 Layout.fillWidth: true
-                content: "A layout is a snapshot of how your shell is arranged: the bar, desktop widgets, dashboard, panel styles, lock screen and, if you like, the wallpaper. Each one is a JSON file you can share."
+                content: "A layout is a snapshot of how your shell is arranged: the bar, desktop widgets, dashboard, panel styles, lock screen and, if you like, the wallpaper. The one you're using is marked Current; after you change things, press Update on it to keep the changes, or Save as new to keep both. Each layout is a JSON file you can share."
                 size: 12
                 customColor: Colors.outline
                 wrapMode: Text.WordWrap
@@ -256,7 +280,7 @@ Item {
                     anchors.margins: 16
                     spacing: 12
 
-                    CustomText { content: "Save the current layout"; size: 15; weight: 700 }
+                    CustomText { content: "Save what you have now as a new layout"; size: 15; weight: 700 }
 
                     Rectangle {
                         Layout.fillWidth: true
@@ -283,6 +307,22 @@ Item {
                                 size: 14
                                 customColor: Colors.outline
                             }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: root.clash !== null
+                        spacing: 8
+                        MaterialIconSymbol { content: "warning"; iconSize: 16; customColor: Colors.error }
+                        CustomText {
+                            Layout.fillWidth: true
+                            content: "“" + (root.clash?.name ?? "") + "” already exists. Saving replaces it."
+                            size: 12
+                            weight: 600
+                            customColor: Colors.error
+                            wrapMode: Text.WordWrap
+                            elide: Text.ElideNone
                         }
                     }
 
@@ -324,14 +364,15 @@ Item {
                         Pill { label: "Cancel"; onClicked: root.saving = false }
                         Pill {
                             id: saveButton
-                            icon: "save"
-                            label: "Save"
+                            icon: root.clash ? "sync_alt" : "save"
+                            label: root.clash ? "Replace" : "Save"
                             filled: true
                             enabledState: nameIn.text.trim() !== "" && root.pick.length > 0
                             onClicked: {
                                 if (nameIn.text.trim() === "" || root.pick.length === 0)
                                     return
-                                root.run(["save", nameIn.text.trim(), "--only", root.pick.join(",")], "Saved “" + nameIn.text.trim() + "”")
+                                root.run(["save", nameIn.text.trim(), "--only", root.pick.join(",")],
+                                         (root.clash ? "Replaced “" : "Saved “") + nameIn.text.trim() + "”")
                                 nameIn.text = ""
                                 root.saving = false
                             }
@@ -361,17 +402,22 @@ Item {
             SectionLabel { content: "Saved layouts" }
 
             CustomCard {
+                id: emptyCard
                 visible: root.loaded && root.layouts.length === 0
                 Layout.topMargin: 6
                 autoRadius: false; topRadius: 20; bottomRadius: 20
-                ColumnLayout {
+                Item {
                     Layout.fillWidth: true
-                    Layout.topMargin: 16
-                    Layout.bottomMargin: 16
-                    spacing: 6
-                    MaterialIconSymbol { Layout.alignment: Qt.AlignHCenter; content: "dashboard_customize"; iconSize: 34; customColor: Colors.outline }
-                    CustomText { Layout.alignment: Qt.AlignHCenter; content: "No layouts yet"; size: 15 }
-                    CustomText { Layout.alignment: Qt.AlignHCenter; content: "Save the one you have now, then experiment freely"; size: 12; customColor: Colors.outline }
+                    implicitHeight: emptyCol.implicitHeight + 32
+                    Column {
+                        id: emptyCol
+                        x: Math.round((emptyCard.width - 28 - width) / 2)
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 6
+                        MaterialIconSymbol { anchors.horizontalCenter: parent.horizontalCenter; content: "dashboard_customize"; iconSize: 34; customColor: Colors.outline }
+                        CustomText { anchors.horizontalCenter: parent.horizontalCenter; content: "No layouts yet"; size: 15 }
+                        CustomText { anchors.horizontalCenter: parent.horizontalCenter; content: "Save the one you have now, then experiment freely"; size: 12; customColor: Colors.outline }
+                    }
                 }
             }
 
@@ -388,10 +434,14 @@ Item {
                         required property var modelData
                         readonly property bool busy: root.busyId === card.modelData.id
                         readonly property var rows: root.details(card.modelData)
+                        readonly property bool current: !!card.modelData.current
+                        readonly property bool modified: card.current && !!card.modelData.modified
                         Layout.fillWidth: true
                         implicitHeight: cardCol.implicitHeight + 32
                         radius: 22
                         color: Colors.surfaceContainerHigh
+                        border.width: card.current ? 2 : 0
+                        border.color: Colors.primary
 
                         ColumnLayout {
                             id: cardCol
@@ -421,8 +471,35 @@ Item {
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 2
-                                    CustomText { Layout.fillWidth: true; content: card.modelData.name; size: 16; weight: 700 }
-                                    CustomText { Layout.fillWidth: true; content: "Saved " + root.when(card.modelData.saved); size: 12; customColor: Colors.outline }
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        CustomText { content: card.modelData.name; size: 16; weight: 700 }
+                                        Rectangle {
+                                            visible: card.current
+                                            implicitWidth: currentTag.implicitWidth + 16
+                                            implicitHeight: 22
+                                            radius: 11
+                                            color: Colors.primary
+                                            CustomText {
+                                                id: currentTag
+                                                anchors.centerIn: parent
+                                                content: "Current"
+                                                size: 11
+                                                weight: 700
+                                                customColor: Colors.primaryText
+                                            }
+                                        }
+                                        Item { Layout.fillWidth: true }
+                                    }
+                                    CustomText {
+                                        Layout.fillWidth: true
+                                        content: card.modified ? "Edited since you saved it · " + root.when(card.modelData.saved)
+                                                               : "Saved " + root.when(card.modelData.saved)
+                                        size: 12
+                                        weight: card.modified ? 600 : 400
+                                        customColor: card.modified ? Colors.tertiary : Colors.outline
+                                    }
                                 }
 
                                 M3IconButton {
@@ -449,13 +526,31 @@ Item {
                                     }
                                 }
                                 Pill {
-                                    icon: card.busy ? "hourglass_top" : "check"
-                                    label: "Apply"
+                                    visible: !card.current || card.modified
+                                    icon: card.busy ? "hourglass_top" : card.modified ? "undo" : "check"
+                                    label: card.modified ? "Revert" : "Apply"
+                                    filled: !card.current
+                                    onClicked: {
+                                        root.busyId = card.modelData.id
+                                        root.run(["load", card.modelData.id],
+                                                 (card.modified ? "Reverted to “" : "Applied “") + card.modelData.name + "”")
+                                    }
+                                }
+                                Pill {
+                                    visible: card.modified
+                                    icon: "save"
+                                    label: "Update"
                                     filled: true
                                     onClicked: {
                                         root.busyId = card.modelData.id
-                                        root.run(["load", card.modelData.id], "Applied “" + card.modelData.name + "”")
+                                        root.run(["update", card.modelData.id], "Updated “" + card.modelData.name + "”")
                                     }
+                                }
+                                Pill {
+                                    visible: card.current && !card.modified
+                                    icon: "check"
+                                    label: "In use"
+                                    enabledState: false
                                 }
                             }
 

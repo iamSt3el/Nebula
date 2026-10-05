@@ -113,6 +113,27 @@ layout(std140, binding = 0) uniform buf {
     vec4 fc9;
     vec4 fc10;
     vec4 fc11;
+    float tabCount;
+    vec4 tb0;
+    vec4 tbr0;
+    vec4 tbf0;
+    vec4 tbx0;
+    vec4 tbc0;
+    vec4 tb1;
+    vec4 tbr1;
+    vec4 tbf1;
+    vec4 tbx1;
+    vec4 tbc1;
+    vec4 tb2;
+    vec4 tbr2;
+    vec4 tbf2;
+    vec4 tbx2;
+    vec4 tbc2;
+    vec4 tb3;
+    vec4 tbr3;
+    vec4 tbf3;
+    vec4 tbx3;
+    vec4 tbc3;
 };
 
 const float weld = 2.0;
@@ -267,6 +288,46 @@ void addCon(inout float dA, inout float dB, vec4 s, vec4 f, float idx, vec2 pa, 
     }
 }
 
+void addTab(inout float dA, inout float dB, vec4 t, vec4 rr, vec4 fl, vec4 fx, vec4 cn, float idx, vec2 pa, vec2 pb) {
+    if (idx >= tabCount || t.y <= 0.0)
+        return;
+    bool dock = t.w > 0.5;
+    vec2 p = dock ? pb : pa;
+    float top = dock ? topB : topA;
+    float X = t.x + t.y;
+    float f = 1.0e5;
+    float c = -1.0e5;
+    if (fl.y > 0.0) {
+        f = min(f, sdRect(p, vec2(t.x - fl.y, fl.x - weld), vec2(t.x + weld, fl.x + fl.y)));
+        c = max(c, fl.y - length(p - vec2(t.x - fl.y, fl.x + fl.y)));
+    }
+    if (fl.w > 0.0) {
+        f = min(f, sdRect(p, vec2(X - weld, fl.z - weld), vec2(X + fl.w, fl.z + fl.w)));
+        c = max(c, fl.w - length(p - vec2(X + fl.w, fl.z + fl.w)));
+    }
+    if (fx.x > 0.0) {
+        vec4 g = vec4(t.x, t.z, fx.x, fx.y);
+        f = min(f, flareDist(g, fx.y, p));
+        c = max(c, fx.x - length(p - flareHub(g, fx.y)));
+    }
+    if (fx.z > 0.0) {
+        vec4 g = vec4(X, t.z, fx.z, fx.w);
+        f = min(f, flareDist(g, fx.w, p));
+        c = max(c, fx.z - length(p - flareHub(g, fx.w)));
+    }
+    f = max(f, c);
+    if (cn.y > 0.5)
+        f = min(f, sdRect(p, vec2(cn.x, top), vec2(t.x + weld, fl.x)));
+    if (cn.w > 0.5)
+        f = min(f, sdRect(p, vec2(X - weld, top), vec2(cn.z, fl.z)));
+    float d = min(sdCorners(p, vec2(t.x, top), vec2(X, t.z), rr), f);
+    d = max(d, top - p.y);
+    if (dock)
+        dB = min(dB, d);
+    else
+        dA = min(dA, d);
+}
+
 vec2 toFrame(vec2 p, vec4 m) {
     vec2 q = m.x > 0.5 ? p.yx : p;
     q.y = m.y > 0.5 ? m.z - q.y : q.y + m.z;
@@ -419,6 +480,10 @@ void main() {
     addCon(dA, dB, seg21, fil21, 21.0, pa, pb);
     addCon(dA, dB, seg22, fil22, 22.0, pa, pb);
     addCon(dA, dB, seg23, fil23, 23.0, pa, pb);
+    addTab(dA, dB, tb0, tbr0, tbf0, tbx0, tbc0, 0.0, pa, pb);
+    addTab(dA, dB, tb1, tbr1, tbf1, tbx1, tbc1, 1.0, pa, pb);
+    addTab(dA, dB, tb2, tbr2, tbf2, tbx2, tbc2, 2.0, pa, pb);
+    addTab(dA, dB, tb3, tbr3, tbf3, tbx3, tbc3, 3.0, pa, pb);
     if (strokeW > 0.0) {
         float ws = clamp(length(vec2(dFdx(dA), dFdy(dA))), 1.0e-5, 1.0);
         float sa = clamp(0.5 - (abs(dA) - strokeW * 0.5) / ws, 0.0, 1.0) * strokeColor.a;

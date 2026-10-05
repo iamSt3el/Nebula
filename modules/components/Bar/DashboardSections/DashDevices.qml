@@ -29,9 +29,9 @@ DashItem {
             if (d.batteryAvailable)
                 out.push({ name: d.name, icon: root.iconFor(d.icon), level: d.battery, charging: false })
         }
-        if (ServicePersonal.phoneReachable && ServicePersonal.phoneBattery >= 0)
-            out.push({ name: ServicePersonal.phoneName || "Phone", icon: "smartphone",
-                       level: ServicePersonal.phoneBattery / 100, charging: ServicePersonal.phoneCharging })
+        if (ServicePhone.ready && ServicePhone.battery >= 0)
+            out.push({ name: ServicePhone.name || "Phone", icon: "smartphone",
+                       level: ServicePhone.battery / 100, charging: ServicePhone.charging })
         return out
     }
 

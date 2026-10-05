@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nebula Drop — Nebula</title>
-<meta name="description" content="Moving files between your phone and PC over Wi-Fi with Nebula Drop, using a QR code and no phone app.">
+<title>Phone — Nebula</title>
+<meta name="description" content="Send files, links and your clipboard between your phone and PC with KDE Connect, from one panel in the shell.">
 <link rel="icon" href="assets/img/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,42 +19,34 @@
 
   <main class="content" id="main">
     <p class="crumb"></p>
-    <h1>Nebula Drop</h1>
-    <p class="lede">Nebula Drop transfers files between your phone and your PC over the local network. The shell serves a page and shows a QR code, so there is nothing to install on the phone.</p>
-
-<h2>How it works</h2>
-
-<p>Opening Nebula Drop starts a small HTTP server on your machine and displays a QR
-   code pointing at it. Scanning the code with your phone&rsquo;s camera opens the
-   transfer page in its browser. Files move in both directions from there.</p>
-
-<p>Routes are token-scoped, so the address in the QR code is the only way in, and
-   the page is only reachable from your local network.</p>
+    <h1>Phone</h1>
+    <p class="lede">The Phone panel sends files, links, text and your clipboard to your phone, and lists what the phone sends back. It runs on KDE Connect, so after one pairing the phone reconnects by itself whenever it is on the same Wi-Fi.</p>
 
 <h2>Setup</h2>
 
-<p>Bind the <code>quickshell:filedrop</code> shortcut — see
+<p>Install KDE Connect on the PC and the KDE Connect app on your phone (Play Store,
+   F-Droid or the App Store), then pair them once from the app. The panel's
+   <strong>Pair a phone</strong> button opens KDE Connect on the PC if you have not paired yet.</p>
+
+<div class="code"><span class="lang">bash</span><pre><span class="pr">$ </span>pacman -S kdeconnect sshfs</pre></div>
+
+<p>Bind the <code>quickshell:filedrop</code> shortcut to open the panel — see
    <a href="keybindings.html">Keybindings</a>.</p>
 
-<div class="callout warn">
-  <div class="hd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>Install qrencode first</div>
-  <p>The QR code is drawn by <code>qrencode</code>, which the installer does not yet pull
-     in. Without it, Nebula Drop cannot show a code to scan:</p>
-  <div class="code"><span class="lang">bash</span><pre><span class="pr">$ </span>pacman -S qrencode</pre></div>
-</div>
+<h2>What the panel does</h2>
 
-<h2>Both devices must be on the same network</h2>
+<ul>
+  <li><strong>Send files</strong>: drop them on the panel or click to choose. Screenshots and recordings also have a <em>Send to phone</em> button in the tools panel.</li>
+  <li><strong>Send a link or text</strong>: links open in the phone's browser, plain text lands on its clipboard.</li>
+  <li><strong>Clipboard, Ring, Browse</strong>: push the PC clipboard, make a lost phone ring, or open the phone's storage in your file manager (needs <code>sshfs</code>).</li>
+  <li><strong>Recent</strong>: files and text the phone sends appear here as they arrive; files go to your Downloads folder.</li>
+</ul>
 
-<p>The server binds to your machine&rsquo;s address on the local network. If the phone is
-   on mobile data, or on a guest network isolated from your PC, the page will not
-   load even though the QR code scans correctly.</p>
+<h2>Not nearby?</h2>
 
-<div class="callout">
-  <div class="hd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>Already using KDE Connect?</div>
-  <p>Nebula Drop is deliberately independent of it. It needs no pairing, no app and no
-     account, which makes it useful for a phone that is not yours — handing someone a
-     QR code is the whole handshake.</p>
-</div>
+<p>Open the KDE Connect app on the phone and check that both devices are on the same
+   network. <strong>Look again</strong> asks KDE Connect to search immediately. Guest
+   networks that isolate devices from each other block it.</p>
 
   </main>
 

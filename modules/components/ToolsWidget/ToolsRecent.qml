@@ -162,10 +162,9 @@ ColumnLayout {
                             TileAction {
                                 icon: "smartphone"; tip: "Send to phone"
                                 onActivated: {
-                                    ServiceFileDrop.share([cell.modelData.path])
-                                    if (!ServiceFileDrop.running) ServiceFileDrop.start()
+                                    ServicePhone.share([cell.modelData.path])
                                     GlobalStates.toolsWidgetOpen = false
-                                    GlobalStates.fileDropOpen = true
+                                    GlobalStates.phoneOpen = true
                                 }
                             }
                             TileAction {

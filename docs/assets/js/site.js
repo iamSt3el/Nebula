@@ -35,7 +35,7 @@ const NAV = [
     open: true,
     items: [
       { href: "theming.html", title: "Theming other apps", blurb: "Rendering the palette into btop, kitty, GTK, waybar and more." },
-      { href: "filedrop.html", title: "Nebula Drop", blurb: "Phone to PC file transfer over Wi-Fi, with no phone app." },
+      { href: "filedrop.html", title: "Phone", blurb: "Files, links and clipboard to and from your phone with KDE Connect." },
       { href: "troubleshooting.html", title: "Troubleshooting", blurb: "Known failure modes and how to get out of them." },
     ],
   },

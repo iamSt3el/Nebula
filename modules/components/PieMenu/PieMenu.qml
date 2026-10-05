@@ -69,7 +69,7 @@ Scope {
         case 2:
             GlobalStates.clipboardOpen = true
             GlobalStates.wallpaperOpen = false
-            GlobalStates.fileDropOpen = false
+            GlobalStates.phoneOpen = false
             break
         case 3:
             if (ServiceTools.isRecording) {

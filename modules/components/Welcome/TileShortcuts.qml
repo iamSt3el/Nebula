@@ -18,7 +18,7 @@ WelcomeTile {
         { what: "Clipboard",    name: "clipboard",         keys: ["Super", "V"],              hypr: "SUPER, V",           lua: "SUPER + V",             locked: false },
         { what: "Wallpapers",   name: "wallpaperLauncher", keys: ["Super", "W"],              hypr: "SUPER, W",           lua: "SUPER + W",             locked: false },
         { what: "Tools",        name: "toolsWidget",       keys: ["Super", "S"],              hypr: "SUPER, S",           lua: "SUPER + S",             locked: false },
-        { what: "Nebula Drop",  name: "filedrop",          keys: ["Super", "F"],              hypr: "SUPER, F",           lua: "SUPER + F",             locked: false },
+        { what: "Phone",        name: "filedrop",          keys: ["Super", "F"],              hypr: "SUPER, F",           lua: "SUPER + F",             locked: false },
         { what: "Pie menu",     name: "pie",               keys: ["Super", "A"],              hypr: "SUPER, A",           lua: "SUPER + A",             locked: false },
         { what: "Tuck window",  name: "tuck",              keys: ["Super", "X"],              hypr: "SUPER, X",           lua: "SUPER + X",             locked: false },
         { what: "Untuck",       name: "untuck",            keys: ["Super", "Shift", "X"],     hypr: "SUPER SHIFT, X",     lua: "SUPER + SHIFT + X",     locked: false },

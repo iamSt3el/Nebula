@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell.Services.Mpris
 import Quickshell.Widgets
 import qs.modules.utils
 import qs.modules.settings
@@ -14,8 +13,11 @@ Item {
     property string itemId: ""
     property string fallbackStyle: "pill"
 
-    readonly property string style: BarLayout.opt(root.itemId, "style") ?? root.fallbackStyle
-    readonly property string panelStyle: BarLayout.opt(root.itemId, "panel") ?? "side"
+    readonly property var styles: ["pill", "develop", "drop", "buttons", "shelf", "counter", "shape"]
+    readonly property string style: {
+        const s = BarLayout.opt(root.itemId, "style") ?? root.fallbackStyle
+        return root.styles.indexOf(s) >= 0 ? s : "pill"
+    }
     readonly property bool hideIdle: BarLayout.opt(root.itemId, "hideIdle") === true
 
     readonly property bool hasTrack: ServiceMusic.activePlayer !== null
@@ -23,15 +25,23 @@ Item {
     readonly property string title: ServiceMusic.activeTrack?.title ?? ""
     readonly property string artist: ServiceMusic.activeTrack?.artist ?? ""
     readonly property string artUrl: ServiceMusic.activeTrack?.artUrl ?? ""
+    readonly property real elapsed: ServiceMusic.activePlayer?.position ?? 0
     readonly property real progress: {
         const len = ServiceMusic.trackLength
         if (len <= 0)
             return 0
-        return Math.max(0, Math.min(1, (ServiceMusic.activePlayer?.position ?? 0) / len))
+        return Math.max(0, Math.min(1, root.elapsed / len))
     }
 
-    readonly property var panelKinds: ({ side: "music", wave: "musicWave", island: "musicIsland",
-                                         fill: "musicFill", type: "musicType", sources: "musicSources" })
+    readonly property var panelKinds: ({ side: "music", develop: "musicDevelop", drop: "musicDrop",
+                                         buttons: "musicButtons", shelf: "musicShelf",
+                                         counter: "musicCounter", shape: "musicShape" })
+    readonly property string panelKind: {
+        const p = BarLayout.opt(root.itemId, "panel") ?? "match"
+        if (root.panelKinds[p] !== undefined)
+            return root.panelKinds[p]
+        return root.panelKinds[root.style] ?? "music"
+    }
 
     readonly property bool inDock: root.host && root.host.iconSize ? true : false
     readonly property real h: root.inDock ? root.host.iconSize + 14 : Appearance.size.barHeight
@@ -51,13 +61,14 @@ Item {
             if (root.vertical)
                 return root.hasTrack ? columnComp : columnIdleComp
             if (!root.hasTrack)
-                return root.style === "island" ? islandComp : idleComp
+                return idleComp
             switch (root.style) {
-            case "wave":    return waveComp
-            case "island":  return islandComp
-            case "fill":    return fillComp
-            case "type":    return typeComp
-            case "sources": return sourcesComp
+            case "develop": return developComp
+            case "drop":    return dropComp
+            case "buttons": return buttonsComp
+            case "shelf":   return shelfComp
+            case "counter": return counterComp
+            case "shape":   return shapeComp
             }
             return pillComp
         }
@@ -66,8 +77,13 @@ Item {
     HoverHandler {
         onHoveredChanged: {
             if (hovered && root.host)
-                root.host.hoverOpen(root.panelKinds[root.panelStyle] ?? "music", root)
+                root.host.hoverOpen(root.panelKind, root)
         }
+    }
+
+    TapHandler {
+        acceptedButtons: Qt.MiddleButton
+        onTapped: ServiceMusic.togglePlaying()
     }
 
     component Art: ClippingWrapperRectangle {
@@ -247,269 +263,371 @@ Item {
         }
     }
 
-    Component {
-        id: waveComp
-        RowLayout {
-            spacing: 9
-            Btn {
-                icon: root.playing ? "pause" : "play_arrow"
-                primary: true
-                side: 28
-                onTapped: ServiceMusic.togglePlaying()
-            }
-            MusicWaveform {
-                Layout.preferredHeight: root.h - 18
-                bars: 26
-                barWidth: 3
-                gap: 2
-            }
-            CustomText {
-                id: waveTime
-                Layout.preferredWidth: Math.ceil(waveTimeSlot.width) + 2
-                content: ServiceMusic.formatTime(ServiceMusic.activePlayer?.position ?? 0)
-                size: 11
-                weight: 500
-                customColor: Colors.outline
-                elide: Text.ElideNone
-                font.features: { "tnum": 1 }
+    readonly property string displayFamily: SettingsConfig.general?.displayFont || "Titan One"
 
-                TextMetrics {
-                    id: waveTimeSlot
-                    font: waveTime.font
-                    text: waveTime.text.replace(/[0-9]/g, "0")
-                }
-            }
+    component Seg: Rectangle {
+        id: seg
+        property string icon: ""
+        property bool first: false
+        property bool last: false
+        property bool accent: false
+        property bool round: false
+        property bool usable: true
+        signal tapped
+
+        readonly property real hh: root.h - 10
+        readonly property bool down: segArea.pressed
+        readonly property real inner: seg.down || seg.round ? seg.hh / 2 : 6
+
+        implicitWidth: (seg.accent || seg.round ? 34 : 30) + (seg.down ? 10 : 0)
+        implicitHeight: seg.hh
+        topLeftRadius: seg.first ? seg.hh / 2 : seg.inner
+        bottomLeftRadius: seg.first ? seg.hh / 2 : seg.inner
+        topRightRadius: seg.last ? seg.hh / 2 : seg.inner
+        bottomRightRadius: seg.last ? seg.hh / 2 : seg.inner
+        opacity: seg.usable ? 1 : 0.4
+        color: seg.accent ? (segArea.containsMouse ? Qt.lighter(Colors.primary, 1.08) : Colors.primary)
+             : seg.round ? Colors.surfaceContainerHighest
+             : segArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
+
+        Behavior on implicitWidth { SpatialAnim { speed: "fast" } }
+        Behavior on topLeftRadius { SpatialAnim { speed: "fast" } }
+        Behavior on bottomLeftRadius { SpatialAnim { speed: "fast" } }
+        Behavior on topRightRadius { SpatialAnim { speed: "fast" } }
+        Behavior on bottomRightRadius { SpatialAnim { speed: "fast" } }
+        Behavior on color { EffectsColorAnim {} }
+
+        MaterialIconSymbol {
+            anchors.centerIn: parent
+            content: seg.icon
+            iconSize: Math.round(seg.hh * 0.6)
+            fill: 1
+            customColor: seg.accent ? Colors.primaryText : seg.round ? Colors.primary : Colors.surfaceText
+        }
+
+        MouseArea {
+            id: segArea
+            anchors.fill: parent
+            hoverEnabled: true
+            enabled: seg.usable
+            cursorShape: Qt.PointingHandCursor
+            onClicked: seg.tapped()
         }
     }
 
     Component {
-        id: islandComp
+        id: developComp
         Rectangle {
-            implicitWidth: islandRow.implicitWidth + 16
-            implicitHeight: root.h - 10
-            radius: implicitHeight / 2
-            color: "#000000"
-
-            RowLayout {
-                id: islandRow
-                anchors.verticalCenter: parent.verticalCenter
-                x: 5
-                spacing: 8
-
-                Art {
-                    visible: root.hasTrack
-                    side: root.h - 18
-                    radius: (root.h - 18) / 2
-                }
-
-                MaterialIconSymbol {
-                    visible: !root.hasTrack
-                    Layout.leftMargin: 4
-                    content: "music_off"
-                    iconSize: 14
-                    customColor: Colors.outline
-                }
-
-                MusicEqualizer {
-                    Layout.rightMargin: 2
-                    barColor: Colors.tertiary
-                    active: root.playing
-                }
-            }
-        }
-    }
-
-    Component {
-        id: fillComp
-        ClippingRectangle {
-            implicitWidth: 210
-            implicitHeight: root.h - 10
-            radius: implicitHeight / 2
-            color: Colors.surfaceContainerHighest
-
-            Rectangle {
-                width: parent.width * root.progress
-                height: parent.height
-                color: Colors.secondaryContainer
-                Behavior on width {
-                    enabled: root.playing
-                    SmoothedAnimation { velocity: 240 }
-                }
-            }
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 4
-                anchors.rightMargin: 4
-                spacing: 8
-
-                Art {
-                    side: root.h - 18
-                    radius: (root.h - 18) / 2
-                }
-                CustomText {
-                    Layout.maximumWidth: 120
-                    content: root.title
-                    size: 12
-                    weight: 600
-                    customColor: Colors.secondaryContainerText
-                    elide: Text.ElideRight
-                }
-                CustomText {
-                    Layout.fillWidth: true
-                    visible: root.artist !== ""
-                    content: root.artist
-                    size: 11
-                    customColor: Colors.outline
-                    elide: Text.ElideRight
-                }
-                Item {
-                    Layout.fillWidth: true
-                    visible: root.artist === ""
-                }
-                Btn {
-                    icon: root.playing ? "pause" : "play_arrow"
-                    primary: true
-                    side: root.h - 18
-                    onTapped: ServiceMusic.togglePlaying()
-                }
-            }
-        }
-    }
-
-    Component {
-        id: typeComp
-        RowLayout {
-            spacing: 8
-
-            MusicEqualizer {
-                Layout.preferredHeight: 12
-                bars: 3
-                barWidth: 3
-                barSpacing: 2
-                active: root.playing
-            }
-
-            Item {
-                id: typeTitle
-                Layout.preferredWidth: Math.min(typeBase.implicitWidth, 170)
-                Layout.preferredHeight: typeBase.implicitHeight
-
-                CustomText {
-                    id: typeBase
-                    width: parent.width
-                    content: root.title
-                    size: 13
-                    weight: 700
-                    customColor: Colors.outline
-                    elide: Text.ElideRight
-                }
-
-                Item {
-                    width: typeTitle.width * root.progress
-                    height: parent.height
-                    clip: true
-                    Behavior on width {
-                        enabled: root.playing
-                        SmoothedAnimation { velocity: 240 }
-                    }
-
-                    CustomText {
-                        width: typeTitle.width
-                        content: root.title
-                        size: 13
-                        weight: 700
-                        customColor: Colors.primary
-                        elide: Text.ElideRight
-                    }
-                }
-            }
-
-            CustomText {
-                Layout.maximumWidth: 90
-                visible: root.artist !== ""
-                content: root.artist
-                size: 11
-                customColor: Colors.outline
-                elide: Text.ElideRight
-            }
-        }
-    }
-
-    Component {
-        id: sourcesComp
-        Rectangle {
-            id: src
-            readonly property var ordered: {
-                const all = Mpris.players.values
-                const act = ServiceMusic.activePlayer
-                const rest = all.filter(p => p !== act)
-                return act ? [act].concat(rest) : rest
-            }
-            implicitWidth: srcRow.implicitWidth + 13
+            implicitWidth: devRow.implicitWidth + 17
             implicitHeight: root.h - 10
             radius: implicitHeight / 2
             color: Colors.surfaceContainerHigh
 
             RowLayout {
-                id: srcRow
+                id: devRow
                 anchors.verticalCenter: parent.verticalCenter
                 x: 3
-                spacing: 8
+                spacing: 9
 
-                Row {
-                    spacing: -8
-                    Repeater {
-                        model: src.ordered
-                        delegate: Rectangle {
-                            id: av
-                            required property var modelData
-                            required property int index
-                            width: root.h - 16
-                            height: width
-                            radius: width / 2
-                            z: 10 - av.index
-                            color: av.index === 0 ? Colors.primary : Colors.surfaceContainerHighest
-                            border.width: 2
-                            border.color: Colors.surfaceContainerHigh
+                MusicDevelopArt {
+                    Layout.preferredWidth: Math.round((root.h - 16) * 3)
+                    Layout.preferredHeight: root.h - 16
+                    cornerRadius: (root.h - 16) / 2
+                    progress: root.progress
+                    decode: 160
+                    opacity: root.playing ? 1 : 0.6
+                    Behavior on opacity { EffectsAnim {} }
 
-                            MusicPlayerIcon {
-                                anchors.centerIn: parent
-                                player: av.modelData
-                                side: Math.round(av.width * 0.56)
-                                glyphColor: av.index === 0 ? Colors.primaryText : Colors.surfaceVariantText
-                            }
-
-                            Rectangle {
-                                visible: av.modelData.isPlaying
-                                x: av.width - 7
-                                y: av.height - 7
-                                width: 8
-                                height: 8
-                                radius: 4
-                                color: Colors.tertiary
-                                border.width: 1.5
-                                border.color: Colors.surfaceContainerHigh
-                            }
-                        }
+                    MaterialIconSymbol {
+                        anchors.centerIn: parent
+                        content: "pause"
+                        iconSize: 16
+                        fill: 1
+                        customColor: "white"
+                        visible: !root.playing
                     }
                 }
-
                 CustomText {
-                    Layout.maximumWidth: 150
+                    Layout.maximumWidth: 130
                     content: root.title
                     size: 12
                     weight: 600
-                    customColor: Colors.surfaceText
-                    elide: Text.ElideRight
+                    customColor: root.playing ? Colors.surfaceText : Colors.outline
+                }
+                CustomText {
+                    Layout.maximumWidth: 100
+                    visible: !root.inDock && root.artist !== ""
+                    content: root.artist
+                    size: 12
+                    weight: 400
+                    customColor: Colors.outline
                 }
             }
+        }
+    }
 
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: src.ordered.length > 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
-                enabled: src.ordered.length > 1
-                onClicked: ServiceMusic.setActivePlayer(src.ordered[1])
+    Component {
+        id: dropComp
+        RowLayout {
+            id: dropRow
+            spacing: 8
+            readonly property bool hosted: !root.inDock && !!root.host && typeof root.host.registerDrop === "function"
+            property Item hostRef: null
+
+            Item {
+                id: dropSlot
+                Layout.preferredWidth: root.h - 18
+                Layout.preferredHeight: root.h - 18
+
+                Art {
+                    anchors.fill: parent
+                    side: root.h - 18
+                    radius: (root.h - 18) / 2
+                    visible: !dropRow.hosted || (!!root.host && root.host.editing === true)
+                }
+            }
+            CustomText {
+                Layout.maximumWidth: 140
+                content: root.title
+                size: 12
+                weight: 600
+                customColor: root.playing ? Colors.surfaceText : Colors.outline
+            }
+            CustomText {
+                Layout.maximumWidth: 100
+                visible: !root.inDock && root.artist !== "" && root.playing
+                content: root.artist
+                size: 12
+                weight: 400
+                customColor: Colors.outline
+            }
+            MaterialIconSymbol {
+                visible: !root.playing
+                content: "pause"
+                iconSize: 14
+                fill: 1
+                customColor: Colors.outline
+            }
+
+            Component.onCompleted: {
+                if (!dropRow.hosted)
+                    return
+                dropRow.hostRef = root.host
+                root.host.registerDrop(dropSlot, root)
+            }
+            Component.onDestruction: {
+                const h = dropRow.hostRef
+                if (h && h.dropSource === dropSlot)
+                    h.releaseDrop(dropSlot)
+            }
+        }
+    }
+
+    Component {
+        id: buttonsComp
+        RowLayout {
+            spacing: 2
+
+            Seg {
+                icon: "skip_previous"
+                first: true
+                usable: ServiceMusic.canGoPrevious
+                onTapped: ServiceMusic.previous()
+            }
+            Seg {
+                icon: root.playing ? "pause" : "play_arrow"
+                accent: root.playing
+                round: !root.playing
+                onTapped: ServiceMusic.togglePlaying()
+            }
+            Rectangle {
+                implicitWidth: midRow.implicitWidth + 16
+                implicitHeight: root.h - 10
+                radius: 6
+                color: root.playing ? Colors.secondaryContainer : Colors.surfaceContainer
+                Behavior on color { EffectsColorAnim {} }
+
+                RowLayout {
+                    id: midRow
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: 4
+                    spacing: 8
+
+                    Art {
+                        side: root.h - 18
+                        radius: 5
+                    }
+                    CustomText {
+                        Layout.maximumWidth: 130
+                        content: root.title
+                        size: 12
+                        weight: 600
+                        customColor: root.playing ? Colors.secondaryContainerText : Colors.outline
+                    }
+                    CustomText {
+                        Layout.maximumWidth: 100
+                        visible: !root.inDock && root.artist !== ""
+                        content: root.artist
+                        size: 12
+                        weight: 400
+                        customColor: Colors.outline
+                    }
+                }
+            }
+            Seg {
+                icon: "skip_next"
+                last: true
+                usable: ServiceMusic.canGoNext
+                onTapped: ServiceMusic.next()
+            }
+        }
+    }
+
+    Component {
+        id: shelfComp
+        Rectangle {
+            implicitWidth: shelfRow.implicitWidth + 18
+            implicitHeight: root.h - 8
+            radius: implicitHeight / 2
+            color: Colors.surfaceContainer
+
+            RowLayout {
+                id: shelfRow
+                anchors.verticalCenter: parent.verticalCenter
+                x: 4
+                spacing: 9
+
+                Rectangle {
+                    Layout.preferredWidth: root.h - 16
+                    Layout.preferredHeight: root.h - 16
+                    radius: width / 2
+                    color: root.playing ? Colors.primary : "transparent"
+                    border.width: root.playing ? 0 : 1.5
+                    border.color: Colors.outline
+                    Behavior on color { EffectsColorAnim {} }
+
+                    MaterialIconSymbol {
+                        anchors.centerIn: parent
+                        content: root.playing ? "pause" : "play_arrow"
+                        iconSize: Math.round(parent.width * 0.62)
+                        fill: 1
+                        customColor: root.playing ? Colors.primaryText : Colors.surfaceText
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: ServiceMusic.togglePlaying()
+                    }
+                }
+                ColumnLayout {
+                    spacing: -1
+                    CustomText {
+                        Layout.maximumWidth: 140
+                        content: root.title
+                        size: 11
+                        weight: 600
+                        customColor: root.playing ? Colors.surfaceText : Colors.surfaceVariantText
+                    }
+                    CustomText {
+                        Layout.maximumWidth: 140
+                        content: root.playing ? root.artist : "Paused at " + ServiceMusic.formatTime(root.elapsed)
+                        visible: content !== ""
+                        size: 10
+                        weight: 400
+                        customColor: Colors.outline
+                    }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: counterComp
+        Rectangle {
+            id: counter
+            implicitWidth: counterRow.implicitWidth + 18
+            implicitHeight: root.h - 10
+            radius: implicitHeight / 2
+            color: Colors.surfaceContainerHigh
+
+            HoverHandler { id: counterHover }
+
+            RowLayout {
+                id: counterRow
+                anchors.verticalCenter: parent.verticalCenter
+                x: 4
+                spacing: 8
+
+                Art {
+                    side: root.h - 18
+                    radius: (root.h - 18) / 2
+                    opacity: root.playing ? 1 : 0.6
+                }
+                Text {
+                    id: counterTime
+                    Layout.preferredWidth: Math.ceil(counterSlot.advanceWidth) + 2
+                    text: counterHover.hovered
+                        ? "−" + ServiceMusic.formatTime(Math.max(0, ServiceMusic.trackLength - root.elapsed))
+                        : ServiceMusic.formatTime(root.elapsed)
+                    font.family: root.displayFamily
+                    font.pixelSize: 15
+                    font.features: { "tnum": 1 }
+                    renderType: Text.QtRendering
+                    color: !root.playing ? Colors.outline : counterHover.hovered ? Colors.surfaceText : Colors.primary
+                    Behavior on color { EffectsColorAnim {} }
+
+                    TextMetrics {
+                        id: counterSlot
+                        font: counterTime.font
+                        text: "−" + ServiceMusic.formatTime(ServiceMusic.trackLength).replace(/[0-9]/g, "0")
+                    }
+                }
+                CustomText {
+                    Layout.maximumWidth: 130
+                    content: root.title
+                    size: 12
+                    weight: 500
+                    customColor: root.playing ? Colors.surfaceVariantText : Colors.outline
+                }
+            }
+        }
+    }
+
+    Component {
+        id: shapeComp
+        Item {
+            implicitWidth: shapeRow.implicitWidth + 6
+            implicitHeight: root.h - 8
+
+            RowLayout {
+                id: shapeRow
+                anchors.verticalCenter: parent.verticalCenter
+                x: 2
+                spacing: 9
+
+                MusicShapeArt {
+                    Layout.preferredWidth: root.h - 10
+                    Layout.preferredHeight: root.h - 10
+                    decode: 96
+                    round: !root.playing
+                    dim: root.playing ? 0 : 1
+                }
+                CustomText {
+                    Layout.maximumWidth: 140
+                    content: root.title
+                    size: 12
+                    weight: 600
+                    customColor: root.playing ? Colors.surfaceText : Colors.outline
+                }
+                CustomText {
+                    Layout.maximumWidth: 100
+                    visible: !root.inDock && root.artist !== ""
+                    content: root.artist
+                    size: 12
+                    weight: 400
+                    customColor: Colors.outline
+                }
             }
         }
     }
