@@ -348,12 +348,54 @@ def _shell_env() -> dict:
     return env
 
 
+NOTIF_NAME = "org.freedesktop.Notifications"
+
+
+def _block_notif_activation() -> None:
+    from pathlib import Path
+    user_dir = HOME / ".local/share/dbus-1/services"
+    wrote = False
+    for f in Path("/usr/share/dbus-1/services").glob("*.service"):
+        try:
+            if f"Name={NOTIF_NAME}" not in f.read_text().split():
+                continue
+        except OSError:
+            continue
+        target = user_dir / f.name
+        if target.exists():
+            continue
+        user_dir.mkdir(parents=True, exist_ok=True)
+        target.write_text(f"[D-BUS Service]\nName={NOTIF_NAME}\nExec=/bin/false\n")
+        wrote = True
+    if wrote and shutil.which("busctl"):
+        subprocess.run(["busctl", "--user", "call", "org.freedesktop.DBus", "/org/freedesktop/DBus",
+                        "org.freedesktop.DBus", "ReloadConfig"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def _free_notif_name() -> None:
+    import signal
+    if not shutil.which("busctl"):
+        return
+    r = subprocess.run(["busctl", "--user", "status", NOTIF_NAME], capture_output=True, text=True)
+    info = dict(line.split("=", 1) for line in r.stdout.splitlines() if "=" in line)
+    comm = info.get("Comm", "")
+    if not info.get("PID", "").isdigit() or comm in ("qs", "quickshell", ".quickshell-wra"):
+        return
+    try:
+        os.kill(int(info["PID"]), signal.SIGTERM)
+    except (ProcessLookupError, PermissionError):
+        pass
+
+
 def cmd_start(a) -> int:
     qs = _qs_bin()
     if not qs:
         return 1
     if shutil.which("wl-paste") and shutil.which("cliphist") and not _running("wl-paste --watch cliphist"):
         _spawn(["wl-paste", "--watch", "cliphist", "store"])
+    _block_notif_activation()
+    _free_notif_name()
     config = str(SHELL_DIR / "shell.qml")
     env = _shell_env()
     if a.foreground:
