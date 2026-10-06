@@ -20,7 +20,7 @@ Rectangle {
     readonly property bool plateOn: root.plateColor.a > 0.01
     readonly property real labelPx: BarLayout.scaleFor(root.iconPx, 18, 13, 8)
     readonly property real gapPx: BarLayout.scaleFor(root.iconPx, 18, 4, 2)
-    readonly property real padPx: BarLayout.scaleFor(root.iconPx, 18, 16, 8)
+    readonly property real padPx: root.plate - root.iconPx
     readonly property bool low: ServiceUPower.powerLevel < 0.2 && !ServiceUPower.isCharging
     readonly property bool showPercent: BarLayout.opt(root.itemId, "showPercent") === true
     readonly property bool fill: BarLayout.opt(root.itemId, "style") === "fill"

@@ -142,7 +142,7 @@ function sdfShape(bs, o, out) {
                 out.flares.push({ x: X, y: y, r: r, mode: cr.vertical ? 3 : 4 })
         }
 
-        out.segs.push({ x: x, w: w, bot: y, top: T, rl: Math.max(0, rl), rr: Math.max(0, rr),
+        out.segs.push({ id: b.id, x: x, w: w, bot: y, top: T, rl: Math.max(0, rl), rr: Math.max(0, rr),
                         lineL: lineL, raL: raL > 0.01 ? raL : 0,
                         lineR: lineR, raR: raR > 0.01 ? raR : 0,
                         gap: i < n - 1 ? Math.max(0, lefts[i + 1] - X) : -1 })

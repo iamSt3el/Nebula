@@ -29,7 +29,7 @@ A Material You desktop shell for Hyprland, built with [Quickshell](https://quick
 - **Dashboard and desktop widgets** laid out on grids you build yourself.
 - **Launcher** for apps, maths (`=`), shell commands (`>`), emoji (`:`) and open windows (`w`).
 - **Lock screen** with seven animated layouts, and an optional greetd greeter.
-- **Everyday tools:** notifications, clipboard history, screenshots and recording, a wallpaper browser with Wallhaven search, and a Phone panel for files, links and clipboard to and from your phone via KDE Connect.
+- **Everyday tools:** notifications, clipboard history, screenshots and recording, a wallpaper browser with Wallhaven search, and your phone over KDE Connect: a Phone panel for files, links and clipboard, plus bar items for its battery, notifications and calls.
 
 ## Install
 
@@ -76,7 +76,7 @@ nebula doctor                         # anything missing?
 ## Theming other apps
 
 The palette is always written to `~/.cache/quickshell/colors.json`. Nebula can also
-write it into kitty, tmux, Starship, btop, Hyprland, GTK, Qt, Firefox and Zen
+write it into kitty, tmux, Starship, btop, Hyprland, GTK, Qt, Papirus folders, Firefox and Zen
 (through Pywalfox), Obsidian, Waybar and nwg-dock, using matugen-style templates in
 `~/.config/matugen/templates/`. Pick the apps in `nebula setup` or with
 `nebula apps enable|disable <id>`. If a file is one you wrote yourself, Nebula keeps

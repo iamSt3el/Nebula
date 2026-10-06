@@ -9,7 +9,7 @@ Rectangle {
     property string itemId: ""
     readonly property bool shown: dots.active
 
-    implicitWidth: dots.implicitWidth + 16
+    implicitWidth: dots.implicitWidth + root.implicitHeight - dots.iconPx
     implicitHeight: 24
     radius: height / 2
     color: Colors.surfaceContainer

@@ -17,6 +17,7 @@ Scope {
         sourceComponent: PanelWindow {
             id: win
 
+            screen: ServiceTools.countdownScreen
             anchors { top: true; left: true; right: true; bottom: true }
             color: "transparent"
             WlrLayershell.namespace:     "quickshell:countdown"

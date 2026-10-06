@@ -20,7 +20,7 @@ Item {
     readonly property bool plateOn: root.plateColor.a > 0.01
     readonly property real labelPx: BarLayout.scaleFor(root.iconPx, 18, 13, 8)
     readonly property real gapPx: BarLayout.scaleFor(root.iconPx, 18, 6, 3)
-    readonly property real padPx: BarLayout.scaleFor(root.iconPx, 18, 18, 8)
+    readonly property real padPx: root.plate - root.iconPx
     readonly property bool fill: BarLayout.opt(root.itemId, "style") === "fill"
     readonly property bool vertical: !!root.host && root.host.vertical === true
     readonly property bool verticalReady: true

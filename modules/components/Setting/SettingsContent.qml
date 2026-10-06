@@ -478,7 +478,7 @@ Item {
             anchors.fill: parent
             radius: 12
             color: railButton.active ? Colors.primary
-                 : railMouse.containsMouse ? Colors.surfaceContainerHighest : "transparent"
+                 : railMouse.containsMouse ? Colors.surfaceContainerHighest : Qt.alpha(Colors.surfaceContainerHighest, 0)
             Behavior on color { EffectsColorAnim {} }
         }
 
@@ -827,7 +827,7 @@ Item {
                             implicitHeight: 30
                             radius: 10
                             color: tocItem.current ? Colors.secondaryContainer
-                                 : tocMouse.containsMouse ? Colors.surfaceContainerHigh : "transparent"
+                                 : tocMouse.containsMouse ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0)
                             Behavior on color { EffectsColorAnim {} }
 
                             CustomText {

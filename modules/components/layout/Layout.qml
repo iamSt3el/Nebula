@@ -88,6 +88,8 @@ PanelWindow{
                                : isPrimary && ((GlobalStates.clipboardOpen && (SettingsConfig.general.clipboardPanelMode ?? "dock") !== "center")
                                                || (GlobalStates.wallpaperOpen && (SettingsConfig.general.wallpaperPanelMode ?? "dock") !== "center")
                                                || GlobalStates.powerPanelOpen
+                                               || GlobalStates.phoneNotifsPanelOpen
+                                               || GlobalStates.phoneCallPanelOpen
                                                || GlobalStates.scenesPanelOpen
                                                || GlobalStates.dockSearchActive
                                                || (GlobalStates.appLauncherOpen && GlobalStates.launcherHosted)) ? WlrKeyboardFocus.OnDemand

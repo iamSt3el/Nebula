@@ -103,7 +103,7 @@ Item {
         Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             visible: root.showCaps && root.capsOn
-            width: capsRow.implicitWidth + 16
+            width: capsRow.implicitWidth + 10
             height: 26
             radius: 13
             color: Colors.primary
@@ -131,7 +131,7 @@ Item {
         Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             visible: root.showLayout
-            width: layoutRow.implicitWidth + 18
+            width: layoutRow.implicitWidth + 10
             height: 26
             radius: 13
             color: hov.containsMouse ? Colors.primaryContainer : Colors.surfaceContainer

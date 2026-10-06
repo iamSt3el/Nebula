@@ -15,7 +15,7 @@ Rectangle {
     readonly property bool low: ServiceUPower.powerLevel < 0.2 && !ServiceUPower.isCharging
     readonly property real iconPx: 17
 
-    implicitWidth: row.implicitWidth + 10
+    implicitWidth: row.implicitWidth + root.implicitHeight - row.implicitHeight
     implicitHeight: 30
     radius: height / 2
     color: Colors.surfaceContainerHigh
@@ -71,7 +71,7 @@ Rectangle {
         Item {
             anchors.verticalCenter: parent.verticalCenter
             visible: root.showPrivacy && privacy.active
-            width: privacy.implicitWidth + 8
+            width: privacy.implicitWidth + height - privacy.iconPx
             height: 26
 
             BarPrivacyDots {
@@ -131,7 +131,7 @@ Rectangle {
         Item {
             anchors.verticalCenter: parent.verticalCenter
             visible: root.showBattery
-            width: batt.width + 8
+            width: batt.width + height - batt.chipHeight
             height: 26
 
             BarFillChip {

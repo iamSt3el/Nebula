@@ -9,6 +9,7 @@ Rectangle {
     property Item host: null
     property string itemId: ""
     readonly property bool shown: true
+    readonly property real roundT: root.host && root.host.roundT !== undefined ? root.host.roundT : 0
 
     readonly property int week: {
         if (ServiceClock.date === "")
@@ -22,7 +23,7 @@ Rectangle {
 
     implicitWidth: label.implicitWidth + 14
     implicitHeight: 20
-    radius: 6
+    radius: 6 + (height / 2 - 6) * root.roundT
     color: Colors.secondaryContainer
 
     CustomText {

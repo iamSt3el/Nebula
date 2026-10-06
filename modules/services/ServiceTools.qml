@@ -181,6 +181,16 @@ Singleton{
 
     property string _pendingKind: ""
     property string _pendingGeo:  ""
+    readonly property var countdownScreen: {
+        const g = root._pendingGeo
+        if (root._pendingKind === "Screen")
+            return Quickshell.screens.find(s => s.name === g) ?? null
+        const m = /^(-?\d+),(-?\d+)/.exec(g)
+        if (root._pendingKind === "Area" && m)
+            return Quickshell.screens.find(s => +m[1] >= s.x && +m[1] < s.x + s.width
+                                             && +m[2] >= s.y && +m[2] < s.y + s.height) ?? null
+        return null
+    }
 
     Timer {
         id: countdownTimer
@@ -210,7 +220,7 @@ Singleton{
         const k = root._pendingKind, g = root._pendingGeo
         root._pendingKind = ""
         root._pendingGeo  = ""
-        if (k === "Screen")    root._doScreenshot()
+        if (k === "Screen")    root._doScreenshot(g)
         else if (k === "Area") root._doAreaScreenshot(g)
     }
 
@@ -540,7 +550,7 @@ Singleton{
         var cmd = ""
 
         if (mode === "Screen") {
-            cmd = `mkdir -p '${dir}' && ${base} -o ${Hyprland.focusedMonitor.name} -f '${filename}'`
+            cmd = `mkdir -p '${dir}' && ${base} -o ${root._shq(geometry || Hyprland.focusedMonitor.name)} -f '${filename}'`
         } else if (mode === "Area") {
             // slurp must run after the tools widget fully closes and releases its focus grab
             cmd = `mkdir -p '${dir}' && ${base} -g "$(slurp)" -f '${filename}'`
@@ -571,11 +581,15 @@ Singleton{
         WfRecorder.stop()
     }
 
-    function takeScreenshot(mode) {
-        if (mode === "Screen") root._beginCapture("Screen", "")
+    function takeScreenshot(mode, output) {
+        if (mode === "Screen") root._beginCapture("Screen", output ?? "")
     }
 
-    function _doScreenshot() {
+    function _doScreenshot(output) {
+        if (output) {
+            root._grimToFile("-o " + root._shq(output))
+            return
+        }
         screenshotProc.command = ["sh", "-c", "sleep 0.5 && grimblast copysave output"]
         screenshotProc.running = true
     }
@@ -586,6 +600,10 @@ Singleton{
     }
 
     function _doAreaScreenshot(geo) {
+        root._grimToFile("-g '" + geo + "'")
+    }
+
+    function _grimToFile(grimArgs) {
         var now = new Date()
         var ts  = now.getFullYear() + "-" +
                   String(now.getMonth() + 1).padStart(2, "0") + "-" +
@@ -597,7 +615,7 @@ Singleton{
         var path = dir + "/screenshot_" + ts + ".png"
         root._areaScreenshotPath = path
         areaScreenshotProc.command = ["sh", "-c",
-            "mkdir -p '" + dir + "' && sleep 0.4 && grim -g '" + geo + "' '" + path + "' && wl-copy < '" + path + "'"]
+            "mkdir -p '" + dir + "' && sleep 0.4 && grim " + grimArgs + " '" + path + "' && wl-copy < '" + path + "'"]
         areaScreenshotProc.running = true
     }
 

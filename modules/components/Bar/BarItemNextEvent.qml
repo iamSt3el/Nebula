@@ -41,7 +41,7 @@ Rectangle {
         return Qt.formatDate(root.next.date, "ddd d MMM")
     }
 
-    implicitWidth: row.implicitWidth + 20
+    implicitWidth: row.implicitWidth + 10
     implicitHeight: 26
     radius: height / 2
     color: hov.containsMouse ? Colors.primaryContainer

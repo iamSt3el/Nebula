@@ -27,6 +27,7 @@ Scope {
             closeAnim.stop()
             openAnim.restart()
         } else {
+            GlobalStates.panelHold = false
             openAnim.stop()
             closeAnim.restart()
         }
@@ -71,7 +72,7 @@ Scope {
 
             HyprlandFocusGrab {
                 windows: [win]
-                active: root.open
+                active: root.open && !GlobalStates.panelHold && !GlobalStates.fileDialogOpen
                 onCleared: if (root.open) root.dismissed()
             }
 
@@ -102,6 +103,15 @@ Scope {
                     Loader {
                         anchors.fill: parent
                         sourceComponent: root.content
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: GlobalStates.panelHold
+                    onPressed: mouse => {
+                        GlobalStates.panelHold = false
+                        mouse.accepted = false
                     }
                 }
             }

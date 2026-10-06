@@ -113,6 +113,7 @@ Singleton{
     property bool toolsWidgetOpen: false
     property bool shutdownWindow: false
     property bool fileDialogOpen: false
+    property bool panelHold: false
     property bool areaSelectOpen: false
     property bool liveTextOpen: false
     property bool sessionLocked: false
@@ -121,6 +122,8 @@ Singleton{
     property bool phoneOpen: false
     property bool phoneBrowserOpen: false
     property bool powerPanelOpen: false
+    property bool phoneNotifsPanelOpen: false
+    property bool phoneCallPanelOpen: false
     property bool scenesPanelOpen: false
     property bool dockSearchActive: false
     property string launcherSeed: ""

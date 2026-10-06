@@ -24,7 +24,7 @@ WelcomeTile {
         { cmd: "wf-recorder",   pkg: "wf-recorder",   label: "Recording"   },
         { cmd: "cava",          pkg: "cava",          label: "Visualiser"  },
         { cmd: "qalc",          pkg: "libqalculate",  label: "Calculator"  },
-        { cmd: "qrencode",      pkg: "qrencode",      label: "Nebula Drop" },
+        { cmd: "qrencode",      pkg: "qrencode",      label: "Wi-Fi QR"    },
         { cmd: "ddcutil",       pkg: "ddcutil",       label: "Monitor DDC" }
     ]
 

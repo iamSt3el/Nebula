@@ -24,6 +24,7 @@ Item {
     }
     readonly property int entriesVersion: ServiceApps.list.length
     readonly property real icon: root.host && root.host.iconSize ? root.host.iconSize : 32
+    readonly property real roundT: root.host && root.host.roundT !== undefined ? root.host.roundT : 0
     readonly property real cell: root.icon + 12
     readonly property real stride: root.cell + 2
     readonly property bool editing: !!root.host && !!root.host.editing
@@ -135,7 +136,7 @@ Item {
                 anchors.centerIn: parent
                 width: dockIconArea.containsMouse ? Math.round((root.icon + 8) * 1.15) : root.icon + 8
                 height: width
-                radius: 12
+                radius: 12 + (width / 2 - 12) * root.roundT
                 Behavior on width {
                     NumberAnimation { duration: 220; easing.type: Easing.OutBack; easing.overshoot: 0.5 }
                 }

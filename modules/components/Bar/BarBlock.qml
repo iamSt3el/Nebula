@@ -146,7 +146,69 @@ Item {
     }
     y: barBlock.far ? -barBlock.drop : barBlock.drop
     readonly property real barH: barBlock.bottomEdge ? BarLayout.dockHeight : Appearance.size.barHeight
-    readonly property real pad: barBlock.anchorSide === "center" ? 15 : 10
+    readonly property real basePad: barBlock.anchorSide === "center" ? 15 : 10
+    property var edgeL: null
+    property var edgeR: null
+    readonly property real stepT: (1 - barBlock.pillT) * (1 - barBlock.flatT)
+    readonly property real roundT: barBlock.pillT + barBlock.stepT
+    readonly property var corners: barBlock.frame && barBlock.frame.cornerOf
+        ? barBlock.frame.cornerOf(barBlock.blockId, barBlock.frame.sdfField) : null
+    readonly property real pad: barBlock.endPad(barBlock.edgeL, barBlock.corners ? barBlock.corners.l : 0)
+    readonly property real padR: barBlock.endPad(barBlock.edgeR, barBlock.corners ? barBlock.corners.r : 0)
+
+    function endPad(edge, corner) {
+        if (!edge)
+            return barBlock.basePad
+        const fit = side => Math.max(0, Math.min(barBlock.basePad, side - edge.off)) - barBlock.basePad
+        const stepW = corner > 0.5 ? barBlock.stepT : 0
+        return barBlock.basePad + fit(edge.gap) * barBlock.pillT
+            + fit(Math.max(edge.gap, corner - edge.r)) * stepW
+    }
+
+    function edgeShape(slot, fromRight) {
+        const top = slot.loaderItem
+        if (!top)
+            return null
+        let found = null
+        let nearest = Infinity
+        const walk = (it, depth) => {
+            if (!it || !it.visible || depth > 12)
+                return
+            if (it.radius !== undefined && it.color !== undefined
+                    && it.height >= barBlock.barH * 0.45 && it.width >= it.height * 0.6) {
+                const p = it.mapToItem(slot, 0, 0)
+                const off = fromRight ? slot.width - (p.x + it.width) : p.x
+                if (off < nearest && off < barBlock.basePad) {
+                    nearest = off
+                    found = { gap: (barBlock.barH - it.height) / 2, off: off,
+                              r: Math.min(it.radius, it.width / 2, it.height / 2) }
+                }
+            }
+            for (const c of it.children)
+                walk(c, depth + 1)
+        }
+        walk(top, 0)
+        return found
+    }
+
+    function measureEdges() {
+        let first = null
+        let last = null
+        for (let i = 0; i < rep.count; i++) {
+            const s = rep.itemAt(i)
+            if (!s || s.leaving || !s.itemShown)
+                continue
+            if (!first)
+                first = s
+            last = s
+        }
+        barBlock.edgeL = first ? barBlock.edgeShape(first, false) : null
+        barBlock.edgeR = last ? barBlock.edgeShape(last, true) : null
+    }
+
+    onSlotLayoutChanged: Qt.callLater(barBlock.measureEdges)
+    onBarHChanged: Qt.callLater(barBlock.measureEdges)
+    onShownCountChanged: Qt.callLater(barBlock.measureEdges)
 
     readonly property real gap: barBlock.bottomEdge ? BarLayout.dockItemGap : BarLayout.itemGap
 
@@ -271,12 +333,14 @@ Item {
 
     function flushSource(kind) {
         const w = barBlock.alongOf(kind)
-        const tx = barBlock.alignX(w, barBlock.srcX + barBlock.srcW / 2)
+        const cx = barBlock.srcX + barBlock.srcW / 2
+        const tx = barBlock.alignX(w, cx)
+        const pinned = Math.abs(tx - (cx - w / 2)) > 0.5
         let l = barBlock.srcX
         let r = barBlock.srcX + barBlock.srcW
-        if (Math.abs(tx) <= 0.5)
+        if (pinned && Math.abs(tx) <= 0.5)
             l = Math.min(l, 0)
-        if (Math.abs(tx + w - barBlock.width) <= 0.5)
+        if (pinned && Math.abs(tx + w - barBlock.width) <= 0.5)
             r = Math.max(r, barBlock.width)
         barBlock.srcX = l
         barBlock.srcW = r - l
@@ -396,14 +460,14 @@ Item {
     HyprlandFocusGrab {
         windows: [QsWindow.window]
         active: barBlock.panelKind === "trayMenu" || barBlock.panelKind === "dockMenu"
-            || (["sound", "network", "bluetooth", "brightness", "powerMode", "power", "battery", "soundscape", "scenes", "notifications", "dashboard", "weather"].indexOf(barBlock.panelKind) >= 0
+            || (["sound", "network", "bluetooth", "brightness", "powerMode", "power", "battery", "phoneStatus", "phoneNotifs", "phoneCall", "soundscape", "scenes", "notifications", "dashboard", "weather"].indexOf(barBlock.panelKind) >= 0
                 && barBlock.clickedKind === barBlock.panelKind
                 && !barBlock.panelHeld)
             || (barBlock.panelKind === "tray" && barBlock.clickedKind === "tray")
         onCleared: {
             if (barBlock.panelHeld)
                 return
-            if (["trayMenu", "dockMenu", "tray", "sound", "network", "bluetooth", "brightness", "powerMode", "power", "battery", "soundscape", "scenes", "notifications", "dashboard", "weather"].indexOf(barBlock.panelKind) >= 0)
+            if (["trayMenu", "dockMenu", "tray", "sound", "network", "bluetooth", "brightness", "powerMode", "power", "battery", "phoneStatus", "phoneNotifs", "phoneCall", "soundscape", "scenes", "notifications", "dashboard", "weather"].indexOf(barBlock.panelKind) >= 0)
                 barBlock.closePanel()
         }
     }
@@ -430,6 +494,9 @@ Item {
         case "brightness": return 340
         case "powerMode": return 320
         case "battery":   return 400
+        case "phoneStatus": return 400
+        case "phoneNotifs": return 420
+        case "phoneCall": return 400
         case "power":     return 340
         case "more":      return barBlock.itemOf("more") ? barBlock.itemOf("more").implicitWidth : 240
         case "notifications": return 400
@@ -475,6 +542,9 @@ Item {
         case "more":      return barBlock.itemOf("more") ? barBlock.itemOf("more").implicitHeight : 120
         case "notifications": return barBlock.itemOf("notifications") ? barBlock.itemOf("notifications").implicitHeight : 480
         case "battery":   return barBlock.itemOf("battery") ? barBlock.itemOf("battery").implicitHeight : 520
+        case "phoneStatus": return barBlock.itemOf("phoneStatus") ? barBlock.itemOf("phoneStatus").implicitHeight : 260
+        case "phoneNotifs": return barBlock.itemOf("phoneNotifs") ? barBlock.itemOf("phoneNotifs").implicitHeight : 300
+        case "phoneCall": return barBlock.itemOf("phoneCall") ? barBlock.itemOf("phoneCall").implicitHeight : 300
         case "dockPreview": return barBlock.itemOf("dockPreview") ? barBlock.itemOf("dockPreview").implicitHeight : 90
         case "dockMenu":  return barBlock.itemOf("dockMenu") ? barBlock.itemOf("dockMenu").implicitHeight : 150
         case "clipboard": return Appearance.size.wallpaperPanelHeight
@@ -754,7 +824,7 @@ Item {
     }
 
     readonly property real fixedWidth: {
-        let w = barBlock.pad * 2
+        let w = barBlock.pad + barBlock.padR
         let before = 0
         for (let k = 0; k < rep.count; k++) {
             const o = rep.itemAt(k)
@@ -778,7 +848,7 @@ Item {
     readonly property bool emptyInEdit: barBlock.editing && barBlock.itemIds.length === 0
     readonly property real naturalWidth: barBlock.emptyInEdit
         ? 96 + Math.max(0, barBlock.dragExtra)
-        : barBlock.slotLayout.total + barBlock.pad * 2 + barBlock.dragExtra
+        : barBlock.slotLayout.total + barBlock.pad + barBlock.padR + barBlock.dragExtra
     readonly property real collapsedWidth: barBlock.maxWidth > 0
         ? Math.min(barBlock.naturalWidth, Math.max(barBlock.maxWidth, barBlock.fixedWidth))
         : barBlock.naturalWidth
@@ -1045,10 +1115,10 @@ Item {
 
     Item {
         id: tabHost
-        x: barBlock.tabX
-        y: barBlock.far ? barBlock.barH - barBlock.tabH - barBlock.floatGap : 0
-        width: barBlock.tabW
-        height: barBlock.tabH + barBlock.floatGap
+        x: Math.round(barBlock.absX + barBlock.tabX) - barBlock.absX
+        y: barBlock.far ? barBlock.barH - Math.round(barBlock.tabH) - barBlock.floatGap : 0
+        width: Math.round(barBlock.absX + barBlock.tabX + barBlock.tabW) - Math.round(barBlock.absX + barBlock.tabX)
+        height: Math.round(barBlock.tabH) + barBlock.floatGap
         visible: barBlock.tabOpen
         clip: true
 
@@ -1613,7 +1683,7 @@ Item {
         width: barBlock.kindWidth(slot.kind)
         height: barBlock.contentHeight(slot.kind)
 
-        x: Math.round(slot.homeX) - slot.clipX
+        x: Math.round(barBlock.absX + slot.homeX) - barBlock.absX - slot.clipX
         y: Math.round(slot.clipY + (slot.shown ? slot.pinY + (barBlock.far ? slot.drift : -slot.drift) : slot.slideY)) - slot.clipY
         active: slot.kind !== ""
         asynchronous: true
@@ -1656,6 +1726,9 @@ Item {
             case "more":      return moreComp
             case "notifications": return notificationsComp
             case "battery":   return batteryComp
+            case "phoneStatus": return phoneStatusComp
+            case "phoneNotifs": return phoneNotifsComp
+            case "phoneCall": return phoneCallComp
             case "dockPreview": return dockPreviewComp
             case "dockMenu":  return dockMenuComp
             case "weather":   return weatherComp
@@ -1752,6 +1825,19 @@ Item {
         }
     }
     Component { id: batteryComp;   BarBatteryPanel {} }
+    Component { id: phoneStatusComp; BarPhoneStatusPanel { onClosed: barBlock.closePanel() } }
+    Component {
+        id: phoneNotifsComp
+        BarPhoneNotifsPanel {
+            maxHeight: Math.max(320, barBlock.openHeight - barBlock.barH - 40)
+        }
+    }
+    Component {
+        id: phoneCallComp
+        BarPhoneCallPanel {
+            maxHeight: Math.max(320, barBlock.openHeight - barBlock.barH - 40)
+        }
+    }
     Component {
         id: soundComp
         BarSoundPanel {

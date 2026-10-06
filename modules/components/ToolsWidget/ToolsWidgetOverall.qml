@@ -4,6 +4,7 @@ import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
+import Quickshell
 import Quickshell.Hyprland
 
 Item {
@@ -31,6 +32,8 @@ Item {
         if (act === "window")       selectorMode = cam ? "window-screenshot" : "window-recording"
         else if (act === "area")    selectorMode = cam ? "screenshot" : "recording"
         else if (act === "ocrarea") selectorMode = "ocr"
+        else if (act === "screen" && Quickshell.screens.length > 1)
+            selectorMode = cam ? "screen-screenshot" : "screen-recording"
 
         GlobalStates.toolsWidgetOpen = false
 

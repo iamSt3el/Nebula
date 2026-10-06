@@ -463,117 +463,16 @@ Item {
                     autoRadius: false; topRadius: 5; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 24
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 16
-                            ColumnLayout {
-                                Layout.preferredWidth: 170
-                                Layout.maximumWidth: 170
-                                spacing: 2
-                                CustomText { content: "Show Numbers"; size: 14 }
-                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Display index on each workspace indicator"; size: 12; customColor: Colors.outline }
-                            }
-                            Item { Layout.fillWidth: true }
-                            CustomToogle {
-                                isToggleOn: SettingsConfig.general.showWorkspaceNumbers ?? false
-                                onToggled: function(state) {
-                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { showWorkspaceNumbers: state })
-                                }
-                            }
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 16
-                            ColumnLayout {
-                                Layout.preferredWidth: 170
-                                Layout.maximumWidth: 170
-                                spacing: 2
-                                CustomText { content: "Per-monitor"; size: 14 }
-                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Each monitor shows only its own workspaces"; size: 12; customColor: Colors.outline }
-                            }
-                            Item { Layout.fillWidth: true }
-                            CustomToogle {
-                                isToggleOn: SettingsConfig.general.perMonitorWorkspaces ?? false
-                                onToggled: function(state) {
-                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { perMonitorWorkspaces: state })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── Dock ─────────────────────────────────────────────────────
-            CustomText { Layout.topMargin: 16; content: "Dock"; size: 13; customColor: Colors.primary }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 6
-                spacing: 3
-
-                CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
                         ColumnLayout {
                             spacing: 2
-                            CustomText { content: "Show Dock"; size: 14 }
-                            CustomText { content: "Show or hide the application dock"; size: 12; customColor: Colors.outline }
+                            CustomText { content: "Per-monitor"; size: 14 }
+                            CustomText { content: "Each monitor shows only its own workspaces"; size: 12; customColor: Colors.outline }
                         }
                         Item { Layout.fillWidth: true }
                         CustomToogle {
-                            isToggleOn: SettingsConfig.general.dock
+                            isToggleOn: SettingsConfig.general.perMonitorWorkspaces ?? false
                             onToggled: function(state) {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { dock: state })
-                            }
-                        }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 24
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 16
-                            ColumnLayout {
-                                Layout.preferredWidth: 170
-                                Layout.maximumWidth: 170
-                                spacing: 2
-                                CustomText { content: "Auto-hide"; size: 14 }
-                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Dock hides when a window overlaps it"; size: 12; customColor: Colors.outline }
-                            }
-                            Item { Layout.fillWidth: true }
-                            CustomToogle {
-                                isToggleOn: SettingsConfig.general.dockAutoHide
-                                onToggled: function(state) {
-                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { dockAutoHide: state })
-                                }
-                            }
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 16
-                            ColumnLayout {
-                                Layout.preferredWidth: 170
-                                Layout.maximumWidth: 170
-                                spacing: 2
-                                CustomText { content: "Music Player"; size: 14 }
-                                CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Show the mini player in the dock"; size: 12; customColor: Colors.outline }
-                            }
-                            Item { Layout.fillWidth: true }
-                            CustomToogle {
-                                isToggleOn: BarLayout.dockMusic
-                                onToggled: function(state) {
-                                    BarLayout.setDockMusic(state)
-                                }
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { perMonitorWorkspaces: state })
                             }
                         }
                     }

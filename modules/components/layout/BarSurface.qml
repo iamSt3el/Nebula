@@ -412,12 +412,12 @@ Item {
                     const dx = Math.max(bx, bx + b.dropX)
                     const dX = Math.min(bx + b.width, bx + b.dropX + b.dropW)
                     if (dx > bx + 0.01)
-                        out.push({ x: bx, w: dx - bx, bot: bot, isl: isl, run: ri, top: top })
-                    out.push({ x: dx, w: Math.max(0, dX - dx), bot: bot + dd * p, isl: isl, run: ri, top: top, melt: true })
+                        out.push({ x: bx, w: dx - bx, bot: bot, isl: isl, run: ri, top: top, id: b.blockId })
+                    out.push({ x: dx, w: Math.max(0, dX - dx), bot: bot + dd * p, isl: isl, run: ri, top: top, melt: true, id: b.blockId })
                     if (bx + b.width > dX + 0.01)
-                        out.push({ x: dX, w: bx + b.width - dX, bot: bot, isl: isl, run: ri, top: top })
+                        out.push({ x: dX, w: bx + b.width - dX, bot: bot, isl: isl, run: ri, top: top, id: b.blockId })
                 } else {
-                    out.push({ x: bx, w: b.width, bot: bot, isl: isl, run: ri, top: top })
+                    out.push({ x: bx, w: b.width, bot: bot, isl: isl, run: ri, top: top, id: b.blockId })
                 }
                 isl++
             }
@@ -703,6 +703,10 @@ Item {
     })
 
     property var sdfField: ({ pills: [], segs: [], flares: [], tabs: [] })
+    function cornerOf(blockId, field) {
+        const mine = field.segs.filter(sg => sg.id === blockId)
+        return mine.length ? { l: mine[0].rl, r: mine[mine.length - 1].rr } : null
+    }
     function calcField() {
         const h = surface.barH
         const f = BarPath.sdfEmpty()
@@ -846,9 +850,9 @@ Item {
         Behavior on anchors.topMargin   { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
         Behavior on anchors.bottomMargin { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
 
-        ListModel { id: leftModel }
-        ListModel { id: centerModel }
-        ListModel { id: rightModel }
+        ListModel { id: leftModel; onRowsMoved: Qt.callLater(surface.collectBlocks) }
+        ListModel { id: centerModel; onRowsMoved: Qt.callLater(surface.collectBlocks) }
+        ListModel { id: rightModel; onRowsMoved: Qt.callLater(surface.collectBlocks) }
 
         Item {
             id: leftGroup

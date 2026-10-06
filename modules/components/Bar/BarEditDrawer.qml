@@ -1287,7 +1287,7 @@ ColumnLayout {
                                     model: [
                                         { key: "height",   label: "Height",        min: 32, max: 56,  step: 2, def: 40, auto: false },
                                         { key: "itemGap",  label: "Item gap",      min: 0,  max: 16,  step: 1, def: 6,  auto: false },
-                                        { key: "blockGap", label: "Block gap",     min: 16, max: 120, step: 8, def: -1, auto: true },
+                                        { key: "blockGap", label: "Block gap",     min: 0,  max: 120, step: 8, def: -1, auto: true },
                                         { key: "radius",   label: "Corner radius", min: 8,  max: 24,  step: 1, def: 18, auto: false }
                                     ]
 
@@ -1668,7 +1668,7 @@ ColumnLayout {
                                         { key: "height",   label: "Height",        min: 48, max: 80, step: 2, def: 60 },
                                         { key: "iconSize", label: "Icon size",     min: 24, max: 48, step: 2, def: 32 },
                                         { key: "itemGap",  label: "Item gap",      min: 0,  max: 16, step: 1, def: 2 },
-                                        { key: "blockGap", label: "Block gap",     min: 16, max: 120, step: 8, def: -1, auto: true },
+                                        { key: "blockGap", label: "Block gap",     min: 0,  max: 120, step: 8, def: -1, auto: true },
                                         { key: "radius",   label: "Corner radius", min: 8,  max: 28, step: 1, def: 18 }
                                     ].concat(BarLayout.edgeShapes("bottom").indexOf("pill") >= 0
                                         ? [{ key: "pillGap", label: "Bottom gap", min: 0, max: 40, step: 1, def: BarLayout.dockPillGap }]

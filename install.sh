@@ -224,18 +224,18 @@ PACMAN_PKGS=(
   hyprland hypridle hyprpicker
   pipewire pipewire-pulse wireplumber libpipewire libpulse
   networkmanager bluez bluez-utils upower
-  python grim slurp wf-recorder swappy wl-clipboard wtype ffmpeg
-  cava brightnessctl curl unzip jq xdg-utils libnotify
+  python grim slurp wf-recorder swappy wl-clipboard wtype ffmpeg ffmpegthumbnailer
+  cava brightnessctl playerctl curl unzip jq xdg-utils libnotify qrencode
   imagemagick kdeconnect sshfs mpv tesseract tesseract-data-eng gperftools
   qt6-base qt6-declarative qt6-wayland qt6-svg qt6-multimedia
   libqalculate
   noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-fira-sans ttf-fira-code ttf-jetbrains-mono
   gcc cmake extra-cmake-modules
 )
-PACMAN_PKGS_OPT=(ddcutil papirus-icon-theme)
+PACMAN_PKGS_OPT=(ddcutil papirus-icon-theme yt-dlp)
 v sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
 sudo pacman -S --needed --noconfirm "${PACMAN_PKGS_OPT[@]}" \
-  || warn "Optional packages failed (ddcutil, papirus-icon-theme)"
+  || warn "Optional packages failed (ddcutil, papirus-icon-theme, yt-dlp)"
 
 # ── uv (fast Python package manager) ─────────────────────────────────────────
 step "uv (Python toolchain)"
@@ -307,7 +307,7 @@ fc-cache -f "$FONTS_DIR" >/dev/null
 step "Python environment"
 mkdir -p "$(dirname "$VENV_DIR")"
 v uv venv --prompt nebula "$VENV_DIR" -p 3.12
-v uv pip install materialyoucolor requests Pillow --python "$VENV_DIR/bin/python"
+v uv pip install materialyoucolor Pillow --python "$VENV_DIR/bin/python"
 ok "Python venv ready at $VENV_DIR"
 
 # ── WfRecorder plugin ─────────────────────────────────────────────────────────

@@ -11,6 +11,11 @@ import qs.modules.customComponents
 
 Item {
     id: root
+
+    function launch(args) {
+        GlobalStates.panelHold = true
+        Quickshell.execDetached(args)
+    }
     anchors.fill: parent
 
     signal closed
@@ -490,7 +495,7 @@ Item {
                     icon: "drive_file_move"
                     iconSize: 18
                     iconColor: Colors.surfaceVariantText
-                    onClicked: Quickshell.execDetached(["xdg-open", root.current !== "" ? root.current : ServicePhone.storageRoot])
+                    onClicked: root.launch(["xdg-open", root.current !== "" ? root.current : ServicePhone.storageRoot])
                 }
 
                 M3IconButton {
@@ -677,7 +682,7 @@ Item {
                                 if (tile.fileIsDir) root.go(tile.filePath)
                                 else root.toggle(tile.filePath, Number(tile.fileSize))
                             }
-                            onDoubleClicked: if (!tile.fileIsDir) Quickshell.execDetached(["xdg-open", tile.filePath])
+                            onDoubleClicked: if (!tile.fileIsDir) root.launch(["xdg-open", tile.filePath])
                         }
                     }
                 }
@@ -773,7 +778,7 @@ Item {
                                 if (row.fileIsDir) root.go(row.filePath)
                                 else root.toggle(row.filePath, Number(row.fileSize))
                             }
-                            onDoubleClicked: if (!row.fileIsDir) Quickshell.execDetached(["xdg-open", row.filePath])
+                            onDoubleClicked: if (!row.fileIsDir) root.launch(["xdg-open", row.filePath])
                         }
                     }
                 }
@@ -819,7 +824,7 @@ Item {
                             label: "Open"
                             onClicked: {
                                 for (const p of root.selectedPaths().slice(0, 5))
-                                    Quickshell.execDetached(["xdg-open", p])
+                                    root.launch(["xdg-open", p])
                             }
                         }
 
@@ -829,7 +834,7 @@ Item {
                             variant: "tonal"
                             icon: "folder_open"
                             label: "Show"
-                            onClicked: Quickshell.execDetached(["xdg-open", ServicePhone.downloads])
+                            onClicked: root.launch(["xdg-open", ServicePhone.downloads])
                         }
 
                         M3IconButton {

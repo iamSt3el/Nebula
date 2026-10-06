@@ -18,6 +18,7 @@ Item {
     readonly property bool verticalReady: true
     readonly property bool flexible: !root.vertical
     readonly property bool tint: BarLayout.opt(root.itemId, "tint") === true
+    readonly property real roundT: root.host && root.host.roundT !== undefined ? root.host.roundT : 0
     readonly property real fixedPart: root.tint ? 36 : 40
     readonly property bool appIcon: BarLayout.opt(root.itemId, "icon") !== "generic"
     readonly property string appId: ToplevelManager.activeToplevel ? (ToplevelManager.activeToplevel.appId ?? "") : ""
@@ -48,7 +49,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         width: root.tint ? 24 : 32
         height: width
-        radius: root.tint ? 12 : 10
+        radius: root.tint ? 12 : 10 + (width / 2 - 10) * root.roundT
         color: root.tint ? Colors.surfaceContainerLowest : Colors.surfaceContainer
 
         IconImage {

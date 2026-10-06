@@ -26,7 +26,7 @@ Item {
         id: zone
         anchors.verticalCenter: parent.verticalCenter
         width: root.vertical ? Math.max(root.plate, weatherRow.implicitWidth + 8)
-            : weatherRow.implicitWidth + BarLayout.scaleFor(root.iconPx, 16, 18, 8)
+            : weatherRow.implicitWidth + root.plate - root.iconPx
         height: root.vertical ? weatherRow.implicitHeight + 10 : root.plate
         radius: Math.min(width, height) / 2
         color: weatherHov.containsMouse ? Colors.primaryContainer : "transparent"
