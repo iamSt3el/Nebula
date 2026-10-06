@@ -1,0 +1,206 @@
+#!/usr/bin/env python3
+import base64
+import fcntl
+import hashlib
+import json
+import math
+import os
+import struct
+import subprocess
+import sys
+import termios
+import time
+
+HOME = os.path.expanduser("~")
+LOGO_SVG = os.path.join(HOME, ".config/quickshell/assets/nebula.svg")
+LOGO_CACHE = os.path.join(HOME, ".cache/quickshell/fetch-logo")
+LOGO_ROWS = 6
+LOGO_BOX = (4.5, 10.5, 91, 79)
+COLORS = os.path.join(HOME, ".cache/quickshell/colors.json")
+WEATHER = os.path.join(HOME, ".cache/quickshell/weather.json")
+WEATHER_MAX_AGE = 3 * 3600
+GAP = 4
+
+FALLBACK = {
+    "primary": "#ecc06c",
+    "surfaceText": "#eae1d7",
+    "surfaceVariantText": "#d3c5b4",
+    "outline": "#9a8f7f",
+}
+
+
+def sgr(hex_color):
+    h = hex_color.lstrip("#")
+    return f"\033[38;2;{int(h[0:2],16)};{int(h[2:4],16)};{int(h[4:6],16)}m"
+
+
+def load_colors():
+    try:
+        with open(COLORS) as f:
+            c = json.load(f)
+    except Exception:
+        c = {}
+    return {k: c.get(k, v) for k, v in FALLBACK.items()}
+
+
+def in_kitty():
+    return bool(os.environ.get("KITTY_WINDOW_ID")) and not os.environ.get("TMUX")
+
+
+def cell_size():
+    try:
+        rows, cols, xp, yp = struct.unpack(
+            "HHHH", fcntl.ioctl(sys.stdout.fileno(), termios.TIOCGWINSZ, b"\0" * 8))
+    except OSError:
+        return None
+    if not (rows and cols and xp and yp):
+        return None
+    return xp / cols, yp / rows
+
+
+def logo_image(hexes):
+    cell = cell_size()
+    if not cell:
+        return None
+    cw, ch = cell
+    x, y, w, h = LOGO_BOX
+    rows = LOGO_ROWS
+    hp = round(rows * ch)
+    cols = math.ceil(hp * w / h / cw)
+    wp = round(cols * cw)
+    try:
+        with open(LOGO_SVG) as f:
+            svg = f.read()
+    except OSError:
+        return None
+    key = hashlib.sha1(
+        f"{svg}{hexes['primary']}{hexes['surfaceText']}{wp}x{hp}".encode()).hexdigest()[:16]
+    path = os.path.join(LOGO_CACHE, f"{key}.png")
+    if not os.path.exists(path):
+        lines = svg.splitlines()
+        svg = "\n".join(
+            l.replace("#000", hexes["surfaceText"] if "M50 49" in l else hexes["primary"])
+            for l in lines)
+        svg = svg.replace('viewBox="0 0 100 100"', f'viewBox="{x} {y} {w} {h}"')
+        try:
+            png = subprocess.run(
+                ["rsvg-convert", "-w", str(wp), "-h", str(hp)],
+                input=svg.encode(), capture_output=True, check=True).stdout
+        except (OSError, subprocess.CalledProcessError):
+            return None
+        os.makedirs(LOGO_CACHE, exist_ok=True)
+        for old in os.listdir(LOGO_CACHE):
+            os.remove(os.path.join(LOGO_CACHE, old))
+        with open(path, "wb") as f:
+            f.write(png)
+    with open(path, "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+    chunks = [data[i:i + 4096] for i in range(0, len(data), 4096)]
+    out = ""
+    for i, chunk in enumerate(chunks):
+        more = int(i < len(chunks) - 1)
+        head = f"a=T,f=100,c={cols},r={rows},C=1,q=2," if i == 0 else ""
+        out += f"\033_G{head}m={more};{chunk}\033\\"
+    return out, cols, rows
+
+
+def probe():
+    out = subprocess.run(
+        ["fastfetch", "--format", "json", "--structure", "uptime:packages:memory:disk"],
+        capture_output=True, text=True,
+    ).stdout
+    try:
+        return {e["type"]: e["result"] for e in json.loads(out)}
+    except (ValueError, KeyError, TypeError):
+        return {}
+
+
+def weather():
+    try:
+        if time.time() - os.path.getmtime(WEATHER) > WEATHER_MAX_AGE:
+            return None
+        with open(WEATHER) as f:
+            cc = json.load(f)["data"]["current_condition"][0]
+        return f'{cc["temp_C"]}° {cc["weatherDesc"][0]["value"].lower()}'
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        return None
+
+
+def salutation(hour):
+    if hour < 5:
+        return "Up late"
+    if hour < 12:
+        return "Good morning"
+    if hour < 17:
+        return "Good afternoon"
+    return "Good evening"
+
+
+def compact_uptime(ms):
+    m = ms // 60000
+    d, m = divmod(m, 1440)
+    h, m = divmod(m, 60)
+    if d:
+        return f"{d}d {h}h"
+    if h:
+        return f"{h}h {m}m"
+    return f"{m}m"
+
+
+def main():
+    hexes = load_colors()
+    P = {k: sgr(v) for k, v in hexes.items()}
+    V, SUB, DIM, ACC = P["surfaceText"], P["surfaceVariantText"], P["outline"], P["primary"]
+    B, R = "\033[1m", "\033[0m"
+    kitty = in_kitty()
+    d = probe()
+    now = time.localtime()
+    user = os.environ.get("USER", "")
+
+    hello = salutation(now.tm_hour)
+    if kitty:
+        greet = f"{B}{V}\033]66;s=2;{hello}, \033\\{ACC}\033]66;s=2;{user}\033\\{R}"
+    else:
+        greet = f"{B}{V}{hello}, {ACC}{user}{R}"
+
+    sep = f"{DIM}  ·  "
+    when = [time.strftime("%A %-d %B", now), time.strftime("%H:%M", now), weather()]
+    when_line = SUB + sep.join(f"{SUB}{x}" for x in when if x) + R
+
+    stats = []
+    if "Uptime" in d:
+        stats.append(f"{DIM}up {V}{compact_uptime(d['Uptime']['uptime'])}")
+    if "Packages" in d:
+        stats.append(f"{V}{d['Packages']['all']}{DIM} pkgs")
+    mem = d.get("Memory")
+    if mem:
+        stats.append(f"{DIM}ram {V}{mem['used'] / 1024**3:.1f} / {mem['total'] / 1024**3:.1f}")
+    root = next((x for x in d.get("Disk", []) if x.get("mountpoint") == "/"), None)
+    if root:
+        b = root["bytes"]
+        stats.append(f"{DIM}disk {V}{round(100 * b['used'] / b['total'])}%")
+    stats_line = sep.join(stats) + R
+
+    body = [greet, ""] if kitty else [greet]
+    body += [when_line, "", stats_line]
+
+    image = logo_image(hexes) if kitty else None
+    sys.stdout.write("\n")
+    if not image:
+        for line in body:
+            sys.stdout.write(f"  {line}{R}\n" if line else "\n")
+        sys.stdout.write("\n")
+        return
+
+    seq, width, rows = image
+    pad = max(0, (rows - len(body)) // 2)
+    body = [""] * pad + body
+    sys.stdout.write("\n" * rows + f"\033[{rows}A\r" + seq)
+    for i in range(max(rows, len(body))):
+        right = body[i] if i < len(body) else ""
+        sys.stdout.write(f"\033[{width + GAP}C{right}{R}\n" if right else "\n")
+    sys.stdout.write("\n")
+
+
+if __name__ == "__main__":
+    main()

@@ -14,7 +14,7 @@ BOLD='\033[1m'; DIM='\033[2m'; RESET='\033[0m'
 RULE='──────────────────────────────────────────────────────────────'
 
 STEP_N=0
-TOTAL_STEPS=19
+TOTAL_STEPS=20
 WARNINGS=()
 START_TS=$SECONDS
 
@@ -126,6 +126,24 @@ echo ""
 echo -e "  ${DIM}repo${RESET}    ${CYAN}${REPO_URL}${RESET}"
 echo -e "  ${DIM}target${RESET}  ${CYAN}${INSTALL_DIR}${RESET}"
 echo -e "  ${DIM}venv${RESET}    ${CYAN}${VENV_DIR}${RESET}"
+
+REMOTE_JSON="$(curl -fsS --max-time 5 https://api.github.com/repos/iamSt3el/Nebula/commits/master 2>/dev/null)"
+REMOTE_SHA="$(sed -n 's/^  "sha": "\([0-9a-f]*\)".*/\1/p' <<<"$REMOTE_JSON" | head -n1)"
+REMOTE_DATE="$(sed -n 's/^ *"date": "\([^"]*\)".*/\1/p' <<<"$REMOTE_JSON" | head -n1)"
+if [[ -n "$REMOTE_SHA" ]]; then
+  echo -e "  ${DIM}latest${RESET}  ${CYAN}${REMOTE_SHA:0:7}${RESET}  ${DIM}$(date -d "$REMOTE_DATE" '+%Y-%m-%d %H:%M' 2>/dev/null)${RESET}"
+fi
+LOCAL_SHA=""
+if has git && [[ -d "$INSTALL_DIR/.git" ]]; then
+  LOCAL_SHA="$(git -C "$INSTALL_DIR" rev-parse HEAD 2>/dev/null)"
+  echo -e "  ${DIM}local${RESET}   ${CYAN}${LOCAL_SHA:0:7}${RESET}  ${DIM}$(git -C "$INSTALL_DIR" log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M' 2>/dev/null)${RESET}"
+fi
+SELF="$(readlink -f "$0" 2>/dev/null)"
+if [[ -n "$REMOTE_SHA" && -n "$LOCAL_SHA" && "$LOCAL_SHA" != "$REMOTE_SHA" && "$SELF" == "$INSTALL_DIR/install.sh" ]]; then
+  echo ""
+  echo -e "  ${YELLOW}▲ This installer is from your local copy, which is behind GitHub.${RESET}"
+  echo -e "  ${DIM}  For the latest installer run:${RESET} ${CYAN}bash <(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/master/install.sh)${RESET}"
+fi
 echo ""
 echo -e "  ${DIM}Nebula's Hyprland config (hyprland.lua, lua/, nebula/) is copied into ~/.config/hypr,${RESET}"
 echo -e "  ${DIM}with the option to back up the folder first.${RESET}"
@@ -193,15 +211,15 @@ ok "AUR helper: $AUR_HELPER"
 step "Nebula source"
 if [[ -d "$INSTALL_DIR/.git" ]]; then
   warn "$INSTALL_DIR already exists."
-  upd=n
+  upd=y
   if $ask; then
-    echo -e "  Update to latest? [y/N]"
+    echo -e "  Update to latest? [Y/n]"
     read -rp "   ❯ " upd
   fi
-  if [[ "${upd,,}" == "y" ]]; then
+  if [[ "${upd,,}" != "n" ]]; then
     v git -C "$INSTALL_DIR" fetch
     if git -C "$INSTALL_DIR" merge --ff-only "@{u}"; then
-      ok "Updated to $(git -C "$INSTALL_DIR" rev-parse --short HEAD)"
+      ok "Updated to $(git -C "$INSTALL_DIR" log -1 --format='%h  %cd' --date=format:'%Y-%m-%d %H:%M')"
     else
       warn "Local changes in $INSTALL_DIR block the update."
       rst=n
@@ -219,7 +237,7 @@ if [[ -d "$INSTALL_DIR/.git" ]]; then
       fi
     fi
   else
-    ok "Keeping existing install"
+    ok "Keeping existing install at $(git -C "$INSTALL_DIR" log -1 --format='%h  %cd' --date=format:'%Y-%m-%d %H:%M')"
   fi
 else
   if [[ -d "$INSTALL_DIR" ]]; then
@@ -247,7 +265,8 @@ PACMAN_PKGS=(
   imagemagick kdeconnect sshfs mpv tesseract tesseract-data-eng gperftools
   qt6-base qt6-declarative qt6-wayland qt6-svg qt6-multimedia
   libqalculate
-  noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-fira-sans ttf-fira-code ttf-jetbrains-mono
+  noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-fira-sans ttf-fira-code ttf-jetbrains-mono ttf-firacode-nerd
+  kitty fastfetch librsvg
   gcc cmake extra-cmake-modules
 )
 pacman -Qq quickshell-git &>/dev/null || PACMAN_PKGS+=(quickshell)
@@ -461,6 +480,44 @@ done
 cp "$INSTALL_DIR/config/hypr/nebula/"*.lua "$HYPR_DIR/nebula/"
 [[ "$NEBULA_CMD" != "nebula" ]] && sed -i "s|\"nebula start\"|\"$NEBULA_CMD start\"|" "$HYPR_DIR/nebula/autostart.lua"
 ok "hyprland.lua, lua/ and nebula/ → $HYPR_DIR"
+
+# ── kitty + fastfetch greeter ─────────────────────────────────────────────────
+step "Kitty and greeter"
+KITTY_DIR="$XDG_CONFIG_HOME/kitty"
+FETCH_DIR="$XDG_CONFIG_HOME/fastfetch"
+kb=y
+if $ask; then
+  echo -e "  Back up ${CYAN}$KITTY_DIR${RESET} and ${CYAN}$FETCH_DIR${RESET} before Nebula's versions are copied in? [Y/n]"
+  read -rp "   ❯ " kb
+fi
+if [[ "${kb,,}" != "n" ]]; then
+  for d in "$KITTY_DIR" "$FETCH_DIR"; do
+    [[ -d "$d" ]] || continue
+    cp -a "$d" "$d.bak.$(date +%s)"
+    ok "Backed up $d"
+  done
+fi
+
+mkdir -p "$KITTY_DIR" "$FETCH_DIR"
+cp "$INSTALL_DIR/config/kitty/kitty.conf" "$KITTY_DIR/"
+[[ -f "$KITTY_DIR/colors.conf" ]] || cp "$INSTALL_DIR/config/kitty/colors.conf" "$KITTY_DIR/"
+install -m755 "$INSTALL_DIR/config/fastfetch/nebula-fetch" "$FETCH_DIR/nebula-fetch"
+ok "kitty.conf → $KITTY_DIR, nebula-fetch → $FETCH_DIR"
+
+GREETER="$FETCH_DIR/nebula-fetch"
+for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+  [[ -f "$rc" ]] || continue
+  if grep -rqs "nebula-fetch" "$rc" "$XDG_CONFIG_HOME/zshrc"; then
+    ok "Greeter already in $rc"
+  else
+    printf '\n# Nebula greeter\n[[ $- == *i* && -x "%s" ]] && "%s"\n' "$GREETER" "$GREETER" >> "$rc"
+    ok "Greeter added to $rc"
+  fi
+done
+if [[ -f "$FISH_CONF" ]] && ! grep -q "nebula-fetch" "$FISH_CONF"; then
+  printf '\n# Nebula greeter\nstatus is-interactive; and test -x "%s"; and "%s"\n' "$GREETER" "$GREETER" >> "$FISH_CONF"
+  ok "Greeter added to $FISH_CONF"
+fi
 
 # ── done ──────────────────────────────────────────────────────────────────────
 ELAPSED=$((SECONDS - START_TS))
