@@ -20,6 +20,16 @@ Item {
         return root.entries.filter(e => (g === "All" || e.group === g) && !e.unset).length
     }
 
+    onVisibleChanged: if (!visible) dialog.close()
+    Component.onDestruction: dialog.stopListening()
+
+    Connections {
+        target: GlobalStates
+        function onSettingsOpenChanged() {
+            if (!GlobalStates.settingsOpen) dialog.close()
+        }
+    }
+
     function fileOf(g) {
         return g === "Nebula" ? "nebula/keybinds.lua" : "lua/keybinds.lua"
     }

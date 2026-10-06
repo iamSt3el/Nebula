@@ -118,6 +118,7 @@ Singleton {
     function setMonitor(name, patch) {
         const m = root.monitor(name)
         if (!m) return
+        if (root.pendingMonitor && root.pendingMonitor.name !== name) root.keepMonitor()
         const prev = root.pendingMonitor?.name === name ? root.pendingMonitor.prev : root.monitorRule(m)
         const next = root.monitorRule(m, patch)
         root.pendingMonitor = { name: name, prev: prev, next: next }
@@ -152,6 +153,10 @@ Singleton {
         if (monitorName === "") delete w[String(ws)]
         else w[String(ws)] = monitorName
         root._patch("workspaces", w)
+        if (monitorName === "") {
+            root._scheduleWrite(true)
+            return
+        }
         root._eval("hl.workspace_rule(" + root.toLua({ workspace: String(ws), monitor: monitorName }) + ")")
         root._scheduleWrite(false)
     }
@@ -329,8 +334,11 @@ Singleton {
     }
 
     function writeNow() {
-        settingsFile.setText(root.buildLua())
-        if (root.needsRequire) {
+        mkdirProc.running = true
+    }
+
+    function _afterSave() {
+        if (root.needsRequire && mainFile.loaded) {
             mainFile.setText(mainFile.text().replace(/\s*$/, "\n") + "\nrequire(\"nebula.settings\")\n")
             root.needsRequire = false
         }
@@ -338,6 +346,19 @@ Singleton {
             root._reloadAfterWrite = false
             reloadTimer.restart()
         }
+    }
+
+    Process {
+        id: mkdirProc
+        command: ["mkdir", "-p", root.hyprDir + "/nebula"]
+        onExited: (code) => {
+            if (code === 0) settingsFile.setText(root.buildLua())
+        }
+    }
+
+    function refreshMonitors() {
+        monitorReader.running = true
+        rulesReader.running = true
     }
 
     function refresh() {
@@ -392,6 +413,7 @@ Singleton {
         path: root.settingsPath
         blockLoading: true
         printErrors: false
+        onSaved: root._afterSave()
     }
 
     FileView {
@@ -420,7 +442,7 @@ Singleton {
 
     Process {
         id: optionReader
-        command: ["sh", "-c", "for o in \"$@\"; do hyprctl -j getoption \"$o\" | tr -d '\\n'; echo; done", "_"].concat(root.watched)
+        command: ["hyprctl", "-j", "--batch", root.watched.map(o => "getoption " + o).join("; ")]
         stdout: StdioCollector {
             onStreamFinished: {
                 const live = {}

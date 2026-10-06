@@ -470,5 +470,5 @@ Item {
         }
     }
 
-    Component.onCompleted: ServiceHyprConfig.refresh()
+    Component.onCompleted: ServiceHyprConfig.refreshMonitors()
 }
