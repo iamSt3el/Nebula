@@ -253,7 +253,7 @@ footer a{color:var(--surfaceText)}
     <div class="req-card must">
       <span class="ms">warning</span>
       <b>Hyprland 0.56+, configured in Lua</b>
-      <p>Your config must be <code>~/.config/hypr/hyprland.lua</code>. The classic <code>hyprland.conf</code> is not supported: Nebula sends Hyprland its window and workspace commands in Lua, and a <code>.conf</code> setup rejects them. No Lua config yet? The installer offers a starter <code>hyprland.lua</code> built from Hyprland's defaults, with Nebula added.</p>
+      <p>Your config must be <code>~/.config/hypr/hyprland.lua</code>. The classic <code>hyprland.conf</code> is not supported: Nebula sends Hyprland its window and workspace commands in Lua, and a <code>.conf</code> setup rejects them. The installer copies in a <code>hyprland.lua</code> built from Hyprland's defaults with Nebula added, so a <code>.conf</code> setup starts from a working Lua config.</p>
     </div>
     <div class="req-card">
       <span class="ms">terminal</span>
@@ -420,7 +420,7 @@ footer a{color:var(--surfaceText)}
   <section id="install">
     <div class="sec-head">
       <div><div class="eyebrow">Install</div><h2>Three steps on Arch</h2></div>
-      <p>The installer pulls the packages, builds the plugins, sets up Python and fonts, and installs the <code>nebula</code> command to <code>/usr/local/bin</code>. It also puts Nebula's shortcuts, layer rules and autostart in <code>~/.config/hypr/nebula/</code> and loads them from your <code>hyprland.lua</code>, after a backup.</p>
+      <p>The installer pulls the packages, builds the plugins, sets up Python and fonts, and installs the <code>nebula</code> command to <code>/usr/local/bin</code>. It then copies Nebula's Hyprland config (<code>hyprland.lua</code>, <code>lua/</code> and <code>nebula/</code>) into <code>~/.config/hypr</code>, offering to back up that folder first.</p>
     </div>
     <div class="install">
       <div class="panel">
@@ -431,7 +431,7 @@ footer a{color:var(--surfaceText)}
       <div class="panel">
         <h3><i>2</i>Log in again</h3>
         <pre><span class="f">require</span>(<span class="s">"nebula.autostart"</span>)</pre>
-        <p>The installer adds this to <code>hyprland.lua</code>, so Nebula and the clipboard watcher start with Hyprland. Parts your config already has stay commented out.</p>
+        <p>The installed <code>hyprland.lua</code> loads this, so Nebula and the clipboard watcher start with Hyprland.</p>
         <div class="warn"><span class="ms">warning</span><span>Lua config only. There is no <code>hyprland.conf</code> version of this step, because Nebula does not work with a <code>.conf</code> setup.</span></div>
       </div>
       <div class="panel">
@@ -443,7 +443,7 @@ footer a{color:var(--surfaceText)}
     <div class="keys-wrap">
       <div>
         <h3>Shortcuts, ready to change</h3>
-        <p>Nebula's global shortcuts are named <code>quickshell:&lt;name&gt;</code>. The installer binds them in <code>~/.config/hypr/nebula/keybinds.lua</code>; change the keys there and updates leave the file alone.</p>
+        <p>Nebula's global shortcuts are named <code>quickshell:&lt;name&gt;</code>. The installer binds them in <code>~/.config/hypr/nebula/keybinds.lua</code>; change the keys there.</p>
         <pre><span class="f">hl.bind</span>(<span class="s">"SUPER + CTRL + RETURN"</span>, hl.dsp.<span class="f">global</span>(<span class="s">"quickshell:appLauncher"</span>))
 <span class="f">hl.bind</span>(<span class="s">"SUPER + L"</span>, hl.dsp.<span class="f">global</span>(<span class="s">"quickshell:lock"</span>), { locked = true })</pre>
       </div>

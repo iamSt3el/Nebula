@@ -40,29 +40,23 @@ bash <(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/master/insta
 ```
 
 The installer pulls the packages, builds the plugins, sets up Python, and compiles the
-`nebula` command and installs it to `/usr/local/bin`. It also puts Nebula's shortcuts,
-layer rules and autostart in `~/.config/hypr/nebula/` and loads them from your
-`hyprland.lua` (backed up first):
+`nebula` command and installs it to `/usr/local/bin`. It then copies Nebula's Hyprland
+config into `~/.config/hypr`, offering to back up that folder first:
 
-```lua
-require("nebula.environment")
-require("nebula.autostart")   -- nebula start, plus the clipboard watcher
-require("nebula.keybinds")
-require("nebula.rules")
-```
-
-Anything your config already does, such as starting Quickshell or binding
-`quickshell:` shortcuts, is left commented out so nothing runs twice.
+- `hyprland.lua` loads everything below
+- `lua/` holds the basics: monitors, settings, animations, window rules and keybinds
+- `nebula/` holds what the shell needs: its shortcuts, layer rules, environment and
+  `nebula start`
 
 > [!IMPORTANT]
 > Nebula needs **Hyprland 0.56 or newer with a Lua config** (`~/.config/hypr/hyprland.lua`).
 > The classic `hyprland.conf` format is not supported: the shell sends Hyprland its
-> commands in Lua, which a `.conf` setup rejects. If you only have `hyprland.conf`, the
-> installer offers a starter `hyprland.lua` built from Hyprland's defaults with Nebula added.
+> commands in Lua, which a `.conf` setup rejects. The installer's `hyprland.lua` is
+> built from Hyprland's own defaults, so a `.conf` user starts from a working Lua config.
 
 Then log in again and run `nebula setup` to pick a wallpaper, your colours and which
-apps follow them. Change the keys in `~/.config/hypr/nebula/keybinds.lua`; updates
-leave that file alone.
+apps follow them. Running the installer again copies these files again, so keep your
+own changes in a backup or a file of your own.
 
 ## Command line
 
