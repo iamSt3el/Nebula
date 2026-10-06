@@ -57,7 +57,8 @@ Anything your config already does, such as starting Quickshell or binding
 > [!IMPORTANT]
 > Nebula needs **Hyprland 0.56 or newer with a Lua config** (`~/.config/hypr/hyprland.lua`).
 > The classic `hyprland.conf` format is not supported: the shell sends Hyprland its
-> commands in Lua, which a `.conf` setup rejects.
+> commands in Lua, which a `.conf` setup rejects. If you only have `hyprland.conf`, the
+> installer offers a starter `hyprland.lua` built from Hyprland's defaults with Nebula added.
 
 Then log in again and run `nebula setup` to pick a wallpaper, your colours and which
 apps follow them. Change the keys in `~/.config/hypr/nebula/keybinds.lua`; updates

@@ -136,7 +136,7 @@ has pacman || die "pacman not found — this installer is for Arch Linux only."
 
 HYPR_DIR="$XDG_CONFIG_HOME/hypr"
 if [[ -f "$HYPR_DIR/hyprland.conf" && ! -f "$HYPR_DIR/hyprland.lua" ]]; then
-  warn "Found hyprland.conf but no hyprland.lua — Nebula needs a Lua Hyprland config (0.56+). Workspace switching, the overview and window actions will not work until you move to hyprland.lua."
+  info "Found hyprland.conf but no hyprland.lua — the installer will offer a starter Lua config."
 fi
 
 # ── offer backup ──────────────────────────────────────────────────────────────
@@ -462,7 +462,19 @@ nebula_require() {
 }
 
 if [[ ! -f "$HYPR_LUA" ]]; then
-  warn "No $HYPR_LUA — load the files in $HYPR_NEBULA from your Lua config with require(\"nebula.<name>\")."
+  mk=y
+  if $ask; then
+    echo -e "  No ${CYAN}hyprland.lua${RESET} yet. Create one from Hyprland's defaults with Nebula added? [Y/n]"
+    [[ -f "$HYPR_DIR/hyprland.conf" ]] && echo -e "  ${DIM}hyprland.conf stays on disk, but Hyprland uses hyprland.lua once it exists.${RESET}"
+    read -rp "   ❯ " mk
+  fi
+  if [[ "${mk,,}" != "n" ]]; then
+    cp "$INSTALL_DIR/config/hypr/hyprland.lua" "$HYPR_LUA"
+    mkdir -p "$HYPR_DIR/lua"
+    ok "Created $HYPR_LUA (starter config with Nebula)"
+  else
+    warn "No $HYPR_LUA — Nebula needs a Lua config that loads require(\"nebula.<name>\") from $HYPR_NEBULA."
+  fi
 elif grep -qE '^[^-]*require\("nebula\.' "$HYPR_LUA"; then
   ok "hyprland.lua already loads Nebula"
 else
