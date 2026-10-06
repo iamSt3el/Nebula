@@ -31,9 +31,9 @@ Singleton {
         out += "# Hand edits here are overwritten. Original saved as hypridle.conf.bak\n\n"
 
         out += "general {\n"
-        out += "    lock_cmd = hyprctl dispatch global quickshell:lock\n"
+        out += "    lock_cmd = hyprctl dispatch 'hl.dsp.global(\"quickshell:lock\")'\n"
         out += "    before_sleep_cmd = loginctl lock-session\n"
-        out += "    after_sleep_cmd = hyprctl dispatch dpms on\n"
+        out += "    after_sleep_cmd = hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'\n"
         out += "}\n"
 
         if (root.cfg?.dimEnabled ?? true) {
@@ -57,8 +57,8 @@ Singleton {
             out += "\n# Turn the display off\n"
             out += "listener {\n"
             out += "    timeout = " + root._secs(root.cfg?.screenOffMinutes) + "\n"
-            out += "    on-timeout = hyprctl dispatch dpms off\n"
-            out += "    on-resume = hyprctl dispatch dpms on && brightnessctl -r\n"
+            out += "    on-timeout = hyprctl dispatch 'hl.dsp.dpms({ action = \"disable\" })'\n"
+            out += "    on-resume = hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })' && brightnessctl -r\n"
             out += "}\n"
         }
 

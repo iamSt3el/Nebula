@@ -47,6 +47,7 @@ Item {
     // Section → page-index mapping
     readonly property var navSections: [
         { label: "System",  indices: [9, 14, 0, 12, 1, 2, 3, 13, 10, 11] },
+        { label: "Desktop", indices: [15, 16, 17, 18] },
         { label: "Connect", indices: [4, 5] },
         { label: "Apps",    indices: [6, 7, 8] }
     ]
@@ -56,7 +57,7 @@ Item {
 
     readonly property var pageFiles: ["Theme", "Sound", "Notifications", "Widgets", "Networking", "Bluetooth",
         "WeatherSettings", "MediaSettings", "About", "AppearanceSettings", "Sleep", "Storage", "Lockscreen",
-        "NotesSettings", "LayoutsSettings"]
+        "NotesSettings", "LayoutsSettings", "DisplaysSettings", "WindowsSettings", "InputSettings", "Keybindings"]
 
     readonly property var railOrder: root.navSections.reduce((all, g) => all.concat(g.indices), [])
     readonly property bool showSections: SettingsConfig.general.settingsSections ?? true
@@ -788,6 +789,10 @@ Item {
                         PageSlot { page: 12; sourceComponent: Lockscreen {} }
                         PageSlot { page: 13; sourceComponent: NotesSettings {} }
                         PageSlot { page: 14; sourceComponent: LayoutsSettings {} }
+                        PageSlot { page: 15; sourceComponent: DisplaysSettings {} }
+                        PageSlot { page: 16; sourceComponent: WindowsSettings {} }
+                        PageSlot { page: 17; sourceComponent: InputSettings {} }
+                        PageSlot { page: 18; sourceComponent: Keybindings {} }
                         }
                     }
                 }

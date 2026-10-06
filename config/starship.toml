@@ -1,0 +1,80 @@
+"$schema" = 'https://starship.rs/config-schema.json'
+
+# Flat, no fills: every colour here is a foreground on the terminal background,
+# so the prompt stays legible in both light and dark mode. Do not reintroduce
+# `bg:` pills — container/fill roles invert lightness between modes.
+
+add_newline = true
+
+format = """$directory$git_branch$git_status
+$character"""
+
+right_format = """$cmd_duration$nodejs${custom.pnpm}$python$java$php"""
+
+[directory]
+format = "[$path]($style)[$read_only](fg:#fe8989) "
+style = "fg:#f8b6b6 bold"
+truncation_length = 3
+truncate_to_repo = false
+truncation_symbol = "…/"
+read_only = " ro"
+
+[git_branch]
+format = "[$branch]($style)"
+style = "fg:#e1bebe"
+symbol = ""
+
+[git_status]
+format = "[ $all_status$ahead_behind]($style)"
+style = "fg:#9e8d8c"
+ahead = "[↑${count}](fg:#2eb9e4)"
+behind = "[↓${count}](fg:#2eb9e4)"
+diverged = "[↕${ahead_count}/${behind_count}](fg:#ea8cce)"
+staged = "[+${count}](fg:#87b95b)"
+modified = "[~${count}](fg:#ffb226)"
+untracked = "[?${count}](fg:#9ea3ff)"
+deleted = "[-${count}](fg:#fe8989)"
+stashed = "*${count}"
+conflicted = "[!${count}](bold fg:#fe8989)"
+
+[character]
+success_symbol = "[❯](bold fg:#f8b6b6)"
+error_symbol = "[❯](bold fg:#fe8989)"
+vimcmd_symbol = "[❮](bold fg:#e7c188)"
+
+[cmd_duration]
+min_time = 2000
+format = "[$duration]($style) "
+style = "fg:#ffb226"
+
+[nodejs]
+format = "[node $version]($style) "
+style = "fg:#9e8d8c"
+symbol = ""
+version_format = "${raw}"
+
+[custom.pnpm]
+command = "pnpm --version"
+when = "test -f pnpm-lock.yaml"
+format = "[pnpm $output]($style) "
+style = "fg:#9e8d8c"
+shell = ["sh", "-c"]
+
+[python]
+format = "[py $version]($style) "
+style = "fg:#9e8d8c"
+symbol = ""
+version_format = "${raw}"
+detect_files = ["requirements.txt", "setup.py", "setup.cfg", "pyproject.toml", "Pipfile", ".python-version"]
+
+[java]
+format = "[java $version]($style) "
+style = "fg:#9e8d8c"
+symbol = ""
+version_format = "${raw}"
+
+[php]
+format = "[php $version]($style) "
+style = "fg:#9e8d8c"
+symbol = ""
+version_format = "${raw}"

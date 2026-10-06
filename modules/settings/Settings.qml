@@ -134,6 +134,22 @@ Singleton{
         {
             name: "Layouts",
             icon: "dashboard_customize"
+        },
+        {
+            name: "Displays",
+            icon: "monitor"
+        },
+        {
+            name: "Windows",
+            icon: "select_window"
+        },
+        {
+            name: "Input",
+            icon: "mouse"
+        },
+        {
+            name: "Keybinds",
+            icon: "keyboard"
         }
     ]
 

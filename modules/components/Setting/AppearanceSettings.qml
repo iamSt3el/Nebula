@@ -405,29 +405,6 @@ Item {
                 }
             }
 
-            // ── Window Gaps ──────────────────────────────────────────────
-            CustomText { Layout.topMargin: 16; content: "Window Gaps"; size: 13; customColor: Colors.primary }
-
-            SidesEditor {
-                Layout.topMargin: 6
-                barSide: ServiceGaps.barSide
-                maxValue: 20
-                values: ({
-                    top: ServiceGaps.extraFor("top"),
-                    right: ServiceGaps.extraFor("right"),
-                    bottom: ServiceGaps.extraFor("bottom"),
-                    left: ServiceGaps.extraFor("left")
-                })
-                onChanged: patch => {
-                    const g = {}
-                    if (patch.top !== undefined) g.gapTop = patch.top
-                    if (patch.right !== undefined) g.gapRight = patch.right
-                    if (patch.bottom !== undefined) g.gapBottom = patch.bottom
-                    if (patch.left !== undefined) g.gapLeft = patch.left
-                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, g)
-                }
-            }
-
             // ── Workspaces ───────────────────────────────────────────────
             CustomText { Layout.topMargin: 16; content: "Workspaces"; size: 13; customColor: Colors.primary }
 

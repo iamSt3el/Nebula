@@ -266,7 +266,7 @@ PACMAN_PKGS=(
   qt6-base qt6-declarative qt6-wayland qt6-svg qt6-multimedia
   libqalculate
   noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-fira-sans ttf-fira-code ttf-jetbrains-mono ttf-firacode-nerd
-  kitty fastfetch librsvg
+  kitty fastfetch librsvg starship
   gcc cmake extra-cmake-modules
 )
 pacman -Qq quickshell-git &>/dev/null || PACMAN_PKGS+=(quickshell)
@@ -477,17 +477,20 @@ for f in "$INSTALL_DIR/config/hypr/lua/"*.lua; do
   [[ "$(basename "$f")" == "colors.lua" && -f "$HYPR_DIR/lua/colors.lua" ]] && continue
   cp "$f" "$HYPR_DIR/lua/"
 done
-cp "$INSTALL_DIR/config/hypr/nebula/"*.lua "$HYPR_DIR/nebula/"
+for f in "$INSTALL_DIR/config/hypr/nebula/"*.lua; do
+  [[ "$(basename "$f")" == "settings.lua" && -f "$HYPR_DIR/nebula/settings.lua" ]] && continue
+  cp "$f" "$HYPR_DIR/nebula/"
+done
 [[ "$NEBULA_CMD" != "nebula" ]] && sed -i "s|\"nebula start\"|\"$NEBULA_CMD start\"|" "$HYPR_DIR/nebula/autostart.lua"
 ok "hyprland.lua, lua/ and nebula/ → $HYPR_DIR"
 
-# ── kitty + fastfetch greeter ─────────────────────────────────────────────────
-step "Kitty and greeter"
+# ── terminal: kitty, starship, fastfetch greeter ─────────────────────────────
+step "Terminal: kitty, Starship, greeter"
 KITTY_DIR="$XDG_CONFIG_HOME/kitty"
 FETCH_DIR="$XDG_CONFIG_HOME/fastfetch"
 kb=y
 if $ask; then
-  echo -e "  Back up ${CYAN}$KITTY_DIR${RESET} and ${CYAN}$FETCH_DIR${RESET} before Nebula's versions are copied in? [Y/n]"
+  echo -e "  Back up ${CYAN}$KITTY_DIR${RESET}, ${CYAN}$FETCH_DIR${RESET} and ${CYAN}starship.toml${RESET} before Nebula's versions are copied in? [Y/n]"
   read -rp "   ❯ " kb
 fi
 if [[ "${kb,,}" != "n" ]]; then
@@ -496,18 +499,24 @@ if [[ "${kb,,}" != "n" ]]; then
     cp -a "$d" "$d.bak.$(date +%s)"
     ok "Backed up $d"
   done
+  if [[ -f "$XDG_CONFIG_HOME/starship.toml" ]]; then
+    cp "$XDG_CONFIG_HOME/starship.toml" "$XDG_CONFIG_HOME/starship.toml.bak.$(date +%s)"
+    ok "Backed up $XDG_CONFIG_HOME/starship.toml"
+  fi
 fi
 
 mkdir -p "$KITTY_DIR" "$FETCH_DIR"
 cp "$INSTALL_DIR/config/kitty/kitty.conf" "$KITTY_DIR/"
 [[ -f "$KITTY_DIR/colors.conf" ]] || cp "$INSTALL_DIR/config/kitty/colors.conf" "$KITTY_DIR/"
 install -m755 "$INSTALL_DIR/config/fastfetch/nebula-fetch" "$FETCH_DIR/nebula-fetch"
-ok "kitty.conf → $KITTY_DIR, nebula-fetch → $FETCH_DIR"
+cp "$INSTALL_DIR/config/starship.toml" "$XDG_CONFIG_HOME/starship.toml"
+ok "kitty.conf → $KITTY_DIR, starship.toml → $XDG_CONFIG_HOME, nebula-fetch → $FETCH_DIR"
 
 GREETER="$FETCH_DIR/nebula-fetch"
 for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
   [[ -f "$rc" ]] || continue
-  if grep -rqs "nebula-fetch" "$rc" "$XDG_CONFIG_HOME/zshrc"; then
+  extra=(); [[ "$rc" == *zshrc ]] && extra=("$XDG_CONFIG_HOME/zshrc")
+  if grep -rqs "nebula-fetch" "$rc" "${extra[@]}"; then
     ok "Greeter already in $rc"
   else
     printf '\n# Nebula greeter\n[[ $- == *i* && -x "%s" ]] && "%s"\n' "$GREETER" "$GREETER" >> "$rc"
@@ -517,6 +526,22 @@ done
 if [[ -f "$FISH_CONF" ]] && ! grep -q "nebula-fetch" "$FISH_CONF"; then
   printf '\n# Nebula greeter\nstatus is-interactive; and test -x "%s"; and "%s"\n' "$GREETER" "$GREETER" >> "$FISH_CONF"
   ok "Greeter added to $FISH_CONF"
+fi
+
+for sh in bash zsh; do
+  rc="$HOME/.${sh}rc"
+  [[ -f "$rc" ]] || continue
+  extra=(); [[ "$sh" == zsh ]] && extra=("$XDG_CONFIG_HOME/zshrc")
+  if grep -rqs "starship init" "$rc" "${extra[@]}"; then
+    ok "Starship already started in $rc"
+  else
+    printf '\n# Starship prompt\ncommand -v starship >/dev/null && eval "$(starship init %s)"\n' "$sh" >> "$rc"
+    ok "Starship added to $rc"
+  fi
+done
+if [[ -f "$FISH_CONF" ]] && ! grep -q "starship init" "$FISH_CONF"; then
+  printf '\n# Starship prompt\nstatus is-interactive; and command -q starship; and starship init fish | source\n' >> "$FISH_CONF"
+  ok "Starship added to $FISH_CONF"
 fi
 
 # ── done ──────────────────────────────────────────────────────────────────────

@@ -21,6 +21,7 @@ Singleton {
     property alias lockscreen: settingsAdapter.lockscreen
     property alias greeter: settingsAdapter.greeter
     property alias bar: settingsAdapter.bar
+    property alias hypr: settingsAdapter.hypr
 
     property bool settingsReady: false
 
@@ -702,6 +703,15 @@ Singleton {
                 itemGap: 6,
                 blockGap: -1,
                 radius: 18
+            })
+
+            property var hypr: ({
+                options: {},
+                monitors: {},
+                workspaces: {},
+                binds: {},
+                addedBinds: [],
+                cursor: {}
             })
 
             property var toggles: ({

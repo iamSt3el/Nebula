@@ -48,8 +48,9 @@ config into `~/.config/hypr`, offering to back up that folder first:
 - `nebula/` holds what the shell needs: its shortcuts, layer rules, environment and
   `nebula start`
 
-It also sets up kitty (`~/.config/kitty/kitty.conf`) and the Nebula greeter, a fastfetch
-header in your palette that opens each new terminal, again offering a backup first.
+It also sets up kitty (`~/.config/kitty/kitty.conf`), the Starship prompt and the Nebula
+greeter, a fastfetch header in your palette that opens each new terminal, again offering
+a backup first.
 
 > [!IMPORTANT]
 > Nebula needs **Hyprland 0.56 or newer with a Lua config** (`~/.config/hypr/hyprland.lua`).

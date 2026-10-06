@@ -39,7 +39,7 @@ Item {
     readonly property var actionCommands: [
         ["systemctl", "poweroff"],
         ["systemctl", "reboot"],
-        ["hyprctl", "dispatch", "exit"],
+        ["hyprctl", "dispatch", "hl.dsp.exit()"],
         ["loginctl", "lock-session"]
     ]
 
