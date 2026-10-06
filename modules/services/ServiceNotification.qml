@@ -61,7 +61,7 @@ Singleton {
 
     function _playNotificationSound() {
         const p = SettingsConfig.notifications?.soundPath ?? ""
-        const resolved = p !== "" ? p : Qt.resolvedUrl("../../notification.wav").toString().replace("file://", "")
+        const resolved = p !== "" ? p : "/usr/share/sounds/freedesktop/stereo/message.oga"
         Quickshell.execDetached(["paplay", resolved])
     }
 

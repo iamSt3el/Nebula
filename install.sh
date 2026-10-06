@@ -225,7 +225,7 @@ PACMAN_PKGS=(
   pipewire pipewire-pulse wireplumber libpipewire libpulse
   networkmanager bluez bluez-utils upower
   python grim slurp wf-recorder swappy wl-clipboard wtype ffmpeg ffmpegthumbnailer
-  cava brightnessctl playerctl curl unzip jq xdg-utils libnotify qrencode
+  cava brightnessctl playerctl curl unzip jq xdg-utils libnotify qrencode sound-theme-freedesktop
   imagemagick kdeconnect sshfs mpv tesseract tesseract-data-eng gperftools
   qt6-base qt6-declarative qt6-wayland qt6-svg qt6-multimedia
   libqalculate
