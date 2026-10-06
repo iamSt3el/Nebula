@@ -1,65 +1,47 @@
--- General Hyprland settings
--- ~/.config/hypr/lua/settings.lua
-
-local colors = require("lua.colors")
+local themed, colors = pcall(require, "lua.colors")
 
 hl.config({
     general = {
-        gaps_in  = 4,
-        gaps_out = { top = 50, right = 10, bottom = 10, left = 10 },
+        gaps_in  = 5,
+        gaps_out = 20,
 
-        border_size = 3,
+        border_size = 2,
 
         col = {
-            active_border   = colors.active_border,
-            inactive_border = colors.inactive_border,
+            active_border   = themed and colors.active_border or { colors = {"rgba(33ccffee)", "rgba(00ff99ee)"}, angle = 45 },
+            inactive_border = themed and colors.inactive_border or "rgba(595959aa)",
         },
 
-        layout           = "dwindle",
-        resize_on_border = true,
+        resize_on_border = false,
+        allow_tearing    = false,
+
+        layout = "dwindle",
     },
 
     decoration = {
-        rounding           = 20,
-        active_opacity     = 1.0,
-        inactive_opacity   = 1.0,
-        fullscreen_opacity = 1.0,
+        rounding       = 10,
+        rounding_power = 2,
 
-        blur = {
-            enabled           = true,
-            size              = 6,
-            passes            = 2,
-            new_optimizations = true,
-            ignore_opacity    = true,
-            xray              = true,
-        },
+        active_opacity   = 1.0,
+        inactive_opacity = 1.0,
 
         shadow = {
             enabled      = true,
-            range        = 30,
+            range        = 4,
             render_power = 3,
-            color        = "0x66000000",
+            color        = 0xee1a1a1a,
+        },
+
+        blur = {
+            enabled  = true,
+            size     = 3,
+            passes   = 1,
+            vibrancy = 0.1696,
         },
     },
 
-    input = {
-        kb_layout  = "us",
-        kb_variant = "",
-        kb_model   = "",
-        kb_options = "",
-
-        numlock_by_default = true,
-        follow_mouse       = 1,
-        mouse_refocus      = false,
-
-        sensitivity   = 0, -- -1.0 to 1.0, 0 = no modification
-
-        touchpad = {
-            natural_scroll = true,  -- natural (Mac-style) scrolling
-            scroll_factor  = 1.0,
-        },
-
-        scroll_method = "2fg",
+    animations = {
+        enabled = true,
     },
 
     dwindle = {
@@ -67,27 +49,35 @@ hl.config({
     },
 
     master = {
-        -- new_status = "master",
+        new_status = "master",
     },
 
-    binds = {
-        workspace_back_and_forth = true,
-        allow_workspace_cycles   = true,
-        pass_mouse_when_bound    = false,
+    scrolling = {
+        fullscreen_on_one_column = true,
     },
 
     misc = {
-        disable_hyprland_logo    = true,
-        disable_splash_rendering = true,
-        initial_workspace_tracking = 1,
+        force_default_wallpaper = 0,
+        disable_hyprland_logo   = true,
     },
 
-    animations = {
-        enabled = true,
+    input = {
+        kb_layout  = "us",
+        kb_variant = "",
+        kb_model   = "",
+        kb_options = "",
+        kb_rules   = "",
+
+        follow_mouse = 1,
+
+        sensitivity = 0,
+
+        touchpad = {
+            natural_scroll = false,
+        },
     },
 })
 
--- 3-finger horizontal swipe → switch workspace
 hl.gesture({
     fingers   = 3,
     direction = "horizontal",

@@ -471,7 +471,8 @@ if [[ ! -f "$HYPR_LUA" ]]; then
   if [[ "${mk,,}" != "n" ]]; then
     cp "$INSTALL_DIR/config/hypr/hyprland.lua" "$HYPR_LUA"
     mkdir -p "$HYPR_DIR/lua"
-    ok "Created $HYPR_LUA (starter config with Nebula)"
+    cp -n "$INSTALL_DIR/config/hypr/lua/"*.lua "$HYPR_DIR/lua/"
+    ok "Created $HYPR_LUA and $HYPR_DIR/lua/ (starter config with Nebula)"
   else
     warn "No $HYPR_LUA — Nebula needs a Lua config that loads require(\"nebula.<name>\") from $HYPR_NEBULA."
   fi
