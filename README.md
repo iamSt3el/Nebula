@@ -40,23 +40,28 @@ bash <(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/master/insta
 ```
 
 The installer pulls the packages, builds the plugins, sets up Python, and compiles the
-`nebula` command and installs it to `/usr/local/bin`. It never edits your Hyprland
-config, so start Nebula from your autostart yourself:
+`nebula` command and installs it to `/usr/local/bin`. It also puts Nebula's shortcuts,
+layer rules and autostart in `~/.config/hypr/nebula/` and loads them from your
+`hyprland.lua` (backed up first):
 
 ```lua
-hl.exec_cmd("nebula start")
+require("nebula.environment")
+require("nebula.autostart")   -- nebula start, plus the clipboard watcher
+require("nebula.keybinds")
+require("nebula.rules")
 ```
 
-It also starts the clipboard watcher if it isn't running.
+Anything your config already does, such as starting Quickshell or binding
+`quickshell:` shortcuts, is left commented out so nothing runs twice.
 
 > [!IMPORTANT]
 > Nebula needs **Hyprland 0.56 or newer with a Lua config** (`~/.config/hypr/hyprland.lua`).
 > The classic `hyprland.conf` format is not supported: the shell sends Hyprland its
 > commands in Lua, which a `.conf` setup rejects.
 
-Then run `nebula setup` to pick a wallpaper, your colours and which apps follow them.
-Shortcuts are global binds named `quickshell:<name>`; a ready-made set lives in
-[`config/hypr/`](config/hypr/).
+Then log in again and run `nebula setup` to pick a wallpaper, your colours and which
+apps follow them. Change the keys in `~/.config/hypr/nebula/keybinds.lua`; updates
+leave that file alone.
 
 ## Command line
 

@@ -7,7 +7,7 @@ import sys
 from nebula.paths import HOME
 
 TOOLS = [
-    ("quickshell",    "quickshell-git", "The shell itself"),
+    ("quickshell",    "quickshell",     "The shell itself"),
     ("hyprctl",       "hyprland",       "Compositor"),
     ("hypridle",      "hypridle",       "Idle and sleep timeouts"),
     ("matugen",       "matugen-bin",    "Album-art colours"),

@@ -86,6 +86,7 @@ Singleton {
                 popup: !root.muted && !root._suppressPopups,
                 notification: notif
             })
+            notif.closed.connect(() => root.removeNotification(item))
 
             root.allNotifications.push(item)
             // Keep at most 100 notifications; drop oldest when exceeded
@@ -124,17 +125,17 @@ Singleton {
 
         property bool popup
         required property Notification notification
-        readonly property string id: notification.id ?? null
-        readonly property string summary: notification.summary ?? null
-        readonly property string body: notification.body ?? null
-        readonly property string appIcon: notification.appIcon ?? null
-        readonly property string appName: notification.appName ?? null
-        readonly property string image: notification.image
-        readonly property int urgency: notification.urgency ?? null
-        readonly property bool isLow: notification.urgency === NotificationUrgency.Low
-        readonly property bool isNormal: notification.urgency === NotificationUrgency.Normal
-        readonly property bool isCritical: notification.urgency === NotificationUrgency.Critical
-        readonly property var actions: notification.actions.filter(a => a.identifier !== "default")
+        readonly property string id: notification?.id ?? ""
+        readonly property string summary: notification?.summary ?? ""
+        readonly property string body: notification?.body ?? ""
+        readonly property string appIcon: notification?.appIcon ?? ""
+        readonly property string appName: notification?.appName ?? ""
+        readonly property string image: notification?.image ?? ""
+        readonly property int urgency: notification?.urgency ?? NotificationUrgency.Normal
+        readonly property bool isLow: urgency === NotificationUrgency.Low
+        readonly property bool isNormal: urgency === NotificationUrgency.Normal
+        readonly property bool isCritical: urgency === NotificationUrgency.Critical
+        readonly property var actions: (notification?.actions ?? []).filter(a => a.identifier !== "default")
         readonly property real arrivalTimestamp: Date.now()
 
         property Timer timer: Timer {

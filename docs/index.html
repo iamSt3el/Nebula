@@ -288,7 +288,7 @@ footer a{color:var(--surfaceText)}
 
   <section id="widgets">
     <div class="sec-head">
-      <div><div class="eyebrow">Desktop widgets</div><h2>63 widgets, 76 styles</h2></div>
+      <div><div class="eyebrow">Desktop widgets</div><h2>69 widgets, 81 styles</h2></div>
       <p>Clocks, calendars, music players, system meters and desk tools. Add them from the widget studio on the desktop itself, snap them to the grid, and restyle them in place.</p>
     </div>
     <div class="chips" id="w-chips" aria-label="Filter widgets"></div>
@@ -308,7 +308,7 @@ footer a{color:var(--surfaceText)}
       <div class="group">
         <div class="group-h"><svg viewBox="-60 -60 120 120" data-shape="9,0.07"></svg><h3>Surfaces</h3><p>The chrome around your windows.</p></div>
         <div class="cards">
-          <div class="card"><h4><span class="ms">toolbar</span>Bar and dock</h4><p>Put them on any screen edge. Both are drawn by one shader pass, so they join with rounded fillets. Edit them in place with a parts shelf, a toolbar and undo.</p><div class="tags"><span>pill or full width</span><span>second-monitor bar</span></div></div>
+          <div class="card"><h4><span class="ms">toolbar</span>Bar and dock</h4><p>Put them on any screen edge. Both are drawn by one shader pass, so they join with rounded fillets. Edit them in place with a parts shelf, a toolbar and undo.</p><div class="tags"><span>pill, flat or stepped per block</span><span>second-monitor bar</span></div></div>
           <div class="card"><h4><span class="ms">space_dashboard</span>Dashboard</h4><p>A grid you build yourself. Drag in a clock, month view, player, weather, gauges, network or battery tiles, then move them around and undo.</p><div class="tags"><span>span grid</span><span>iCal events</span></div></div>
           <div class="card"><h4><span class="ms">notifications</span>Notifications</h4><p>A grouped shade in the style of Android. Popups show as a corner card, a bar tab, a dock toast or an icon bubble. Right-click the bell for timed Do Not Disturb.</p><div class="tags"><span>4 popup styles</span><span>timed DND</span></div></div>
           <div class="card"><h4><span class="ms">lock</span>Lock screen</h4><p>Seven animated layouts: Bloom, Darkroom, Deck, Orbit, Tessera, Veil and Tear-off, which tears away when you unlock.</p><div class="tags"><span>7 layouts</span><span>greetd greeter</span></div></div>
@@ -322,7 +322,7 @@ footer a{color:var(--surfaceText)}
           <div class="card"><h4><span class="ms">widgets</span>Desktop widgets</h4><p>Edit widgets in place with a floating toolbar, snap guides and an add sheet. Clocks, music, system meters, calendars, notes, and 56 Material shapes to frame them.</p><div class="tags"><span>18 stat meters</span><span>56 shapes</span></div></div>
           <div class="card"><h4><span class="ms">sticky_note_2</span>Sticky notes</h4><p>Notes rest as small tabs on the screen edge. Hover to peek, click to open a paper card with to-dos. Choose the edge, where the stack starts and the gap between notes.</p><div class="tags"><span>stacked or free</span><span>6 paper colours</span></div></div>
           <div class="card"><h4><span class="ms">content_paste</span>Clipboard</h4><p>History with image previews. Pick a list with preview, a fanned card stack or a board of cards you can pin, plus a small pocket that opens at the pointer and pastes in place.</p><div class="tags"><span>3 panel styles</span><span>pinned clips</span></div></div>
-          <div class="card"><h4><span class="ms">send_to_mobile</span>Phone</h4><p>Send files, links and your clipboard to your phone and see what it sends back, through KDE Connect. Pair once and it reconnects by itself.</p></div>
+          <div class="card"><h4><span class="ms">send_to_mobile</span>Phone</h4><p>Send files, links and your clipboard to your phone and see what it sends back, through KDE Connect. Bar items show its battery, notifications and calls. Pair once and it reconnects by itself.</p></div>
           <div class="card"><h4><span class="ms">document_scanner</span>Live Text</h4><p>Freeze the screen and select text straight off it, like text in a photo.</p></div>
           <div class="card"><h4><span class="ms">graphic_eq</span>Soundscape</h4><p>Eight ambient loops to mix: rain, fire, café, cat, night, stream, waves and window. They get quieter while music plays.</p><div class="tags"><span>8 loops</span></div></div>
         </div>
@@ -341,7 +341,7 @@ footer a{color:var(--surfaceText)}
 
   <section aria-label="Nebula by the numbers">
     <div class="counts">
-      <div><b>76</b><span>widget styles</span></div>
+      <div><b>81</b><span>widget styles</span></div>
       <div><b>7</b><span>launcher styles</span></div>
       <div><b>7</b><span>lock screen layouts</span></div>
       <div><b>56</b><span>Material shapes for widgets</span></div>
@@ -420,7 +420,7 @@ footer a{color:var(--surfaceText)}
   <section id="install">
     <div class="sec-head">
       <div><div class="eyebrow">Install</div><h2>Three steps on Arch</h2></div>
-      <p>The installer pulls the packages, builds the plugins, sets up Python and fonts, and installs the <code>nebula</code> command to <code>/usr/local/bin</code>. It never edits your Hyprland config.</p>
+      <p>The installer pulls the packages, builds the plugins, sets up Python and fonts, and installs the <code>nebula</code> command to <code>/usr/local/bin</code>. It also puts Nebula's shortcuts, layer rules and autostart in <code>~/.config/hypr/nebula/</code> and loads them from your <code>hyprland.lua</code>, after a backup.</p>
     </div>
     <div class="install">
       <div class="panel">
@@ -429,9 +429,9 @@ footer a{color:var(--surfaceText)}
         <p>Add <code>-f</code> to skip the questions, <code>-s</code> to skip the system update.</p>
       </div>
       <div class="panel">
-        <h3><i>2</i>Start it from hyprland.lua</h3>
-        <pre><span class="f">hl.exec_cmd</span>(<span class="s">"nebula start"</span>)</pre>
-        <p>It also starts the clipboard watcher.</p>
+        <h3><i>2</i>Log in again</h3>
+        <pre><span class="f">require</span>(<span class="s">"nebula.autostart"</span>)</pre>
+        <p>The installer adds this to <code>hyprland.lua</code>, so Nebula and the clipboard watcher start with Hyprland. Parts your config already has stay commented out.</p>
         <div class="warn"><span class="ms">warning</span><span>Lua config only. There is no <code>hyprland.conf</code> version of this step, because Nebula does not work with a <code>.conf</code> setup.</span></div>
       </div>
       <div class="panel">
@@ -442,8 +442,8 @@ footer a{color:var(--surfaceText)}
     </div>
     <div class="keys-wrap">
       <div>
-        <h3>Bind the shortcuts you want</h3>
-        <p>Nebula registers global shortcuts named <code>quickshell:&lt;name&gt;</code> and leaves the keys to you. A ready-made Lua set lives in <a href="https://github.com/iamSt3el/Nebula/tree/master/config/hypr"><code>config/hypr/</code></a>.</p>
+        <h3>Shortcuts, ready to change</h3>
+        <p>Nebula's global shortcuts are named <code>quickshell:&lt;name&gt;</code>. The installer binds them in <code>~/.config/hypr/nebula/keybinds.lua</code>; change the keys there and updates leave the file alone.</p>
         <pre><span class="f">hl.bind</span>(<span class="s">"SUPER + CTRL + RETURN"</span>, hl.dsp.<span class="f">global</span>(<span class="s">"quickshell:appLauncher"</span>))
 <span class="f">hl.bind</span>(<span class="s">"SUPER + L"</span>, hl.dsp.<span class="f">global</span>(<span class="s">"quickshell:lock"</span>), { locked = true })</pre>
       </div>

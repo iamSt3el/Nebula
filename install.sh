@@ -3,8 +3,8 @@
 # Usage: bash <(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/master/install.sh)
 #        bash install.sh [--force] [--skip-sysupdate]
 #
-# Installs the Nebula shell only. It never edits your Hyprland config —
-# autostart and keybind snippets live in config/hypr/ for you to copy.
+# Installs the Nebula shell, and puts its Hyprland shortcuts, layer rules and
+# autostart in ~/.config/hypr/nebula/, loaded from hyprland.lua (backed up first).
 
 # ── colours ────────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -14,7 +14,7 @@ BOLD='\033[1m'; DIM='\033[2m'; RESET='\033[0m'
 RULE='──────────────────────────────────────────────────────────────'
 
 STEP_N=0
-TOTAL_STEPS=18
+TOTAL_STEPS=19
 WARNINGS=()
 START_TS=$SECONDS
 
@@ -127,8 +127,8 @@ echo -e "  ${DIM}repo${RESET}    ${CYAN}${REPO_URL}${RESET}"
 echo -e "  ${DIM}target${RESET}  ${CYAN}${INSTALL_DIR}${RESET}"
 echo -e "  ${DIM}venv${RESET}    ${CYAN}${VENV_DIR}${RESET}"
 echo ""
-echo -e "  ${DIM}This installs the shell only — it will not touch your Hyprland config.${RESET}"
-echo -e "  ${DIM}Autostart and keybind snippets are in config/hypr/ for you to copy.${RESET}"
+echo -e "  ${DIM}Shortcuts, layer rules and autostart go in ~/.config/hypr/nebula/; hyprland.lua${RESET}"
+echo -e "  ${DIM}gets a few require lines, after a backup. Nothing else in your config changes.${RESET}"
 echo ""
 
 # ── sanity: must be Arch ──────────────────────────────────────────────────────
@@ -199,7 +199,25 @@ if [[ -d "$INSTALL_DIR/.git" ]]; then
     read -rp "   ❯ " upd
   fi
   if [[ "${upd,,}" == "y" ]]; then
-    v git -C "$INSTALL_DIR" pull --ff-only
+    v git -C "$INSTALL_DIR" fetch
+    if git -C "$INSTALL_DIR" merge --ff-only "@{u}"; then
+      ok "Updated to $(git -C "$INSTALL_DIR" rev-parse --short HEAD)"
+    else
+      warn "Local changes in $INSTALL_DIR block the update."
+      rst=n
+      if $ask; then
+        echo -e "  Back up the folder and reset it to the latest version? [y/N]"
+        read -rp "   ❯ " rst
+      fi
+      if [[ "${rst,,}" == "y" ]]; then
+        RESET_BAK="${INSTALL_DIR}.bak.$(date +%s)"
+        cp -a "$INSTALL_DIR" "$RESET_BAK"
+        ok "Backed up to $RESET_BAK"
+        v git -C "$INSTALL_DIR" reset --hard "@{u}"
+      else
+        die "Commit, stash or remove your changes in $INSTALL_DIR and re-run."
+      fi
+    fi
   else
     ok "Keeping existing install"
   fi
@@ -232,6 +250,7 @@ PACMAN_PKGS=(
   noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-fira-sans ttf-fira-code ttf-jetbrains-mono
   gcc cmake extra-cmake-modules
 )
+pacman -Qq quickshell-git &>/dev/null || PACMAN_PKGS+=(quickshell)
 PACMAN_PKGS_OPT=(ddcutil papirus-icon-theme yt-dlp)
 v sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
 sudo pacman -S --needed --noconfirm "${PACMAN_PKGS_OPT[@]}" \
@@ -258,7 +277,7 @@ ok "uv: $(uv --version 2>/dev/null || echo 'installed')"
 # ── AUR packages ──────────────────────────────────────────────────────────────
 step "AUR packages"
 AUR_PKGS=(
-  quickshell-git grimblast-git cliphist
+  grimblast-git cliphist
   matugen-bin
   ttf-material-symbols-variable-git
 )
@@ -420,6 +439,54 @@ else
 fi
 ok "Templates in $MATUGEN_DIR/templates"
 
+# ── Hyprland config ───────────────────────────────────────────────────────────
+step "Hyprland config"
+HYPR_NEBULA="$HYPR_DIR/nebula"
+HYPR_LUA="$HYPR_DIR/hyprland.lua"
+mkdir -p "$HYPR_NEBULA"
+for f in "$INSTALL_DIR/config/hypr/nebula/"*.lua; do
+  [[ "$(basename "$f")" == "keybinds.lua" && -f "$HYPR_NEBULA/keybinds.lua" ]] && continue
+  cp "$f" "$HYPR_NEBULA/"
+done
+[[ "$NEBULA_CMD" != "nebula" ]] && sed -i "s|\"nebula start\"|\"$NEBULA_CMD start\"|" "$HYPR_NEBULA/autostart.lua"
+ok "Shortcuts, layer rules, environment and autostart → $HYPR_NEBULA"
+
+hypr_has() { grep -rqsE --include='*.lua' --exclude-dir=nebula "$1" "$HYPR_DIR"; }
+nebula_require() {
+  if hypr_has "$2"; then
+    echo "-- require(\"nebula.$1\")"
+    info "Left nebula.$1 commented out: your config already has it" >&2
+  else
+    echo "require(\"nebula.$1\")"
+  fi
+}
+
+if [[ ! -f "$HYPR_LUA" ]]; then
+  warn "No $HYPR_LUA — load the files in $HYPR_NEBULA from your Lua config with require(\"nebula.<name>\")."
+elif grep -qE '^[^-]*require\("nebula\.' "$HYPR_LUA"; then
+  ok "hyprland.lua already loads Nebula"
+else
+  hk=y
+  if $ask; then
+    echo -e "  Load Nebula's shortcuts, layer rules and autostart from ${CYAN}hyprland.lua${RESET}? [Y/n]"
+    read -rp "   ❯ " hk
+  fi
+  if [[ "${hk,,}" != "n" ]]; then
+    HYPR_BAK="$HYPR_LUA.bak.$(date +%s)"
+    cp "$HYPR_LUA" "$HYPR_BAK"
+    {
+      echo ""
+      nebula_require environment 'NEBULA_VENV'
+      nebula_require autostart 'exec_cmd\("([^"]*[ ;&/])?(nebula start|quickshell|qs)( |")'
+      nebula_require keybinds 'hl\.dsp\.global\("quickshell:'
+      nebula_require rules 'namespace *= *"quickshell:'
+    } >> "$HYPR_LUA"
+    ok "hyprland.lua now loads Nebula (backup: $HYPR_BAK)"
+  else
+    info "Skipped — add require(\"nebula.<name>\") lines to hyprland.lua yourself"
+  fi
+fi
+
 # ── done ──────────────────────────────────────────────────────────────────────
 ELAPSED=$((SECONDS - START_TS))
 
@@ -435,12 +502,8 @@ echo -e "  ${DIM}Reload your shell (or log out and back in) to pick up NEBULA_VE
 echo -e "  ${DIM}and QML_IMPORT_PATH.${RESET}"
 echo ""
 echo -e "${DIM}  ${RULE}${RESET}"
-echo -e "  ${BOLD}Hyprland setup is up to you.${RESET} ${DIM}Nothing here touched your config.${RESET}"
-echo ""
-echo -e "  ${DIM}autostart + keybinds${RESET}  ${CYAN}$INSTALL_DIR/config/hypr/${RESET}"
-echo ""
-echo -e "  ${DIM}Add one line to your Hyprland autostart (hyprland.lua):${RESET}"
-echo -e "    ${CYAN}hl.exec_cmd(\"$NEBULA_CMD start\")${RESET}"
+echo -e "  ${BOLD}Hyprland${RESET}    ${CYAN}$HYPR_DIR/nebula/${RESET}  ${DIM}(shortcuts, layer rules, autostart)${RESET}"
+echo -e "  ${DIM}Log out and back in to start Nebula with Hyprland. Edit keybinds.lua there to change keys.${RESET}"
 echo ""
 echo -e "  ${YELLOW}Nebula needs Hyprland 0.56+ with a Lua config.${RESET} ${DIM}hyprland.conf is not supported.${RESET}"
 echo ""

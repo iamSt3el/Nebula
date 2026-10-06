@@ -123,7 +123,7 @@ Singleton {
 
     function _callNotification(item) {
         const n = item.notification
-        if (!/kde ?connect/i.test((n.appName ?? "") + " " + (n.desktopEntry ?? "")))
+        if (!n || !/kde ?connect/i.test((n.appName ?? "") + " " + (n.desktopEntry ?? "")))
             return
         root._kdcItem = item
         root._kdcAt = Date.now()
@@ -133,8 +133,10 @@ Singleton {
 
     function _linkCallItem(item) {
         root._kdcItem = null
-        item.popup = false
         const n = item.notification
+        if (!n)
+            return
+        item.popup = false
         if (root.call && n.actions.length > 0) {
             root._callNotif = n
             if (item.image)
