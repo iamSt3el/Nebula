@@ -277,7 +277,10 @@ Item {
         anchors.fill: parent
         visible: root.openFolder !== null
         color: Qt.alpha(Colors.surface, 0.6)
-        radius: 16
+        topLeftRadius: root.launcher.innerCorner("tl")
+        topRightRadius: root.launcher.innerCorner("tr")
+        bottomLeftRadius: root.launcher.innerCorner("bl")
+        bottomRightRadius: root.launcher.innerCorner("br")
 
         MouseArea {
             anchors.fill: parent

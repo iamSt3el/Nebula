@@ -8,6 +8,7 @@ Rectangle {
 
     property Item host: null
     property string itemId: ""
+    readonly property bool plateless: BarLayout.chipHovers(root.itemId, 0, 0)
     readonly property bool shown: true
     readonly property real roundT: root.host && root.host.roundT !== undefined ? root.host.roundT : 0
 
@@ -24,7 +25,7 @@ Rectangle {
     implicitWidth: label.implicitWidth + 14
     implicitHeight: 20
     radius: 6 + (height / 2 - 6) * root.roundT
-    color: Colors.secondaryContainer
+    color: root.plateless ? "transparent" : Colors.secondaryContainer
 
     CustomText {
         id: label

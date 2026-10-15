@@ -2,6 +2,7 @@
 art_url="$1"
 scheme="${2:-scheme-content}"
 mode="${3:-dark}"
+[ "$scheme" = "scheme-kindle" ] && scheme="scheme-monochrome"
 
 # Strip file:// prefix if present
 image="${art_url#file://}"

@@ -13,6 +13,7 @@ WidgetHost {
     maxSpan: Qt.size(3, 4)
     defaultPos: Qt.point(1575, 165)
     backdrop: false
+    outlined: false
 
     readonly property var si: root.preview ? PreviewData : ServiceSystemInfo
     property real load: Math.max(0, Math.min(1, root.si.cpuUsage))

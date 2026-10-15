@@ -20,6 +20,8 @@ Item {
             Layout.preferredWidth: root.labels ? 84 : 60
             Layout.fillHeight: true
             radius: 22
+            topLeftRadius: root.launcher.innerCorner("tl")
+            bottomLeftRadius: root.launcher.innerCorner("bl")
             color: Colors.surfaceContainerLow
 
             ListView {

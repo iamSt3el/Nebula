@@ -19,6 +19,7 @@ Singleton {
     property string storageName: ""
     property string mountError: ""
     property bool mounting: false
+    property int storageVersion: 0
     property real pairSince: 0
     property int _lastPair: 0
     property bool reachable: false
@@ -377,6 +378,13 @@ Singleton {
         pairProc.running = true
     }
 
+    onReachableChanged: {
+        if (!root.reachable && root.storageRoot !== "") {
+            root.storageRoot = ""
+            root.storageVersion++
+        }
+    }
+
     onPairStateChanged: {
         if (root.pairState === 1 || root.pairState === 2)
             root.pairSince = Date.now()
@@ -414,20 +422,91 @@ Singleton {
     Process {
         id: mountProc
         command: ["bash", "-c",
-            "b=/modules/kdeconnect/devices/$1/sftp; i=org.kde.kdeconnect.device.sftp;"
+            "b=/modules/kdeconnect/devices/$1/sftp; i=org.kde.kdeconnect.device.sftp; q() { busctl --user call org.kde.kdeconnect $b $i \"$@\" 2>/dev/null; };"
             + "busctl --user --timeout=25 call org.kde.kdeconnect $b $i mountAndWait >/dev/null 2>&1;"
-            + "busctl --user call org.kde.kdeconnect $b $i getDirectories 2>/dev/null | grep -o '\"[^\"]*\"' | head -n2 | tr -d '\"';"
-            + "busctl --user call org.kde.kdeconnect $b $i getMountError 2>/dev/null | cut -d' ' -f2- | tr -d '\"'",
+            + "if q isMounted | grep -q true; then q getDirectories | grep -o '\"[^\"]*\"' | head -n2 | tr -d '\"' | paste -sd '\\t' | sed 's/^/dirs\\t/'; fi;"
+            + "printf 'err\\t%s\\n' \"$(q getMountError | cut -d' ' -f2- | tr -d '\"')\"",
             "mount", root.deviceId]
         stdout: StdioCollector {
             onStreamFinished: {
-                const l = text.split("\n")
-                root.storageRoot = (l[0] ?? "").trim()
-                root.storageName = (l[1] ?? "").trim() || "Phone storage"
-                root.mountError = (l[2] ?? "").trim()
+                let dir = ""
+                let label = ""
+                let err = ""
+                for (const line of text.split("\n")) {
+                    const f = line.split("\t")
+                    if (f[0] === "dirs") {
+                        dir = (f[1] ?? "").trim()
+                        label = (f[2] ?? "").trim()
+                    } else if (f[0] === "err") {
+                        err = f.slice(1).join("\t").trim()
+                    }
+                }
+                root.storageRoot = dir
+                root.storageName = label || "Phone storage"
+                root.mountError = err
+                root.storageVersion++
             }
         }
         onExited: root.mounting = false
+    }
+
+    function pull(paths) {
+        const list = (paths ?? []).filter(p => p !== "")
+        if (list.length === 0) return
+        root._pullQueue = root._pullQueue.concat(list)
+        root.pullTotal += list.length
+        root._pumpPull()
+    }
+
+    function _pumpPull() {
+        if (pullProc.running || root._pullQueue.length === 0) return
+        const batch = root._pullQueue
+        root._pullQueue = []
+        pullProc.command = ["bash", "-c",
+            "d=\"$1\"; shift; mkdir -p -- \"$d\" || exit 1;"
+            + "for f in \"$@\"; do n=${f##*/}; b=${n%.*}; e=; [ \"$b\" != \"$n\" ] && [ -n \"$b\" ] && e=.${n##*.} || b=$n;"
+            + "t=$d/$n; k=1; while [ -e \"$t\" ] || [ -e \"$t.part\" ]; do t=\"$d/$b ($k)$e\"; k=$((k+1)); done;"
+            + "if cp --preserve=timestamps -- \"$f\" \"$t.part\" && mv -- \"$t.part\" \"$t\"; then printf 'ok\\t%s\\n' \"$t\";"
+            + "else rm -f -- \"$t.part\"; printf 'fail\\t%s\\n' \"$f\"; fi; done",
+            "pull", root.downloads].concat(batch)
+        pullProc.running = true
+    }
+
+    property var _pullQueue: []
+    property int pullTotal: 0
+    property int pullDone: 0
+    property int pullFailed: 0
+    readonly property bool pulling: root.pullDone < root.pullTotal
+    signal pullFinished(int copied, int failed)
+
+    Process {
+        id: pullProc
+        stdout: SplitParser {
+            onRead: line => {
+                const i = line.indexOf("\t")
+                if (i < 0) return
+                const path = line.slice(i + 1)
+                if (line.slice(0, i) === "ok") {
+                    root.noteReceived(path)
+                } else {
+                    root.pullFailed++
+                    root._push({ kind: "in", name: root.baseName(path), path: "", ok: false })
+                }
+                root.pullDone++
+            }
+        }
+        onExited: {
+            if (root._pullQueue.length > 0) {
+                root._pumpPull()
+                return
+            }
+            const total = root.pullTotal
+            const failed = root.pullFailed + Math.max(0, total - root.pullDone)
+            root.pullTotal = 0
+            root.pullDone = 0
+            root.pullFailed = 0
+            root.pullFinished(total - failed, failed)
+        }
     }
 
     function openKdeConnect() {
@@ -557,6 +636,10 @@ Singleton {
             onRead: line => {
                 const m = /member=(\w+)/.exec(line)
                 if (m) {
+                    if (m[1] === "unmounted" && line.indexOf("/sftp") >= 0) {
+                        root.storageRoot = ""
+                        root.storageVersion++
+                    }
                     monitor.pending = m[1]
                     monitor.args = []
                     if (m[1] !== "shareReceived" && m[1] !== "textShareReceived" && m[1] !== "callReceived")

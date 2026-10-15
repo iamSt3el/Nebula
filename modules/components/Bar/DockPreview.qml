@@ -43,7 +43,7 @@ Item {
             Image {
                 Layout.preferredWidth: 18
                 Layout.preferredHeight: 18
-                source: Quickshell.iconPath(
+                source: IconUtil.themeIcon(
                     DesktopEntries.heuristicLookup(root.appEntry?.appId ?? "")?.icon,
                     "image-missing")
                 sourceSize.width: 18

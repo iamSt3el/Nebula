@@ -15,7 +15,8 @@ Item {
     property string itemId: ""
     readonly property bool shown: true
     readonly property bool vertical: !!root.host && root.host.vertical === true
-    readonly property bool verticalReady: true
+        && (!root.host.compactFor || root.host.compactFor(root.itemId))
+    readonly property bool verticalReady: root.vertical
     readonly property bool flexible: !root.vertical
     readonly property bool tint: BarLayout.opt(root.itemId, "tint") === true
     readonly property real roundT: root.host && root.host.roundT !== undefined ? root.host.roundT : 0
@@ -23,7 +24,7 @@ Item {
     readonly property bool appIcon: BarLayout.opt(root.itemId, "icon") !== "generic"
     readonly property string appId: ToplevelManager.activeToplevel ? (ToplevelManager.activeToplevel.appId ?? "") : ""
     readonly property string iconSrc: root.appIcon && root.appId !== "" && ServiceApps.list.length >= 0
-        ? Quickshell.iconPath(DesktopEntries.heuristicLookup(root.appId)?.icon ?? "", true) : ""
+        ? IconUtil.themeIcon(DesktopEntries.heuristicLookup(root.appId)?.icon ?? "", true) : ""
     readonly property color ink: root.tint ? Colors.secondaryContainerText : Colors.surfaceText
     readonly property color subInk: root.tint ? Qt.alpha(Colors.secondaryContainerText, 0.75) : Colors.outline
 
@@ -103,5 +104,11 @@ Item {
                 elide: Text.ElideRight
             }
         }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+        onClicked: if (root.host) root.host.openPanel("windowInfo", root)
     }
 }

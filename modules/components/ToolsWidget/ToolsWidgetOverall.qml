@@ -175,7 +175,7 @@ Item {
                     Rectangle {
                         implicitWidth: 26; implicitHeight: 26
                         radius: 13
-                        color: closeHov.containsMouse ? Qt.alpha(Colors.surfaceText, 0.08) : "transparent"
+                        color: closeHov.containsMouse ? Qt.alpha(Colors.surfaceText, 0.08) : Qt.alpha(Colors.surfaceText, 0)
                         Behavior on color { EffectsColorAnim { speed: "fast" } }
 
                         MaterialIconSymbol {

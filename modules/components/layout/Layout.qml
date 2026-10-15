@@ -35,25 +35,124 @@ PanelWindow{
     property bool editorsLive: false
     property Item editChrome: null
     property Item drawerHost: null
-    property Item dashEditor: null
-    property Item dashInspector: null
-    readonly property Item editTopSurface: topSurface
-    readonly property Item editBottomSurface: bottomSurface
+    readonly property var surfaces: [surfTop, surfRight, surfBottom, surfLeft]
+
+    function cornerFor(side, atEnd, top, bottom) {
+        if (!side.visible || side.panelDepth <= 0)
+            return { start: 0, end: 0, dropStart: false, dropEnd: false }
+        const rs = top.visible ? top.reachBase(atEnd, side.panelDepth) : 0
+        const re = bottom.visible ? bottom.reachBase(atEnd, side.panelDepth) : 0
+        if (side.fitsWith(rs, re))
+            return { start: rs, end: re, dropStart: false, dropEnd: false }
+        if (re > 0 && side.fitsWith(rs, 0))
+            return { start: rs, end: 0, dropStart: false, dropEnd: true }
+        if (rs > 0 && side.fitsWith(0, re))
+            return { start: 0, end: re, dropStart: true, dropEnd: false }
+        return { start: 0, end: 0, dropStart: rs > 0, dropEnd: re > 0 }
+    }
+    function cornerPill(across, side, atEnd) {
+        if (!across.visible || !side.visible || !side.present)
+            return null
+        const bl = across.visibleBlocks
+        if (!bl.length)
+            return null
+        const b = atEnd ? bl[bl.length - 1] : bl[0]
+        if (!b.isPill)
+            return null
+        const x = across.restX(b)
+        const inside = atEnd ? x + b.width > across.width - side.thickness : x < side.thickness
+        return inside ? b : null
+    }
+    readonly property var leftCorner: layout.cornerFor(surfLeft, false, surfTop, surfBottom)
+    readonly property var rightCorner: layout.cornerFor(surfRight, true, surfTop, surfBottom)
+    function crossFor(end) {
+        const drop = end ? "dropEnd" : "dropStart"
+        let out = []
+        if (surfLeft.visible)
+            out = out.concat(surfLeft.blockRects("left", end))
+        if (surfRight.visible)
+            out = out.concat(surfRight.blockRects("right", end))
+        if (layout.leftCorner[drop])
+            out = out.concat(surfLeft.openRects("left"))
+        if (layout.rightCorner[drop])
+            out = out.concat(surfRight.openRects("right"))
+        return out
+    }
+
+    property int panelClock: 0
+    function nextPanelSeq() {
+        layout.panelClock++
+        return layout.panelClock
+    }
+
+    function panelRect(s, b) {
+        const near = s.blockTop(b) + s.barH
+        const far = near + b.acrossOf(b.shownKind) + (b.floating ? b.floatGap : 0)
+        const a0 = b.absX + b.tabTargetX
+        const a1 = a0 + b.tabTargetW
+        switch (s.edge) {
+        case "top": return { l: a0, r: a1, t: near, b: far }
+        case "bottom": return { l: a0, r: a1, t: layout.height - far, b: layout.height - near }
+        case "left": return { l: near, r: far, t: a0, b: a1 }
+        default: return { l: layout.width - far, r: layout.width - near, t: a0, b: a1 }
+        }
+    }
+
+    readonly property var openPanels: {
+        const out = []
+        if (layout.barEditing)
+            return out
+        for (const s of layout.surfaces) {
+            if (!s.visible)
+                continue
+            for (const b of s.visibleBlocks) {
+                if (b.shownKind === "" || b.closing || b.isTransient(b.shownKind) || b.tabTargetW < 1)
+                    continue
+                out.push({ block: b, seq: b.openSeq, clicked: b.clickedKind !== "", rect: layout.panelRect(s, b) })
+            }
+        }
+        return out
+    }
+    onOpenPanelsChanged: if (layout.openPanels.length > 1) panelArbiter.restart()
+
+    Timer {
+        id: panelArbiter
+        interval: 180
+        onTriggered: {
+            const list = layout.openPanels
+            for (let i = 0; i < list.length; i++) {
+                for (let j = i + 1; j < list.length; j++) {
+                    const a = list[i].rect
+                    const c = list[j].rect
+                    if (Math.min(a.r, c.r) - Math.max(a.l, c.l) <= 1 || Math.min(a.b, c.b) - Math.max(a.t, c.t) <= 1)
+                        continue
+                    const newer = list[i].seq > list[j].seq ? list[i] : list[j]
+                    const older = newer === list[i] ? list[j] : list[i]
+                    const loser = !newer.clicked && older.clicked ? newer : older
+                    loser.block.closePanel()
+                    return
+                }
+            }
+        }
+    }
+
+    Binding {
+        target: ServiceGaps
+        property: "occupied"
+        when: layout.isPrimary
+        value: ({ top: surfTop.occupied, right: surfRight.occupied, bottom: surfBottom.occupied, left: surfLeft.occupied })
+    }
     function loadEditors() {
         layout.editChrome = editChromeComp.createObject(root)
         layout.drawerHost = drawerComp.createObject(root)
-        layout.dashEditor = dashEditorComp.createObject(root)
-        layout.dashInspector = dashInspectorComp.createObject(root)
         layout.syncDrawer()
         Qt.callLater(() => layout.editorsLive = true)
     }
     function unloadEditors() {
-        for (const o of [layout.editChrome, layout.drawerHost, layout.dashEditor, layout.dashInspector])
+        for (const o of [layout.editChrome, layout.drawerHost])
             if (o) o.destroy()
         layout.editChrome = null
         layout.drawerHost = null
-        layout.dashEditor = null
-        layout.dashInspector = null
         layout.editorsLive = false
     }
     Timer {
@@ -71,8 +170,7 @@ PanelWindow{
     readonly property string dashAnchor: {
         if (layout.panelPreview === "wallpaper" || layout.panelPreview === "clipboard")
             return "center"
-        const opener = layout.panelPreview === "dashboard" || barEditor.selectedItem.indexOf("dash:") === 0
-            ? BarLayout.panelHostItem("dashboard") : barEditor.selectedItem
+        const opener = barEditor.selectedItem
         const b = BarLayout.allBlocks.find(x => x.items.indexOf(opener) >= 0)
         return b ? b.anchor : "right"
     }
@@ -80,7 +178,7 @@ PanelWindow{
         ? layout.dashAnchor !== "left"
         : ServiceLauncher.position === "item"
           && BarLayout.allBlocks.some(b => b.anchor === "right" && b.items.indexOf("launcher") >= 0)
-    readonly property real popupY: topSurface.rowItem.y + topSurface.maxDrop + Appearance.size.barHeight + (topSurface.anyPill ? 8 : 4)
+    readonly property real popupY: surfTop.present ? surfTop.rowItem.y + surfTop.maxDrop + surfTop.barH + (surfTop.anyPill ? 8 : 4) : 8
 
     WlrLayershell.namespace: "quickshell:bar"
     exclusionMode: ExclusionMode.Ignore
@@ -96,7 +194,8 @@ PanelWindow{
                                                              : WlrKeyboardFocus.None
 
     onBarEditingChanged: {
-        topSurface.floatKind = ""
+        BarLayout.gapHover = null
+        root.queueGapMarks()
         barEditor.cancel()
         barEditor.selectedItem = ""
         barEditor.panelStage = false
@@ -111,7 +210,6 @@ PanelWindow{
     }
 
     readonly property bool drawerWanted: layout.barEditing && barEditor.drawerMode !== "" && barEditor.drawerMode !== "inspector"
-        && !(barEditor.drawerMode === "options" && barEditor.selectedItem === "dashboard")
     onDrawerWantedChanged: {
         layout.syncDrawer()
         if (!layout.drawerWanted && layout.barEditing)
@@ -131,9 +229,53 @@ PanelWindow{
         if (!d)
             return
         if (layout.drawerWanted && barEditor.drawerMode === "settings" && d.tab === "add")
-            d.tab = "bar"
+            d.tab = "edges"
         if (layout.drawerWanted) d.open()
         else d.close()
+    }
+
+    Binding {
+        target: GlobalStates
+        property: "editEdgeRects"
+        when: layout.isPrimary
+        value: layout.surfaces.filter(s => s.visible && s.present).map(s => s.bandRect)
+    }
+
+    Binding {
+        target: GlobalStates
+        property: "editEdgeScreen"
+        when: layout.isPrimary
+        value: layout.screen ? layout.screen.name : ""
+    }
+
+    Binding {
+        target: GlobalStates
+        property: "editTopInset"
+        when: layout.isPrimary
+        value: surfTop.visible && surfTop.present ? surfTop.thickness : (surfTop.visible ? 40 : 0)
+    }
+
+    function widgetAt(x, y) {
+        const hosts = WidgetLayout.hosts
+        for (let i = hosts.length - 1; i >= 0; i--) {
+            const h = hosts[i]
+            if (!h || !h.visible || h.preview || h.configKey === "")
+                continue
+            const w = h.Window.window
+            if (w && layout.screen && w.screen && w.screen.name !== layout.screen.name)
+                continue
+            const p = h.mapToItem(null, 0, 0)
+            if (x >= p.x && x <= p.x + h.width && y >= p.y && y <= p.y + h.height)
+                return h
+        }
+        return null
+    }
+
+    Binding {
+        target: GlobalStates
+        property: "launcherHosted"
+        value: BarLayout.launcherItemHost
+        when: layout.isPrimary
     }
 
     Binding {
@@ -166,395 +308,18 @@ PanelWindow{
 
     HyprlandFocusGrab {
         windows: [layout]
-        active: layout.isPrimary && GlobalStates.appLauncherOpen && GlobalStates.launcherHosted
-        onCleared: if (!active) GlobalStates.appLauncherOpen = false
+        active: !GlobalStates.capturing && layout.isPrimary && GlobalStates.appLauncherOpen && GlobalStates.launcherHosted
+        onCleared: if (!active && !GlobalStates.capturing) GlobalStates.appLauncherOpen = false
     }
 
     mask: Region{
         item: maskRect;
         intersection: Intersection.Xor;
 
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[0] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[1] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[2] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[3] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[4] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[5] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[6] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[7] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[8] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[9] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[10] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[11] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[12] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[13] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[14] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[15] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[16] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[17] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[18] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[19] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[20] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[21] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[22] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: isPrimary ? (topSurface.visibleBlocks[23] ?? null) : null
-            readonly property rect r: blk ? topSurface.blockRect(blk) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-
-        Region {
-            readonly property Item tb: isPrimary ? (topSurface.openTabs[0] ?? null) : null
-            readonly property rect r: tb ? topSurface.tabRect(tb) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item tb: isPrimary ? (topSurface.openTabs[1] ?? null) : null
-            readonly property rect r: tb ? topSurface.tabRect(tb) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item tb: isPrimary ? (topSurface.openTabs[2] ?? null) : null
-            readonly property rect r: tb ? topSurface.tabRect(tb) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item tb: isPrimary ? (topSurface.openTabs[3] ?? null) : null
-            readonly property rect r: tb ? topSurface.tabRect(tb) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-
-        Region {
-            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[0] ?? null) : null
-            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[1] ?? null) : null
-            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[2] ?? null) : null
-            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[3] ?? null) : null
-            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[4] ?? null) : null
-            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[5] ?? null) : null
-            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[6] ?? null) : null
-            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[7] ?? null) : null
-            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[8] ?? null) : null
-            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[9] ?? null) : null
-            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[10] ?? null) : null
-            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item blk: bottomSurface.visible ? (bottomSurface.visibleBlocks[11] ?? null) : null
-            readonly property rect r: blk ? (bottomSurface.dockHidden ? bottomSurface.hiddenRect(blk) : bottomSurface.blockRect(blk)) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item tb: bottomSurface.visible ? (bottomSurface.openTabs[0] ?? null) : null
-            readonly property rect r: tb ? bottomSurface.tabRect(tb) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-        Region {
-            readonly property Item tb: bottomSurface.visible ? (bottomSurface.openTabs[1] ?? null) : null
-            readonly property rect r: tb ? bottomSurface.tabRect(tb) : Qt.rect(0, 0, 0, 0)
-            x: r.x
-            y: r.y
-            width: r.width
-            height: r.height
-            intersection: Intersection.Subtract
-        }
-
+        SurfaceMask { surface: surfTop }
+        SurfaceMask { surface: surfRight }
+        SurfaceMask { surface: surfBottom }
+        SurfaceMask { surface: surfLeft }
         Region {
             x: 0; y: 0
             width:  layout.barEditing ? layout.width  : 0
@@ -564,38 +329,9 @@ PanelWindow{
 
         Region{
             x: 0
-            y: ServiceGaps.barSide === "bottom" ? layout.height - Appearance.size.barHeight : 0
+            y: ServiceGaps.secondaryEdge === "bottom" ? layout.height - Appearance.size.barHeight : 0
             width:  isPrimary ? 0 : layout.width
             height: isPrimary ? 0 : Appearance.size.barHeight
-            intersection: Intersection.Subtract
-        }
-
-        Region {
-            x:      topSurface.dashCard.x
-            y:      topSurface.dashCard.y
-            width:  topSurface.dashCard.visible ? topSurface.dashCard.width  : 0
-            height: topSurface.dashCard.visible ? topSurface.dashCard.height : 0
-            intersection: Intersection.Subtract
-        }
-        Region {
-            x:      topSurface.weatherCard.x
-            y:      topSurface.weatherCard.y
-            width:  topSurface.weatherCard.visible ? topSurface.weatherCard.width  : 0
-            height: topSurface.weatherCard.visible ? topSurface.weatherCard.height : 0
-            intersection: Intersection.Subtract
-        }
-        Region {
-            x:      bottomSurface.dashCard.x
-            y:      bottomSurface.dashCard.y
-            width:  bottomSurface.dashCard.visible ? bottomSurface.dashCard.width  : 0
-            height: bottomSurface.dashCard.visible ? bottomSurface.dashCard.height : 0
-            intersection: Intersection.Subtract
-        }
-        Region {
-            x:      bottomSurface.weatherCard.x
-            y:      bottomSurface.weatherCard.y
-            width:  bottomSurface.weatherCard.visible ? bottomSurface.weatherCard.width  : 0
-            height: bottomSurface.weatherCard.visible ? bottomSurface.weatherCard.height : 0
             intersection: Intersection.Subtract
         }
 
@@ -644,28 +380,48 @@ PanelWindow{
         }
 
         function surfaceAt(x, y) {
-            if (bottomSurface.visible && BarLayout.dockOn) {
-                const p = bottomSurface.toFrame(x, y)
-                if (bottomSurface.inBand(p.x, p.y, 40))
-                    return bottomSurface
+            let best = null
+            let bestD = Infinity
+            for (const s of layout.surfaces) {
+                if (!s.visible || !s.present)
+                    continue
+                const p = s.toFrame(x, y)
+                if (!s.inBand(p.x, p.y, 40))
+                    continue
+                const d = s.far ? s.height - p.y : p.y
+                if (d < bestD) {
+                    bestD = d
+                    best = s
+                }
             }
-            const q = topSurface.toFrame(x, y)
-            if (topSurface.inBand(q.x, q.y, 36))
-                return topSurface
+            return best
+        }
+
+        function edgeAt(x, y) {
+            const hit = root.surfaceAt(x, y)
+            if (hit)
+                return hit
+            for (const s of layout.surfaces) {
+                if (!s.visible || s.present)
+                    continue
+                const p = s.toFrame(x, y)
+                if (s.inBand(p.x, p.y, 24))
+                    return s
+            }
             return null
         }
 
         function trackApp(x, y) {
             barEditor.overDrawer = root.inDrawerAt(x, y)
+            const surf = root.surfaceAt(x, y)
             let g = null
-            for (const b of bottomSurface.visibleBlocks) {
+            for (const b of (surf ? surf.visibleBlocks : [])) {
                 g = b.appGeom()
                 if (g)
                     break
             }
-            const f = bottomSurface.toFrame(x, y)
-            if (barEditor.overDrawer || !g || root.surfaceAt(x, y) !== bottomSurface
-                    || f.x < g.x - 30 || f.x > g.x + g.w + 30) {
+            const f = surf ? surf.toFrame(x, y) : Qt.point(0, 0)
+            if (barEditor.overDrawer || !g || f.x < g.x - 30 || f.x > g.x + g.w + 30) {
                 barEditor.appDropIndex = -1
                 return
             }
@@ -675,13 +431,22 @@ PanelWindow{
         function trackItem(x, y) {
             const inDrawer = root.inDrawerAt(x, y)
             barEditor.overDrawer = inDrawer
-            barEditor.refusedTarget = ""
-            const surf = inDrawer ? null : root.surfaceAt(x, y)
+            const surf = inDrawer ? null : root.edgeAt(x, y)
             if (!surf) {
                 barEditor.dropBlock = ""
                 return
             }
             const f = surf.toFrame(x, y)
+            if (!surf.present) {
+                const rel = f.x - surf.rowItem.x
+                const W = surf.rowItem.width
+                const anchor = rel < W / 3 ? "left" : rel > 2 * W / 3 ? "right" : "center"
+                const onEdge = BarLayout.blocksOn(surf.edge)
+                const reuse = onEdge.find(b => b.anchor === anchor) ?? onEdge[0]
+                barEditor.dropBlock = reuse ? reuse.id : "+" + surf.edge + ":" + anchor
+                barEditor.dropIndex = reuse ? reuse.items.length : 0
+                return
+            }
             x = f.x
             y = f.y
             let best = null
@@ -696,17 +461,88 @@ PanelWindow{
                     best = b
                 }
             }
-            if (!best || bestD > 80) {
+            if (!best) {
                 barEditor.dropBlock = ""
-                return
-            }
-            if (!BarLayout.allows(barEditor.itemId, surf.edge)) {
-                barEditor.dropBlock = ""
-                barEditor.refusedTarget = best.blockId
                 return
             }
             barEditor.dropBlock = best.blockId
             barEditor.dropIndex = best.dropIndexAt(x - (surf.rowItem.x + best.parent.x + best.x))
+        }
+
+        function gapMarks(f) {
+            if (!f || !layout.barEditing)
+                return []
+            const out = []
+            const pt = (s, along, depth) => {
+                const r = s.toScreen(along, s.far ? s.height - depth : depth, 0, 0)
+                return { x: r.x, y: r.y }
+            }
+            const along = (s, a, b, depth) => {
+                if (b - a > 0.5)
+                    out.push({ p0: pt(s, a, depth), p1: pt(s, b, depth), label: b - a })
+            }
+            const across = (s, at, d0, d1) => {
+                if (d1 - d0 > 0.5)
+                    out.push({ p0: pt(s, at, d0), p1: pt(s, at, d1), label: d1 - d0 })
+            }
+            for (const s of layout.surfaces) {
+                if (!s.visible || !s.present)
+                    continue
+                const mine = f.edge === "" || f.edge === s.edge
+                const vb = s.visibleBlocks.filter(o => !o.leaving && o.width > 0)
+                const mid = o => s.blockTop(o) + s.barH / 2
+                if (f.key === "panelGap") {
+                    for (const o of vb) {
+                        if (f.block !== "" ? o.blockId !== f.block : !(o.floating || o.merged))
+                            continue
+                        const d0 = s.blockTop(o) + s.barH
+                        across(s, s.blockX(o) + o.width / 2, d0, d0 + BarLayout.blockPanelGap(o.blockId))
+                    }
+                    continue
+                }
+                if (!mine || !vb.length)
+                    continue
+                if (f.key === "blockGap") {
+                    for (let i = 1; i < vb.length; i++)
+                        along(s, s.blockX(vb[i - 1]) + vb[i - 1].width, s.blockX(vb[i]), mid(vb[i]))
+                } else if (f.key === "itemGap") {
+                    for (const o of vb) {
+                        const sp = o.itemSpans()
+                        for (let i = 1; i < sp.length; i++)
+                            along(s, s.blockX(o) + sp[i - 1].r, s.blockX(o) + sp[i].l, mid(o))
+                    }
+                } else if (f.key === "pillGap") {
+                    for (const o of vb)
+                        if (o.isPill)
+                            across(s, s.blockX(o) + o.width / 2, s.edgeInset, s.blockTop(o))
+                } else if (f.key === "edges") {
+                    const corner = [surfLeft.cornerPillStart, surfLeft.cornerPillEnd,
+                                    surfRight.cornerPillStart, surfRight.cornerPillEnd].filter(p => !!p)
+                    for (const o of vb)
+                        if (o.isPill && corner.indexOf(o) < 0)
+                            across(s, s.blockX(o) + o.width / 2, 0, s.blockTop(o))
+                    const first = vb[0]
+                    const last = vb[vb.length - 1]
+                    if (s.vertical) {
+                        const ps = s.cornerPillStart
+                        const pe = s.cornerPillEnd
+                        if (ps)
+                            along(s, surfTop.blockTop(ps) + surfTop.barH, s.blockX(first), mid(first))
+                        if (pe)
+                            along(s, s.blockX(last) + last.width, s.width - surfBottom.blockTop(pe) - surfBottom.barH, mid(last))
+                    } else {
+                        along(s, 0, s.blockX(first), mid(first))
+                        along(s, s.blockX(last) + last.width, s.width, mid(last))
+                    }
+                } else if (f.key === "pillStart") {
+                    const e = s.rowItem.x - s.cornerGapStart
+                    along(s, e - s.pillStartGap * s.startPill, e, mid(vb[0]))
+                } else if (f.key === "pillEnd") {
+                    const e = s.rowItem.x + s.rowItem.width + s.cornerGapEnd
+                    along(s, e, e + s.pillEndGap * s.endPill, mid(vb[vb.length - 1]))
+                }
+            }
+            return out
         }
 
         function trackBlock(sx, sy) {
@@ -750,15 +586,18 @@ PanelWindow{
         }
 
         function nearestSurface(x, y) {
-            if (!bottomSurface.visible || !BarLayout.dockOn)
-                return topSurface
             const dist = s => {
                 const r = s.bandRect
                 const dx = x < r.x ? r.x - x : (x > r.x + r.width ? x - r.x - r.width : 0)
                 const dy = y < r.y ? r.y - y : (y > r.y + r.height ? y - r.y - r.height : 0)
                 return Math.hypot(dx, dy)
             }
-            return dist(bottomSurface) < dist(topSurface) ? bottomSurface : topSurface
+            let best = layout.surfaces[0]
+            for (const s of layout.surfaces) {
+                if (s.visible && dist(s) < dist(best))
+                    best = s
+            }
+            return best
         }
 
         QtObject {
@@ -785,7 +624,6 @@ PanelWindow{
             property real caretY: 0
             property real caretW: 3
             property real caretH: 0
-            property string refusedTarget: ""
             property string appId: ""
             property bool appPinned: false
             property int appDropIndex: -1
@@ -883,6 +721,8 @@ PanelWindow{
                 const appIndex = barEditor.appDropIndex
                 if (mode === "item" && !hide && toBlock !== "")
                     dragGhost.beginLanding(id)
+                if (mode === "item")
+                    EditSession.hint = id
                 barEditor.cancel()
                 if (mode === "app") {
                     if (hide) {
@@ -896,6 +736,9 @@ PanelWindow{
                     if (hide) {
                         if (id === barEditor.selectedItem) barEditor.selectedItem = ""
                         if (from !== "") Qt.callLater(() => BarLayout.hideItem(id))
+                    } else if (toBlock.indexOf("+") === 0) {
+                        const spec = toBlock.slice(1).split(":")
+                        Qt.callLater(() => BarLayout.moveItem(id, BarLayout.addBlock(spec[1], spec[0]), 0))
                     } else if (toBlock !== "") {
                         Qt.callLater(() => BarLayout.moveItem(id, toBlock, toIndex))
                     }
@@ -913,7 +756,6 @@ PanelWindow{
                 barEditor.overDrawer = false
                 barEditor.dropAnchor = ""
                 barEditor.caretX = -1
-                barEditor.refusedTarget = ""
                 barEditor.appId = ""
                 barEditor.appPinned = false
                 barEditor.appDropIndex = -1
@@ -930,7 +772,8 @@ PanelWindow{
             anchors.fill: parent
             z: -1
             visible: layout.barEditing
-            color: Qt.alpha(Colors.surface, 0.45)
+            color: Qt.alpha(Colors.surface, EditSession.peek ? 0 : 0.45)
+            Behavior on color { EffectsColorAnim { speed: "fast" } }
 
             MouseArea {
                 anchors.fill: parent
@@ -940,74 +783,226 @@ PanelWindow{
                         return
                     if (editChrome && editChrome.closeAll())
                         return
+                    if (!root.surfaceAt(mouse.x, mouse.y)) {
+                        const w = layout.widgetAt(mouse.x, mouse.y)
+                        if (w) {
+                            GlobalStates.widgetSettingsKey = w.configKey
+                            GlobalStates.editLayer = "desktop"
+                            return
+                        }
+                    }
                     if (barEditor.selectedItem !== "" || barEditor.selectedBlock !== "") {
                         barEditor.selectedItem = ""
                         barEditor.selectedBlock = ""
                     } else if (!root.surfaceAt(mouse.x, mouse.y))
-                        GlobalStates.barEditMode = false
-                }
-            }
-        }
-
-        Shape {
-            id: screenBorder
-            anchors.fill: parent
-            visible: ServiceGaps.borderOn
-            preferredRendererType: Shape.CurveRenderer
-
-            function base(s, side) {
-                if (!s || !s.visible || s.allPill || s.side !== side)
-                    return 0
-                return s.sdfBot * (s.isDock ? s.reveal : 1)
-            }
-            function inset(side) {
-                return Math.max(ServiceGaps.borderFor(side),
-                                screenBorder.base(topSurface, side), screenBorder.base(bottomSurface, side))
-            }
-            readonly property real insetT: screenBorder.inset("top")
-            readonly property real insetR: screenBorder.inset("right")
-            readonly property real insetB: screenBorder.inset("bottom")
-            readonly property real insetL: screenBorder.inset("left")
-            readonly property real holeW: Math.max(0, width - insetL - insetR)
-            readonly property real holeH: Math.max(0, height - insetT - insetB)
-            readonly property real cornerR: Math.min(ServiceGaps.borderRadius, holeW / 2, holeH / 2)
-
-            ShapePath {
-                fillColor: Colors.surface
-                strokeWidth: -1
-                fillRule: ShapePath.OddEvenFill
-                PathRectangle { x: 0; y: 0; width: screenBorder.width; height: screenBorder.height }
-                PathRectangle {
-                    x: screenBorder.insetL
-                    y: screenBorder.insetT
-                    width: screenBorder.holeW
-                    height: screenBorder.holeH
-                    topLeftRadius: screenBorder.insetT > 0 && screenBorder.insetL > 0 ? screenBorder.cornerR : 0
-                    topRightRadius: screenBorder.insetT > 0 && screenBorder.insetR > 0 ? screenBorder.cornerR : 0
-                    bottomLeftRadius: screenBorder.insetB > 0 && screenBorder.insetL > 0 ? screenBorder.cornerR : 0
-                    bottomRightRadius: screenBorder.insetB > 0 && screenBorder.insetR > 0 ? screenBorder.cornerR : 0
+                        GlobalStates.closeEdit()
                 }
             }
         }
 
         BarSdf {
             anchors.fill: parent
-            bar: topSurface
-            dock: bottomSurface
+            surfaces: layout.surfaces
         }
 
-        BarSurface {
-            id: topSurface
+        component EdgeSurface: BarSurface {
             isPrimary: layout.isPrimary
             editor: barEditor
+            visible: layout.isPrimary && !cfg.hidden && !(ServiceGameMode.hideWidgets && cfg.gameHide)
         }
 
-        BarSurface {
-            id: bottomSurface
+        EdgeSurface {
+            id: surfTop
+            edge: "top"
+            sideStart: surfLeft.visible ? surfLeft.panelBand : 0
+            sideEnd: surfRight.visible ? surfRight.panelBand : 0
+            farBand: surfBottom.visible ? surfBottom.stripBand : 0
+            farReserve: surfBottom.visible ? surfBottom.panelBand : 0
+            crossPanels: layout.crossFor(false)
+            stripStart: surfLeft.visible ? surfLeft.stripInset : 0
+            stripEnd: surfRight.visible ? surfRight.stripInset : 0
+        }
+
+        EdgeSurface {
+            id: surfBottom
             edge: "bottom"
-            isPrimary: layout.isPrimary
-            editor: barEditor
-            visible: layout.isPrimary && !ServiceGameMode.hideWidgets && BarLayout.dockOn
+            sideStart: surfLeft.visible ? surfLeft.panelBand : 0
+            sideEnd: surfRight.visible ? surfRight.panelBand : 0
+            farBand: surfTop.visible ? surfTop.stripBand : 0
+            farReserve: surfTop.visible ? surfTop.panelBand : 0
+            crossPanels: layout.crossFor(true)
+            stripStart: surfLeft.visible ? surfLeft.stripInset : 0
+            stripEnd: surfRight.visible ? surfRight.stripInset : 0
+        }
+
+        EdgeSurface {
+            id: surfLeft
+            edge: "left"
+            sideStart: layout.leftCorner.start
+            sideEnd: layout.leftCorner.end
+            cornerPillStart: layout.cornerPill(surfTop, surfLeft, false)
+            cornerPillEnd: layout.cornerPill(surfBottom, surfLeft, false)
+            farBand: surfRight.visible ? surfRight.stripBand : 0
+            farReserve: surfRight.visible ? surfRight.panelBand : 0
+            crossStart: surfTop.visible ? surfTop.panelBand : 0
+            crossEnd: surfBottom.visible ? surfBottom.panelBand : 0
+        }
+
+        EdgeSurface {
+            id: surfRight
+            edge: "right"
+            sideStart: layout.rightCorner.start
+            sideEnd: layout.rightCorner.end
+            cornerPillStart: layout.cornerPill(surfTop, surfRight, true)
+            cornerPillEnd: layout.cornerPill(surfBottom, surfRight, true)
+            farBand: surfLeft.visible ? surfLeft.stripBand : 0
+            farReserve: surfLeft.visible ? surfLeft.panelBand : 0
+            crossStart: surfTop.visible ? surfTop.panelBand : 0
+            crossEnd: surfBottom.visible ? surfBottom.panelBand : 0
+        }
+
+        ListModel {
+            id: gapMarkModel
+        }
+
+        function collectGapMarks() {
+            if (!layout.barEditing)
+                return []
+            const all = []
+            const seen = {}
+            const add = list => {
+                for (const m of list) {
+                    const r = {
+                        x0: Math.round(Math.min(m.p0.x, m.p1.x)), x1: Math.round(Math.max(m.p0.x, m.p1.x)),
+                        y0: Math.round(Math.min(m.p0.y, m.p1.y)), y1: Math.round(Math.max(m.p0.y, m.p1.y)),
+                        label: Math.round(m.label)
+                    }
+                    const k = r.x0 + "," + r.y0 + "," + r.x1 + "," + r.y1
+                    if (!seen[k]) {
+                        seen[k] = true
+                        all.push(r)
+                    }
+                }
+            }
+            for (const key of ["blockGap", "edges"])
+                add(root.gapMarks({ key: key, edge: "", block: "" }))
+            add(root.gapMarks(BarLayout.gapFlash ?? BarLayout.gapHover))
+            return all
+        }
+
+        function refreshGapMarks() {
+            const rows = root.collectGapMarks()
+            if (rows.length !== gapMarkModel.count) {
+                gapMarkModel.clear()
+                for (const r of rows)
+                    gapMarkModel.append(r)
+                return
+            }
+            for (let i = 0; i < rows.length; i++) {
+                const r = rows[i]
+                const c = gapMarkModel.get(i)
+                if (c.x0 !== r.x0 || c.x1 !== r.x1 || c.y0 !== r.y0 || c.y1 !== r.y1 || c.label !== r.label)
+                    gapMarkModel.set(i, r)
+            }
+        }
+
+        function queueGapMarks() {
+            Qt.callLater(root.refreshGapMarks)
+        }
+
+        Connections {
+            target: surfTop
+            function onGeometryUpdated() { if (layout.barEditing) root.queueGapMarks() }
+        }
+        Connections {
+            target: surfRight
+            function onGeometryUpdated() { if (layout.barEditing) root.queueGapMarks() }
+        }
+        Connections {
+            target: surfBottom
+            function onGeometryUpdated() { if (layout.barEditing) root.queueGapMarks() }
+        }
+        Connections {
+            target: surfLeft
+            function onGeometryUpdated() { if (layout.barEditing) root.queueGapMarks() }
+        }
+        Connections {
+            target: BarLayout
+            function onGapHoverChanged() { root.queueGapMarks() }
+        }
+
+        Timer {
+            id: gapFlashOff
+            interval: 1500
+            onTriggered: BarLayout.gapFlash = null
+        }
+        Connections {
+            target: BarLayout
+            function onGapFlashChanged() {
+                if (BarLayout.gapFlash)
+                    gapFlashOff.restart()
+                root.queueGapMarks()
+            }
+        }
+
+        Repeater {
+            model: gapMarkModel
+
+            Item {
+                id: mark
+                required property real x0
+                required property real x1
+                required property real y0
+                required property real y1
+                required property real label
+                visible: !EditSession.peek
+                readonly property bool flat: mark.x1 - mark.x0 >= mark.y1 - mark.y0
+                z: 249
+                anchors.fill: parent
+
+                Rectangle {
+                    x: mark.flat ? mark.x0 : mark.x0 - 1
+                    y: mark.flat ? mark.y0 - 1 : mark.y0
+                    width: mark.flat ? mark.x1 - mark.x0 : 2
+                    height: mark.flat ? 2 : mark.y1 - mark.y0
+                    radius: 1
+                    color: Colors.tertiary
+                }
+
+                Repeater {
+                    model: 2
+                    Rectangle {
+                        required property int index
+                        readonly property real at: mark.flat ? (index ? mark.x1 : mark.x0) : (index ? mark.y1 : mark.y0)
+                        x: mark.flat ? at - 1 : mark.x0 - 5
+                        y: mark.flat ? mark.y0 - 5 : at - 1
+                        width: mark.flat ? 2 : 10
+                        height: mark.flat ? 10 : 2
+                        radius: 1
+                        color: Colors.tertiary
+                    }
+                }
+
+                Rectangle {
+                    readonly property real cx: (mark.x0 + mark.x1) / 2
+                    readonly property real cy: (mark.y0 + mark.y1) / 2
+                    x: mark.flat ? cx - width / 2 : (cx > mark.width / 2 ? cx - width - 8 : cx + 8)
+                    y: mark.flat ? (cy > mark.height / 2 ? cy - height - 8 : cy + 8) : cy - height / 2
+                    width: markLabel.implicitWidth + 12
+                    height: 20
+                    radius: 10
+                    color: Colors.tertiary
+
+                    CustomText {
+                        id: markLabel
+                        anchors.centerIn: parent
+                        content: mark.label + ""
+                        size: 11
+                        weight: 600
+                        customColor: Colors.tertiaryText
+                    }
+                }
+            }
         }
 
         Rectangle {
@@ -1026,8 +1021,7 @@ PanelWindow{
             BarEditChrome {
                 z: 210
                 editor: barEditor
-                topSurface: layout.editTopSurface
-                bottomSurface: layout.editBottomSurface
+                surfaces: layout.surfaces
                 editing: layout.barEditing && layout.editorsLive
                 previewRight: layout.previewRight
             }
@@ -1036,37 +1030,27 @@ PanelWindow{
         Component {
             id: drawerComp
             BarEditDrawer {
+                id: drawerItem
                 z: 220
                 editor: barEditor
+                readonly property bool beside: barEditor.drawerMode === "options" && !layout.anyPreview
+                    && !!layout.editChrome && layout.editChrome.selFound
                 maxHeight: layout.height * 0.7
-                width: Math.min(640, root.width - 32)
-                x: !layout.anyPreview ? (root.width - width) / 2
-                    : layout.previewRight ? 24 : root.width - width - 24
-                y: BarLayout.barSide === "top" ? layout.editTopSurface.rowItem.y + Appearance.size.barHeight + 48
-                    : BarLayout.dockSide === "top" ? ServiceGaps.topFinal + 24 : 48
+                width: drawerItem.beside ? Math.min(460, root.width - 32) : Math.min(640, root.width - 32)
+                opacity: EditSession.peek ? 0 : 1
+                Behavior on opacity { EffectsAnim { speed: "fast" } }
+                x: drawerItem.beside ? layout.editChrome.besideX(drawerItem.width)
+                    : !layout.anyPreview ? (root.width - width) / 2
+                    : layout.previewRight ? (surfLeft.visible && surfLeft.present ? surfLeft.thickness : 0) + 16
+                    : root.width - width - (surfRight.visible && surfRight.present ? surfRight.thickness : 0) - 16
+                y: drawerItem.beside ? layout.editChrome.besideY(drawerItem.width, drawerItem.height)
+                    : layout.editChrome ? layout.editChrome.cardTop : surfTop.thickness + 48
+                Behavior on y {
+                    SpatialAnim { speed: "default" }
+                }
                 Behavior on x {
                     SpatialAnim { speed: "default" }
                 }
-            }
-        }
-
-        Component {
-            id: dashEditorComp
-            DashEditorWindow {
-                z: 221
-                editor: barEditor
-                editing: layout.barEditing && layout.editorsLive
-                topLimit: 96
-            }
-        }
-
-        Component {
-            id: dashInspectorComp
-            DashInspector {
-                z: 221
-                editor: barEditor
-                editing: layout.barEditing && layout.editorsLive
-                topLimit: 96
             }
         }
 
@@ -1120,7 +1104,7 @@ PanelWindow{
             }
 
             function itemRect(id) {
-                for (const surf of [topSurface, bottomSurface]) {
+                for (const surf of layout.surfaces) {
                     if (!surf || !surf.visible)
                         continue
                     for (const b of surf.visibleBlocks) {
@@ -1215,32 +1199,195 @@ PanelWindow{
             }
         }
 
+        function navItems() {
+            const out = []
+            for (const side of ["top", "right", "bottom", "left"]) {
+                const surf = layout.surfaces.find(x => x.edge === side)
+                if (!surf || !surf.visible || !surf.present)
+                    continue
+                const vertical = side === "left" || side === "right"
+                const list = []
+                for (const b of surf.visibleBlocks) {
+                    if (b.leaving || b.blockId === "__sys" || BarLayout.isMore(b.blockId))
+                        continue
+                    const data = BarLayout.blockById(b.blockId)
+                    if (!data)
+                        continue
+                    for (const id of data.items) {
+                        const it = b.itemFor(id)
+                        if (!it || !it.visible)
+                            continue
+                        const r = it.mapToItem(null, 0, 0, it.width, it.height)
+                        list.push({ id: id, block: b.blockId, edge: side, pos: vertical ? r.y : r.x })
+                    }
+                }
+                list.sort((p, q) => p.pos - q.pos)
+                for (const n of list)
+                    out.push(n)
+            }
+            return out
+        }
+
+        function cycleItem(dir) {
+            const nav = root.navItems()
+            if (nav.length === 0)
+                return
+            const cur = nav.findIndex(n => n.id === barEditor.selectedItem)
+            const next = cur < 0 ? (dir > 0 ? 0 : nav.length - 1) : (cur + dir + nav.length) % nav.length
+            barEditor.selectedItem = nav[next].id
+        }
+
+        function arrowItem(key, alt, shift) {
+            const nav = root.navItems()
+            const info = nav.find(n => n.id === barEditor.selectedItem)
+            if (!info) {
+                root.cycleItem(1)
+                return
+            }
+            const vertical = info.edge === "left" || info.edge === "right"
+            const along = vertical ? (key === Qt.Key_Up ? -1 : key === Qt.Key_Down ? 1 : 0)
+                                   : (key === Qt.Key_Left ? -1 : key === Qt.Key_Right ? 1 : 0)
+            if (along === 0)
+                return
+            const same = nav.filter(n => n.edge === info.edge)
+            if (alt && shift) {
+                const blocks = []
+                for (const n of same)
+                    if (blocks.indexOf(n.block) < 0)
+                        blocks.push(n.block)
+                const bi = blocks.indexOf(info.block) + along
+                if (bi < 0 || bi >= blocks.length)
+                    return
+                const target = BarLayout.blockById(blocks[bi])
+                const id = info.id
+                EditSession.hint = id
+                Qt.callLater(() => BarLayout.moveItem(id, target.id, along > 0 ? 0 : target.items.length))
+            } else if (alt) {
+                const blk = BarLayout.blockById(info.block)
+                const idx = blk.items.indexOf(info.id)
+                const to = idx + along
+                if (to < 0 || to >= blk.items.length)
+                    return
+                const id = info.id
+                EditSession.hint = id
+                Qt.callLater(() => BarLayout.moveItem(id, blk.id, to))
+            } else {
+                const i = same.findIndex(n => n.id === info.id) + along
+                if (i >= 0 && i < same.length)
+                    barEditor.selectedItem = same[i].id
+            }
+        }
+
+        function removeSelected() {
+            const id = barEditor.selectedItem
+            if (id === "" || id.indexOf("dash:") === 0 || !BarLayout.isPlaced(id))
+                return
+            const nav = root.navItems()
+            const i = nav.findIndex(n => n.id === id)
+            const near = nav[i + 1] && nav[i + 1].edge === nav[i].edge ? nav[i + 1] : (i > 0 && nav[i - 1].edge === nav[i].edge ? nav[i - 1] : null)
+            barEditor.selectedItem = near ? near.id : ""
+            Qt.callLater(() => BarLayout.hideItem(id))
+        }
+
+        function upLevel() {
+            const sel = barEditor.selectedItem
+            if (sel !== "" && sel.indexOf("dash:") !== 0) {
+                const blk = BarLayout.allBlocks.find(b => b.items.indexOf(sel) >= 0)
+                if (blk)
+                    barEditor.selectedBlock = blk.id
+                return
+            }
+            if (barEditor.selectedBlock !== "") {
+                const blk = BarLayout.blockById(barEditor.selectedBlock)
+                if (blk && drawerHost) {
+                    drawerHost.edgeSide = blk.edge
+                    drawerHost.tab = "edges"
+                }
+                barEditor.drawerMode = "settings"
+                barEditor.selectedBlock = ""
+            }
+        }
+
         Item {
             id: editKeys
             anchors.fill: parent
             focus: layout.barEditing
-            Keys.onEscapePressed: {
-                if (barEditor.mode !== "") barEditor.cancel()
-                else if (editChrome && editChrome.closeAll()) return
-                else if (barEditor.selectedItem !== "") barEditor.selectedItem = ""
-                else if (barEditor.selectedBlock !== "") barEditor.selectedBlock = ""
-                else GlobalStates.barEditMode = false
+        }
+
+        Keys.onEscapePressed: event => {
+            if (!layout.barEditing) {
+                event.accepted = false
+                return
             }
-            Keys.onPressed: event => {
-                if (!(event.modifiers & Qt.ControlModifier) || !editChrome)
-                    return
-                if (event.key === Qt.Key_Z && (event.modifiers & Qt.ShiftModifier)) editChrome.redo()
-                else if (event.key === Qt.Key_Z) editChrome.undo()
-                else if (event.key === Qt.Key_Y) editChrome.redo()
-                else return
+            if (barEditor.mode !== "") barEditor.cancel()
+            else if (editChrome && editChrome.closeAll()) return
+            else if (barEditor.selectedItem !== "") barEditor.selectedItem = ""
+            else if (barEditor.selectedBlock !== "") barEditor.selectedBlock = ""
+            else GlobalStates.closeEdit()
+        }
+        Keys.onReleased: event => {
+            if (!layout.barEditing) {
+                event.accepted = false
+                return
+            }
+            if (event.key === Qt.Key_Space && !event.isAutoRepeat) {
+                EditSession.peek = false
                 event.accepted = true
             }
+        }
+        Keys.onPressed: event => {
+            if (!layout.barEditing) {
+                event.accepted = false
+                return
+            }
+            const ctrl = event.modifiers & Qt.ControlModifier
+            const alt = event.modifiers & Qt.AltModifier
+            const shift = event.modifiers & Qt.ShiftModifier
+            const k = event.key
+            if (ctrl) {
+                if (k === Qt.Key_Z && shift) EditSession.redo()
+                else if (k === Qt.Key_Z) EditSession.undo()
+                else if (k === Qt.Key_Y) EditSession.redo()
+                else if (k === Qt.Key_S) GlobalStates.closeEdit()
+                else return
+                event.accepted = true
+                return
+            }
+            if (barEditor.mode !== "")
+                return
+            if (k === Qt.Key_Space) {
+                if (!event.isAutoRepeat) EditSession.peek = true
+            } else if (k === Qt.Key_Question || k === Qt.Key_Slash) {
+                GlobalStates.editKeysOpen = !GlobalStates.editKeysOpen
+            } else if (k === Qt.Key_1) {
+                GlobalStates.editLayer = "edges"
+            } else if (k === Qt.Key_2) {
+                GlobalStates.editLayer = "desktop"
+            } else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) {
+                root.cycleItem(k === Qt.Key_Backtab || shift ? -1 : 1)
+            } else if (k === Qt.Key_Left || k === Qt.Key_Right || k === Qt.Key_Up || k === Qt.Key_Down) {
+                root.arrowItem(k, alt, shift)
+            } else if (k === Qt.Key_Delete) {
+                root.removeSelected()
+            } else if (k === Qt.Key_Backspace) {
+                root.upLevel()
+            } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
+                if (barEditor.selectedItem === "" || barEditor.selectedItem.indexOf("dash:") === 0)
+                    return
+                if (editChrome)
+                    barEditor.drawerFrom = editChrome.selRect
+                barEditor.drawerMode = barEditor.drawerMode === "options" ? "" : "options"
+            } else if (k === Qt.Key_A) {
+                GlobalStates.editOpenAdd = "parts"
+            } else {
+                return
+            }
+            event.accepted = true
         }
 
     }
 
     property bool isToolsWidgetClicked: false
-    property bool isSettingClicked: false
     property bool showOsd: false
 
     GlobalShortcut{
@@ -1256,10 +1403,9 @@ PanelWindow{
         id: notifPopups
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.rightMargin: topSurface.side === "right" ? topSurface.bandRect.width
-            : bottomSurface.visible && bottomSurface.side === "right" ? bottomSurface.bandRect.width : 0
-        anchors.bottomMargin: topSurface.side === "bottom" ? topSurface.bandRect.height : 0
-        active: isPrimary && (SettingsConfig.general?.notifPopupStyle ?? "corner") === "corner"
+        anchors.rightMargin: surfRight.visible && surfRight.present ? surfRight.bandRect.width : 0
+        anchors.bottomMargin: surfBottom.visible && surfBottom.present && !surfBottom.autoHide ? surfBottom.bandRect.height : 0
+        active: isPrimary && BarLayout.popupMode === "corner"
         sourceComponent: NotificationPanel {}
     }
 
@@ -1267,9 +1413,7 @@ PanelWindow{
         id: notifStyled
         anchors.fill: parent
         visible: isPrimary
-        topSurface: topSurface
-        bottomSurface: bottomSurface
+        mode: BarLayout.popupMode
+        surfaces: layout.surfaces
     }
-
-    readonly property int _topGap: ServiceGaps.topFinal
 }

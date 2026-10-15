@@ -30,6 +30,9 @@ class ShapePainter : public QQuickPaintedItem
     Q_PROPERTY(qreal strokeWidth READ strokeWidth WRITE setStrokeWidth NOTIFY styleChanged)
     Q_PROPERTY(QColor strokeColor READ strokeColor WRITE setStrokeColor NOTIFY styleChanged)
     Q_PROPERTY(QColor strokeTrackColor READ strokeTrackColor WRITE setStrokeTrackColor NOTIFY styleChanged)
+    Q_PROPERTY(qreal angle READ angle WRITE setAngle NOTIFY styleChanged)
+    Q_PROPERTY(qreal fillLevel READ fillLevel WRITE setFillLevel NOTIFY styleChanged)
+    Q_PROPERTY(QColor levelColor READ levelColor WRITE setLevelColor NOTIFY styleChanged)
 
 public:
     explicit ShapePainter(QQuickItem *parent = nullptr);
@@ -65,6 +68,12 @@ public:
     void setStrokeColor(const QColor &v);
     QColor strokeTrackColor() const { return m_strokeTrackColor; }
     void setStrokeTrackColor(const QColor &v);
+    qreal angle() const { return m_angle; }
+    void setAngle(qreal v);
+    qreal fillLevel() const { return m_fillLevel; }
+    void setFillLevel(qreal v);
+    QColor levelColor() const { return m_levelColor; }
+    void setLevelColor(const QColor &v);
 
     Q_INVOKABLE qreal progressAt(qreal px, qreal py) const;
     Q_INVOKABLE QVariant pointAtProgress(qreal p) const;
@@ -105,4 +114,8 @@ private:
     qreal m_strokeWidth = 4;
     QColor m_strokeColor = QColor(0x68, 0x54, 0x96);
     QColor m_strokeTrackColor = Qt::transparent;
+    qreal m_angle = 0;
+    qreal m_fillLevel = -1;
+    QColor m_levelColor = QColor(0x68, 0x54, 0x96);
+    QTransform spin(const QPainterPath &shape, qreal pad) const;
 };

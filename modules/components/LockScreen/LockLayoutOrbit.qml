@@ -291,6 +291,7 @@ Item {
                 LockShapeImage {
                     Layout.preferredWidth: 62 * root.u
                     Layout.preferredHeight: 62 * root.u
+                    visible: LockSession.cfg.showAvatar !== false
                     source: SettingsConfig.general.profile ?? ""
                 }
 

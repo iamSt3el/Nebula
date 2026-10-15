@@ -12,32 +12,37 @@ Singleton {
     id: root
 
     // ── Derived gap values ──────────────────────────────────────────────
-    readonly property bool   isPill:     BarOps.blockShapes(SettingsConfig.bar, SettingsConfig.general).edges.top.indexOf("pill") >= 0
     readonly property real   pillMargin: SettingsConfig.general.pillMargin ?? 6
 
     // Game mode hides the bar, so the gap reserved for it has to go too —
     // otherwise a fullscreen game keeps a dead strip along the top.
     readonly property bool zeroed: ServiceGameMode.hideBar
 
-    readonly property var sides: BarOps.sidesOf(SettingsConfig.bar)
-    readonly property string barSide: root.sides.bar
-    readonly property string dockSide: root.sides.dock
+    readonly property var edgeReserves: ({
+        top: BarOps.edgeReserve(SettingsConfig.bar, SettingsConfig.general, "top", ServiceGameMode.hideWidgets),
+        right: BarOps.edgeReserve(SettingsConfig.bar, SettingsConfig.general, "right", ServiceGameMode.hideWidgets),
+        bottom: BarOps.edgeReserve(SettingsConfig.bar, SettingsConfig.general, "bottom", ServiceGameMode.hideWidgets),
+        left: BarOps.edgeReserve(SettingsConfig.bar, SettingsConfig.general, "left", ServiceGameMode.hideWidgets)
+    })
 
-    readonly property int topAuto:  Appearance.size.barHeight + (isPill ? Math.round(pillMargin) + 10 : 0)
-    readonly property int barReserve: zeroed ? 0 : root.topAuto
-    readonly property int dockReserve: BarOps.dockReserve(SettingsConfig.bar, SettingsConfig.general,
-                                                          ServiceGameMode.hideWidgets, GlobalStates.dockPresent)
-
-    function extraFor(side) {
-        const g = SettingsConfig.general ?? {}
-        const key = side === "top" ? "gapTop" : side === "bottom" ? "gapBottom" : side === "left" ? "gapLeft" : "gapRight"
-        return g[key] ?? (side === "top" && root.barSide === "top" ? 0 : 5)
+    function edgeReserve(side) {
+        return root.zeroed ? 0 : (root.edgeReserves[side] ?? 0)
     }
+
+    property var occupied: ({})
+
 
     readonly property var screenBorder: SettingsConfig.bar?.border ?? ({})
     readonly property bool borderOn: !root.zeroed && root.screenBorder.on === true
     readonly property int borderSize: Math.max(0, Math.round(Number(root.screenBorder.size ?? 8)))
     readonly property int borderRadius: Math.max(0, Math.round(Number(root.screenBorder.radius ?? 20)))
+    readonly property var windowGaps: SettingsConfig.general.windowGaps ?? ({})
+
+    function gapFor(side) {
+        const legacy = "gap" + side.charAt(0).toUpperCase() + side.slice(1)
+        const v = root.windowGaps[side] ?? SettingsConfig.general[legacy]
+        return v === undefined || v === null ? root.borderSize : Math.max(0, Math.round(Number(v)))
+    }
 
     function borderFor(side) {
         return root.borderOn && root.screenBorder[side] !== false ? root.borderSize : 0
@@ -46,9 +51,10 @@ Singleton {
     function reserveFor(side) {
         if (root.zeroed)
             return 0
-        const bar = root.barSide === side ? root.barReserve : 0
-        const dock = root.dockSide === side ? root.dockReserve : 0
-        return bar + dock + (bar > 0 ? 0 : root.borderFor(side)) + root.extraFor(side)
+        const live = root.occupied[side]
+        const shell = live !== undefined ? Math.max(live, root.borderFor(side))
+            : root.edgeReserve(side) + root.borderFor(side)
+        return Math.round(shell) + root.gapFor(side)
     }
 
     readonly property string primaryName: {
@@ -59,15 +65,14 @@ Singleton {
         return screens.some(s => s.name === pm) ? pm : (screens.length ? screens[0].name : "")
     }
     readonly property bool split: root.primaryName !== "" && Quickshell.screens.length > 1
-    readonly property string secondaryEdge: root.barSide === "bottom" ? "bottom" : "top"
+    readonly property string secondaryEdge: !BarOps.edgePresent(SettingsConfig.bar, "top")
+        && BarOps.edgePresent(SettingsConfig.bar, "bottom") ? "bottom" : "top"
 
     function secondaryFor(side) {
         if (root.zeroed)
             return 0
-        const g = SettingsConfig.general ?? {}
-        const key = side === "top" ? "gapTop" : side === "bottom" ? "gapBottom" : side === "left" ? "gapLeft" : "gapRight"
         const onBar = side === root.secondaryEdge
-        return (onBar ? Appearance.size.barHeight : 0) + (g[key] ?? (onBar ? 0 : 5))
+        return Math.max(onBar ? Appearance.size.barHeight : 0, root.borderFor(side)) + root.gapFor(side)
     }
     readonly property string secondaryKey: ["top", "right", "bottom", "left"].map(s => root.secondaryFor(s)).join(",")
 
@@ -79,15 +84,11 @@ Singleton {
     readonly property int rightGap: root.reserveFor("right")
     readonly property int bottomGap: root.reserveFor("bottom")
     readonly property int leftGap: root.reserveFor("left")
-    readonly property int barGap: root.reserveFor(root.barSide)
 
     // ── Apply ───────────────────────────────────────────────────────────
-    property double lastExec: 0
-
     function exec() {
         if (!SettingsConfig.settingsReady)
             return
-        root.lastExec = Date.now()
         const primary = root.gapTable(s => root.reserveFor(s))
         const reset = "if NebulaGapsRule then NebulaGapsRule:set_enabled(false) end NebulaGapsRule = nil "
         const lua = root.split
@@ -139,13 +140,12 @@ Singleton {
     Connections {
         target: Hyprland
         function onRawEvent(event) {
-            if (event.name === "configreloaded" && Date.now() - root.lastExec > 1000)
-                debounce.restart()
+            if (event.name === "configreloaded")
+                root.exec()
         }
     }
 
     // ── Reactive triggers ────────────────────────────────────────────────
-    onIsPillChanged:    debounce.restart()
     onTopFinalChanged:  debounce.restart()
     onRightGapChanged:  debounce.restart()
     onBottomGapChanged: debounce.restart()

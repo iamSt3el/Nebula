@@ -11,3 +11,4 @@ Originals from Wikimedia Commons. Share-alike files stay under their original li
 - **stream.opus**: "433589 jackthemurray stream-river-water-up-close" by jackthemurray, CC0, https://commons.wikimedia.org/wiki/File:433589_jackthemurray_stream-river-water-up-close.wav
 - **waves.opus**: "Ocean Waves on a Tropical Beach" by Jarrod stanley, CC0, https://commons.wikimedia.org/wiki/File:Ocean_Waves_on_a_Tropical_Beach.ogg
 - **night.opus**: "A night in a old game forest - Felipe RuizBRX11" by Felipe Ruiz P., CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:A_night_in_a_old_game_forest_-_Felipe_RuizBRX11.wav
+- **chimes.opus**: "Windglockenspiel.Koshi" by Membeth., CC0, https://commons.wikimedia.org/wiki/File:Windglockenspiel.Koshi.ogg

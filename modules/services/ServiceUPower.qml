@@ -12,11 +12,11 @@ Singleton{
     id: root
     property var powerProfiles:[
         {
-            name: "Save",
+            name: "Saver",
             icon: "energy_savings_leaf"
         },
         {
-            name: "Balance",
+            name: "Balanced",
             icon: "balance"
         },
         {
@@ -24,6 +24,9 @@ Singleton{
             icon: "rocket_launch"
         }
     ]
+    readonly property var availableProfiles: root.powerProfiles
+        .map((p, i) => ({ id: i, name: p.name, icon: p.icon }))
+        .filter(p => p.id !== 2 || PowerProfiles.hasPerformanceProfile)
     property var powerProfile: PowerProfiles.profile
     property string powerProfileIcon: powerProfile === 0 ? "leaf" : "balance" 
     property real powerLevel: UPower.displayDevice.percentage

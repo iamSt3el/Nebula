@@ -28,7 +28,7 @@ Item {
     onVisibleChanged: GlobalStates.scenesPanelOpen = root.visible
 
     function iconFor(cls) {
-        return Quickshell.iconPath(DesktopEntries.heuristicLookup(cls)?.icon ?? "", true)
+        return IconUtil.themeIcon(DesktopEntries.heuristicLookup(cls)?.icon ?? "", true)
     }
 
     component SectionTitle: CustomText {

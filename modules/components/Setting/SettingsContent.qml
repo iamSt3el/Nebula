@@ -7,6 +7,8 @@ import QtQuick.Effects
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
+import qs.modules.services
+import qs.modules.components.LockScreen
 
 Item {
     id: root
@@ -57,7 +59,8 @@ Item {
 
     readonly property var pageFiles: ["Theme", "Sound", "Notifications", "Widgets", "Networking", "Bluetooth",
         "WeatherSettings", "MediaSettings", "About", "AppearanceSettings", "Sleep", "Storage", "Lockscreen",
-        "NotesSettings", "LayoutsSettings", "DisplaysSettings", "WindowsSettings", "InputSettings", "Keybindings"]
+        "NotesSettings", "LayoutsSettings", "DisplaysSettings", "WindowsSettings", "InputSettings", "Keybindings",
+        "ProfileSettings"]
 
     readonly property var railOrder: root.navSections.reduce((all, g) => all.concat(g.indices), [])
     readonly property bool showSections: SettingsConfig.general.settingsSections ?? true
@@ -66,6 +69,32 @@ Item {
     property real railW: root.railTarget
     Behavior on railW { enabled: root.t > 0.5; SpatialAnim {} }
     property real heldPageW: -1
+    readonly property bool tocWanted: root.showSections && root.sections.length >= 2
+    property real tocT: root.tocWanted ? 1 : 0
+    Behavior on tocT { enabled: root.t > 0.5; SpatialAnim {} }
+    readonly property bool tocSpace: root.tocWanted || root.tocT > 0.01
+
+    readonly property real titleH: 52
+    property bool statusMenuOpen: false
+    readonly property bool focusing: ServiceFocus.phase === "focus" || ServiceFocus.phase === "break"
+    readonly property string mode: root.focusing ? "focus" : ServiceNotification.dnd ? "quiet" : "available"
+    readonly property var modes: [
+        { value: "available", label: "Available", icon: "check_circle", hint: "Everything works as usual", tone: Colors.primary },
+        { value: "focus", label: "Focus", icon: "timer", hint: "Starts a focus session", tone: Colors.tertiary },
+        { value: "quiet", label: "Quiet", icon: "do_not_disturb_on", hint: "Turns on Do not disturb", tone: Colors.error }
+    ]
+    readonly property var currentMode: root.modes.find(m => m.value === root.mode) ?? root.modes[0]
+
+    function setMode(m) {
+        if (m === "focus") {
+            if (!root.focusing)
+                ServiceFocus.startFocus()
+            return
+        }
+        if (root.focusing)
+            ServiceFocus.stop()
+        ServiceNotification.setDnd(m === "quiet")
+    }
     readonly property real pageW: root.heldPageW >= 0 ? root.heldPageW : frame.width - root.railTarget
 
     onRailWideChanged: {
@@ -524,22 +553,254 @@ Item {
         radius: 20
         color: Colors.surface
 
-        Rectangle {
+        Item {
             id: frame
             anchors.fill: parent
-            anchors.margins: 10
-            radius: 20
-            color: Colors.surfaceContainer
+            anchors.margins: 8
+
+            RowLayout {
+                id: titleBar
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.leftMargin: 2
+                anchors.rightMargin: 4
+                height: root.titleH
+                spacing: 10
+
+                Rectangle {
+                    id: profileChip
+                    readonly property bool current: root.currentPage === 19
+                    Layout.preferredHeight: 48
+                    Layout.preferredWidth: profileRow.implicitWidth + 20
+                    radius: 24
+                    color: profileChip.current ? Colors.primary
+                         : profileMouse.containsMouse ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0)
+                    Behavior on color { EffectsColorAnim {} }
+
+                    RowLayout {
+                        id: profileRow
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: 5
+                        spacing: 10
+
+                        Item {
+                            Layout.preferredWidth: 38
+                            Layout.preferredHeight: 38
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: -2
+                                radius: width / 2
+                                color: root.currentMode.tone
+                                Behavior on color { EffectsColorAnim {} }
+                            }
+
+                            LockShapeImage {
+                                anchors.fill: parent
+                                source: SettingsConfig.general.profile ?? ""
+                                shapeName: "circle"
+                                sourceSize: 96
+                            }
+                        }
+
+                        ColumnLayout {
+                            spacing: 0
+
+                            CustomText {
+                                content: LockSession.greeting + ", " + (SettingsConfig.profileName || Quickshell.env("USER") || "you")
+                                family: SettingsConfig.general.displayFont ?? "Titan One"
+                                renderType: Text.QtRendering
+                                size: 17
+                                weight: 400
+                                customColor: profileChip.current ? Colors.primaryText : Colors.surfaceText
+                            }
+
+                            CustomText {
+                                content: "Your profile"
+                                size: 11
+                                customColor: profileChip.current ? Qt.alpha(Colors.primaryText, 0.75) : Colors.outline
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: profileMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.currentPage = 19
+                    }
+                }
+
+                Rectangle {
+                    id: statusChip
+                    Layout.preferredHeight: 32
+                    Layout.preferredWidth: statusRow.implicitWidth + 22
+                    radius: 16
+                    color: statusMouse.containsMouse || root.statusMenuOpen ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
+                    Behavior on color { EffectsColorAnim {} }
+
+                    RowLayout {
+                        id: statusRow
+                        anchors.centerIn: parent
+                        spacing: 6
+
+                        MaterialIconSymbol {
+                            content: root.currentMode.icon
+                            iconSize: 17
+                            customColor: root.currentMode.tone
+                        }
+
+                        CustomText { content: root.currentMode.label; size: 12; weight: 500 }
+
+                        MaterialIconSymbol {
+                            content: "expand_more"
+                            iconSize: 16
+                            customColor: Colors.outline
+                            rotation: root.statusMenuOpen ? 180 : 0
+                            Behavior on rotation { SpatialAnim { speed: "fast" } }
+                        }
+                    }
+
+                    MouseArea {
+                        id: statusMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.statusMenuOpen = !root.statusMenuOpen
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Rectangle {
+                    id: searchField
+                    Layout.preferredWidth: 280
+                    Layout.preferredHeight: 40
+                    radius: 20
+                    color: Colors.surfaceContainerHighest
+                    border.width: searchInput.activeFocus ? 2 : 0
+                    border.color: Colors.primary
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 10
+                        spacing: 8
+
+                        MaterialIconSymbol { content: "search"; iconSize: 18; customColor: Colors.outline }
+
+                        TextInput {
+                            id: searchInput
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: Colors.surfaceText
+                            font.pixelSize: 13
+                            font.weight: 500
+                            font.family: SettingsConfig.general.defaultFont ?? "Rubik"
+                            selectByMouse: true
+                            clip: true
+                            onTextChanged: {
+                                root.query = text
+                                if (text !== "")
+                                    root.searchOpen = true
+                            }
+                            onActiveFocusChanged: {
+                                if (activeFocus) {
+                                    root.indexWanted = true
+                                    root.searchOpen = true
+                                }
+                            }
+                            onAccepted: root.openResult(root.results[root.resultIndex])
+                            Keys.onDownPressed: root.resultIndex = Math.min(root.results.length - 1, root.resultIndex + 1)
+                            Keys.onUpPressed: root.resultIndex = Math.max(0, root.resultIndex - 1)
+                            Keys.onEscapePressed: {
+                                text = ""
+                                root.searchOpen = false
+                                focus = false
+                            }
+
+                            CustomText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: searchInput.text === ""
+                                content: "Search settings"
+                                size: 13
+                                weight: 500
+                                customColor: Colors.outline
+                            }
+                        }
+
+                        Rectangle {
+                            visible: searchInput.text === "" && !searchInput.activeFocus
+                            implicitWidth: hintText.implicitWidth + 12
+                            implicitHeight: 20
+                            radius: 6
+                            color: "transparent"
+                            border.width: 1
+                            border.color: Colors.outlineVariant
+
+                            CustomText {
+                                id: hintText
+                                anchors.centerIn: parent
+                                content: "Ctrl K"
+                                size: 11
+                                weight: 500
+                                customColor: Colors.outline
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: lockButton
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    radius: 20
+                    color: lockMouse.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
+                    Behavior on color { EffectsColorAnim {} }
+
+                    MaterialIconSymbol {
+                        anchors.centerIn: parent
+                        content: "lock"
+                        iconSize: 19
+                        customColor: Colors.surfaceVariantText
+                    }
+
+                    MouseArea {
+                        id: lockMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onEntered: root.showTip(lockButton, "Lock now", true)
+                        onExited: root.hideTip(lockButton)
+                        onClicked: {
+                            root.hideTip(lockButton)
+                            GlobalStates.settingsOpen = false
+                            Quickshell.execDetached(["loginctl", "lock-session"])
+                        }
+                    }
+                }
+            }
 
             Item {
                 anchors.fill: parent
+                anchors.topMargin: root.titleH + 6
                 clip: true
+
+                Rectangle {
+                    x: root.railW
+                    width: Math.max(0, parent.width - root.railW)
+                    height: parent.height
+                    radius: 14
+                    color: Colors.surfaceContainer
+                }
 
                 Rectangle {
                     width: root.railW
                     height: parent.height
-                    radius: 20
-                    color: Colors.surfaceContainerHigh
+                    color: "transparent"
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -603,7 +864,7 @@ Item {
                             ScrollFade {
                                 anchors.fill: parent
                                 flickable: navFlick
-                                color: Colors.surfaceContainerHigh
+                                color: Colors.surface
                             }
                         }
 
@@ -652,85 +913,6 @@ Item {
                             weight: 400
                             family: SettingsConfig.general.displayFont ?? "Titan One"
                             renderType: Text.QtRendering
-                        }
-
-                        Rectangle {
-                            id: searchField
-                            Layout.preferredWidth: 230
-                            Layout.preferredHeight: 36
-                            radius: 18
-                            color: Colors.surfaceContainerHighest
-                            border.width: searchInput.activeFocus ? 2 : 0
-                            border.color: Colors.primary
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 10
-                                spacing: 8
-
-                                MaterialIconSymbol { content: "search"; iconSize: 18; customColor: Colors.outline }
-
-                                TextInput {
-                                    id: searchInput
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    verticalAlignment: TextInput.AlignVCenter
-                                    color: Colors.surfaceText
-                                    font.pixelSize: 13
-                                    font.weight: 500
-                                    font.family: SettingsConfig.general.defaultFont ?? "Rubik"
-                                    selectByMouse: true
-                                    clip: true
-                                    onTextChanged: {
-                                        root.query = text
-                                        if (text !== "")
-                                            root.searchOpen = true
-                                    }
-                                    onActiveFocusChanged: {
-                                        if (activeFocus) {
-                                            root.indexWanted = true
-                                            root.searchOpen = true
-                                        }
-                                    }
-                                    onAccepted: root.openResult(root.results[root.resultIndex])
-                                    Keys.onDownPressed: root.resultIndex = Math.min(root.results.length - 1, root.resultIndex + 1)
-                                    Keys.onUpPressed: root.resultIndex = Math.max(0, root.resultIndex - 1)
-                                    Keys.onEscapePressed: {
-                                        text = ""
-                                        root.searchOpen = false
-                                        focus = false
-                                    }
-
-                                    CustomText {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        visible: searchInput.text === ""
-                                        content: "Search settings"
-                                        size: 13
-                                        weight: 500
-                                        customColor: Colors.outline
-                                    }
-                                }
-
-                                Rectangle {
-                                    visible: searchInput.text === "" && !searchInput.activeFocus
-                                    implicitWidth: hintText.implicitWidth + 12
-                                    implicitHeight: 20
-                                    radius: 6
-                                    color: "transparent"
-                                    border.width: 1
-                                    border.color: Colors.outlineVariant
-
-                                    CustomText {
-                                        id: hintText
-                                        anchors.centerIn: parent
-                                        content: "Ctrl K"
-                                        size: 11
-                                        weight: 500
-                                        customColor: Colors.outline
-                                    }
-                                }
-                            }
                         }
 
                         Rectangle {
@@ -793,14 +975,16 @@ Item {
                         PageSlot { page: 16; sourceComponent: WindowsSettings {} }
                         PageSlot { page: 17; sourceComponent: InputSettings {} }
                         PageSlot { page: 18; sourceComponent: Keybindings {} }
+                        PageSlot { page: 19; sourceComponent: ProfileSettings {} }
                         }
                     }
                 }
 
                 ColumnLayout {
                     id: tocColumn
-                    visible: root.showSections && root.sections.length >= 2
-                    opacity: pageHost.opacity
+                    visible: root.tocSpace
+                    opacity: pageHost.opacity * Math.max(0, Math.min(1, root.tocT))
+                    transform: Translate { x: (1 - root.tocT) * 28 }
                     Layout.fillHeight: true
                     Layout.preferredWidth: 168
                     Layout.maximumWidth: 168
@@ -870,11 +1054,112 @@ Item {
                 }
             }
 
+            MouseArea {
+                anchors.fill: parent
+                z: 20
+                enabled: root.statusMenuOpen
+                onPressed: root.statusMenuOpen = false
+            }
+
+            Rectangle {
+                id: statusMenu
+                z: 21
+                x: titleBar.x + statusChip.x
+                y: titleBar.y + statusChip.y + statusChip.height + 6
+                width: 236
+                height: statusMenuColumn.implicitHeight + 12
+                radius: 18
+                color: Colors.surfaceContainerHighest
+                border.width: 1
+                border.color: Colors.outlineVariant
+                visible: opacity > 0.01
+                opacity: root.statusMenuOpen ? 1 : 0
+                scale: root.statusMenuOpen ? 1 : 0.92
+                transformOrigin: Item.TopLeft
+                Behavior on opacity { EffectsAnim { speed: "fast" } }
+                Behavior on scale { SpatialAnim { speed: "fast" } }
+
+                ColumnLayout {
+                    id: statusMenuColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 6
+                    spacing: 2
+
+                    Repeater {
+                        model: root.modes
+
+                        delegate: Rectangle {
+                            id: modeRow
+                            required property var modelData
+                            readonly property bool selected: root.mode === modeRow.modelData.value
+
+                            Layout.fillWidth: true
+                            implicitHeight: 48
+                            radius: 12
+                            color: modeRow.selected ? Colors.secondaryContainer
+                                 : modeMouse.containsMouse ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0)
+                            Behavior on color { EffectsColorAnim {} }
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
+                                spacing: 10
+
+                                MaterialIconSymbol {
+                                    content: modeRow.modelData.icon
+                                    iconSize: 19
+                                    customColor: modeRow.modelData.tone
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 1
+
+                                    CustomText {
+                                        content: modeRow.modelData.label
+                                        size: 13
+                                        weight: 600
+                                        customColor: modeRow.selected ? Colors.secondaryContainerText : Colors.surfaceText
+                                    }
+
+                                    CustomText {
+                                        content: modeRow.modelData.hint
+                                        size: 11
+                                        customColor: modeRow.selected ? Qt.alpha(Colors.secondaryContainerText, 0.8) : Colors.outline
+                                    }
+                                }
+
+                                MaterialIconSymbol {
+                                    visible: modeRow.selected
+                                    content: "check"
+                                    iconSize: 18
+                                    customColor: Colors.secondaryContainerText
+                                }
+                            }
+
+                            MouseArea {
+                                id: modeMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    root.setMode(modeRow.modelData.value)
+                                    root.statusMenuOpen = false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Rectangle {
                 id: resultsPanel
                 visible: root.searchOpen && root.query.trim().length >= 2
-                x: frame.width - width - 60 - (tocColumn.visible ? 182 : 0)
-                y: 56
+                x: titleBar.x + searchField.x + searchField.width - width
+                y: titleBar.y + root.titleH - 2
                 width: 340
                 height: resultsColumn.implicitHeight + 12
                 radius: 18

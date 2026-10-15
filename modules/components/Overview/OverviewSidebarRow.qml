@@ -32,7 +32,7 @@ Rectangle {
         const list = root.toplevels
         for (var i = 0; i < list.length && out.length < 6; i++) {
             const id = list[i]?.wayland?.appId ?? ""
-            out.push(Quickshell.iconPath(DesktopEntries.heuristicLookup(id)?.icon, "image-missing"))
+            out.push(IconUtil.themeIcon(DesktopEntries.heuristicLookup(id)?.icon, "image-missing"))
         }
         return out
     }

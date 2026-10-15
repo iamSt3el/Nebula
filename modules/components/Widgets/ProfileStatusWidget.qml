@@ -158,7 +158,7 @@ WidgetHost {
                             Layout.fillHeight: true
                             Layout.preferredWidth: 1
                             radius: height / 2
-                            color: seg.on ? root.tone : segMouse.containsMouse ? Colors.surfaceContainerHighest : "transparent"
+                            color: seg.on ? root.tone : segMouse.containsMouse ? Colors.surfaceContainerHighest : Qt.alpha(Colors.surfaceContainerHighest, 0)
                             Behavior on color { EffectsColorAnim {} }
 
                             RowLayout {

@@ -11,7 +11,6 @@ Singleton{
     property bool launcherHosted: false
     property bool launcherPreview: false
     property string panelPreview: ""
-    readonly property bool dashboardPreview: root.panelPreview === "dashboard"
     property real previewInsetLeft: 0
     property real previewInsetRight: 0
     property bool clipboardOpen: false
@@ -45,14 +44,47 @@ Singleton{
     }
     property bool settingsOpen: false
     property int  settingsPage: 9
-    property bool widgetEditMode: false
+    property bool editMode: false
+    property string editLayer: "edges"
+    readonly property bool widgetEditMode: root.editMode && root.editLayer === "desktop"
+    property bool editKeysOpen: false
+    property string editOpenAdd: ""
+    property string editAddQuery: ""
+    property var editEdgeRects: []
+    property string editEdgeScreen: ""
+    property real editTopInset: 0
+
+    function openEdit(layer) {
+        if (layer)
+            root.editLayer = layer
+        root.editMode = true
+    }
+
+    function closeEdit() {
+        root.editMode = false
+    }
+
+    function toggleEdit(layer) {
+        if (root.editMode && (!layer || root.editLayer === layer))
+            root.closeEdit()
+        else
+            root.openEdit(layer)
+    }
+
+    onEditModeChanged: {
+        if (root.editMode)
+            return
+        root.editKeysOpen = false
+        root.editOpenAdd = ""
+        root.editAddQuery = ""
+    }
     // Blueprint sweep for widget arrange mode: 0 = off, 1 = fully revealed. Every
     // consumer (grid canvas, scrim, hint bar, each widget's chrome) derives its own
     // local progress from this one number and its own x, so they cannot drift apart.
-    property real widgetEditReveal: root.widgetEditMode ? 1 : 0
+    property real widgetEditReveal: root.widgetEditMode && !EditSession.peek ? 1 : 0
     Behavior on widgetEditReveal {
         NumberAnimation {
-            duration: root.widgetEditMode ? M3Motion.reveal.duration : M3Motion.reveal.outDuration
+            duration: root.widgetEditMode && !EditSession.peek ? (EditSession.peeked ? M3Motion.reveal.outDuration : M3Motion.reveal.duration) : M3Motion.reveal.outDuration
             easing.type: Easing.BezierSpline
             easing.bezierCurve: M3Motion.reveal.curve
         }
@@ -66,12 +98,12 @@ Singleton{
         const nx = centreX / screenW
         return Math.max(0, Math.min(1, (r * (1 + band) - nx) / band))
     }
-    property bool barEditMode: false
+    readonly property bool barEditMode: root.editMode && root.editLayer !== "desktop"
     // Same blueprint sweep as widget arrange mode, so both edit modes read as one idea.
-    property real barEditReveal: root.barEditMode ? 1 : 0
+    property real barEditReveal: root.barEditMode && !EditSession.peek ? 1 : 0
     Behavior on barEditReveal {
         NumberAnimation {
-            duration: root.barEditMode ? M3Motion.reveal.duration : M3Motion.reveal.outDuration
+            duration: root.barEditMode && !EditSession.peek ? (EditSession.peeked ? M3Motion.reveal.outDuration : M3Motion.reveal.duration) : M3Motion.reveal.outDuration
             easing.type: Easing.BezierSpline
             easing.bezierCurve: M3Motion.reveal.curve
         }
@@ -106,7 +138,9 @@ Singleton{
     // widget layer's keyboard mode so it never holds the keyboard at rest.
     property bool widgetTextFocus: false
     property bool osdOpen: false
+    property bool barEditTest: false
     property string osdKind: "volume"
+    property var osdKinds: []
     property bool liveIsland: false
     property bool wallpaperOpen: false
     property bool lockSelectorOpen: false
@@ -116,6 +150,7 @@ Singleton{
     property bool panelHold: false
     property bool areaSelectOpen: false
     property bool liveTextOpen: false
+    readonly property bool capturing: root.toolsWidgetOpen || root.areaSelectOpen || root.liveTextOpen
     property bool sessionLocked: false
     property bool cheatSheetOpen: false
     property bool overviewOpen: false
@@ -135,12 +170,12 @@ Singleton{
     property real desktopCursorY: 0
     property bool desktopCursorActive: false
     readonly property bool notificationCenterOpen: root.notificationCenterCount > 0
-    signal dashboardRequested()
+    signal panelRequested(string kind)
     signal pieRequested()
     signal desktopClicked(string screenName, real x, real y)
     signal desktopDragged(string screenName, real x, real y)
-    function openDashboard() {
-        root.dashboardRequested()
+    function openPanel(kind) {
+        root.panelRequested(kind)
     }
     property string areaSelectMode: ""   // "screenshot" or "recording"
 }

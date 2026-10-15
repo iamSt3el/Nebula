@@ -226,7 +226,7 @@ Scope {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 38
                             radius: 12
-                            color: prow.active ? Colors.primaryContainer : "transparent"
+                            color: prow.active ? Colors.primaryContainer : Qt.alpha(Colors.primaryContainer, 0)
                             Behavior on color { EffectsColorAnim { speed: "fast" } }
 
                             RowLayout {

@@ -147,6 +147,14 @@ Scope {
                 property real grow: 0
                 property real toast: 0
                 property bool growing: false
+                property bool thumbsWanted: false
+                onOpenChanged: if (root.open) root.thumbsWanted = true
+
+                Timer {
+                    interval: 1150
+                    running: true
+                    onTriggered: root.thumbsWanted = true
+                }
                 readonly property real full: Math.max(1 - root.settle, root.grow)
                 readonly property real chromeIn: 1 - Math.min(1, root.leave * 2.2)
                 readonly property real chromeOut: root.chromeIn * (1 - Math.min(1, root.grow * 3))
@@ -240,14 +248,14 @@ Scope {
                             blur: 1.0
                             blurMax: 64
                             autoPaddingEnabled: false
-                            brightness: -0.5
+                            brightness: LockSession.light ? 0.3 : -0.5
                             saturation: 0.2
                         }
                     }
 
                     Rectangle {
                         anchors.fill: parent
-                        color: Qt.alpha(Colors.surface, 0.35)
+                        color: Qt.alpha(Colors.surface, LockSession.light ? 0.5 : 0.35)
                     }
                 }
 
@@ -673,10 +681,14 @@ Scope {
                                         color: "black"
                                         Behavior on radius { SpatialAnim { speed: "fast" } }
 
-                                        LockPreview {
+                                        Loader {
                                             anchors.fill: parent
-                                            layoutStyle: thumb.modelData.value
-                                            greeter: root.targetGreeter
+                                            asynchronous: true
+                                            active: root.thumbsWanted
+                                            sourceComponent: LockPreview {
+                                                layoutStyle: thumb.modelData.value
+                                                greeter: root.targetGreeter
+                                            }
                                         }
                                     }
 

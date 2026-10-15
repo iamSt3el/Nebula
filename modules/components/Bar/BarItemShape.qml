@@ -9,6 +9,7 @@ Item {
     property Item host: null
     property string itemId: ""
     readonly property bool shown: true
+    readonly property bool verticalReady: true
 
     readonly property string shapeName: BarLayout.opt(root.itemId, "shape") ?? "cookie6"
     readonly property real size: BarLayout.opt(root.itemId, "size") ?? 18

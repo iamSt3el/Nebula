@@ -16,7 +16,9 @@ Item {
         { name: "Rainy study",  icon: "menu_book",  levels: { rain: 60, window: 35, fire: 20 } },
         { name: "Café corner",  icon: "local_cafe", levels: { cafe: 60, rain: 25 } },
         { name: "Cabin night",  icon: "cabin",      levels: { fire: 55, cat: 35, night: 30 } },
-        { name: "Seaside",      icon: "beach_access", levels: { waves: 65, stream: 15 } }
+        { name: "Seaside",      icon: "beach_access", levels: { waves: 65, stream: 15 } },
+        { name: "Zen garden",   icon: "spa",        levels: { stream: 40, chimes: 45, night: 15 } },
+        { name: "Breezy porch", icon: "deck",       levels: { chimes: 50, night: 30, rain: 15 } }
     ]
 
     implicitWidth: 360

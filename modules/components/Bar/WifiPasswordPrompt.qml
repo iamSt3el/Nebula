@@ -146,7 +146,7 @@ PanelWindow {
                     radius: 16
                     color: Colors.surfaceContainerHighest
                     border.width: 2
-                    border.color: pwField.activeFocus ? Colors.primary : "transparent"
+                    border.color: pwField.activeFocus ? Colors.primary : Qt.alpha(Colors.primary, 0)
 
                     Behavior on border.color { EffectsColorAnim {} }
 

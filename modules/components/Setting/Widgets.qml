@@ -56,7 +56,7 @@ Item {
     function openStudio(add) {
         GlobalStates.settingsOpen = false
         GlobalStates.widgetOpenAdd = add
-        GlobalStates.widgetEditMode = true
+        GlobalStates.openEdit("desktop")
     }
 
     component StudioButton: Rectangle {

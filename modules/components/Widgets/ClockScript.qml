@@ -10,6 +10,7 @@ WidgetHost {
     tile: Qt.size(WidgetSizes.span(4), WidgetSizes.span(1.5))
     defaultPos: Qt.point(100, 100)
     backdrop: false
+    outlined: false
 
     readonly property bool tilt: SettingsConfig.widgets.clockTilt ?? true
     readonly property string _hand: "Just Another Hand"

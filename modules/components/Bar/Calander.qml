@@ -53,7 +53,7 @@ ColumnLayout {
         implicitWidth: 30
         implicitHeight: 30
         radius: 15
-        color: navHov.containsMouse ? Colors.surfaceContainerHighest : "transparent"
+        color: navHov.containsMouse ? Colors.surfaceContainerHighest : Qt.alpha(Colors.surfaceContainerHighest, 0)
         Behavior on color { EffectsColorAnim {} }
 
         MaterialIconSymbol {

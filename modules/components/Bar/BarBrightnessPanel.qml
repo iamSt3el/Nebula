@@ -145,6 +145,62 @@ Item {
                             label: Math.round((card.modelData.brightness ?? 0) * 100) + "%"
                         }
                     }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: card.modelData.hasContrast
+                        spacing: 10
+
+                        M3Slider {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 40
+                            enabled: card.live
+                            opacity: card.live ? 1 : 0.5
+                            icon: "contrast"
+                            iconAtEnd: true
+                            showStopIndicator: false
+                            trackOuterCorner: 12
+                            trackHeight: 32
+                            handleHeight: 40
+                            handleWidth: 6
+                            pressedHandleWidth: 4
+                            handleGap: 4
+                            progress: card.modelData.contrast ?? 0
+                            onMoved: card.modelData.setContrast(progress)
+                        }
+
+                        ValueChip {
+                            label: Math.round((card.modelData.contrast ?? 0) * 100) + "%"
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: card.modelData.colorPresets.length > 0
+                        spacing: 6
+
+                        CustomText {
+                            Layout.leftMargin: 4
+                            content: "Color preset"
+                            size: 10
+                            weight: 600
+                            customColor: Colors.outline
+                        }
+
+                        M3ButtonGroup {
+                            Layout.fillWidth: true
+                            fillWidth: true
+                            Layout.preferredHeight: 32
+                            enabled: card.live
+                            opacity: card.live ? 1 : 0.5
+                            model: card.modelData.colorPresets.map(v => ({
+                                        value: v,
+                                        label: ServiceBrightness.presetLabel(v)
+                                    }))
+                            activeCheck: v => v === card.modelData.colorPreset
+                            onSegmentClicked: v => card.modelData.setColorPreset(v)
+                        }
+                    }
                 }
             }
         }

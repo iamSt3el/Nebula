@@ -8,6 +8,7 @@ Rectangle {
 
     property Item host: null
     property string itemId: ""
+    readonly property bool plateless: BarLayout.chipHovers(root.itemId, 0, 0)
     readonly property bool shown: root.next !== null
 
     readonly property int horizon: BarLayout.opt(root.itemId, "days") ?? 30
@@ -44,8 +45,9 @@ Rectangle {
     implicitWidth: row.implicitWidth + 10
     implicitHeight: 26
     radius: height / 2
-    color: hov.containsMouse ? Colors.primaryContainer
-         : root.next && root.next.days === 0 ? Colors.secondaryContainer : Colors.surfaceContainer
+    color: hov.containsMouse && !root.plateless ? Colors.primaryContainer
+         : root.next && root.next.days === 0 ? Colors.secondaryContainer
+         : root.plateless ? "transparent" : Colors.surfaceContainer
     Behavior on color { EffectsColorAnim {} }
 
     Row {

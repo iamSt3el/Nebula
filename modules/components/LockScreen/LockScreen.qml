@@ -42,6 +42,13 @@ Scope {
         root.capturing = false
     }
 
+    function isPrimary(screen) {
+        const pm = SettingsConfig.general.primaryMonitor ?? ""
+        if (pm !== "" && Quickshell.screens.some(s => s.name === pm))
+            return !!screen && screen.name === pm
+        return screen === Quickshell.screens[0]
+    }
+
     function deskUrl(name) {
         const shot = root.deskShots[name]
         return shot ? shot.url : ""
@@ -145,6 +152,7 @@ Scope {
                         context: lockContext
                         exiting: root.startAnimation
                         desk: root.deskUrl(lockSurface.screen.name)
+                        primary: root.isPrimary(lockSurface.screen)
                     }
                 }
             }

@@ -9,6 +9,7 @@ Item {
 
     property Item host: null
     property string itemId: ""
+    readonly property bool plateless: BarLayout.chipHovers(root.itemId, 0, 0)
     readonly property bool iconSizable: true
     readonly property real box: BarLayout.boxFor(root.itemId, root.host)
     readonly property real iconPx: BarLayout.iconPxFor(root.itemId, root.box, 16)
@@ -28,7 +29,7 @@ Item {
             implicitWidth: recRow.implicitWidth + BarLayout.scaleFor(root.iconPx, 16, 18, 8)
             implicitHeight: root.plate
             radius: root.plate / 2
-            color: recHov.containsMouse ? Colors.primaryContainer : root.showTime ? Colors.errorContainer : "transparent"
+            color: recHov.containsMouse && !root.plateless ? Colors.primaryContainer : root.showTime ? Colors.errorContainer : Qt.alpha(Colors.errorContainer, 0)
 
             Behavior on color         { ColorAnimation  { duration: 150 } }
             Behavior on implicitWidth { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }

@@ -16,6 +16,142 @@ Item {
     anchors.fill: parent
     anchors.margins: 5
 
+    component SchemeChip: Rectangle {
+        id: chip
+        required property var modelData
+        readonly property string value: chip.modelData.name
+        readonly property bool active: (SettingsConfig.theme.matugenScheme ?? "scheme-content") === chip.value
+        readonly property bool kindle: chip.value === "scheme-kindle"
+        readonly property var dots: chip.kindle ? ["#000000", "#eeeeee", "#ffffff"]
+            : chip.active ? [Colors.primary, Colors.secondaryContainer, Colors.tertiary] : []
+        readonly property string label: {
+            const t = chip.value.replace("scheme-", "").replace(/-/g, " ")
+            return t.charAt(0).toUpperCase() + t.slice(1)
+        }
+        Layout.fillWidth: true
+        implicitHeight: 44
+        radius: 14
+        color: chip.active ? Colors.primary : chipArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainer
+
+        Row {
+            anchors.centerIn: parent
+            spacing: 10
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: chip.dots.length > 0
+                spacing: -5
+                Repeater {
+                    model: chip.dots
+                    Rectangle {
+                        required property var modelData
+                        width: 16
+                        height: 16
+                        radius: 8
+                        color: modelData
+                        border.width: 1.5
+                        border.color: Colors.outlineVariant
+                    }
+                }
+            }
+            CustomText {
+                anchors.verticalCenter: parent.verticalCenter
+                content: chip.label
+                size: 13
+                customColor: chip.active ? Colors.primaryText : Colors.surfaceText
+            }
+        }
+
+        MouseArea {
+            id: chipArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                if (chip.active)
+                    return
+                const t = SettingsConfig.theme
+                const patch = chip.kindle ? { matugenScheme: chip.value, kindlePrevScheme: t.matugenScheme }
+                                          : { matugenScheme: chip.value }
+                SettingsConfig.theme = Object.assign({}, t, patch)
+                ServiceWallpaper.reapply()
+            }
+        }
+    }
+
+    component PageThumb: Item {
+        id: thumb
+        property string mode: "light"
+        readonly property bool dark: thumb.mode === "dark"
+        readonly property bool active: (SettingsConfig.theme.matugenTheme ?? "dark") === thumb.mode
+        readonly property bool kindle: KindleMode.active
+        readonly property color page: thumb.kindle ? (thumb.dark ? "#000000" : "#ffffff")
+            : Qt.tint(thumb.dark ? "#14120f" : "#fbf8f5", Qt.alpha(Colors.primary, 0.05))
+        readonly property color card: thumb.kindle ? (thumb.dark ? "#222222" : "#eeeeee")
+            : Qt.tint(thumb.dark ? "#2a2622" : "#ece6e0", Qt.alpha(Colors.primary, 0.1))
+        readonly property color track: thumb.kindle ? (thumb.dark ? "#444444" : "#dddddd")
+            : Qt.tint(thumb.dark ? "#3d3833" : "#dcd5ce", Qt.alpha(Colors.primary, 0.1))
+        readonly property color ink: thumb.kindle ? (thumb.dark ? "#ffffff" : "#000000")
+            : (thumb.dark ? "#ece4dc" : "#1e1b18")
+        readonly property color accent: thumb.kindle ? thumb.ink : Colors.primary
+        Layout.fillWidth: true
+        Layout.maximumWidth: 260
+        implicitHeight: 140
+
+        Rectangle {
+            id: thumbPage
+            width: parent.width
+            height: 110
+            radius: 18
+            color: thumb.page
+            border.width: thumb.active ? 3 : 2
+            border.color: thumb.active ? Colors.primary : Colors.outlineVariant
+            clip: true
+
+            Rectangle { x: 10; y: 8; width: 40; height: 10; radius: 5; color: thumb.card }
+            Rectangle { x: (parent.width - width) / 2; y: 8; width: 30; height: 10; radius: 5; color: thumb.accent }
+            Rectangle { x: parent.width - width - 10; y: 8; width: 60; height: 10; radius: 5; color: thumb.card }
+
+            Rectangle {
+                x: 10; y: 26
+                width: 92; height: parent.height - 36
+                radius: 10
+                color: "transparent"
+                border.width: 1.5
+                border.color: thumb.ink
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    spacing: 4
+                    Rectangle { width: parent.width; height: 22; radius: 6; color: thumb.accent }
+                    Rectangle { width: parent.width; height: 14; radius: 5; color: thumb.card }
+                    Rectangle { width: parent.width; height: 10; radius: 5; color: thumb.track }
+                }
+            }
+
+            Column {
+                x: parent.width - 58; y: 34
+                spacing: 3
+                Rectangle { width: 46; height: 28; radius: 8; color: thumb.ink }
+                Rectangle { width: 46; height: 28; radius: 8; color: thumb.card }
+            }
+        }
+
+        Row {
+            anchors.top: thumbPage.bottom
+            anchors.topMargin: 8
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: 6
+            MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; visible: thumb.active; content: "check"; iconSize: 16 }
+            CustomText { anchors.verticalCenter: parent.verticalCenter; content: thumb.kindle ? (thumb.dark ? "Dark page" : "Light page") : (thumb.dark ? "Dark" : "Light"); size: 13 }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: ServiceWallpaper.flipMode(thumb.mode)
+        }
+    }
+
 
     FolderDialog {
         id: folderPicker
@@ -85,7 +221,9 @@ Item {
                     Image {
                         anchors.fill: parent
                         visible: themeRefCard.hasWallpaper
-                        source: themeRefCard.hasWallpaper ? "file://" + themeRefCard.wpPath : ""
+                        source: !themeRefCard.hasWallpaper ? ""
+                            : KindleMode.wallpaper !== "keep" && WallpaperTheme.wallpaperScreen !== "" ? "file://" + WallpaperTheme.wallpaperScreen
+                            : "file://" + themeRefCard.wpPath
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         // Decoded at roughly display size; wallpapers are
@@ -219,6 +357,190 @@ Item {
             }
 
             // ── Appearance ───────────────────────────────────────────────
+            ColumnLayout {
+                id: kindleSection
+                Layout.fillWidth: true
+                visible: KindleMode.active
+                spacing: 0
+
+                readonly property var appNames: ({
+                    kitty: "kitty", tmux: "tmux", starship: "Starship", btop: "btop", hyprland: "Hyprland borders",
+                    gtk3: "GTK 3", gtk4: "GTK 4", qt: "Qt", papirus: "Papirus folders", firefox: "Firefox and Zen",
+                    obsidian: "Obsidian", waybar: "Waybar", nwgdock: "nwg-dock"
+                })
+                readonly property var followers: {
+                    const ids = SettingsConfig.theme.themeApps
+                    return Array.isArray(ids) ? ids.map(id => kindleSection.appNames[id] ?? id) : ["Every installed app"]
+                }
+
+                function setKindle(patch) {
+                    SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, patch)
+                }
+
+                Timer {
+                    id: kindleAnsiApply
+                    interval: 400
+                    onTriggered: ServiceWallpaper.applyTheme()
+                }
+
+                CustomText { Layout.topMargin: 16; content: "Kindle mode"; size: 13; customColor: Colors.primary }
+                CustomText {
+                    Layout.topMargin: 2
+                    content: "Fixed e-ink greys for the shell and your apps"
+                    size: 12
+                    customColor: Colors.outline
+                }
+
+                GridLayout {
+                    Layout.topMargin: 6
+                    Layout.fillWidth: true
+                    columns: kindleSection.width > 760 ? 2 : 1
+                    columnSpacing: 12
+                    rowSpacing: 3
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        Layout.alignment: Qt.AlignTop
+                        spacing: 3
+
+                        CustomCard {
+                            autoRadius: false; topRadius: 20; bottomRadius: 20
+                            ColumnLayout {
+                                spacing: 2
+                                CustomText { content: "Apps that follow"; size: 14 }
+                                CustomText { content: "The same list as the theme's app colours"; size: 12; customColor: Colors.outline }
+                            }
+                            Flow {
+                                Layout.fillWidth: true
+                                Layout.topMargin: 6
+                                spacing: 6
+                                Repeater {
+                                    model: kindleSection.followers
+                                    Rectangle {
+                                        required property var modelData
+                                        width: appRow.implicitWidth + 24
+                                        height: 30
+                                        radius: 15
+                                        color: Colors.surfaceContainer
+                                        Row {
+                                            id: appRow
+                                            anchors.centerIn: parent
+                                            spacing: 5
+                                            MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; content: "check"; iconSize: 15 }
+                                            CustomText { anchors.verticalCenter: parent.verticalCenter; content: modelData; size: 12 }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        Layout.alignment: Qt.AlignTop
+                        spacing: 3
+
+                        CustomCard {
+                            autoRadius: false; topRadius: 20; bottomRadius: 5
+                            RowLayout {
+                                Layout.fillWidth: true
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+                                    CustomText { content: "Outlines instead of shadows"; size: 14 }
+                                    CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "The bar, dock and panels get a 2 px edge and panel shadows switch off"; size: 12; customColor: Colors.outline }
+                                }
+                                CustomToogle {
+                                    isToggleOn: SettingsConfig.theme.kindleOutlines ?? true
+                                    onToggled: state => kindleSection.setKindle({ kindleOutlines: state })
+                                }
+                            }
+                        }
+
+                        CustomCard {
+                            autoRadius: false; topRadius: 5; bottomRadius: 5
+                            ColumnLayout {
+                                spacing: 2
+                                CustomText { content: "Wallpaper"; size: 14 }
+                                CustomText {
+                                    Layout.fillWidth: true
+                                    wrapMode: Text.WordWrap
+                                    content: {
+                                        const w = SettingsConfig.theme.kindleWallpaper ?? "blank"
+                                        if (w === "eink") return ServiceWallpaper.gowallAvailable
+                                            ? "Your wallpaper in the Kindle's 16 greys, through gowall"
+                                            : "gowall isn't installed, so this falls back to greyscale"
+                                        if (w === "grey") return "Your wallpaper, in greys"
+                                        if (w === "keep") return "Your wallpaper, unchanged"
+                                        return "A plain page behind the windows"
+                                    }
+                                    size: 12; customColor: Colors.outline
+                                }
+                            }
+                            M3ButtonGroup {
+                                Layout.fillWidth: true
+                                Layout.topMargin: 6
+                                fillWidth: true
+                                model: [
+                                    { value: "blank", label: "Blank page", icon: "description" },
+                                    { value: "eink", label: "E-ink", icon: "gradient" },
+                                    { value: "grey", label: "Greyscale", icon: "filter_b_and_w" },
+                                    { value: "keep", label: "Keep mine", icon: "wallpaper" }
+                                ]
+                                activeCheck: v => (SettingsConfig.theme.kindleWallpaper ?? "blank") === v
+                                onSegmentClicked: v => kindleSection.setKindle({ kindleWallpaper: v })
+                            }
+                        }
+
+                        CustomCard {
+                            autoRadius: false; topRadius: 5; bottomRadius: 5
+                            RowLayout {
+                                Layout.fillWidth: true
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+                                    CustomText { content: "Grey app icons"; size: 14 }
+                                    CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Dock, launcher, tray, window title and notification icons lose their colour"; size: 12; customColor: Colors.outline }
+                                }
+                                CustomToogle {
+                                    isToggleOn: SettingsConfig.theme.kindleGreyIcons ?? true
+                                    onToggled: state => kindleSection.setKindle({ kindleGreyIcons: state })
+                                }
+                            }
+                        }
+
+                        CustomCard {
+                            autoRadius: false; topRadius: 5; bottomRadius: 20
+                            RowLayout {
+                                Layout.fillWidth: true
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+                                    CustomText { content: "Grey terminal colours"; size: 14 }
+                                    CustomText {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.WordWrap
+                                        content: (SettingsConfig.theme.kindleGreyAnsi ?? false)
+                                            ? "Terminal colours become grey tones"
+                                            : "Terminals keep their normal colours"
+                                        size: 12; customColor: Colors.outline
+                                    }
+                                }
+                                CustomToogle {
+                                    isToggleOn: SettingsConfig.theme.kindleGreyAnsi ?? false
+                                    onToggled: state => {
+                                        kindleSection.setKindle({ kindleGreyAnsi: state })
+                                        kindleAnsiApply.restart()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             CustomText { Layout.topMargin: 24; content: "Appearance"; size: 13; customColor: Colors.primary }
 
             ColumnLayout {
@@ -271,25 +593,25 @@ Item {
                 // Theme Mode
                 CustomCard {
                     autoRadius: false; topRadius: 5; bottomRadius: 5
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Theme Mode"; size: 14 }
+                        CustomText { content: "Click a page to switch between light and dark"; size: 12; customColor: Colors.outline }
+                    }
                     RowLayout {
                         Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Theme Mode"; size: 14 }
-                            CustomText { content: "Switch between dark and light variants"; size: 12; customColor: Colors.outline }
-                        }
+                        Layout.topMargin: 6
+                        spacing: 14
                         Item { Layout.fillWidth: true }
-                        M3ButtonGroup {
-                            model: Settings.themeModes.map(m => ({ value: m.name.toLowerCase(), label: m.name, icon: m.icon }))
-                            activeCheck: function(v) { return SettingsConfig.theme.matugenTheme === v }
-                            onSegmentClicked: function(v) { ServiceWallpaper.flipMode(v) }
-                        }
+                        PageThumb { mode: "light" }
+                        PageThumb { mode: "dark" }
+                        Item { Layout.fillWidth: true }
                     }
                 }
 
                 CustomCard {
                     autoRadius: false; topRadius: 5; bottomRadius: 5
-                    visible: !ServiceWallpaper.gowallActive
+                    visible: !ServiceWallpaper.gowallActive && !KindleMode.active
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
@@ -311,29 +633,26 @@ Item {
                     }
                 }
 
-                // Matugen Scheme
                 CustomCard {
                     autoRadius: false; topRadius: 5; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Matugen Scheme"; size: 14 }
-                            CustomText { content: "Algorithm used to extract colors from your wallpaper"; size: 12; customColor: Colors.outline }
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Colour scheme"; size: 14 }
+                        CustomText {
+                            content: KindleMode.active ? "Kindle ignores the wallpaper and uses fixed greys"
+                                                       : "How colours are pulled from your wallpaper"
+                            size: 12; customColor: Colors.outline
                         }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredWidth: 200
-                            Layout.preferredHeight: 30
-                            color: Colors.surfaceContainerHighest
-                            list: Settings.matugen
-                            Component.onCompleted: currentVal = SettingsConfig.theme.matugenScheme
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== SettingsConfig.theme.matugenScheme) {
-                                    SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenScheme: currentVal })
-                                    ServiceWallpaper.reapply()
-                                }
-                            }
+                    }
+                    GridLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 6
+                        columns: 3
+                        columnSpacing: 6
+                        rowSpacing: 6
+                        Repeater {
+                            model: Settings.matugen
+                            SchemeChip {}
                         }
                     }
                 }

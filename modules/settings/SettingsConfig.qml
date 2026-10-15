@@ -36,26 +36,44 @@ Singleton {
         return n !== "" ? n : root.loginName
     }
 
+    property real lastSavedAt: 0
+
     Timer {
         id: writeTimer
         interval: 100
         repeat: false
-        onTriggered: settingsFile.writeAdapter()
+        onTriggered: {
+            reloadTimer.stop()
+            root.lastSavedAt = Date.now()
+            settingsFile.writeAdapter()
+        }
     }
 
     Timer {
         id: reloadTimer
         interval: 100
         repeat: false
-        onTriggered: settingsFile.reload()
+        onTriggered: {
+            if (writeTimer.running)
+                return
+            settingsFile.reload()
+        }
     }
 
     FileView {
         id: settingsFile
         path: Quickshell.env("HOME") + "/.cache/quickshell/settings.json"
         watchChanges: true
-        onFileChanged: reloadTimer.restart()
-        onAdapterUpdated: writeTimer.restart()
+        onFileChanged: {
+            if (writeTimer.running || Date.now() - root.lastSavedAt < 300)
+                return
+            reloadTimer.restart()
+        }
+        onSaved: root.lastSavedAt = Date.now()
+        onAdapterUpdated: {
+            reloadTimer.stop()
+            writeTimer.restart()
+        }
         onLoaded: root.settingsReady = true
         onLoadFailed: error => {
             if (error == FileViewError.FileNotFound) {
@@ -83,6 +101,8 @@ Singleton {
                 musicVisOn: true,
                 profile: "",
                 displayName: "",
+                greetingStyle: "time",
+                greetingText: "",
                 settingsSections: true,
                 settingsRailWide: false,
                 defaultFont: "Rubik",
@@ -129,6 +149,8 @@ Singleton {
                 musicVisOn: true,
                 profile: "",
                 displayName: "",
+                greetingStyle: "time",
+                greetingText: "",
                 settingsSections: true,
                 settingsRailWide: false,
                 defaultFont: "Rubik",
@@ -180,7 +202,11 @@ Singleton {
                 gowallTheme: "off",
                 gowallIcons: false,
                 gowallInvert: false,
-                gowallShell: false
+                gowallShell: false,
+                kindleOutlines: true,
+                kindleWallpaper: "blank",
+                kindleGreyIcons: true,
+                kindleGreyAnsi: false
             })
 
             property var theme: ({
@@ -193,7 +219,11 @@ Singleton {
                 gowallTheme: "off",
                 gowallIcons: false,
                 gowallInvert: false,
-                gowallShell: false
+                gowallShell: false,
+                kindleOutlines: true,
+                kindleWallpaper: "blank",
+                kindleGreyIcons: true,
+                kindleGreyAnsi: false
             })
 
             onThemeChanged: {
@@ -251,7 +281,8 @@ Singleton {
             property var screenshot: ({
                 outputPath: "~/Pictures",
                 soundEnabled: true,
-                soundPath: ""
+                soundPath: "",
+                freeze: false
             })
 
             property var widgets: ({
@@ -510,6 +541,8 @@ Singleton {
                 showBanners: true,
                 popupTimeout: 5,
                 maxVisible: 3,
+                groupPopups: true,
+                urgentSticky: true,
                 showInCenter: true,
                 playSound: false,
                 soundPath: "",
@@ -626,7 +659,9 @@ Singleton {
                 showDate: true,
                 showStatus: true,
                 showMusic: true,
-                showPower: true
+                showPower: true,
+                showAvatar: true,
+                greeterAvatar: true
             })
 
             property var lockscreen: ({
@@ -634,7 +669,9 @@ Singleton {
                 showDate: true,
                 showStatus: true,
                 showMusic: true,
-                showPower: true
+                showPower: true,
+                showAvatar: true,
+                greeterAvatar: true
             })
 
             onLockscreenChanged: {

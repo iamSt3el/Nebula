@@ -67,6 +67,23 @@ Item {
     property bool backdrop: true
     property real backdropRadius: WidgetSizes.radius
     property Item backdropMask: null
+    property bool outlined: true
+
+    layer.enabled: !root.preview && !root.lifted && KindleMode.outlines && root.outlined
+    layer.smooth: true
+    layer.effect: inkOutline
+
+    Component {
+        id: inkOutline
+        ShaderEffect {
+            readonly property size itemSize: Qt.size(root.width, root.height)
+            readonly property real lineWidth: KindleMode.edge
+            readonly property real outsideAlpha: 0
+            readonly property real outer: 0
+            readonly property color lineColor: Colors.outline
+            fragmentShader: Qt.resolvedUrl("../../../shaders/qsb/silhouette.frag.qsb")
+        }
+    }
 
     Loader {
         anchors.fill: parent
@@ -207,7 +224,7 @@ Item {
         anchors.fill: parent
         z: -1
         enabled: !root.preview && !root.lifted
-        onDoubleClicked: GlobalStates.widgetEditMode = true
+        onDoubleClicked: GlobalStates.openEdit("desktop")
     }
 
     Rectangle {

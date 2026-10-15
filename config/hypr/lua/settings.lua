@@ -1,4 +1,13 @@
-local themed, colors = pcall(require, "lua.colors")
+local function untracked(name)
+    local path = package.searchpath(name, package.path)
+    local chunk = path and loadfile(path)
+    if not chunk then
+        return false
+    end
+    return pcall(chunk)
+end
+
+local themed, colors = untracked("lua.colors")
 
 hl.config({
     general = {

@@ -28,9 +28,9 @@ PopupWindow {
 
     HyprlandFocusGrab {
         id: focusGrab
-        active: true
+        active: !GlobalStates.capturing
         windows: [QsWindow.window]
-        onCleared: morph.close()
+        onCleared: if (!GlobalStates.capturing) morph.close()
     }
 
     readonly property real micVolume: ServicePipewire.source?.audio?.volume ?? 0

@@ -72,8 +72,8 @@ Scope {
 
             HyprlandFocusGrab {
                 windows: [win]
-                active: root.open && !GlobalStates.panelHold && !GlobalStates.fileDialogOpen
-                onCleared: if (root.open) root.dismissed()
+                active: root.open && !GlobalStates.panelHold && !GlobalStates.fileDialogOpen && !GlobalStates.capturing
+                onCleared: if (root.open && !GlobalStates.capturing) root.dismissed()
             }
 
             Item {
@@ -87,6 +87,7 @@ Scope {
                 Keys.onEscapePressed: root.dismissed()
 
                 RectangularShadow {
+                    visible: !KindleMode.outlines
                     anchors.fill: parent
                     radius: 28
                     blur: 36
@@ -104,6 +105,15 @@ Scope {
                         anchors.fill: parent
                         sourceComponent: root.content
                     }
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    visible: KindleMode.outlines
+                    radius: 28
+                    color: "transparent"
+                    border.width: KindleMode.edge
+                    border.color: Colors.outline
                 }
 
                 MouseArea {

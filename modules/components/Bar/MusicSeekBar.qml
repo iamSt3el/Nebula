@@ -14,6 +14,7 @@ Item {
     property real barHeight: 4
     property real hoverHeight: 6
     property real handleSize: 12
+    property color trackColor: Colors.surfaceContainerHigh
 
     readonly property real elapsed: ServiceMusic.activePlayer?.position ?? 0
     readonly property real total: ServiceMusic.trackLength
@@ -36,7 +37,7 @@ Item {
         progress: root.shown
         activeThickness: root.active ? root.hoverHeight : root.barHeight
         trackThickness: root.active ? root.hoverHeight : root.barHeight
-        trackColor: Colors.surfaceContainerHigh
+        trackColor: root.trackColor
         showStopIndicator: false
         waveAmplitude: ServiceMusic.isPlaying && !root.dragging ? 3 : 0
     }

@@ -409,7 +409,7 @@ Scope {
                         Image {
                             Layout.preferredWidth: 18
                             Layout.preferredHeight: 18
-                            source: Quickshell.iconPath(
+                            source: IconUtil.themeIcon(
                                 DesktopEntries.heuristicLookup(ghost.appId)?.icon, "image-missing")
                             sourceSize: Qt.size(18, 18)
                             fillMode: Image.PreserveAspectFit

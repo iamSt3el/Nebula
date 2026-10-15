@@ -4,7 +4,6 @@ import Quickshell.Wayland
 import Quickshell.Widgets
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
 import qs.modules.utils
 import qs.modules.services
 import qs.modules.settings
@@ -32,7 +31,6 @@ Scope{
         sourceComponent: PanelWindow{
             id: panelWindow
 
-            readonly property bool centered: ServiceLauncher.position === "center"
             property bool shown: false
             property real openT: 0
 
@@ -66,13 +64,10 @@ Scope{
                 easing.bezierCurve: [0.3, 0.0, 0.8, 0.15, 1, 1]
             }
 
-            implicitWidth: ServiceLauncher.panelWidth
             anchors.left: true
-            anchors.right: panelWindow.centered
+            anchors.right: true
             anchors.top: true
             anchors.bottom: true
-            margins.left: panelWindow.centered ? 0
-                : (ServiceGaps.barSide === "left" ? ServiceGaps.barReserve : 0) + (ServiceGaps.dockSide === "left" ? ServiceGaps.dockReserve : 0)
             WlrLayershell.namespace: "quickshell:appLauncher"
             WlrLayershell.layer: WlrLayer.Top
             exclusionMode: ExclusionMode.Normal
@@ -106,8 +101,8 @@ Scope{
             property real anchorY: 0
 
             readonly property real screenW: panelWindow.screen ? panelWindow.screen.width : panelWindow.width
-            readonly property real insetL: root.preview && panelWindow.centered ? GlobalStates.previewInsetLeft : 0
-            readonly property real insetR: root.preview && panelWindow.centered ? GlobalStates.previewInsetRight : 0
+            readonly property real insetL: root.preview ? GlobalStates.previewInsetLeft : 0
+            readonly property real insetR: root.preview ? GlobalStates.previewInsetRight : 0
 
             function beginResize() {
                 panelWindow.resizing = true
@@ -124,7 +119,7 @@ Scope{
                 let w = d.w
                 let h = d.h
                 if (side === "left") w = 2 * (cx - p.x)
-                else if (side === "right") w = panelWindow.centered ? 2 * (p.x - cx) : p.x - container.x
+                else if (side === "right") w = 2 * (p.x - cx)
                 else if (side === "top") h = 2 * (cy - p.y)
                 else h = 2 * (p.y - cy)
                 ServiceLauncher.draft = {
@@ -156,72 +151,29 @@ Scope{
                 }
             }
 
-            Shape {
-                id: bgShape
-                z: 1
-                preferredRendererType: Shape.CurveRenderer
-                visible: !panelWindow.centered && child.width > 0
-
-                readonly property real r: ServiceLauncher.radius
-
-                function buildPath(dX, dY, rX, rY, left, right, top, bottom, w) {
-                    const effDX = Math.min(dX, w / 2)
-                    function A(sw, ex, ey) { return `A ${rX} ${rY} 0 0 ${sw} ${ex} ${ey} ` }
-                    function L(x,  y)      { return `L ${x} ${y} ` }
-                    const CW = 1, CCW = 0
-                    let p = `M ${left} ${top - dY} `
-                    p += A(CCW, left + effDX, top)
-                    p += L(right - effDX,     top)
-                    p += A(CW,  right, top    + effDX)
-                    p += L(right,      bottom - effDX)
-                    p += A(CW,  right - effDX, bottom)
-                    p += L(left + effDX,       bottom)
-                    p += A(CCW, left, bottom  + dY)
-                    p += L(left,      top     - dY)
-                    return p
-                }
-
-                ShapePath {
-                    strokeWidth: -1
-                    fillColor: Settings.layoutColor
-                    PathSvg {
-                        path: bgShape.buildPath(
-                            bgShape.r, bgShape.r, bgShape.r, bgShape.r,
-                            container.x,
-                            container.x + child.width,
-                            container.y,
-                            container.y + container.height,
-                            child.width
-                        )
-                    }
-                }
-            }
-
             Item {
                 id: container
                 z: 10
                 width: Math.max(20, child.width)
                 height: Math.max(100, child.height)
-                x: !panelWindow.centered ? 0
-                    : Math.max(16, Math.min(panelWindow.width - container.width - 16,
-                        panelWindow.insetL + (panelWindow.width - panelWindow.insetL - panelWindow.insetR - container.width) / 2))
+                x: Math.max(16, Math.min(panelWindow.width - container.width - 16,
+                    panelWindow.insetL + (panelWindow.width - panelWindow.insetL - panelWindow.insetR - container.width) / 2))
                 y: (panelWindow.height - container.height) / 2
 
                 Item {
                     id: card
-                    readonly property real t: panelWindow.centered && !panelWindow.resizing ? panelWindow.openT : 1
+                    readonly property real t: !panelWindow.resizing ? panelWindow.openT : 1
                     readonly property real pillW: Math.min(container.width, Math.max(240, container.width * 0.6))
                     readonly property real pillH: 56
                     anchors.centerIn: parent
-                    anchors.verticalCenterOffset: panelWindow.centered ? (1 - card.t) * 36 : 0
+                    anchors.verticalCenterOffset: (1 - card.t) * 36
                     width: card.pillW + (container.width - card.pillW) * card.t
                     height: card.pillH + (container.height - card.pillH) * card.t
-                    opacity: panelWindow.centered ? Math.min(1, card.t * 5) : 1
-                    clip: panelWindow.centered && card.t < 1
+                    opacity: Math.min(1, card.t * 5)
+                    clip: card.t < 1
 
                     Rectangle {
                         anchors.fill: parent
-                        visible: panelWindow.centered
                         radius: Math.min(card.height / 2, card.pillH / 2 + (ServiceLauncher.radius - card.pillH / 2) * card.t)
                         color: Settings.layoutColor
                     }
@@ -229,25 +181,17 @@ Scope{
                     Item {
                         id: child
                         anchors.centerIn: parent
-                        width: panelWindow.centered || panelWindow.shown ? ServiceLauncher.panelWidth : 0
+                        width: ServiceLauncher.panelWidth
                         height: Math.min(ServiceLauncher.panelHeight, panelWindow.height - 32)
                         clip: true
-
-                        Behavior on width {
-                            enabled: !panelWindow.centered && !panelWindow.resizing
-                            NumberAnimation {
-                                duration: Appearance.duration.large
-                                easing.type: Easing.OutQuad
-                            }
-                        }
 
                         AppLauncherContent{
                             anchors.fill: parent
                             preview: root.preview
                             enabled: !root.preview
-                            entranceDelay: panelWindow.centered ? 170 : 300
-                            entranceScale: panelWindow.centered ? 1 : 0.92
-                            entranceRise: panelWindow.centered ? 14 : 0
+                            entranceDelay: 170
+                            entranceScale: 1
+                            entranceRise: 14
                             onClosed:{
                                 GlobalStates.appLauncherOpen = false
                             }
@@ -260,8 +204,6 @@ Scope{
                 id: handleLeft
                 win: panelWindow
                 side: "left"
-                enabled: panelWindow.centered
-                visible: root.preview && panelWindow.centered
                 x: container.x - width / 2 + 4
                 y: container.y + container.height / 2 - height / 2
             }
@@ -269,7 +211,7 @@ Scope{
                 id: handleRight
                 win: panelWindow
                 side: "right"
-                x: panelWindow.centered ? container.x + container.width - width / 2 - 4 : container.x + container.width - width
+                x: container.x + container.width - width / 2 - 4
                 y: container.y + container.height / 2 - height / 2
             }
             SizeHandle {

@@ -34,6 +34,7 @@ Singleton {
     readonly property real netTotalRxBytes: stats.netTotalRxBytes
     readonly property real netTotalTxBytes: stats.netTotalTxBytes
     property var uptime
+    property var fanRpms: []
 
     property int _refCount: 0
 
@@ -98,6 +99,27 @@ Singleton {
                 if (data.startsWith("gpu:"))
                     root.gpuName = data.slice(4)
             }
+        }
+    }
+
+    Timer {
+        interval: root.fanRpms.length > 0 ? 2000 : 30000
+        repeat: true
+        triggeredOnStart: true
+        running: root._refCount > 0
+        onTriggered: fanProc.running = true
+    }
+
+    Process {
+        id: fanProc
+        command: ["cat", "/run/nebula-fans"]
+        property var next: []
+        stdout: SplitParser {
+            onRead: data => fanProc.next = data.trim().split(/\s+/).map(v => parseInt(v)).filter(v => !isNaN(v))
+        }
+        onExited: {
+            root.fanRpms = fanProc.next
+            fanProc.next = []
         }
     }
 

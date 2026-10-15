@@ -23,6 +23,24 @@ Singleton {
         screen
     }))
 
+    function presetLabel(value: int): string {
+        return ({
+                1: "sRGB",
+                2: "Native",
+                3: "4000K",
+                4: "5000K",
+                5: "6500K",
+                6: "7500K",
+                7: "8200K",
+                8: "9300K",
+                9: "10000K",
+                10: "11500K",
+                11: "User",
+                12: "User 2",
+                13: "User 3"
+            })[value] ?? ("0x" + value.toString(16));
+    }
+
     function getMonitorForScreen(screen: ShellScreen): var {
         return monitors.find(m => m.screen === screen);
     }
@@ -75,6 +93,11 @@ Singleton {
         readonly property string busNum: root.ddcMonitors.find(m => m.model === screen.model)?.busNum ?? ""
         property real brightness
         property bool ready: false
+        property bool hasContrast: false
+        property real contrast: 0
+        property int contrastMax: 100
+        property int colorPreset: -1
+        property var colorPresets: []
 
         onBrightnessChanged: {
             if (monitor.ready) {
@@ -85,21 +108,53 @@ Singleton {
 
         function initialize() {
             monitor.ready = false;
-            initProc.command = isDdc ? ["ddcutil", "-b", busNum, "getvcp", "10", "--brief"] : ["sh", "-c", `echo "a b c $(brightnessctl g) $(brightnessctl m)"`];
+            monitor.hasContrast = false;
+            monitor.colorPreset = -1;
+            monitor.colorPresets = [];
+            monitor.read(true);
+        }
+
+        function read(withCaps: bool): void {
+            if (isDdc) {
+                const caps = withCaps ? `; ddcutil -b ${busNum} capabilities --brief` : "";
+                initProc.command = ["sh", "-c", `ddcutil -b ${busNum} getvcp 10 12 14 --brief${caps}`];
+            } else {
+                initProc.command = ["sh", "-c", `echo "VCP 10 C $(brightnessctl g) $(brightnessctl m)"`];
+            }
             initProc.running = true;
+        }
+
+        function parseLine(line: string): void {
+            const capsAt = line.indexOf("vcp(");
+            if (capsAt >= 0) {
+                const m = line.slice(capsAt).match(/[( ]14\(([0-9A-Fa-f ]+)\)/);
+                monitor.colorPresets = m ? m[1].trim().split(/\s+/).map(v => parseInt(v, 16)) : [];
+                return;
+            }
+            const parts = line.trim().split(/\s+/);
+            if (parts[0] !== "VCP")
+                return;
+            const code = parts[1].toLowerCase();
+            if (code === "10" && parts[2] === "C") {
+                monitor.brightness = parseInt(parts[3]) / parseInt(parts[4]);
+                monitor.ready = true;
+            } else if (code === "12" && parts[2] === "C") {
+                monitor.contrastMax = parseInt(parts[4]);
+                monitor.contrast = parseInt(parts[3]) / monitor.contrastMax;
+                monitor.hasContrast = true;
+            } else if (code === "14" && parts[2] === "SNC") {
+                monitor.colorPreset = parseInt(parts[3].replace(/^x/, ""), 16);
+            }
         }
 
         readonly property Process initProc: Process {
             stdout: SplitParser {
-                onRead: data => {
-                    const [, , , current, max] = data.split(" ");
-                    monitor.brightness = parseInt(current) / parseInt(max);
-                    monitor.ready = true;
-                }
+                onRead: data => monitor.parseLine(data)
             }
         }
 
-        property int pending: -1
+        property var pending: ({})
+        property bool rereadAfterWrite: false
 
         function setBrightness(value: real): void {
             value = Math.max(0.01, Math.min(1, value));
@@ -107,16 +162,47 @@ Singleton {
             if (Math.round(brightness * 100) === rounded)
                 return;
             brightness = value;
-            monitor.pending = rounded;
+            monitor.queue("10", isDdc ? String(rounded) : `${rounded}%`);
+        }
+
+        function setContrast(value: real): void {
+            if (!isDdc || !hasContrast)
+                return;
+            value = Math.max(0, Math.min(1, value));
+            const raw = Math.round(value * contrastMax);
+            if (Math.round(contrast * contrastMax) === raw)
+                return;
+            contrast = value;
+            monitor.queue("12", String(raw));
+        }
+
+        function setColorPreset(value: int): void {
+            if (!isDdc || value === colorPreset)
+                return;
+            colorPreset = value;
+            monitor.rereadAfterWrite = true;
+            monitor.queue("14", "0x" + value.toString(16).padStart(2, "0"));
+        }
+
+        function queue(code: string, value: string): void {
+            monitor.pending[code] = value;
             monitor.flush();
         }
 
         function flush(): void {
-            if (monitor.writer.running || monitor.pending < 0)
+            if (monitor.writer.running)
                 return;
-            const v = String(monitor.pending);
-            monitor.pending = -1;
-            monitor.writer.command = isDdc ? ["ddcutil", "-b", busNum, "--noverify", "setvcp", "10", v] : ["brightnessctl", "s", `${v}%`, "--quiet"];
+            const code = Object.keys(monitor.pending)[0];
+            if (code === undefined) {
+                if (monitor.rereadAfterWrite && !monitor.initProc.running) {
+                    monitor.rereadAfterWrite = false;
+                    monitor.read(false);
+                }
+                return;
+            }
+            const v = monitor.pending[code];
+            delete monitor.pending[code];
+            monitor.writer.command = isDdc ? ["ddcutil", "-b", busNum, "--noverify", "setvcp", code, v] : ["brightnessctl", "s", v, "--quiet"];
             monitor.writer.running = true;
         }
 

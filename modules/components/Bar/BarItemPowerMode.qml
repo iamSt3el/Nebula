@@ -14,7 +14,7 @@ Item {
     readonly property real box: BarLayout.boxFor(root.itemId, root.host)
     readonly property real iconPx: BarLayout.iconPxFor(root.itemId, root.box, 18)
     readonly property real plate: BarLayout.platePxFor(root.box, root.iconPx, 18, 26)
-    readonly property color plateColor: hov.containsMouse ? Colors.primaryContainer : "transparent"
+    readonly property color plateColor: hov.containsMouse ? Colors.primaryContainer : Qt.alpha(Colors.primaryContainer, 0)
     readonly property bool plateless: BarLayout.chipHovers(root.itemId, root.implicitWidth, root.implicitHeight)
     readonly property bool plateOn: root.plateColor.a > 0.01
     readonly property real labelPx: BarLayout.scaleFor(root.iconPx, 18, 13, 8)
@@ -34,7 +34,7 @@ Item {
         width: root.showLabel ? row.implicitWidth + root.padPx : root.plate
         height: root.plate
         radius: root.plate / 2
-        color: root.plateless ? "transparent" : root.plateColor
+        color: root.plateless ? Qt.alpha(root.plateColor, 0) : root.plateColor
         Behavior on color { ColorAnimation { duration: 150 } }
 
         RowLayout {
@@ -70,8 +70,9 @@ Item {
                 const d = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : wheel.angleDelta.x
                 if (d === 0)
                     return
-                const n = ServiceUPower.powerProfiles.length
-                ServiceUPower.setPowerProfile(Math.max(0, Math.min(n - 1, root.profile + (d > 0 ? 1 : -1))))
+                const ids = ServiceUPower.availableProfiles.map(p => p.id)
+                const at = Math.max(0, ids.indexOf(root.profile))
+                ServiceUPower.setPowerProfile(ids[Math.max(0, Math.min(ids.length - 1, at + (d > 0 ? 1 : -1)))])
             }
         }
 

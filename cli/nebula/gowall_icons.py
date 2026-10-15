@@ -50,6 +50,7 @@ _THEME_KEYS = [
     (Path.home() / ".config/gtk-4.0/settings.ini", "gtk-icon-theme-name"),
 ]
 HEX         = re.compile(r"#([0-9a-fA-F]{6})\b|#([0-9a-fA-F]{3})\b")
+RGB         = re.compile(r"rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)")
 CHUNK       = 400
 
 
@@ -192,8 +193,11 @@ def _collect_colors(jobs):
             continue
         try:
             with open(src, encoding="utf-8", errors="ignore") as fh:
-                for m in HEX.finditer(fh.read()):
+                text = fh.read()
+                for m in HEX.finditer(text):
                     colors.add(_expand(m.group(1) or m.group(2)))
+                for m in RGB.finditer(text):
+                    colors.add(_rgb_hex(m))
         except OSError:
             continue
     return sorted(colors)
@@ -319,6 +323,14 @@ def _sub(match):
     return _MAP.get(_expand(match.group(1) or match.group(2)), match.group(0))
 
 
+def _rgb_hex(match):
+    return "#%02x%02x%02x" % tuple(min(255, int(v)) for v in match.groups())
+
+
+def _sub_rgb(match):
+    return _MAP.get(_rgb_hex(match), match.group(0))
+
+
 def _build_chunk(args):
     dest_root, jobs = args
     for kind, src, rel in jobs:
@@ -333,7 +345,7 @@ def _build_chunk(args):
                 with open(src, encoding="utf-8", errors="ignore") as fh:
                     text = fh.read()
                 with open(dst, "w", encoding="utf-8") as fh:
-                    fh.write(HEX.sub(_sub, text))
+                    fh.write(RGB.sub(_sub_rgb, HEX.sub(_sub, text)))
             else:
                 shutil.copy2(src, dst)
         except OSError:
@@ -353,6 +365,108 @@ def _write_index(theme_dir, dest, derived_name, source_name):
         else:
             out.append(line)
     (dest / "index.theme").write_text("\n".join(out) + "\n")
+
+
+def _recolor_assets(theme, theme_arg, theme_key):
+    from nebula.paths import SHELL_DIR
+
+    src = SHELL_DIR / "assets"
+    dest = Path.home() / ".cache" / "quickshell" / "gowall" / f"assets-{theme}"
+    jobs = [("svg", str(p), p.name) for p in sorted(src.glob("*.svg"))]
+    newest = max((os.path.getmtime(j[1]) for j in jobs), default=0)
+    stamp = dest / ".assets-stamp"
+    current = stamp.read_text().strip() if stamp.is_file() else ""
+    wanted = f"{newest:.0f}|{len(jobs)}|{theme_key}"
+    if current != wanted:
+        colors = _collect_colors(jobs)
+        if colors:
+            _init(_map_palette(colors, theme_arg))
+            staging = dest.with_name(dest.name + ".building")
+            shutil.rmtree(staging, ignore_errors=True)
+            staging.mkdir(parents=True, exist_ok=True)
+            _build_chunk((str(staging), jobs))
+            for keep in ("icon-index.json", "source-index.json"):
+                if (dest / keep).is_file():
+                    shutil.copy2(dest / keep, staging / keep)
+            (staging / ".assets-stamp").write_text(wanted)
+            shutil.rmtree(dest, ignore_errors=True)
+            staging.rename(dest)
+    print(f"assets={dest}", flush=True)
+
+
+_APP_DIRS = [
+    Path.home() / ".local/share/applications",
+    Path("/usr/share/applications"),
+    Path("/var/lib/flatpak/exports/share/applications"),
+    Path.home() / ".local/share/flatpak/exports/share/applications",
+]
+_CONTEXTS = ["apps", "places", "devices", "mimetypes", "categories", "status", "actions", "emblems"]
+
+
+def _app_icon_names():
+    names = set()
+    for base in _APP_DIRS:
+        if not base.is_dir():
+            continue
+        for desktop in base.glob("*.desktop"):
+            names.add(desktop.stem)
+            names.add(desktop.stem.lower())
+            try:
+                text = desktop.read_text(errors="ignore")
+            except OSError:
+                continue
+            for line in text.splitlines():
+                if line.startswith("Icon=") and not line[5:].startswith("/"):
+                    names.add(line[5:].strip())
+                elif line.startswith("StartupWMClass="):
+                    names.add(line[15:].strip().lower())
+    return {n for n in names if n}
+
+
+_SIZE_DIRS = {}
+
+
+def _size_dirs(base):
+    key = str(base)
+    if key not in _SIZE_DIRS:
+        out = []
+        if base.is_dir():
+            sizes = sorted((d.name for d in base.iterdir() if d.is_dir()),
+                           key=lambda d: (d != "scalable", -_int_or_zero(d)))
+            for size in sizes:
+                try:
+                    out.append((base / size, set(os.listdir(base / size))))
+                except OSError:
+                    pass
+        _SIZE_DIRS[key] = out
+    return _SIZE_DIRS[key]
+
+
+def _icon_file(theme_dir, name):
+    for ctx in _CONTEXTS:
+        for folder, files in _size_dirs(theme_dir / ctx):
+            for ext in (".svg", ".png"):
+                if name + ext in files:
+                    path = folder / (name + ext)
+                    if path.exists():
+                        return str(path)
+    return None
+
+
+def _write_icon_index(derived_dir, source_dir, theme):
+    index, source = {}, {}
+    for name in sorted(_app_icon_names()):
+        path = _icon_file(derived_dir, name)
+        if path:
+            index[name] = path
+        original = _icon_file(source_dir, name)
+        if original:
+            source[name] = original
+    dest = Path.home() / ".cache" / "quickshell" / "gowall" / f"assets-{theme}"
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / "icon-index.json").write_text(json.dumps(index))
+    (dest / "source-index.json").write_text(json.dumps(source))
+    _log(f"indexed {len(index)} app icons")
 
 
 def _finish(derived, apply_theme):
@@ -437,6 +551,9 @@ def main():
         try:
             if json.loads(stamp.read_text()).get("fingerprint") == fingerprint:
                 _log(f"up to date — {derived}")
+                if "/" not in theme:
+                    _write_icon_index(dest, theme_dir, theme)
+                    _recolor_assets(theme, theme_arg, theme_key)
                 _finish(derived, apply_theme)
                 return 0
         except Exception:
@@ -481,6 +598,9 @@ def main():
             _log(f"removed stale {old.name}")
 
     _log(f"built {derived} in {time.time() - t_start:.1f}s")
+    if "/" not in theme:
+        _write_icon_index(dest, theme_dir, theme)
+        _recolor_assets(theme, theme_arg, theme_key)
     _finish(derived, apply_theme)
     return 0
 

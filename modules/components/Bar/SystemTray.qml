@@ -46,7 +46,7 @@ Item {
                 implicitWidth: root.plate
                 implicitHeight: root.plate
                 radius: root.plate / 2
-                color: iconArea.containsMouse ? Colors.primaryContainer : "transparent"
+                color: iconArea.containsMouse ? Colors.primaryContainer : Qt.alpha(Colors.primaryContainer, 0)
                 Behavior on color { ColorAnimation { duration: 150 } }
 
                 CustomIconImage {

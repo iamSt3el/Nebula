@@ -12,6 +12,7 @@ WidgetHost {
     tile: Qt.size(WidgetSizes.span(4), WidgetSizes.span(2))
     defaultPos: Qt.point(100, 100)
     backdrop: false
+    outlined: false
 
     readonly property bool showStatus: SettingsConfig.widgets.clockStatus ?? true
     readonly property string _family: SettingsConfig.general.defaultFont ?? "Rubik"

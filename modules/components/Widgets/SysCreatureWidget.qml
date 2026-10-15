@@ -11,6 +11,7 @@ WidgetHost {
     minSpan: Qt.size(2, 2)
     maxSpan: Qt.size(4, 4)
     backdrop: false
+    outlined: false
     defaultPos: Qt.point(540, 300)
 
     readonly property var si: root.preview ? PreviewData : ServiceSystemInfo

@@ -93,7 +93,7 @@ Item {
         if (s === "")
             return ""
         if (s.indexOf("image://icon/") === 0)
-            return Quickshell.iconPath(s.slice(13).split("?")[0], true)
+            return IconUtil.themeIcon(s.slice(13).split("?")[0], true)
         return s
     }
 

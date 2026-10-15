@@ -15,6 +15,7 @@ WidgetHost {
     tile: Qt.size(WidgetSizes.span(4), WidgetSizes.span(2))
     defaultPos: Qt.point(100, 100)
     backdrop: false
+    outlined: false
 
     readonly property string shapeLock: SettingsConfig.widgets.clockShapeLock ?? ""
     readonly property bool spin: SettingsConfig.widgets.clockSpin ?? true

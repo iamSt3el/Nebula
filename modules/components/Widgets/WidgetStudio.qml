@@ -6,6 +6,7 @@ import QtQuick.Controls
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
+import qs.modules.components.Edit
 
 Item {
     id: root
@@ -42,7 +43,6 @@ Item {
 
     Component.onCompleted: {
         if (GlobalStates.widgetEditMode) {
-            root.resetHistory()
             zoomIn.start()
             root.takeOpenAdd()
         }
@@ -56,7 +56,6 @@ Item {
             zoomOut.stop()
             root.pop = ""
             if (GlobalStates.widgetEditMode) {
-                root.resetHistory()
                 zoomIn.start()
                 root.takeOpenAdd()
             } else {
@@ -71,6 +70,8 @@ Item {
 
     visible: root.studioT > 0.002
     enabled: GlobalStates.widgetEditMode
+    opacity: EditSession.peek ? 0 : 1
+    Behavior on opacity { EffectsAnim { speed: "fast" } }
 
     readonly property real stageScale: 1
     readonly property real stageX: 0
@@ -135,7 +136,7 @@ Item {
     readonly property var sections: WidgetCatalog.catalog
     readonly property int sectionIndex: Math.max(0, Math.min(GlobalStates.widgetSection, root.sections.length - 1))
 
-    property string filter: ""
+    readonly property string filter: GlobalStates.editAddQuery
     readonly property string needle: root.filter.trim().toLowerCase()
     readonly property bool searching: root.needle !== ""
 
@@ -198,6 +199,12 @@ Item {
     }
 
     function closePop() {
+        if (GlobalStates.editKeysOpen) {
+            GlobalStates.editKeysOpen = false
+            return true
+        }
+        if (capRow.closeAll())
+            return true
         if (root.pop !== "") {
             root.pop = ""
             return true
@@ -205,73 +212,8 @@ Item {
         return false
     }
 
-    property var history: []
-    property int historyIndex: -1
-    property bool restoring: false
-    readonly property bool canUndo: root.historyIndex > 0
-    readonly property bool canRedo: root.historyIndex >= 0 && root.historyIndex < root.history.length - 1
-
-    function canonOf(v) {
-        if (v === null || typeof v !== "object")
-            return JSON.stringify(v)
-        if (Array.isArray(v))
-            return "[" + v.map(x => root.canonOf(x)).join(",") + "]"
-        return "{" + Object.keys(v).sort().map(k => JSON.stringify(k) + ":" + root.canonOf(v[k])).join(",") + "}"
-    }
-
-    function canon(v) {
-        return root.canonOf(JSON.parse(JSON.stringify(v ?? {})))
-    }
-
-    function resetHistory() {
-        recordTimer.stop()
-        root.history = [root.canon(SettingsConfig.widgets)]
-        root.historyIndex = 0
-    }
-
-    function restoreAt(i) {
-        recordTimer.stop()
-        root.restoring = true
-        root.historyIndex = i
-        SettingsConfig.widgets = JSON.parse(root.history[i])
-        restoreRelease.restart()
-    }
-
-    function undo() {
-        if (root.canUndo) root.restoreAt(root.historyIndex - 1)
-    }
-
-    function redo() {
-        if (root.canRedo) root.restoreAt(root.historyIndex + 1)
-    }
-
-    Timer {
-        id: restoreRelease
-        interval: 400
-        onTriggered: root.restoring = false
-    }
-
-    Timer {
-        id: recordTimer
-        interval: 250
-        onTriggered: {
-            const s = root.canon(SettingsConfig.widgets)
-            if (root.historyIndex >= 0 && s === root.history[root.historyIndex])
-                return
-            const next = root.history.slice(0, root.historyIndex + 1).concat([s])
-            root.history = next.length > 80 ? next.slice(next.length - 80) : next
-            root.historyIndex = root.history.length - 1
-        }
-    }
-
-    Connections {
-        target: SettingsConfig
-        function onWidgetsChanged() {
-            if (!GlobalStates.widgetEditMode || root.restoring)
-                return
-            recordTimer.restart()
-        }
-    }
+    function undo() { EditSession.undo() }
+    function redo() { EditSession.redo() }
 
     component Pill: Rectangle {
         id: pill
@@ -455,48 +397,49 @@ Item {
     Glass {
         id: capsule
         anchors.horizontalCenter: parent.horizontalCenter
-        y: 18 - 30 * (1 - root.capsuleT)
+        y: GlobalStates.editTopInset + 16 - 30 * (1 - root.capsuleT)
         opacity: root.capsuleT
-        height: 52
-        width: capsuleRow.implicitWidth + 22
-        radius: 26
+        height: 56
+        width: capRow.implicitWidth + 12
+        radius: 28
 
-        RowLayout {
-            id: capsuleRow
+        EditCapsuleRow {
+            id: capRow
             anchors.centerIn: parent
-            spacing: 4
-
-            MaterialIconSymbol {
-                Layout.leftMargin: 6
-                content: "edit"
-                iconSize: 18
-                customColor: Colors.primary
+            addLabel: "Add"
+            addLit: root.pop === "add"
+            actions: [
+                { key: "tidy", icon: "auto_awesome_motion", label: "Tidy" },
+                { key: "look", icon: "palette", label: "Look", lit: root.pop === "look" }
+            ]
+            onLogo: {
+                GlobalStates.closeEdit()
+                GlobalStates.settingsPage = 9
+                GlobalStates.settingsOpen = true
             }
-
-            CustomText {
-                Layout.rightMargin: 8
-                content: "Arranging your desk"
-                size: 14
-                weight: 600
+            onAdd: {
+                if (root.pop === "add") {
+                    root.pop = ""
+                    return
+                }
+                GlobalStates.widgetSettingsKey = ""
+                root.pop = "add"
             }
-
-            Pill { icon: "undo"; usable: root.canUndo; onClicked: root.undo() }
-            Pill { icon: "redo"; usable: root.canRedo; onClicked: root.redo() }
-            Divider { Layout.leftMargin: 4; Layout.rightMargin: 4 }
-            Pill { icon: "auto_awesome_motion"; label: "Tidy"; onClicked: WidgetLayout.tidy() }
-            Pill {
-                icon: "palette"
-                label: "Look"
-                lit: root.pop === "look"
-                onClicked: root.pop = root.pop === "look" ? "" : "look"
-            }
-            Pill {
-                icon: "check"
-                label: "Done"
-                filled: true
-                onClicked: GlobalStates.widgetEditMode = false
+            onAction: key => {
+                if (key === "tidy")
+                    WidgetLayout.tidy()
+                else if (key === "look")
+                    root.pop = root.pop === "look" ? "" : "look"
             }
         }
+    }
+
+    EditHistoryCard {
+        z: 5
+        open: capRow.historyOpen && GlobalStates.widgetEditMode
+        x: Math.max(12, Math.min(root.width - width - 12, capsule.x + capsule.width / 2 - width / 2))
+        y: capsule.y + capsule.height + 10
+        onPicked: capRow.historyOpen = false
     }
 
     Glass {
@@ -859,55 +802,10 @@ Item {
         }
     }
 
-    Rectangle {
-        id: addButton
-        readonly property bool shown: root.pop !== "add"
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: root.height - 58 - 24 - height + 40 * (1 - root.addT)
-        opacity: root.addT * (addButton.shown ? 1 : 0)
-        visible: opacity > 0.01
-        height: 52
-        width: addRow.implicitWidth + 40
-        radius: addArea.pressed ? 16 : 26
-        color: addArea.containsMouse ? Qt.lighter(Colors.primaryContainer, 1.08) : Colors.primaryContainer
-        Behavior on radius { SpatialAnim { speed: "fast" } }
-        Behavior on opacity { EffectsAnim { speed: "fast" } }
-
-        RowLayout {
-            id: addRow
-            anchors.centerIn: parent
-            spacing: 10
-
-            MaterialIconSymbol {
-                content: "add"
-                iconSize: 22
-                customColor: Colors.primaryContainerText
-            }
-
-            CustomText {
-                content: "Add a widget"
-                size: 15
-                weight: 600
-                customColor: Colors.primaryContainerText
-            }
-        }
-
-        MouseArea {
-            id: addArea
-            anchors.fill: parent
-            hoverEnabled: true
-            enabled: addButton.shown && GlobalStates.widgetEditMode
-            cursorShape: Qt.PointingHandCursor
-            onClicked: {
-                GlobalStates.widgetSettingsKey = ""
-                root.pop = "add"
-            }
-        }
-    }
-
     Glass {
         id: sheet
         readonly property bool open: root.pop === "add"
+        onOpenChanged: if (sheet.open) Qt.callLater(() => trayInput.forceActiveFocus())
         property real openT: sheet.open ? 1 : 0
         Behavior on openT { SpatialAnim { speed: "default" } }
 
@@ -933,12 +831,8 @@ Item {
                 Layout.fillWidth: true
                 spacing: 12
 
-                CustomText {
-                    content: "Add a widget"
-                    size: 20
-                    weight: 600
-                    family: "Noto Serif Display"
-                    renderType: Text.QtRendering
+                EditAddTabs {
+                    current: "widgets"
                 }
 
                 CustomText {
@@ -981,7 +875,7 @@ Item {
                             selectionColor: Qt.alpha(Colors.primary, 0.4)
                             selectedTextColor: Colors.surfaceText
                             verticalAlignment: TextInput.AlignVCenter
-                            onTextChanged: root.filter = trayInput.text
+                            onTextChanged: if (GlobalStates.editAddQuery !== trayInput.text) GlobalStates.editAddQuery = trayInput.text
                             onActiveFocusChanged: GlobalStates.widgetTextFocus = trayInput.activeFocus
                             Keys.onEscapePressed: {
                                 if (trayInput.text !== "") {
@@ -995,7 +889,7 @@ Item {
                             CustomText {
                                 anchors.verticalCenter: parent.verticalCenter
                                 visible: trayInput.text === "" && !trayInput.activeFocus
-                                content: "Search every widget"
+                                content: "Search parts, widgets and tiles"
                                 size: 13
                                 customColor: Colors.outline
                             }
@@ -1064,7 +958,7 @@ Item {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    root.filter = ""
+                                    GlobalStates.editAddQuery = ""
                                     GlobalStates.widgetSection = sectionChip.index
                                 }
                             }
@@ -1209,5 +1103,10 @@ Item {
                 }
             }
         }
+    }
+
+    EditKeysSheet {
+        z: 400
+        desktop: true
     }
 }

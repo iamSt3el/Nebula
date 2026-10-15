@@ -105,7 +105,7 @@ WelcomeTile {
 
             CustomText {
                 Layout.fillWidth: true
-                content: "Dashboard, overview and lock screen"
+                content: "Overview and lock screen"
                 size: 12
                 customColor: Colors.outline
                 wrapMode: Text.WordWrap

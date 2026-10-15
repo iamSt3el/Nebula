@@ -242,7 +242,7 @@ Item {
         Layout.fillWidth: true
         Layout.preferredHeight: pr.dim ? 46 : 54
         radius: 16
-        color: prMa.containsMouse ? Colors.secondaryContainer : "transparent"
+        color: prMa.containsMouse ? Colors.secondaryContainer : Qt.alpha(Colors.secondaryContainer, 0)
         Behavior on color { EffectsColorAnim { speed: "fast" } }
 
         opacity: root.armed !== "" ? 0.45 : 1
@@ -256,7 +256,7 @@ Item {
                 Layout.preferredWidth: 38
                 Layout.preferredHeight: 38
                 radius: 12
-                color: pr.dim ? "transparent"
+                color: pr.dim ? Qt.alpha(pr.tileColor, 0)
                        : prMa.containsMouse ? Colors.primary : pr.tileColor
                 Behavior on color { EffectsColorAnim { speed: "fast" } }
 

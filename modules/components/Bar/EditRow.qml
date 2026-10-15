@@ -4,12 +4,6 @@ import QtQuick.Layouts
 Item {
     id: root
 
-    readonly property bool isCustomCard: true
-    property int topRadius: 0
-    property int bottomRadius: 0
-    property bool autoRadius: false
-    property color color: "transparent"
-
     default property alias content: _layout.data
 
     Layout.fillWidth: true

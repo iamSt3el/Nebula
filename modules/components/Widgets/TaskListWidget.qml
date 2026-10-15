@@ -191,7 +191,7 @@ WidgetHost {
                     anchors.fill: parent
                     anchors.margins: 1
                     radius: 9
-                    color: rowHover.containsMouse ? Colors.surfaceContainerHigh : "transparent"
+                    color: rowHover.containsMouse ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0)
                     Behavior on color { ColorAnimation { duration: 120 } }
                 }
 

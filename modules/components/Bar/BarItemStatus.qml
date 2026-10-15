@@ -8,6 +8,7 @@ Rectangle {
 
     property Item host: null
     property string itemId: ""
+    readonly property bool plateless: BarLayout.chipHovers(root.itemId, 0, 0)
     readonly property bool shown: true
 
     readonly property bool showPrivacy: BarLayout.opt(root.itemId, "privacy") !== false
@@ -18,7 +19,7 @@ Rectangle {
     implicitWidth: row.implicitWidth + root.implicitHeight - row.implicitHeight
     implicitHeight: 30
     radius: height / 2
-    color: Colors.surfaceContainerHigh
+    color: root.plateless ? Qt.alpha(Colors.surfaceContainerHigh, 0) : Colors.surfaceContainerHigh
 
     component Glyph: Rectangle {
         id: g
@@ -32,7 +33,7 @@ Rectangle {
         width: 26
         height: 26
         radius: 13
-        color: area.containsMouse ? Colors.primaryContainer : "transparent"
+        color: !area.containsMouse ? Qt.alpha(BarLayout.tintHover(root.itemId), 0) : root.plateless ? BarLayout.tintHover(root.itemId) : Colors.primaryContainer
         Behavior on color { EffectsColorAnim {} }
 
         MaterialIconSymbol {

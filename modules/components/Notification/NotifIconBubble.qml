@@ -10,7 +10,7 @@ Item {
 
     required property Item host
 
-    readonly property Item dock: root.host.bottomSurface
+    readonly property Item dock: root.host.appsSurface
     readonly property bool dockOn: !!root.dock && root.dock.visible
     readonly property bool dockUp: root.dockOn && (root.dock.reveal ?? 1) > 0.9
     readonly property bool ready: root.host.active && (!root.dockOn || root.dockUp)
@@ -54,10 +54,10 @@ Item {
             root.dir = root.dockSide
             root.hasTail = false
         } else {
-            const bar = root.host.topSurface
-            const right = [bar, root.dock].find(x => x && x.visible && x.side === "right")
+            const right = root.host.surfaces.find(x => x && x.visible && x.present && x.side === "right")
+            const bottom = root.host.surfaces.find(x => x && x.visible && x.present && x.side === "bottom" && !x.autoHide)
             root.p = Qt.point(root.host.width - root.w / 2 - 16 - (right ? right.bandRect.width : 0),
-                              root.host.height - 16 - (bar && bar.side === "bottom" ? bar.bandRect.height : 0))
+                              root.host.height - 16 - (bottom ? bottom.bandRect.height : 0))
             root.dir = "bottom"
             root.hasTail = false
         }
@@ -217,7 +217,7 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: GlobalStates.openDashboard()
+                    onClicked: GlobalStates.openPanel("notifications")
                 }
             }
         }

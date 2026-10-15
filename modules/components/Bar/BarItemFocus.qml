@@ -8,6 +8,7 @@ Rectangle {
 
     property Item host: null
     property string itemId: ""
+    readonly property bool plateless: BarLayout.chipHovers(root.itemId, 0, 0)
     readonly property bool shown: true
 
     readonly property string phase: ServiceFocus.phase
@@ -18,7 +19,7 @@ Rectangle {
 
     readonly property color fillColor: root.done ? Colors.primaryContainer
         : root.breakTime ? Colors.tertiaryContainer
-        : root.idle ? (hov.containsMouse ? Colors.primaryContainer : "transparent")
+        : root.idle ? (hov.containsMouse && !root.plateless ? Colors.primaryContainer : Qt.alpha(Colors.primaryContainer, 0))
         : Colors.surfaceContainerHigh
     readonly property color ink: root.done ? Colors.primaryContainerText
         : root.breakTime ? Colors.tertiaryContainerText

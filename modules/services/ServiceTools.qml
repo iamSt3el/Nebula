@@ -175,6 +175,33 @@ Singleton{
     }
 
     property int  captureDelay: 0
+    readonly property bool freeze: SettingsConfig.screenshot?.freeze === true
+
+    function setFreeze(on) {
+        SettingsConfig.screenshot = Object.assign({}, SettingsConfig.screenshot, { freeze: on === true })
+    }
+
+    function freezeFramePath(name) {
+        return "/tmp/quickshell-freeze-" + name.replace(/[^A-Za-z0-9_-]/g, "_") + "-" + Date.now() + ".png"
+    }
+
+    function frozenShot(frame, crop) {
+        const out = root._newShotPath()
+        const cut = crop !== "" ? " -crop " + crop + " +repage" : ""
+        root._areaScreenshotPath = out.path
+        areaScreenshotProc.command = ["sh", "-c",
+            "mkdir -p " + root._shq(out.dir) + " && magick " + root._shq(frame) + cut + " " + root._shq(out.path)
+            + " && wl-copy < " + root._shq(out.path) + "; rc=$?; rm -f " + root._shq(frame) + " /tmp/quickshell-freeze-*; exit $rc"]
+        areaScreenshotProc.running = true
+    }
+
+    function frozenOcr(frame, crop) {
+        root._ocrText = ""
+        ocrProc.command = ["sh", "-c",
+            "magick " + root._shq(frame) + " -crop " + crop + " +repage -resize 200% png:- | tesseract - - --dpi 300 --psm 6 2>/dev/null; rm -f "
+            + root._shq(frame) + " /tmp/quickshell-freeze-*"]
+        ocrProc.running = true
+    }
     property int  countdownRemaining: 0
     readonly property bool countingDown: countdownRemaining > 0
     signal screenshotReady(string path)
@@ -603,7 +630,7 @@ Singleton{
         root._grimToFile("-g '" + geo + "'")
     }
 
-    function _grimToFile(grimArgs) {
+    function _newShotPath() {
         var now = new Date()
         var ts  = now.getFullYear() + "-" +
                   String(now.getMonth() + 1).padStart(2, "0") + "-" +
@@ -612,7 +639,13 @@ Singleton{
                   String(now.getMinutes()).padStart(2, "0") + "." +
                   String(now.getSeconds()).padStart(2, "0")
         var dir  = SettingsConfig.screenshot.outputPath.replace("~", Quickshell.env("HOME"))
-        var path = dir + "/screenshot_" + ts + ".png"
+        return { dir: dir, path: dir + "/screenshot_" + ts + ".png" }
+    }
+
+    function _grimToFile(grimArgs) {
+        var out  = root._newShotPath()
+        var dir  = out.dir
+        var path = out.path
         root._areaScreenshotPath = path
         areaScreenshotProc.command = ["sh", "-c",
             "mkdir -p '" + dir + "' && sleep 0.4 && grim " + grimArgs + " '" + path + "' && wl-copy < '" + path + "'"]

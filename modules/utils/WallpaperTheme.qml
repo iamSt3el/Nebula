@@ -76,8 +76,11 @@ Singleton {
         return Qt.size(Math.ceil((w || 1920) * over), h || 1080)
     }
 
+    readonly property string _tone: KindleMode.wallpaper === "keep" ? "" : KindleMode.wallpaper === "eink" ? "eink" : "grey"
+
     onWallpaperChanged: Qt.callLater(root._rescale)
     on_CoverSizeChanged: Qt.callLater(root._rescale)
+    on_ToneChanged: Qt.callLater(root._rescale)
     function _rescale() {
         if (root.wallpaper === "")
             return
@@ -89,7 +92,8 @@ Singleton {
         const w = root._coverSize.width, h = root._coverSize.height
         scaleProc.target = root.wallpaper
         scaleProc.command = [root._cli, "wallpaper", "screen", root.wallpaper,
-            root._scaleDir + "/" + Qt.md5(root.wallpaper) + "-" + w + "x" + h + ".jpg", String(w), String(h)]
+            root._scaleDir + "/" + Qt.md5(root.wallpaper) + "-" + w + "x" + h + (root._tone ? "-" + root._tone : "") + ".jpg",
+            String(w), String(h)].concat(root._tone ? ["--" + root._tone] : [])
         scaleProc.running = true
     }
 

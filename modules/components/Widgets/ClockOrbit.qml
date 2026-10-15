@@ -13,6 +13,7 @@ WidgetHost {
     tile: Qt.size(WidgetSizes.span(3), WidgetSizes.span(3))
     defaultPos: Qt.point(100, 100)
     backdrop: false
+    outlined: false
 
     readonly property bool showSeconds: SettingsConfig.widgets.clockSeconds ?? true
     readonly property bool musicRim: SettingsConfig.widgets.clockMusicRim ?? true

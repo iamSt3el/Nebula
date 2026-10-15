@@ -15,7 +15,7 @@ WelcomeTile {
 
     CustomText {
         Layout.fillWidth: true
-        content: "The primary screen carries the full bar, the dashboard and the widget canvas."
+        content: "The primary screen carries the full bar and the widget canvas."
         size: 12
         customColor: Colors.outline
         wrapMode: Text.WordWrap

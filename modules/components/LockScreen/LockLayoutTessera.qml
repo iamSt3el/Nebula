@@ -341,6 +341,7 @@ Item {
             LockShapeImage {
                 Layout.preferredWidth: 150 * root.u
                 Layout.preferredHeight: 150 * root.u
+                visible: LockSession.cfg.showAvatar !== false
                 source: SettingsConfig.general.profile ?? ""
                 shapeName: (root.context?.unlockInProgress ?? false) ? "softBurst"
                          : (root.context?.showFailure ?? false) ? "clover4" : "sunny"

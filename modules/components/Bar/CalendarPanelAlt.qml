@@ -125,7 +125,7 @@ Item {
         implicitWidth: 30
         implicitHeight: 30
         radius: 15
-        color: navArea.containsMouse ? Colors.surfaceContainerHighest : "transparent"
+        color: navArea.containsMouse ? Colors.surfaceContainerHighest : Qt.alpha(Colors.surfaceContainerHighest, 0)
         Behavior on color { EffectsColorAnim {} }
         MaterialIconSymbol {
             anchors.centerIn: parent
@@ -229,7 +229,7 @@ Item {
             width: Math.min(parent.width - 4, 40)
             height: Math.min(parent.height - 2, 36)
             radius: height / 2
-            color: dc.isToday ? Colors.primary : dc.hovered ? Colors.surfaceContainerHigh : "transparent"
+            color: dc.isToday ? Colors.primary : dc.hovered ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0)
             border.width: dc.selected && !dc.isToday ? 1.5 : 0
             border.color: Colors.primary
             Behavior on color { EffectsColorAnim {} }

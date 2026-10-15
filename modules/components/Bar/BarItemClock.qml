@@ -45,9 +45,12 @@ Item {
 
     readonly property real faceWidth: faceRow.implicitWidth
     readonly property real islandWidth: island.implicitWidth
-    readonly property bool islandUp: root.event !== "" && !root.vertical
-    readonly property bool vertical: !!root.host && root.host.vertical === true
-    readonly property bool verticalReady: true
+    readonly property bool islandUp: root.event !== "" && !root.onSide
+    readonly property bool onSide: !!root.host && root.host.vertical === true
+    readonly property bool sideDisplay: root.onSide && root.style === "display"
+    readonly property bool vertical: root.onSide
+        && (root.sideDisplay || !root.host.compactFor || root.host.compactFor(root.itemId))
+    readonly property bool verticalReady: root.vertical
 
     implicitWidth: root.islandUp ? root.islandWidth : root.faceWidth
     implicitHeight: root.vertical ? faceRow.implicitHeight + 6 : Appearance.size.clockHeight
@@ -57,7 +60,7 @@ Item {
     }
 
     function show(kind, ms) {
-        if (!root.live || !root.armed || root.vertical)
+        if (!root.live || !root.armed || root.onSide)
             return
         root.event = kind
         islandTimer.interval = ms
@@ -74,7 +77,7 @@ Item {
         target: GlobalStates
         property: "liveIsland"
         value: true
-        when: root.live && root.host !== null && !root.host.bottomEdge && !root.vertical
+        when: root.live && root.host !== null && !root.host.bottomEdge && !root.onSide
     }
 
     Timer {
@@ -134,7 +137,7 @@ Item {
             id: face
             sourceComponent: {
                 if (root.vertical)
-                    return uprightComp
+                    return root.sideDisplay ? stackDisplayComp : uprightComp
                 switch (root.style) {
                 case "inline": return inlineComp
                 case "stack": return stackComp
@@ -173,6 +176,58 @@ Item {
                 customColor: Colors.primary
                 elide: Text.ElideNone
                 font.features: { "tnum": 1 }
+            }
+        }
+    }
+
+    Component {
+        id: stackDisplayComp
+        Item {
+            id: stack
+            readonly property real px: Math.round(Math.max(16, (root.host ? root.host.barH : 40) * 0.74))
+            readonly property real cutW: Math.max(1.5, stack.px * 0.07)
+            readonly property real tuck: stack.px * 0.12
+            readonly property real capH: metrics.tightBoundingRect("0").height
+            readonly property real pitch: Math.ceil(stack.capH + stack.cutW + 1)
+            readonly property var d: root.clockDigits.split("")
+            readonly property var boxes: stack.d.map(c => metrics.tightBoundingRect(c))
+            readonly property real rowTop: stack.boxes[0].width + stack.boxes[1].width - stack.tuck
+            readonly property real rowBot: stack.boxes[2].width + stack.boxes[3].width - stack.tuck
+            readonly property real inkW: Math.max(stack.rowTop, stack.rowBot)
+
+            implicitWidth: Math.ceil(stack.inkW + 2 * stack.cutW)
+            implicitHeight: Math.ceil(stack.capH + stack.pitch + 2 * stack.cutW)
+
+            function xOf(i) {
+                const row = i < 2 ? stack.rowTop : stack.rowBot
+                const left = stack.cutW + (stack.inkW - row) / 2
+                const ink = i % 2 === 0 ? left : left + stack.boxes[i - 1].width - stack.tuck
+                return Math.round(ink - stack.boxes[i].x)
+            }
+            function baseOf(i) {
+                return stack.cutW + stack.capH + (i < 2 ? 0 : stack.pitch)
+            }
+
+            FontMetrics {
+                id: metrics
+                font.family: root.displayFamily
+                font.pixelSize: stack.px
+                font.weight: 600
+            }
+
+            Repeater {
+                model: 4
+                BarDisplayDigit {
+                    required property int index
+                    ch: stack.d[index] ?? ""
+                    tint: index === 0 || index === 3 ? Colors.surfaceText : Colors.primary
+                    cut: index > 0
+                    px: stack.px
+                    cutW: stack.cutW
+                    family: root.displayFamily
+                    x: stack.xOf(index)
+                    baseY: stack.baseOf(index)
+                }
             }
         }
     }

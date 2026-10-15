@@ -61,6 +61,19 @@ Singleton {
         Networking.wifiEnabled = !Networking.wifiEnabled
     }
 
+    function scan() {
+        const dev = root.wifiDevice
+        if (!Networking.wifiEnabled || !dev) return false
+        if (dev.scannerEnabled) rescanProcess.running = true
+        else dev.scannerEnabled = true
+        return true
+    }
+
+    Process {
+        id: rescanProcess
+        command: ["nmcli", "device", "wifi", "rescan"]
+    }
+
     property string qrImagePath: "/tmp/wifi_qr.png"
     signal qrGenerated(string path)
     signal qrFailed()

@@ -15,9 +15,13 @@ ColumnLayout {
     property string autoLabel: "Auto"
     property string autoIcon: "autorenew"
     property string pickedHint: "Locked to this shape"
+    property var names: ShapeLibrary.names
+    property int columns: 8
+    property bool centered: false
     signal picked(string name)
 
     spacing: 10
+    Layout.maximumWidth: Number.POSITIVE_INFINITY
 
     RowLayout {
         Layout.fillWidth: true
@@ -70,13 +74,14 @@ ColumnLayout {
     }
 
     GridLayout {
-        Layout.fillWidth: true
-        columns: 8
+        Layout.fillWidth: !root.centered
+        Layout.alignment: root.centered ? Qt.AlignHCenter : Qt.AlignLeft
+        columns: root.columns
         rowSpacing: 5
         columnSpacing: 5
 
         Repeater {
-            model: ShapeLibrary.names
+            model: root.names
 
             delegate: Rectangle {
                 id: cell

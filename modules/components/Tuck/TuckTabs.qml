@@ -20,7 +20,7 @@ Scope {
 
     function iconFor(cls) {
         const e = DesktopEntries.heuristicLookup(cls)
-        return Quickshell.iconPath(e?.icon ?? "", true)
+        return IconUtil.themeIcon(e?.icon ?? "", true)
     }
     function nameFor(cls) {
         return DesktopEntries.heuristicLookup(cls)?.name ?? (cls || "Window")

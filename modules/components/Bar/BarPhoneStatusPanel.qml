@@ -38,7 +38,11 @@ Item {
     function act(key) {
         if (key === "ring") ServicePhone.ring()
         else if (key === "clip") ServicePhone.sendClipboard()
-        else if (key === "browse") ServicePhone.browse()
+        else if (key === "browse") {
+            GlobalStates.phoneBrowserOpen = true
+            root.closed()
+            return
+        }
         else if (key === "send") {
             GlobalStates.phoneOpen = true
             root.closed()

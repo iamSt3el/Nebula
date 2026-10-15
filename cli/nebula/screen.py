@@ -13,9 +13,14 @@ def main():
 
     from PIL import Image
 
+    flags = sys.argv[5:]
+    if "--eink" in flags:
+        from nebula import gowall
+        src = gowall.convert(src, "kindle", nn=True)
+
     im = Image.open(src)
     im.draft("RGB", (w, h))
-    im = im.convert("RGB")
+    im = im.convert("L").convert("RGB") if "--grey" in flags or "--eink" in flags else im.convert("RGB")
     scale = max(w / im.width, h / im.height)
     if scale < 1:
         im = im.resize((max(1, round(im.width * scale)), max(1, round(im.height * scale))), Image.LANCZOS)

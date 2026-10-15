@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell.Services.UPower
 import qs.modules.utils
@@ -20,8 +21,11 @@ Item {
     readonly property bool full: root.state === UPowerDeviceState.FullyCharged
     readonly property bool plugged: !UPower.onBattery
     readonly property bool low: root.level < 0.2 && !root.plugged
-    readonly property color tint: root.low ? Colors.error : Colors.primary
-    readonly property color onTint: root.low ? Colors.errorText : Colors.primaryText
+    readonly property bool saver: ServiceUPower.powerProfile === 0
+    readonly property color tint: root.low ? Colors.error : root.plugged ? Colors.primary
+        : root.saver ? Colors.tertiary : Colors.secondary
+    readonly property color onTint: root.low ? Colors.errorText : root.plugged ? Colors.primaryText
+        : root.saver ? Colors.tertiaryText : Colors.secondaryText
 
     readonly property string title: root.charging ? "Charging"
         : root.full ? "Fully charged"
@@ -67,21 +71,66 @@ Item {
         return "battery_full"
     }
 
-    readonly property var devices: {
-        const list = UPower.devices.values.filter(d => d && d.type !== UPowerDeviceType.LinePower
-            && (d.isLaptopBattery || (d.isPresent !== false && d.percentage > 0)))
-        return list.sort((a, b) => (b.isLaptopBattery ? 1 : 0) - (a.isLaptopBattery ? 1 : 0))
-    }
+    readonly property var devices: UPower.devices.values.filter(d => d && !d.isLaptopBattery
+        && d.type !== UPowerDeviceType.LinePower && d.isPresent !== false && d.percentage > 0)
 
     function nameOf(d) {
-        return d.isLaptopBattery ? "This laptop" : (d.model || UPowerDeviceType.toString(d.type))
+        return d.model || UPowerDeviceType.toString(d.type)
     }
 
-    function subOf(d) {
-        if (d.isLaptopBattery)
-            return root.title
+    function kindOf(d) {
+        switch (d.type) {
+        case UPowerDeviceType.GamingInput: return "Controller"
+        case UPowerDeviceType.Headphones: return "Headphones"
+        case UPowerDeviceType.Touchpad: return "Touchpad"
+        }
         return UPowerDeviceType.toString(d.type)
     }
+
+    function lowDevice(d) {
+        return d.percentage < 0.2 && d.state !== UPowerDeviceState.Charging
+    }
+
+    function duration(seconds) {
+        const h = Math.floor(seconds / 3600)
+        const m = Math.round((seconds % 3600) / 60)
+        return h > 0 ? (m > 0 ? h + " h " + m + " min" : h + " h") : m + " min"
+    }
+
+    function connectionOf(d) {
+        const p = (d.nativePath || "").toLowerCase()
+        if (p.indexOf("hidpp") >= 0)
+            return "USB receiver"
+        if (p.indexOf("bluez") >= 0 || /([0-9a-f]{2}:){5}[0-9a-f]{2}/.test(p))
+            return "Bluetooth"
+        if (p.indexOf("usb") >= 0)
+            return "USB"
+        return ""
+    }
+
+    function factsOf(d) {
+        const out = []
+        const link = root.connectionOf(d)
+        if (link !== "")
+            out.push({ k: "Connection", v: link, tone: "" })
+        if (d.state === UPowerDeviceState.Charging)
+            out.push({ k: "Status", v: "Charging", tone: "primary" })
+        else if (d.state === UPowerDeviceState.FullyCharged)
+            out.push({ k: "Status", v: "Full", tone: "" })
+        else if (root.lowDevice(d))
+            out.push({ k: "Status", v: "Charge soon", tone: "error" })
+        else if (d.state === UPowerDeviceState.Discharging)
+            out.push({ k: "Status", v: "On battery", tone: "" })
+        if (d.state === UPowerDeviceState.Charging && d.timeToFull > 0)
+            out.push({ k: "Full in", v: root.duration(d.timeToFull), tone: "" })
+        else if (d.timeToEmpty > 0)
+            out.push({ k: "Time left", v: "About " + root.duration(d.timeToEmpty), tone: "" })
+        if (d.healthSupported && d.healthPercentage > 0)
+            out.push({ k: "Health", v: Math.round(d.healthPercentage > 1 ? d.healthPercentage : d.healthPercentage * 100) + "%", tone: "" })
+        return out
+    }
+
+    readonly property real devicesMax: 344
 
     implicitWidth: 400
     implicitHeight: col.implicitHeight + 36
@@ -99,7 +148,7 @@ Item {
 
             Item {
                 id: cell
-                Layout.preferredWidth: 124
+                Layout.preferredWidth: 136
                 Layout.preferredHeight: 232
 
                 Rectangle {
@@ -206,31 +255,34 @@ Item {
                     }
                 }
 
-                Repeater {
-                    model: root.stats
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 3
 
-                    delegate: Rectangle {
-                        id: statRow
-                        required property var modelData
-                        Layout.fillWidth: true
-                        implicitHeight: 40
-                        radius: 16
-                        color: Colors.surfaceContainerHigh
+                    Repeater {
+                        model: root.stats
 
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 12
-                            spacing: 10
-                            MaterialIconSymbol { content: statRow.modelData.icon; iconSize: 18; customColor: statRow.modelData.tint }
-                            CustomText {
+                        delegate: CustomCard {
+                            id: statRow
+                            required property var modelData
+                            required property int index
+                            autoRadius: false
+                            topRadius: statRow.index === 0 ? 20 : 5
+                            bottomRadius: statRow.index === root.stats.length - 1 ? 20 : 5
+
+                            RowLayout {
                                 Layout.fillWidth: true
-                                content: statRow.modelData.label
-                                size: 12
-                                weight: 400
-                                customColor: Colors.surfaceVariantText
+                                spacing: 10
+                                MaterialIconSymbol { content: statRow.modelData.icon; iconSize: 18; customColor: statRow.modelData.tint }
+                                CustomText {
+                                    Layout.fillWidth: true
+                                    content: statRow.modelData.label
+                                    size: 12
+                                    weight: 400
+                                    customColor: Colors.surfaceVariantText
+                                }
+                                CustomText { content: statRow.modelData.value; size: 13; weight: 700 }
                             }
-                            CustomText { content: statRow.modelData.value; size: 13; weight: 700 }
                         }
                     }
                 }
@@ -242,13 +294,13 @@ Item {
             spacing: 8
 
             Repeater {
-                model: ServiceUPower.powerProfiles
+                model: ServiceUPower.availableProfiles
 
                 delegate: Rectangle {
                     id: mode
                     required property var modelData
                     required property int index
-                    readonly property bool on: ServiceUPower.powerProfile === mode.index
+                    readonly property bool on: ServiceUPower.powerProfile === mode.modelData.id
                     Layout.fillWidth: true
                     implicitHeight: 64
                     radius: modeArea.pressed ? 14 : mode.on ? 22 : 32
@@ -279,96 +331,166 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: ServiceUPower.setPowerProfile(mode.index)
+                        onClicked: ServiceUPower.setPowerProfile(mode.modelData.id)
                     }
                 }
             }
         }
 
-        CustomText {
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: 2
+            Layout.leftMargin: 4
+            Layout.rightMargin: 4
             visible: root.devices.length > 0
-            content: "Your devices"
-            size: 12
-            weight: 600
-            customColor: Colors.primary
+            CustomText { Layout.fillWidth: true; content: "Your devices"; size: 14; weight: 600 }
+            CustomText {
+                content: root.devices.length + " connected"
+                size: 12
+                weight: 400
+                customColor: Colors.surfaceVariantText
+            }
         }
 
-        ColumnLayout {
+        Item {
             Layout.fillWidth: true
-            spacing: 3
+            Layout.preferredHeight: Math.min(devCol.implicitHeight, root.devicesMax)
+            visible: root.devices.length > 0
 
-            Repeater {
-                model: root.devices
+            Flickable {
+                id: devFlick
+                anchors.fill: parent
+                contentWidth: width
+                contentHeight: devCol.implicitHeight
+                interactive: devFlick.contentHeight > devFlick.height + 1
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
+                ScrollBar.vertical: CustomScrollBar {}
 
-                delegate: Rectangle {
-                    id: devRow
-                    required property var modelData
-                    required property int index
-                    readonly property real pct: Math.max(0, Math.min(1, devRow.modelData.percentage))
-                    readonly property bool first: devRow.index === 0
-                    readonly property bool last: devRow.index === root.devices.length - 1
-                    Layout.fillWidth: true
-                    implicitHeight: 56
-                    topLeftRadius: devRow.first ? 18 : 5
-                    topRightRadius: devRow.first ? 18 : 5
-                    bottomLeftRadius: devRow.last ? 18 : 5
-                    bottomRightRadius: devRow.last ? 18 : 5
-                    color: Colors.surfaceContainerHigh
+                ColumnLayout {
+                    id: devCol
+                    width: devFlick.width
+                    spacing: 3
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 14
-                        spacing: 12
+                    Repeater {
+                        model: root.devices
 
-                        Rectangle {
-                            implicitWidth: 36
-                            implicitHeight: 36
-                            radius: 12
-                            color: Colors.surfaceContainerHighest
-                            MaterialIconSymbol {
-                                anchors.centerIn: parent
-                                content: root.iconFor(devRow.modelData)
-                                iconSize: 20
-                                customColor: Colors.primary
-                            }
-                        }
+                        delegate: CustomCard {
+                            id: devCard
+                            required property var modelData
+                            required property int index
+                            readonly property bool low: root.lowDevice(devCard.modelData)
+                            readonly property var facts: root.factsOf(devCard.modelData)
+                            autoRadius: false
+                            topRadius: devCard.index === 0 ? 20 : 5
+                            bottomRadius: devCard.index === root.devices.length - 1 ? 20 : 5
 
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 0
-                            CustomText { Layout.fillWidth: true; content: root.nameOf(devRow.modelData); size: 13; weight: 600 }
-                            CustomText {
+                            RowLayout {
                                 Layout.fillWidth: true
-                                content: root.subOf(devRow.modelData)
-                                size: 11
-                                weight: 400
-                                customColor: Colors.outline
-                            }
-                        }
+                                spacing: 12
 
-                        Rectangle {
-                            implicitWidth: 70
-                            implicitHeight: 6
-                            radius: 3
-                            color: Colors.surfaceContainerHighest
-                            Rectangle {
-                                width: parent.width * devRow.pct
-                                height: parent.height
-                                radius: 3
-                                color: devRow.pct < 0.2 ? Colors.error : devRow.pct < 0.35 ? Colors.tertiary : Colors.primary
-                            }
-                        }
+                                Rectangle {
+                                    implicitWidth: 38
+                                    implicitHeight: 38
+                                    radius: 19
+                                    color: Colors.surfaceContainerHighest
+                                    MaterialIconSymbol {
+                                        anchors.centerIn: parent
+                                        content: root.iconFor(devCard.modelData)
+                                        iconSize: 20
+                                        customColor: Colors.surfaceText
+                                    }
+                                }
 
-                        CustomText {
-                            Layout.preferredWidth: 38
-                            horizontalAlignment: Text.AlignRight
-                            content: Math.round(devRow.pct * 100) + "%"
-                            size: 12
-                            weight: 700
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 0
+                                    CustomText { Layout.fillWidth: true; content: root.nameOf(devCard.modelData); size: 14; weight: 600 }
+                                    CustomText {
+                                        Layout.fillWidth: true
+                                        content: root.kindOf(devCard.modelData)
+                                        size: 12
+                                        weight: 400
+                                        customColor: Colors.surfaceVariantText
+                                    }
+                                }
+
+                                CustomText {
+                                    content: Math.round(Math.max(0, Math.min(1, devCard.modelData.percentage)) * 100) + "%"
+                                    size: 20
+                                    weight: 600
+                                    customColor: devCard.low ? Colors.error : Colors.surfaceText
+                                }
+                            }
+
+                            Flow {
+                                Layout.fillWidth: true
+                                visible: devCard.facts.length > 0
+                                spacing: 6
+
+                                Repeater {
+                                    model: devCard.facts
+
+                                    delegate: Rectangle {
+                                        id: fact
+                                        required property var modelData
+                                        width: factRow.implicitWidth + 20
+                                        height: 28
+                                        radius: 10
+                                        color: Colors.surfaceContainer
+
+                                        Row {
+                                            id: factRow
+                                            anchors.centerIn: parent
+                                            spacing: 6
+                                            CustomText {
+                                                content: fact.modelData.k
+                                                size: 11
+                                                weight: 400
+                                                customColor: Colors.surfaceVariantText
+                                            }
+                                            CustomText {
+                                                content: fact.modelData.v
+                                                size: 11
+                                                weight: 600
+                                                customColor: fact.modelData.tone === "error" ? Colors.error
+                                                    : fact.modelData.tone === "primary" ? Colors.primary : Colors.surfaceText
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+            }
+
+            NumberAnimation {
+                id: devScroll
+                target: devFlick
+                property: "contentY"
+                duration: 240
+                easing.type: Easing.OutCubic
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                enabled: devFlick.interactive
+                onWheel: wheel => {
+                    const goal = devScroll.running ? devScroll.to : devFlick.contentY
+                    const max = Math.max(0, devFlick.contentHeight - devFlick.height)
+                    devScroll.stop()
+                    devScroll.from = devFlick.contentY
+                    devScroll.to = Math.max(0, Math.min(max, goal - wheel.angleDelta.y * 0.9))
+                    devScroll.start()
+                }
+            }
+
+            ScrollFade {
+                anchors.fill: parent
+                flickable: devFlick
+                color: Colors.surface
             }
         }
     }

@@ -13,7 +13,21 @@ Scope {
         onTriggered: GlobalStates.osdOpen = false
     }
 
+    property bool armed: false
+
+    Timer {
+        interval: 3000
+        running: true
+        onTriggered: root.armed = true
+    }
+
     function showOsd(kind) {
+        if (!root.armed)
+            return
+        if (!GlobalStates.osdOpen)
+            GlobalStates.osdKinds = [kind]
+        else if (GlobalStates.osdKinds.indexOf(kind) < 0)
+            GlobalStates.osdKinds = GlobalStates.osdKinds.concat([kind])
         GlobalStates.osdKind = kind
         GlobalStates.osdOpen = true
         osdTimer.restart()

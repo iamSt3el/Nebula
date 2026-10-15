@@ -6,6 +6,7 @@ import QtQuick.Controls
 import Qt.labs.platform as P
 import qs.modules.utils
 import qs.modules.settings
+import qs.modules.services
 import qs.modules.customComponents
 
 Item {
@@ -19,7 +20,7 @@ Item {
     property bool canUndo: false
     property bool loaded: false
     property bool saving: false
-    property var pick: ["bar", "widgets", "dashboard", "panels", "lockscreen", "look"]
+    property var pick: ["bar", "widgets", "panels", "lockscreen", "look"]
     property string toast: ""
     property string busyId: ""
     property string armedDelete: ""
@@ -30,7 +31,6 @@ Item {
     readonly property var sectionMeta: [
         { id: "bar", label: "Bar and dock", icon: "toolbar" },
         { id: "widgets", label: "Widgets", icon: "widgets" },
-        { id: "dashboard", label: "Dashboard", icon: "space_dashboard" },
         { id: "panels", label: "Panel styles", icon: "view_carousel" },
         { id: "lockscreen", label: "Lock screen", icon: "lock" },
         { id: "look", label: "Wallpaper", icon: "wallpaper" }
@@ -57,6 +57,21 @@ Item {
         actProc.running = true
     }
 
+    function runRevealed(args, message) {
+        const page = root
+        const ok = ServiceReveal.runLayout(args, (code, out, err) => {
+            try {
+                page.busyId = ""
+                const e = err.trim().split("\n").pop().replace(/^\[nebula\]\s*/, "")
+                page.toast = code === 0 ? message : (e || "Something went wrong")
+                toastTimer.restart()
+                page.refresh()
+            } catch (x) {}
+        })
+        if (!ok)
+            root.busyId = ""
+    }
+
     function togglePick(id) {
         const i = root.pick.indexOf(id)
         root.pick = i >= 0 ? root.pick.filter(x => x !== id) : root.pick.concat([id])
@@ -65,11 +80,9 @@ Item {
     function describe(r) {
         const parts = []
         if (r.barSide !== undefined)
-            parts.push(r.barSide.charAt(0).toUpperCase() + r.barSide.slice(1) + " bar · " + r.barItems + " items")
+            parts.push(root.cap(r.barSide) + " · " + r.barItems + " items")
         if (r.widgets !== undefined)
             parts.push(r.widgets + (r.widgets === 1 ? " widget" : " widgets"))
-        if (r.dashboardItems !== undefined)
-            parts.push(r.dashboardItems + " dashboard cards")
         return parts.join(" · ")
     }
 
@@ -81,11 +94,9 @@ Item {
         const out = []
         const has = id => (r.sections ?? []).indexOf(id) >= 0
         if (has("bar"))
-            out.push({ icon: "toolbar", label: "Bar and dock", value: root.cap(r.barSide ?? "top") + " · " + (r.barItems ?? 0) + " items" })
+            out.push({ icon: "toolbar", label: "Bar edges", value: root.cap(r.barSide ?? "top") + " · " + (r.barItems ?? 0) + " items" })
         if (has("widgets"))
             out.push({ icon: "widgets", label: "Widgets", value: (r.widgets ?? 0) + " on the desktop" })
-        if (has("dashboard"))
-            out.push({ icon: "space_dashboard", label: "Dashboard", value: (r.dashboardItems ?? 0) + ((r.dashboardItems ?? 0) === 1 ? " card" : " cards") })
         if (has("panels")) {
             const bits = []
             if (r.launcherStyle) bits.push(root.cap(r.launcherStyle) + " launcher")
@@ -248,7 +259,7 @@ Item {
             CustomText {
                 Layout.topMargin: 6
                 Layout.fillWidth: true
-                content: "A layout is a snapshot of how your shell is arranged: the bar, desktop widgets, dashboard, panel styles, lock screen and, if you like, the wallpaper. The one you're using is marked Current; after you change things, press Update on it to keep the changes, or Save as new to keep both. Each layout is a JSON file you can share."
+                content: "A layout is a snapshot of how your shell is arranged: the bar, desktop widgets, panel styles, lock screen and, if you like, the wallpaper. The one you're using is marked Current; after you change things, press Update on it to keep the changes, or Save as new to keep both. Each layout is a JSON file you can share."
                 size: 12
                 customColor: Colors.outline
                 wrapMode: Text.WordWrap
@@ -395,7 +406,7 @@ Item {
                     spacing: 10
                     MaterialIconSymbol { content: "history"; iconSize: 20; customColor: Colors.secondaryContainerText }
                     CustomText { Layout.fillWidth: true; content: "Your previous layout was kept when you loaded one."; size: 13; customColor: Colors.secondaryContainerText }
-                    Pill { icon: "undo"; label: "Undo"; filled: true; onClicked: root.run(["undo"], "Previous layout restored") }
+                    Pill { icon: "undo"; label: "Undo"; filled: true; onClicked: root.runRevealed(["undo"], "Previous layout restored") }
                 }
             }
 
@@ -532,7 +543,7 @@ Item {
                                     filled: !card.current
                                     onClicked: {
                                         root.busyId = card.modelData.id
-                                        root.run(["load", card.modelData.id],
+                                        root.runRevealed(["load", card.modelData.id],
                                                  (card.modified ? "Reverted to “" : "Applied “") + card.modelData.name + "”")
                                     }
                                 }

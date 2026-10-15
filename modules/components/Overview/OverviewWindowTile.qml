@@ -72,7 +72,7 @@ Rectangle {
                 width: 34
                 height: 34
                 visible: !capture.hasContent
-                source: Quickshell.iconPath(
+                source: IconUtil.themeIcon(
                     DesktopEntries.heuristicLookup(root.appId)?.icon, "image-missing")
                 sourceSize: Qt.size(34, 34)
                 fillMode: Image.PreserveAspectFit
@@ -89,7 +89,7 @@ Rectangle {
             Image {
                 Layout.preferredWidth: 14
                 Layout.preferredHeight: 14
-                source: Quickshell.iconPath(
+                source: IconUtil.themeIcon(
                     DesktopEntries.heuristicLookup(root.appId)?.icon, "image-missing")
                 sourceSize: Qt.size(14, 14)
                 fillMode: Image.PreserveAspectFit

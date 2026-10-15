@@ -27,3 +27,6 @@ plugins/Nebula/build/
 plugins/Nebula/compile_commands.json
 
 .idea/
+config/kindle/nebula-dash/frame.png
+
+config/kindle/nebula-dash/miraie.conf

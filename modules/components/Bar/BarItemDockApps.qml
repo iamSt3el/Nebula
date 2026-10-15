@@ -23,15 +23,14 @@ Item {
         return all
     }
     readonly property int entriesVersion: ServiceApps.list.length
-    readonly property real icon: root.host && root.host.iconSize ? root.host.iconSize : 32
-    readonly property real roundT: root.host && root.host.roundT !== undefined ? root.host.roundT : 0
+    readonly property real icon: root.host && root.host.appIconSize ? root.host.appIconSize : 32
+    readonly property real across: Math.min(root.icon + 22, root.host && root.host.barH ? root.host.barH : root.icon + 22)
     readonly property real cell: root.icon + 12
     readonly property real stride: root.cell + 2
     readonly property bool editing: !!root.host && !!root.host.editing
     readonly property bool vertical: !!root.host && root.host.vertical === true
     readonly property bool verticalReady: true
     readonly property string side: root.host && root.host.frame ? root.host.frame.side : "bottom"
-    readonly property real across: root.icon + 22
     readonly property real along: root.gripW + Math.max(0, root.model.length * root.stride - 2)
     property real gripW: root.editing ? 22 : 0
 
@@ -134,27 +133,23 @@ Item {
 
             Rectangle {
                 anchors.centerIn: parent
-                width: dockIconArea.containsMouse ? Math.round((root.icon + 8) * 1.15) : root.icon + 8
+                width: root.icon + 8
                 height: width
-                radius: 12 + (width / 2 - 12) * root.roundT
-                Behavior on width {
-                    NumberAnimation { duration: 220; easing.type: Easing.OutBack; easing.overshoot: 0.5 }
-                }
+                radius: root.host && root.host.isPill ? Math.max(0, root.host.pillRadius - (root.host.barH - width) / 2) : 10
                 color: dockIconArea.containsMouse
                     ? Colors.primaryContainer
                     : dockItem.isActive
                         ? Qt.alpha(Colors.primaryContainer, 0.45)
-                        : "transparent"
+                        : Qt.alpha(Colors.primaryContainer, 0)
                 Behavior on color { ColorAnimation { duration: 150 } }
             }
 
             Image {
                 anchors.centerIn: parent
-                width: dockIconArea.containsMouse ? Math.round(root.icon * 1.12) : root.icon
+                width: root.icon
                 height: width
-                Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
                 source: root.entriesVersion >= 0
-                    ? Quickshell.iconPath(DesktopEntries.heuristicLookup(dockItem.modelData.appId)?.icon, "image-missing")
+                    ? IconUtil.themeIcon(DesktopEntries.heuristicLookup(dockItem.modelData.appId)?.icon, "image-missing")
                     : ""
                 sourceSize.width: 96
                 sourceSize.height: 96

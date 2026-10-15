@@ -360,7 +360,7 @@ Item {
 
             CustomCard {
                 Layout.topMargin: 6
-                autoRadius: false; topRadius: 20; bottomRadius: 20
+                autoRadius: false; topRadius: 20; bottomRadius: 5
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -393,6 +393,25 @@ Item {
                             icon: "folder_open"; iconSize: 18
                             onClicked: { GlobalStates.fileDialogOpen = true; ssFolderPicker.open() }
                         }
+                    }
+                }
+            }
+
+            CustomCard {
+                Layout.topMargin: 3
+                autoRadius: false; topRadius: 5; bottomRadius: 20
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: 2
+                        CustomText { content: "Freeze Screen While Selecting"; size: 14 }
+                        CustomText { content: "Area, window and text selection work on a still frame"; size: 12; customColor: Colors.outline }
+                    }
+                    Item { Layout.fillWidth: true }
+                    CustomToogle {
+                        isToggleOn: SettingsConfig.screenshot.freeze === true
+                        onToggled: (state) => SettingsConfig.screenshot = Object.assign({}, SettingsConfig.screenshot, { freeze: state })
                     }
                 }
             }

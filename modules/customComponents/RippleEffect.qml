@@ -40,7 +40,7 @@ Item {
         topRightRadius:    root.topRightRadius
         bottomLeftRadius:  root.bottomLeftRadius
         bottomRightRadius: root.bottomRightRadius
-        color: _mouse.containsMouse ? root.hoverColor : "transparent"
+        color: _mouse.containsMouse ? root.hoverColor : Qt.alpha(root.hoverColor, 0)
         Behavior on color { ColorAnimation { duration: 150 } }
     }
 

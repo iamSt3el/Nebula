@@ -34,8 +34,9 @@ Singleton {
     // runs. The widget can read the usage endpoint with no session open, but
     // once that token lapses the numbers freeze until Claude Code runs again —
     // so how old they are has to be visible.
+    property int limitsCheckedAt: 0
     readonly property int limitsAgeSec: root.limitsFetchedAt > 0
-        ? Math.max(0, Math.floor(Date.now() / 1000) - root.limitsFetchedAt)
+        ? Math.max(0, root.limitsCheckedAt - root.limitsFetchedAt)
         : 0
 
     function limitFor(group) {
@@ -89,6 +90,23 @@ Singleton {
 
     // "claude-opus-5" and "claude-sonnet-4-5-20250929" both want to read as one
     // short word on a 320px tile.
+    function toneOf(limit) {
+        return limit ? (limit.severity ?? "normal") : "normal"
+    }
+
+    function colorOf(limit, fallback) {
+        const sev = root.toneOf(limit)
+        if (sev === "normal") return fallback
+        if (sev === "warning") return Qt.hsla(0.09, 0.85, 0.55, 1)
+        return Qt.hsla(0.01, 0.78, 0.56, 1)
+    }
+
+    function modelLabel(name) {
+        const m = String(name ?? "").match(/(opus|sonnet|haiku|fable)-(\d{1,2})(?:-(\d))?(?:-|$)/i)
+        if (!m) return ""
+        return m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase() + " " + m[2] + (m[3] ? "." + m[3] : "")
+    }
+
     function shortModel(name) {
         const m = String(name ?? "").match(/(opus|sonnet|haiku|fable)/i)
         return m ? m[1].toLowerCase() : "other"
@@ -113,6 +131,7 @@ Singleton {
                     root.limits = data.limits ?? []
                     root.limitsStale = data.stale ?? false
                     root.limitsFetchedAt = data.fetchedAt ?? 0
+                    root.limitsCheckedAt = Math.floor(Date.now() / 1000)
                 } catch (e) {
                     console.warn("[ServiceClaudeCode] bad limits output:", e)
                 }

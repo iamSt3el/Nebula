@@ -62,7 +62,7 @@ Scope {
             if (!edge.wants(item))
                 return
             const icon = item.image && item.image !== "" ? item.image
-                       : item.appIcon ? Quickshell.iconPath(item.appIcon, true) : ""
+                       : item.appIcon ? IconUtil.themeIcon(item.appIcon, true) : ""
             edge.flash(item.isCritical ? Colors.error : Qt.hsla(edge.hueFor(item.appName), 0.62, 0.72, 1),
                        item.summary || item.appName || "Notification", item.body ?? "", icon)
         }

@@ -14,6 +14,7 @@ Singleton {
     property int notificationsNumber: allNotifications.length
     property bool muted: false
     property real muteUntil: 0
+    property real seenAt: 0
     readonly property bool dnd: root.muted || (SettingsConfig.notifications?.doNotDisturb ?? false)
 
     property bool popupsPaused: false
@@ -24,6 +25,7 @@ Singleton {
     // the suppression lifts. Either way it still lands in the notification
     // center to be read later.
     readonly property bool _suppressPopups: (SettingsConfig.notifications?.doNotDisturb ?? false)
+                                            || !(SettingsConfig.notifications?.showBanners ?? true)
                                             || ServiceGameMode.dndActive
                                             || GlobalStates.notificationCenterOpen
 
@@ -138,18 +140,16 @@ Singleton {
         readonly property var actions: (notification?.actions ?? []).filter(a => a.identifier !== "default")
         readonly property real arrivalTimestamp: Date.now()
 
-        property Timer timer: Timer {
-            running: !root.popupsPaused
-            interval: Math.max(1, SettingsConfig.notifications?.popupTimeout ?? 5) * 1000
-            onTriggered: notifItem.popup = false
-        }
-
         property real progress: 0
-        NumberAnimation on progress {
-            running: timer.running
+        property NumberAnimation life: NumberAnimation {
+            target: notifItem
+            property: "progress"
             from: 0
             to: 1
-            duration: timer.interval
+            duration: Math.max(1, SettingsConfig.notifications?.popupTimeout ?? 5) * 1000
+            running: !(notifItem.isCritical && (SettingsConfig.notifications?.urgentSticky ?? true))
+            paused: running && root.popupsPaused
+            onFinished: notifItem.popup = false
         }
     }
 
@@ -176,6 +176,8 @@ Singleton {
         function onNotificationCenterOpenChanged() {
             if (GlobalStates.notificationCenterOpen)
                 root.dismissPopups()
+            else
+                root.seenAt = Date.now()
         }
     }
 

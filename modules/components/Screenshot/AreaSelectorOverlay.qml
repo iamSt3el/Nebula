@@ -42,6 +42,76 @@ Scope {
                 readonly property var hyprMonitor: Hyprland.monitorFor(overlay.screen)
                 readonly property bool pointerHere: selectMouse.containsMouse
 
+                readonly property bool frozenMode: ServiceTools.freeze
+                    && ["screenshot", "window-screenshot", "screen-screenshot", "ocr"].indexOf(GlobalStates.areaSelectMode) >= 0
+                readonly property bool ready: !overlay.frozenMode || frozen.hasContent
+                property string framePath: ""
+                property var pending: null
+                property bool handedOff: false
+
+                function physCrop(x, y, w, h) {
+                    const sw = frozen.sourceSize.width > 0 ? frozen.sourceSize.width : overlay.width
+                    const sh = frozen.sourceSize.height > 0 ? frozen.sourceSize.height : overlay.height
+                    const kx = sw / overlay.width
+                    const ky = sh / overlay.height
+                    const x0 = Math.max(0, Math.min(sw - 1, Math.round(x * kx)))
+                    const y0 = Math.max(0, Math.min(sh - 1, Math.round(y * ky)))
+                    const x1 = Math.max(x0 + 1, Math.min(sw, Math.round((x + w) * kx)))
+                    const y1 = Math.max(y0 + 1, Math.min(sh, Math.round((y + h) * ky)))
+                    return (x1 - x0) + "x" + (y1 - y0) + "+" + x0 + "+" + y0
+                }
+
+                function finishFrozen(kind, crop) {
+                    overlay.pending = { kind: kind, crop: crop }
+                    overlay.flush()
+                }
+
+                function flush() {
+                    if (!overlay.pending || overlay.framePath === "")
+                        return
+                    const frame = overlay.framePath
+                    const job = overlay.pending
+                    overlay.handedOff = true
+                    GlobalStates.areaSelectOpen = false
+                    if (job.kind === "ocr") ServiceTools.frozenOcr(frame, job.crop)
+                    else ServiceTools.frozenShot(frame, job.crop)
+                }
+
+                Component.onDestruction: {
+                    if (!overlay.handedOff && overlay.framePath !== "")
+                        Quickshell.execDetached(["rm", "-f", overlay.framePath])
+                }
+
+                ScreencopyView {
+                    id: frozen
+                    anchors.fill: parent
+                    visible: overlay.frozenMode
+                    live: false
+                    paintCursor: false
+                    onHasContentChanged: if (hasContent && overlay.frozenMode) frameTimer.start()
+                }
+
+                Timer {
+                    interval: M3Motion.panel.closeDuration + 80
+                    running: overlay.frozenMode
+                    onTriggered: frozen.captureSource = overlay.screen
+                }
+
+                Timer {
+                    id: frameTimer
+                    interval: 16
+                    onTriggered: {
+                        const path = ServiceTools.freezeFramePath(overlay.screen.name)
+                        const size = frozen.sourceSize.width > 0 ? frozen.sourceSize : Qt.size(frozen.width, frozen.height)
+                        frozen.grabToImage(result => {
+                            if (result.saveToFile(path)) {
+                                overlay.framePath = path
+                                overlay.flush()
+                            }
+                        }, size)
+                    }
+                }
+
                 // ── Area-select state ────────────────────────────────────────────
                 property real startX: 0; property real startY: 0
                 property real curX:   0; property real curY:   0
@@ -112,6 +182,7 @@ Scope {
                     id: rootItem
                     anchors.fill: parent
                     focus: true
+                    opacity: overlay.ready && !overlay.pending ? 1 : 0
 
                     Keys.onEscapePressed: GlobalStates.areaSelectOpen = false
 
@@ -416,7 +487,7 @@ Scope {
                                 GlobalStates.areaSelectOpen = false
                                 return
                             }
-                            if (overlay.isWindowMode || overlay.isScreenMode) return
+                            if (overlay.isWindowMode || overlay.isScreenMode || !overlay.ready) return
                             overlay.startX   = mouse.x
                             overlay.startY   = mouse.y
                             overlay.curX     = mouse.x
@@ -425,7 +496,11 @@ Scope {
                         }
 
                         onClicked: mouse => {
-                            if (mouse.button !== Qt.LeftButton) return
+                            if (mouse.button !== Qt.LeftButton || !overlay.ready || overlay.pending) return
+                            if (overlay.isScreenMode && overlay.frozenMode) {
+                                overlay.finishFrozen("shot", "")
+                                return
+                            }
                             if (overlay.isScreenMode) {
                                 const output = overlay.screen.name
                                 const shot = GlobalStates.areaSelectMode === "screen-screenshot"
@@ -437,6 +512,12 @@ Scope {
                             if (!overlay.isWindowMode) return
                             if (overlay.hoveredIdx < 0) return
                             var w   = overlay.windowList[overlay.hoveredIdx]
+                            if (overlay.frozenMode) {
+                                const lx = w.at[0] - overlay.screen.x
+                                const ly = w.at[1] - overlay.screen.y
+                                overlay.finishFrozen("shot", overlay.physCrop(lx, ly, w.size[0], w.size[1]))
+                                return
+                            }
                             var geo = w.at[0] + "," + w.at[1] + " " + w.size[0] + "x" + w.size[1]
                             var mode = GlobalStates.areaSelectMode
                             GlobalStates.areaSelectOpen = false
@@ -449,6 +530,13 @@ Scope {
                             if (mouse.button !== Qt.LeftButton) return
                             if (overlay.geoW < 5 || overlay.geoH < 5) {
                                 overlay.dragging = false
+                                return
+                            }
+                            if (overlay.frozenMode) {
+                                if (overlay.pending) return
+                                overlay.dragging = false
+                                overlay.finishFrozen(GlobalStates.areaSelectMode === "ocr" ? "ocr" : "shot",
+                                                     overlay.physCrop(overlay.selX, overlay.selY, overlay.selW, overlay.selH))
                                 return
                             }
                             var geo  = overlay.geoX + "," + overlay.geoY + " " + overlay.geoW + "x" + overlay.geoH

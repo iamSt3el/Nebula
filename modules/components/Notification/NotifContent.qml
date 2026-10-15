@@ -18,6 +18,7 @@ ColumnLayout {
 
     readonly property var defaultAction: (root.notif?.notification?.actions ?? []).find(a => a.identifier === "default") ?? null
     readonly property var extraActions: (root.notif?.actions ?? []).slice(0, 3)
+    readonly property string imageSrc: IconUtil.imageSource(root.notif?.image)
 
     spacing: 10
 
@@ -128,7 +129,7 @@ ColumnLayout {
         }
 
         Loader {
-            active: !!root.notif?.image
+            active: root.imageSrc !== "" && !root.imageSrc.startsWith("image://icon/")
             visible: active
             Layout.preferredWidth: 52
             Layout.preferredHeight: 52
@@ -139,11 +140,11 @@ ColumnLayout {
                 color: "transparent"
                 Image {
                     anchors.fill: parent
-                    source: root.notif?.image ?? ""
+                    source: root.imageSrc
                     sourceSize.width: 104
                     sourceSize.height: 104
                     fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
+                    asynchronous: root.imageSrc.startsWith("file:")
                 }
             }
         }

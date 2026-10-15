@@ -260,15 +260,17 @@ Item {
                         Layout.fillWidth: true; implicitHeight: 40; color: "transparent"
                         readonly property bool busy: root.target
                             && ServiceWallpaper.downloadingId === root.target.id
+                        readonly property bool queued: root.online && root.target
+                            && ServiceWallpaper.queuedIds.indexOf(root.target.id) >= 0
                         RowLayout {
                             anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12; spacing: 10
                             MaterialIconSymbol {
-                                content: dlRow.busy ? "hourglass_empty" : "download"
+                                content: dlRow.busy ? "hourglass_empty" : dlRow.queued ? "schedule" : "download"
                                 iconSize: 16; customColor: Colors.primary
                             }
                             CustomText {
                                 Layout.fillWidth: true
-                                content: dlRow.busy ? "Downloading…" : "Download & Set"
+                                content: dlRow.busy ? "Downloading…" : dlRow.queued ? "Queued" : "Download & Set"
                                 size: 12
                             }
                             Rectangle {
@@ -325,8 +327,7 @@ Item {
                             anchors.fill: parent; radius: 6
                             onClicked: {
                                 if (root.target)
-                                    Quickshell.execDetached(["xdg-open",
-                                        "https://wallhaven.cc/w/" + root.target.id])
+                                    ServiceWallpaper.openOnWallhaven(root.target)
                                 root.close()
                             }
                         }

@@ -20,19 +20,6 @@ Item {
 
     property var monitorList: ServiceDisplay.monitorList
 
-    FileDialog {
-        id: imagePicker
-        title: "Select a profile image"
-        nameFilters: ["Image files (*.png *.jpg *.jpeg *.webp *.gif)"]
-        onAccepted: {
-            SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
-                profile: imagePicker.file.toString().replace(/^file:\/\//, "")
-            })
-            GlobalStates.fileDialogOpen = false
-        }
-        onRejected: GlobalStates.fileDialogOpen = false
-    }
-
     Flickable {
         id: pageFlick
         ScrollBar.vertical: CustomScrollBar {}
@@ -52,142 +39,8 @@ Item {
             anchors.topMargin: 5
             spacing: 0
 
-            // ── Page header ──────────────────────────────────────────────
-            // ── Profile ──────────────────────────────────────────────────
-            CustomText { Layout.topMargin: 24; content: "Profile"; size: 13; customColor: Colors.primary }
-
-            CustomCard {
-                Layout.topMargin: 6
-                autoRadius: false; topRadius: 20; bottomRadius: 20
-
-                RowLayout {
-                    spacing: 16
-
-                    Item {
-                        Layout.preferredWidth: 68
-                        Layout.preferredHeight: 68
-                        Layout.alignment: Qt.AlignVCenter
-
-                        MaterialShapes.ShapeCanvas {
-                            id: artMask
-                            anchors.fill: parent
-                            layer.enabled: true
-                            roundedPolygon: MaterialShapeFn.getPill()
-                            color: Colors.primaryContainer
-                        }
-                        Image {
-                            id: profileArt
-                            anchors.fill: parent
-                            sourceSize.width: 136
-                            sourceSize.height: 136
-                            source: SettingsConfig.general.profile
-                            fillMode: Image.PreserveAspectCrop
-                            visible: false
-                            layer.enabled: true
-                        }
-                        MultiEffect {
-                            source: profileArt
-                            anchors.fill: profileArt
-                            maskEnabled: true
-                            maskSource: artMask
-                            maskThresholdMin: 0.5
-                            maskSpreadAtMin: 1.0
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignVCenter
-                        spacing: 6
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 36
-                            radius: 16
-                            color: Colors.surfaceContainerHighest
-                            border.width: nameInput.activeFocus ? 2 : 0
-                            border.color: Colors.primary
-
-                            TextInput {
-                                id: nameInput
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 12
-                                verticalAlignment: TextInput.AlignVCenter
-                                text: SettingsConfig.general.displayName ?? ""
-                                color: Colors.surfaceText
-                                font.pixelSize: 15
-                                font.weight: 700
-                                font.family: SettingsConfig.general.defaultFont ?? "Rubik"
-                                maximumLength: 32
-                                selectByMouse: true
-                                clip: true
-                                onEditingFinished: {
-                                    const n = text.trim()
-                                    if (n !== (SettingsConfig.general.displayName ?? ""))
-                                        SettingsConfig.general = Object.assign({}, SettingsConfig.general, { displayName: n })
-                                }
-                                onAccepted: focus = false
-
-                                CustomText {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    visible: nameInput.text === ""
-                                    content: SettingsConfig.loginName
-                                    size: 15
-                                    weight: 700
-                                    customColor: Colors.outline
-                                }
-                            }
-                        }
-                        CustomText {
-                            Layout.fillWidth: true
-                            content: "Shown on the dashboard. Empty uses your login name."
-                            size: 12; customColor: Colors.outline
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 4
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 32
-                                topLeftRadius: 16; bottomLeftRadius: 16
-                                topRightRadius: 6;  bottomRightRadius: 6
-                                color: Colors.surfaceContainerHighest
-                                clip: true
-
-                                CustomText {
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.leftMargin: 12
-                                    anchors.rightMargin: 8
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    content: SettingsConfig.general.profile
-                                    size: 11
-                                    elide: Text.ElideLeft
-                                }
-                            }
-
-                            M3IconButton {
-                                Layout.preferredWidth: 42
-                                Layout.preferredHeight: 32
-                                topLeftRadius: 6;   bottomLeftRadius: 6
-                                topRightRadius: 16; bottomRightRadius: 16
-                                icon: "image"
-                                iconSize: 18
-                                onClicked: {
-                                    GlobalStates.fileDialogOpen = true
-                                    imagePicker.open()
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             // ── Fonts ────────────────────────────────────────────────────
-            CustomText { Layout.topMargin: 16; content: "Fonts"; size: 13; customColor: Colors.primary }
+            CustomText { Layout.topMargin: 24; content: "Fonts"; size: 13; customColor: Colors.primary }
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -302,7 +155,6 @@ Item {
                 CustomCard {
                     id: barLayoutCard
                     autoRadius: false; topRadius: 20; bottomRadius: 5
-                    readonly property bool anyPill: BarLayout.edgeShapes("top").indexOf("pill") >= 0
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
@@ -316,7 +168,7 @@ Item {
                             label: "Edit bar"
                             onClicked: {
                                 GlobalStates.settingsOpen = false
-                                GlobalStates.barEditMode = true
+                                GlobalStates.openEdit("edges")
                             }
                         }
                     }
@@ -343,8 +195,7 @@ Item {
                 }
 
                 CustomCard {
-                    autoRadius: false; topRadius: 5
-                    bottomRadius: barLayoutCard.anyPill ? 5 : 20
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
@@ -379,28 +230,6 @@ Item {
                             inactiveColor: Colors.surfaceContainerHighest
                             textSize: 11; iconSize: 14
                         }
-                    }
-                }
-
-                SidesEditor {
-                    visible: barLayoutCard.anyPill
-                    mode: "pill"
-                    sides: ["top", "left", "right"]
-                    maxFor: ({ top: 30, left: 10, right: 10 })
-                    topRadius: 5
-                    bottomRadius: 20
-                    linkLabel: "Same margin on every side"
-                    values: ({
-                        top: SettingsConfig.general.pillMargin ?? 6,
-                        left: SettingsConfig.general.pillLeftMargin ?? 6,
-                        right: SettingsConfig.general.pillRightMargin ?? 6
-                    })
-                    onChanged: patch => {
-                        const g = {}
-                        if (patch.top !== undefined) g.pillMargin = patch.top
-                        if (patch.left !== undefined) g.pillLeftMargin = patch.left
-                        if (patch.right !== undefined) g.pillRightMargin = patch.right
-                        SettingsConfig.general = Object.assign({}, SettingsConfig.general, g)
                     }
                 }
             }

@@ -50,7 +50,7 @@ Item {
         implicitWidth: 30
         implicitHeight: 30
         radius: 15
-        color: ibArea.containsMouse ? Qt.alpha(card.ink, 0.1) : "transparent"
+        color: ibArea.containsMouse ? Qt.alpha(card.ink, 0.1) : Qt.alpha(card.ink, 0)
         Behavior on color { ColorAnimation { duration: 120 } }
         MaterialIconSymbol {
             anchors.centerIn: parent
@@ -197,7 +197,7 @@ Item {
                         Layout.alignment: Qt.AlignTop
                         Layout.topMargin: 1
                         radius: 9
-                        color: item.modelData[1] ? Qt.alpha(card.ink, 0.75) : "transparent"
+                        color: item.modelData[1] ? Qt.alpha(card.ink, 0.75) : Qt.alpha(card.ink, 0)
                         border.width: 1.8
                         border.color: Qt.alpha(card.ink, 0.6)
                         Behavior on color { ColorAnimation { duration: 140 } }

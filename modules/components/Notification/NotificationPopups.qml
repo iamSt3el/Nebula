@@ -3,18 +3,22 @@ import Quickshell
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
+import qs.modules.components.Bar
 
 Item {
     id: popups
 
-    property Item topSurface: null
-    property Item bottomSurface: null
-
-    readonly property string style: {
-        const s = SettingsConfig.general?.notifPopupStyle ?? "corner"
-        return ["bar", "dock", "icon"].indexOf(s) >= 0 ? s : "corner"
+    property var surfaces: []
+    readonly property Item appsSurface: {
+        BarLayout.allBlocks
+        const hasApps = s => BarLayout.blocksOn(s.edge).some(b => b.items.some(i => i.split("#")[0] === "dockApps"))
+        return popups.surfaces.find(s => s && s.visible && hasApps(s))
+            ?? popups.surfaces.find(s => s && s.visible && s.edge === BarLayout.sysEdge && s.present) ?? null
     }
-    readonly property bool enabled_: popups.style !== "corner" && popups.visible
+
+    property string mode: "corner"
+    readonly property string style: popups.mode
+    readonly property bool enabled_: popups.style === "icon" && popups.visible
     readonly property var live: popups.enabled_ ? [...ServiceNotification.popups].reverse() : []
     readonly property var front: popups.live.length > 0 ? popups.live[0] : null
     readonly property bool active: popups.front !== null
@@ -56,23 +60,21 @@ Item {
         target: ServiceNotification
         property: "popupsPaused"
         value: popups.hovered && popups.active
-        when: popups.style !== "corner"
+        when: popups.style === "icon"
     }
 
     Binding {
         target: GlobalStates
         property: "dockPeek"
-        value: popups.active && (popups.style === "icon" || popups.style === "dock")
+        value: popups.active && popups.style === "icon"
     }
 
     Loader {
         id: loader
         anchors.fill: parent
-        active: popups.style !== "corner"
-        sourceComponent: popups.style === "bar" ? barComp : popups.style === "dock" ? dockComp : iconComp
+        active: popups.style === "icon"
+        sourceComponent: iconComp
     }
 
-    Component { id: barComp; NotifBarTab { host: popups } }
-    Component { id: dockComp; NotifDockToast { host: popups } }
     Component { id: iconComp; NotifIconBubble { host: popups } }
 }

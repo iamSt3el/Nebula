@@ -72,6 +72,31 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
+        visible: root.mode === "camera" || root.mode === "text"
+        spacing: 6
+
+        CustomText {
+            content: "Select on"
+            size: 10; weight: 600
+            color: Colors.surfaceVariantText
+            Layout.rightMargin: 2
+        }
+
+        Repeater {
+            model: [ { v: false, t: "Live screen" }, { v: true, t: "Frozen screen" } ]
+
+            delegate: OptionChip {
+                required property var modelData
+                Layout.fillWidth: true
+                label:  modelData.t
+                active: ServiceTools.freeze === modelData.v
+                onActivated: ServiceTools.setFreeze(modelData.v)
+            }
+        }
+    }
+
+    RowLayout {
+        Layout.fillWidth: true
         visible: root.mode === "recording"
         spacing: 6
 

@@ -12,7 +12,7 @@ Rectangle {
     readonly property bool iconSizable: true
     readonly property real box: BarLayout.boxFor(root.itemId, root.host)
     readonly property real iconPx: BarLayout.iconPxFor(root.itemId, root.box, 18)
-    readonly property color plateColor: hov.containsMouse ? Colors.primaryContainer : "transparent"
+    readonly property color plateColor: hov.containsMouse ? Colors.primaryContainer : Qt.alpha(Colors.primaryContainer, 0)
     readonly property bool plateless: BarLayout.chipHovers(root.itemId, root.implicitWidth,
                                                            root.implicitHeight)
     readonly property bool plateOn: root.plateColor.a > 0.01
@@ -21,7 +21,7 @@ Rectangle {
     implicitWidth: root.plate
     implicitHeight: root.plate
     radius: root.plate / 2
-    color: root.plateless ? "transparent" : root.plateColor
+    color: root.plateless ? Qt.alpha(root.plateColor, 0) : root.plateColor
     Behavior on color { ColorAnimation { duration: 150 } }
 
     MaterialIconSymbol {

@@ -49,7 +49,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: root._tessera ? Colors.surface
-             : root._darkroom ? Qt.darker(Colors.surfaceContainerLowest, 1.25)
+             : root._darkroom ? (LockSession.light ? Qt.tint("#140e10", Qt.alpha(Colors.primary, 0.04)) : Qt.darker(Colors.surfaceContainerLowest, 1.25))
              : "black"
     }
 
@@ -69,7 +69,7 @@ Item {
             blurMax: root._blurMax
             autoPaddingEnabled: false
             saturation: root._darkroom ? 0.4 : root._deck ? 0.6 : root._tear ? 0.5 : 0.3
-            brightness: root._deck ? -0.45 : root._bloom ? -0.08 : root._tear ? -0.42 : 0.0
+            brightness: root._deck ? (LockSession.light ? 0.3 : -0.45) : root._bloom ? -0.08 : root._tear ? -0.42 : 0.0
         }
     }
 
@@ -100,18 +100,18 @@ Item {
     Rectangle {
         anchors.fill: parent
         visible: root._orbit
-        color: Qt.rgba(0, 0, 0, 0.18)
+        color: LockSession.light ? Qt.alpha(Colors.surface, 0.3) : Qt.rgba(0, 0, 0, 0.18)
     }
 
     Rectangle {
         anchors.fill: parent
         visible: root._veil
         gradient: Gradient {
-            GradientStop { position: 0.00; color: Qt.rgba(0.06, 0.04, 0.05, 0.30) }
-            GradientStop { position: 0.18; color: Qt.rgba(0.06, 0.04, 0.05, 0.00) }
-            GradientStop { position: 0.40; color: Qt.rgba(0.06, 0.04, 0.05, 0.00) }
-            GradientStop { position: 0.64; color: Qt.rgba(0.06, 0.04, 0.05, 0.55) }
-            GradientStop { position: 1.00; color: Qt.rgba(0.06, 0.04, 0.05, 0.92) }
+            GradientStop { position: 0.00; color: Qt.alpha(LockSession.shade, 0.30) }
+            GradientStop { position: 0.18; color: Qt.alpha(LockSession.shade, 0.00) }
+            GradientStop { position: 0.40; color: Qt.alpha(LockSession.shade, 0.00) }
+            GradientStop { position: 0.64; color: Qt.alpha(LockSession.shade, 0.55) }
+            GradientStop { position: 1.00; color: Qt.alpha(LockSession.shade, 0.92) }
         }
     }
 
@@ -120,9 +120,9 @@ Item {
         visible: root._deck
         gradient: Gradient {
             orientation: Gradient.Horizontal
-            GradientStop { position: 0.0; color: Qt.rgba(0.06, 0.04, 0.05, 0.20) }
-            GradientStop { position: 0.7; color: Qt.rgba(0.06, 0.04, 0.05, 0.72) }
-            GradientStop { position: 1.0; color: Qt.rgba(0.06, 0.04, 0.05, 0.78) }
+            GradientStop { position: 0.0; color: Qt.alpha(LockSession.shade, 0.20) }
+            GradientStop { position: 0.7; color: Qt.alpha(LockSession.shade, 0.72) }
+            GradientStop { position: 1.0; color: Qt.alpha(LockSession.shade, 0.78) }
         }
     }
 
@@ -144,9 +144,9 @@ Item {
                 focalY: centerY
                 focalRadius: 0
 
-                GradientStop { position: 0.0; color: root._orbit ? Qt.rgba(0.05, 0.03, 0.04, 0.10) : Qt.alpha(Colors.surface, 0.35) }
-                GradientStop { position: 0.45; color: root._orbit ? Qt.rgba(0.05, 0.03, 0.04, 0.55) : Qt.alpha(Colors.surface, 0.55) }
-                GradientStop { position: 1.0; color: root._orbit ? Qt.rgba(0.05, 0.03, 0.04, 0.94) : Qt.alpha(Colors.surface, 0.84) }
+                GradientStop { position: 0.0; color: root._orbit ? Qt.alpha(LockSession.shade, 0.10) : Qt.alpha(Colors.surface, 0.35) }
+                GradientStop { position: 0.45; color: root._orbit ? Qt.alpha(LockSession.shade, 0.55) : Qt.alpha(Colors.surface, 0.55) }
+                GradientStop { position: 1.0; color: root._orbit ? Qt.alpha(LockSession.shade, 0.94) : Qt.alpha(Colors.surface, 0.84) }
             }
 
             PathLine { x: root.width; y: 0 }

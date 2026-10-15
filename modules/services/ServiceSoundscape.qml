@@ -16,7 +16,8 @@ Singleton {
         { key: "cafe",   name: "Café",          icon: "local_cafe" },
         { key: "stream", name: "Stream",        icon: "water" },
         { key: "waves",  name: "Waves",         icon: "waves" },
-        { key: "night",  name: "Night forest",  icon: "forest" }
+        { key: "night",  name: "Night forest",  icon: "forest" },
+        { key: "chimes", name: "Wind chimes",   icon: "air" }
     ]
 
     readonly property var saved: SettingsConfig.general?.soundscape ?? ({})

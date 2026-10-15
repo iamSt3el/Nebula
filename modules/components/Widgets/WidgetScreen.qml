@@ -36,9 +36,9 @@ PanelWindow{
 
     IpcHandler {
         target: "widgets"
-        function edit(): void { GlobalStates.widgetEditMode = true }
-        function close(): void { GlobalStates.widgetEditMode = false }
-        function toggle(): void { GlobalStates.widgetEditMode = !GlobalStates.widgetEditMode }
+        function edit(): void { GlobalStates.openEdit("desktop") }
+        function close(): void { GlobalStates.closeEdit() }
+        function toggle(): void { GlobalStates.toggleEdit("desktop") }
     }
 
     HoverHandler {
@@ -102,6 +102,12 @@ PanelWindow{
             sourceSize.height: 720
             asynchronous: true
             cache: false
+
+            Rectangle {
+                anchors.fill: parent
+                visible: KindleMode.wallpaper === "blank"
+                color: Colors.surfaceContainer
+            }
         }
 
         ShaderEffectSource {
@@ -190,7 +196,11 @@ PanelWindow{
         MouseArea {
             anchors.fill: parent
             enabled: GlobalStates.widgetEditMode
-            onClicked: {
+            onClicked: mouse => {
+                if (widgetScreen.edgeAt(mouse.x, mouse.y)) {
+                    GlobalStates.editLayer = "edges"
+                    return
+                }
                 studio.pop = ""
                 GlobalStates.widgetSettingsKey = ""
                 GlobalStates.widgetQuickAdd = Qt.point(-1, -1)
@@ -215,6 +225,11 @@ PanelWindow{
             ]
 
             onClicked: mouse => {
+                const sp = mapToItem(widgetScreen.contentItem, mouse.x, mouse.y)
+                if (widgetScreen.edgeAt(sp.x, sp.y)) {
+                    GlobalStates.editLayer = "edges"
+                    return
+                }
                 GlobalStates.widgetSettingsKey = ""
                 if (studio.closePop()) {
                     GlobalStates.widgetQuickAdd = Qt.point(-1, -1)
@@ -314,22 +329,157 @@ PanelWindow{
         }
     }
 
-    // Esc leaves arrange mode
+    function edgeAt(x, y) {
+        if (GlobalStates.editEdgeScreen !== "" && (widgetScreen.screen?.name ?? "") !== GlobalStates.editEdgeScreen)
+            return false
+        for (const r of GlobalStates.editEdgeRects)
+            if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+                return true
+        return false
+    }
+
+    function screenHosts() {
+        return WidgetLayout.hosts.filter(h => h && h.visible && h.configKey !== "" && !h.preview
+                                         && h.Window.window === editKeys.Window.window)
+    }
+
+    function selectedHost() {
+        const k = GlobalStates.widgetSettingsKey
+        return k === "" ? null : (widgetScreen.screenHosts().find(h => h.configKey === k) ?? null)
+    }
+
+    function cycleWidget(dir) {
+        const hs = widgetScreen.screenHosts().sort((a, b) => a.homeY - b.homeY || a.homeX - b.homeX)
+        if (hs.length === 0)
+            return
+        const cur = hs.findIndex(h => h.configKey === GlobalStates.widgetSettingsKey)
+        const next = cur < 0 ? (dir > 0 ? 0 : hs.length - 1) : (cur + dir + hs.length) % hs.length
+        GlobalStates.widgetSettingsKey = hs[next].configKey
+    }
+
+    function nearestWidget(dx, dy) {
+        const cur = widgetScreen.selectedHost()
+        if (!cur) {
+            widgetScreen.cycleWidget(1)
+            return
+        }
+        const cx = cur.homeX + cur.width / 2
+        const cy = cur.homeY + cur.height / 2
+        let best = null
+        let bestD = 1e9
+        for (const h of widgetScreen.screenHosts()) {
+            if (h === cur)
+                continue
+            const vx = h.homeX + h.width / 2 - cx
+            const vy = h.homeY + h.height / 2 - cy
+            const along = vx * dx + vy * dy
+            if (along <= 1)
+                continue
+            const across = Math.abs(vx * dy - vy * dx)
+            const d = along + across * 2
+            if (d < bestD) {
+                bestD = d
+                best = h
+            }
+        }
+        if (best)
+            GlobalStates.widgetSettingsKey = best.configKey
+    }
+
+    function nudgeWidget(dx, dy) {
+        const h = widgetScreen.selectedHost()
+        if (!h || h.locked)
+            return
+        const p = WidgetSizes.pitch
+        const nx = WidgetSizes.snapX(h.homeX + dx * p, h.width)
+        const ny = WidgetSizes.snapY(h.homeY + dy * p, h.height)
+        if ((nx === h.homeX && ny === h.homeY) || !WidgetLayout.isFree(h, nx, ny, h.width, h.height))
+            return
+        const patch = {}
+        patch[h.configKey + "X"] = nx
+        patch[h.configKey + "Y"] = ny
+        SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, patch)
+    }
+
+    function toggleLock() {
+        const h = widgetScreen.selectedHost()
+        if (!h)
+            return
+        const patch = {}
+        patch[h.configKey + "Locked"] = !h.locked
+        SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, patch)
+    }
+
+    Connections {
+        target: studioLoader.item
+        ignoreUnknownSignals: true
+        function onPopChanged() {
+            if (GlobalStates.widgetEditMode && studio.pop === "")
+                editKeys.forceActiveFocus()
+        }
+    }
+
     Item {
+        id: editKeys
         anchors.fill: parent
         focus: GlobalStates.widgetEditMode
+        onFocusChanged: if (focus) editKeys.forceActiveFocus()
         Keys.onEscapePressed: {
             if (studio.closePop()) return
             if (GlobalStates.widgetSettingsKey !== "") GlobalStates.widgetSettingsKey = ""
-            else GlobalStates.widgetEditMode = false
+            else GlobalStates.closeEdit()
+        }
+        Keys.onReleased: event => {
+            if (event.key === Qt.Key_Space && !event.isAutoRepeat) {
+                EditSession.peek = false
+                event.accepted = true
+            }
         }
         Keys.onPressed: event => {
-            if (!(event.modifiers & Qt.ControlModifier))
+            const ctrl = event.modifiers & Qt.ControlModifier
+            const alt = event.modifiers & Qt.AltModifier
+            const shift = event.modifiers & Qt.ShiftModifier
+            const k = event.key
+            if (ctrl) {
+                if (k === Qt.Key_Z && shift) EditSession.redo()
+                else if (k === Qt.Key_Z) EditSession.undo()
+                else if (k === Qt.Key_Y) EditSession.redo()
+                else if (k === Qt.Key_S) GlobalStates.closeEdit()
+                else return
+                event.accepted = true
                 return
-            if (event.key === Qt.Key_Z && (event.modifiers & Qt.ShiftModifier)) studio.redo()
-            else if (event.key === Qt.Key_Z) studio.undo()
-            else if (event.key === Qt.Key_Y) studio.redo()
-            else return
+            }
+            if (k === Qt.Key_Space) {
+                if (!event.isAutoRepeat) EditSession.peek = true
+            } else if (k === Qt.Key_Question || k === Qt.Key_Slash) {
+                GlobalStates.editKeysOpen = !GlobalStates.editKeysOpen
+            } else if (k === Qt.Key_1) {
+                GlobalStates.editLayer = "edges"
+            } else if (k === Qt.Key_2) {
+                GlobalStates.editLayer = "desktop"
+            } else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) {
+                widgetScreen.cycleWidget(k === Qt.Key_Backtab || shift ? -1 : 1)
+            } else if (k === Qt.Key_Left || k === Qt.Key_Right || k === Qt.Key_Up || k === Qt.Key_Down) {
+                const dx = k === Qt.Key_Left ? -1 : k === Qt.Key_Right ? 1 : 0
+                const dy = k === Qt.Key_Up ? -1 : k === Qt.Key_Down ? 1 : 0
+                if (alt) widgetScreen.nudgeWidget(dx, dy)
+                else widgetScreen.nearestWidget(dx, dy)
+            } else if (k === Qt.Key_Delete) {
+                const key = GlobalStates.widgetSettingsKey
+                if (key === "") return
+                studio.pop = ""
+                GlobalStates.widgetSettingsKey = ""
+                WidgetCatalog.remove(key)
+            } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
+                if (GlobalStates.widgetSettingsKey !== "") studio.pop = studio.pop === "options" ? "" : "options"
+            } else if (k === Qt.Key_L) {
+                widgetScreen.toggleLock()
+            } else if (k === Qt.Key_A) {
+                GlobalStates.widgetSettingsKey = ""
+                studio.pop = "add"
+            } else {
+                return
+            }
             event.accepted = true
         }
     }
@@ -338,6 +488,8 @@ PanelWindow{
         id: stage
         width: GlobalStates.widgetScreenSize.x
         height: GlobalStates.widgetScreenSize.y
+        opacity: GlobalStates.barEditMode && !EditSession.peek ? 0.4 : 1
+        Behavior on opacity { EffectsAnim { speed: "default" } }
 
         layer.enabled: studio.studioT > 0.01 && studio.stageScale < 0.999
         layer.smooth: true

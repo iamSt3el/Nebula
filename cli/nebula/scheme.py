@@ -8,7 +8,7 @@ Caching layers:
 
 Usage: gen_colors.py <image> <scheme-variant> <mode> [--source P] [--display P]
   scheme-variant  content | expressive | fidelity | fruitsalad | monochrome |
-                  neutral | rainbow | tonalspot | vibrant
+                  neutral | rainbow | tonalspot | vibrant | kindle
   mode            dark | light
   --source        the untouched wallpaper behind <image>, recorded as
                   "sourceWallpaper" so re-applies never feed a gowall-recolored
@@ -72,6 +72,88 @@ _SCHEMES = {
     "tonalspot":  SchemeTonalSpot,
     "vibrant":    SchemeVibrant,
 }
+
+_KINDLE_FIXED = {
+    "primaryFixed": "#dddddd", "primaryFixedDim": "#bbbbbb",
+    "onPrimaryFixed": "#000000", "onPrimaryFixedVariant": "#222222",
+    "secondaryFixed": "#dddddd", "secondaryFixedDim": "#bbbbbb",
+    "onSecondaryFixed": "#000000", "onSecondaryFixedVariant": "#222222",
+    "tertiaryFixed": "#dddddd", "tertiaryFixedDim": "#bbbbbb",
+    "onTertiaryFixed": "#000000", "onTertiaryFixedVariant": "#222222",
+}
+
+_KINDLE = {
+    "light": {
+        "primary": "#000000", "primaryText": "#ffffff",
+        "primaryContainer": "#000000", "primaryContainerText": "#ffffff",
+        "secondary": "#222222", "secondaryText": "#ffffff",
+        "secondaryContainer": "#dddddd", "secondaryContainerText": "#000000",
+        "tertiary": "#444444", "tertiaryText": "#ffffff",
+        "tertiaryContainer": "#cccccc", "tertiaryContainerText": "#000000",
+        "error": "#000000", "errorText": "#ffffff",
+        "errorContainer": "#222222", "errorContainerText": "#ffffff",
+        "surface": "#ffffff", "surfaceText": "#000000",
+        "surfaceVariant": "#eeeeee", "surfaceVariantText": "#222222",
+        "outline": "#000000", "outlineVariant": "#bbbbbb",
+        "shadow": "#000000", "scrim": "#000000",
+        "inverseSurface": "#000000", "inverseSurfaceText": "#ffffff", "inversePrimary": "#ffffff",
+        "surfaceDim": "#e2e2e2", "surfaceBright": "#ffffff",
+        "surfaceContainerLowest": "#ffffff", "surfaceContainerLow": "#f6f6f6",
+        "surfaceContainer": "#eeeeee", "surfaceContainerHigh": "#e2e2e2",
+        "surfaceContainerHighest": "#dddddd",
+    },
+    "dark": {
+        "primary": "#ffffff", "primaryText": "#000000",
+        "primaryContainer": "#ffffff", "primaryContainerText": "#000000",
+        "secondary": "#dddddd", "secondaryText": "#000000",
+        "secondaryContainer": "#444444", "secondaryContainerText": "#ffffff",
+        "tertiary": "#bbbbbb", "tertiaryText": "#000000",
+        "tertiaryContainer": "#555555", "tertiaryContainerText": "#ffffff",
+        "error": "#ffffff", "errorText": "#000000",
+        "errorContainer": "#dddddd", "errorContainerText": "#000000",
+        "surface": "#000000", "surfaceText": "#ffffff",
+        "surfaceVariant": "#222222", "surfaceVariantText": "#dddddd",
+        "outline": "#ffffff", "outlineVariant": "#555555",
+        "shadow": "#000000", "scrim": "#000000",
+        "inverseSurface": "#ffffff", "inverseSurfaceText": "#000000", "inversePrimary": "#000000",
+        "surfaceDim": "#000000", "surfaceBright": "#333333",
+        "surfaceContainerLowest": "#000000", "surfaceContainerLow": "#111111",
+        "surfaceContainer": "#222222", "surfaceContainerHigh": "#333333",
+        "surfaceContainerHighest": "#444444",
+    },
+}
+
+_KINDLE_ANSI = {
+    "light": {"red": "#555555", "green": "#333333", "yellow": "#4a4a4a",
+              "blue": "#222222", "magenta": "#3d3d3d", "cyan": "#2d2d2d"},
+    "dark":  {"red": "#aaaaaa", "green": "#cccccc", "yellow": "#e6e6e6",
+              "blue": "#999999", "magenta": "#bbbbbb", "cyan": "#d6d6d6"},
+}
+
+
+def _build_kindle_scheme(is_dark: bool) -> dict:
+    out = dict(_KINDLE["dark" if is_dark else "light"])
+    out.update(_KINDLE_FIXED)
+    out["scheme"] = "kindle"
+    return out
+
+
+def _fixed_scheme(variant: str, is_dark: bool):
+    if variant == "kindle":
+        return _build_kindle_scheme(is_dark)
+    return None
+
+
+def _kindle_setting(key: str, default: bool) -> bool:
+    try:
+        theme = json.loads((Path.home() / ".cache" / "quickshell" / "settings.json").read_text()).get("theme", {})
+    except Exception:
+        return default
+    return bool(theme.get(key, default))
+
+
+def _kindle_grey_ansi() -> bool:
+    return _kindle_setting("kindleGreyAnsi", False)
 
 # MaterialDynamicColors attr name → our JSON key (for quickshell colors.json)
 _COLOR_MAP = {
@@ -247,11 +329,11 @@ def _toward(hue: float, target: float, cap: float) -> float:
     return (hue + max(-cap, min(cap, d * 0.5))) % 360
 
 
-def _legible(hue: float, chroma: float, tone: float, bg: str, dark: bool) -> str:
+def _legible(hue: float, chroma: float, tone: float, bg: str, dark: bool, need: float = 4.5) -> str:
     step = 1 if dark else -1
     for _ in range(100):
         hex_color = _hex(Hct.from_hct(hue, chroma, tone))
-        if _contrast(hex_color, bg) >= 4.5 or not 0 <= tone <= 100:
+        if _contrast(hex_color, bg) >= need or not 0 <= tone <= 100:
             return hex_color
         tone += step
     return hex_color
@@ -270,16 +352,17 @@ def _mix(a: str, b: str, t: float) -> str:
 def _derived_colors(c: dict) -> dict:
     out = _terminal_colors(c)
     dark = _is_dark(c)
+    kindle = c.get("scheme") == "kindle"
     for role, slot in (("success", "term_green"), ("warning", "term_yellow")):
         src = _hct_of(out[slot])
         tones = (80, 20, 30, 90) if dark else (40, 100, 90, 10)
         names = (role, f"on_{role}", f"{role}_container", f"on_{role}_container")
         for name, tone in zip(names, tones):
-            out[name] = _hex(Hct.from_hct(src.hue, max(src.chroma, 40), tone))
+            out[name] = _hex(Hct.from_hct(src.hue, 0 if kindle else max(src.chroma, 40), tone))
     grey = _hct_of(c["surfaceContainerHigh"])
     bevel = (30, 24, 10, 4) if dark else (100, 96, 80, 60)
     for name, tone in zip(("qt_light", "qt_midlight", "qt_mid", "qt_dark"), bevel):
-        out[name] = _hex(Hct.from_hct(grey.hue, grey.chroma, tone))
+        out[name] = _hex(Hct.from_hct(grey.hue, 0 if kindle else grey.chroma, tone))
     out["qt_disabled"] = _mix(c["surfaceText"], c["surfaceContainer"], 0.38)
     out["pywal_color0"] = c["surface"] if dark else c["surfaceText"]
     out["pywal_color7"] = out["term_white"] if dark else c["surfaceContainerHigh"]
@@ -288,20 +371,64 @@ def _derived_colors(c: dict) -> dict:
 
 def _terminal_colors(c: dict) -> dict:
     dark = _is_dark(c)
-    bg = c["surfaceContainerLowest"] if dark else c["surface"]
+    kindle = c.get("scheme") == "kindle"
     seed = _hct_of(c["primary"]).hue
+    tint = 0 if kindle else 1
+    bg = c["surfaceContainerLowest"] if dark else _hex(Hct.from_hct(seed, 5 * tint, 95))
     out = {"term_background": bg}
     for name, ref in _ANSI_REFS.items():
         hue = _toward(_hct_of(ref).hue, seed, 8 if name == "red" else 15)
-        chroma = 60 if name == "yellow" else 50
-        lift = 8 if name == "yellow" and dark else 0
-        tone, bright_tone = (70, 82) if dark else (44, 34)
-        out[f"term_{name}"] = _legible(hue, chroma, tone + lift, bg, dark)
-        out[f"term_bright_{name}"] = _legible(hue, chroma + 8, min(bright_tone + lift, 92), bg, dark)
+        if dark:
+            chroma = 60 if name == "yellow" else 50
+            lift = 8 if name == "yellow" else 0
+            out[f"term_{name}"] = _legible(hue, chroma, 70 + lift, bg, dark)
+            out[f"term_bright_{name}"] = _legible(hue, chroma + 8, min(82 + lift, 92), bg, dark)
+        else:
+            chroma = 56 if name == "yellow" else 46
+            out[f"term_{name}"] = _legible(hue, chroma, 42, bg, dark, 5.0)
+            out[f"term_bright_{name}"] = _legible(hue, chroma + 6, 32, bg, dark, 7.0)
     grey = _hct_of(c["surfaceVariant"])
-    tones = (22, 56, 82, 95) if dark else (18, 48, 64, 78)
-    for name, tone in zip(("black", "bright_black", "white", "bright_white"), tones):
-        out[f"term_{name}"] = _hex(Hct.from_hct(grey.hue, min(grey.chroma, 10), tone))
+    grey_chroma = 0 if kindle else min(grey.chroma, 10)
+    if dark:
+        for name, tone in zip(("black", "bright_black", "white", "bright_white"), (22, 56, 82, 95)):
+            out[f"term_{name}"] = _hex(Hct.from_hct(grey.hue, grey_chroma, tone))
+    else:
+        out["term_black"] = _hex(Hct.from_hct(grey.hue, grey_chroma, 18))
+        for name, tone, need in (("bright_black", 42, 5.0), ("white", 50, 4.5), ("bright_white", 60, 3.0)):
+            out[f"term_{name}"] = _legible(grey.hue, grey_chroma, tone, bg, dark, need)
+    if dark:
+        out.update({
+            "term_foreground": c["surfaceText"],
+            "term_cursor": c["surfaceText"],
+            "term_cursor_text": c["primaryText"],
+            "term_selection_background": c["secondaryContainer"],
+            "term_selection_foreground": c["secondaryContainerText"],
+            "term_url": c["primary"],
+            "term_tab_inactive_background": c["surfaceContainerHigh"],
+            "term_tab_inactive_foreground": c["surfaceVariantText"],
+            "term_border_inactive": c["surfaceVariant"],
+            "term_dim_opacity": "0.4",
+            "term_text_composition": "platform",
+        })
+    else:
+        out.update({
+            "term_foreground": _hex(Hct.from_hct(grey.hue, min(grey.chroma, 8) * tint, 20)),
+            "term_cursor": c["primary"],
+            "term_cursor_text": bg,
+            "term_selection_background": _hex(Hct.from_hct(seed, 28 * tint, 86)),
+            "term_selection_foreground": _hex(Hct.from_hct(seed, 10 * tint, 12)),
+            "term_url": _legible(seed, 48 * tint, 40, bg, dark, 5.5),
+            "term_tab_inactive_background": _hex(Hct.from_hct(seed, 6 * tint, 90)),
+            "term_tab_inactive_foreground": out["term_white"],
+            "term_border_inactive": _hex(Hct.from_hct(seed, 6 * tint, 84)),
+            "term_dim_opacity": "0.65",
+            "term_text_composition": "1.7 0",
+        })
+    if c.get("scheme") == "kindle" and _kindle_grey_ansi():
+        greys = _KINDLE_ANSI["dark" if dark else "light"]
+        for name, value in greys.items():
+            out[f"term_{name}"] = value
+            out[f"term_bright_{name}"] = _mix(value, "#ffffff" if dark else "#000000", 0.75)
     return out
 
 
@@ -816,6 +943,9 @@ def set_seed(image_path: str, idx: int) -> None:
 
 
 def _build_scheme(primary: Hct, variant: str, is_dark: bool) -> dict:
+    fixed = _fixed_scheme(variant, is_dark)
+    if fixed is not None:
+        return fixed
     SchemeClass = _SCHEMES.get(variant, SchemeVibrant)
     scheme = SchemeClass(source_color_hct=primary, is_dark=is_dark, contrast_level=0.0)
 
@@ -1076,6 +1206,19 @@ def main() -> None:
     enabled      = _apps_arg()
     if enabled is None:
         enabled = theme_apps.enabled_ids()
+
+    if variant == "kindle":
+        t_start = time.time()
+        our_colors = _fixed_scheme(variant, is_dark)
+        our_colors["wallpaper"]       = display_path
+        our_colors["sourceWallpaper"] = source_path
+        _write_colors_json(json.dumps(our_colors, indent=4))
+        print(f"[gen_colors] {variant} {mode} ({(time.time()-t_start)*1000:.0f}ms)")
+        _apply_app_templates(our_colors, display_path, enabled)
+        _apply_fonts(enabled)
+        _sync_papirus_colors(our_colors["primary"], mode,
+                             keep_icons or _kindle_setting("kindleGreyIcons", True), enabled)
+        return
 
     palette = None
     palette_file = _flag("--palette-file", "")

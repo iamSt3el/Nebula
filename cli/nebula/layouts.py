@@ -21,7 +21,7 @@ LABELS = {"bar": "Bar and dock", "widgets": "Desktop widgets", "dashboard": "Das
 WIDGET_DATA = {"habits", "countdowns", "moods", "stickyNoteText", "notebookVault"}
 DOCK_KEYS = ["dock", "dockAutoHide", "dockMusicPlayer", "dockSdf"]
 PANEL_PREFIXES = ("launcher", "notes")
-PANEL_KEYS = ["clipboardStyle", "notifPopupStyle", "wallpaperStyle", "barWeatherPanel"]
+PANEL_KEYS = ["clipboardStyle", "notifPopupStyle", "barWeatherPanel"]
 
 
 def slug(name: str) -> str:
@@ -84,7 +84,14 @@ def summary(sections: dict) -> dict:
     bar = (sections.get("bar") or {}).get("bar") or {}
     if bar:
         blocks = bar.get("blocks") or []
-        info["barSide"] = bar.get("side", "top")
+        if bar.get("edgeVersion") == 2:
+            used = {b.get("edge", "top") for b in blocks if isinstance(b, dict) and b.get("items")}
+        else:
+            bar_side = bar.get("side", "top")
+            dock_side = (bar.get("dock") or {}).get("side", "bottom")
+            used = {bar_side if b.get("edge", "top") != "bottom" else dock_side
+                    for b in blocks if isinstance(b, dict) and b.get("items")}
+        info["barSide"] = " + ".join(s for s in ("top", "right", "bottom", "left") if s in used) or "top"
         info["barItems"] = sum(len(b.get("items") or []) for b in blocks if isinstance(b, dict))
     w = sections.get("widgets")
     if w is not None:
@@ -251,10 +258,10 @@ def undo() -> int:
         print("[nebula] nothing to undo", file=sys.stderr)
         return 1
     doc = _load_doc(PREVIOUS)
-    apply_sections(doc["sections"])
+    applied = apply_sections(doc["sections"])
     PREVIOUS.unlink()
     _set_active(doc.get("active"))
-    print(json.dumps({"restored": doc.get("name", "")}))
+    print(json.dumps({"restored": doc.get("name", ""), "sections": applied}))
     return 0
 
 

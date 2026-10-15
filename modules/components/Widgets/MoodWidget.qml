@@ -65,7 +65,7 @@ WidgetHost {
                             height: width
                             radius: 13
                             Behavior on width { SpatialAnim { speed: "fast" } }
-                            color: face.on ? Colors.primaryContainer : (faceArea.containsMouse ? Colors.surfaceContainerHigh : "transparent")
+                            color: face.on ? Colors.primaryContainer : (faceArea.containsMouse ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0))
                             Behavior on color { EffectsColorAnim { speed: "fast" } }
                             MaterialIconSymbol {
                                 anchors.centerIn: parent

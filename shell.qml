@@ -79,7 +79,7 @@ ShellRoot{
     Loader{
         active: SettingsConfig.widgets.showWidgets ?? true
         onActiveChanged: if (!active) {
-            GlobalStates.widgetEditMode = false
+            if (GlobalStates.widgetEditMode) GlobalStates.closeEdit()
             GlobalStates.widgetTextFocus = false
             GlobalStates.desktopCursorActive = false
         }

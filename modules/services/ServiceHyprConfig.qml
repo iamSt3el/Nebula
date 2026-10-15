@@ -219,13 +219,22 @@ Singleton {
         root._scheduleWrite(false)
     }
 
+    readonly property string _recordMark: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/nebula-record-session"
+
     function beginRecord() {
-        root._eval("hl.define_submap(\"nebula_record\", function() end) hl.dispatch(hl.dsp.submap(\"nebula_record\"))")
-        Quickshell.execDetached(["sh", "-c", "sleep 20; hyprctl dispatch 'hl.dsp.submap(\"reset\")' >/dev/null 2>&1"])
+        const id = String(Date.now())
+        root._eval("hl.define_submap(\"nebula_record\", function() "
+            + "hl.bind(\"SUPER + SHIFT + CTRL + ALT + F24\", hl.dsp.submap(\"reset\")) end) "
+            + "hl.dispatch(hl.dsp.submap(\"nebula_record\"))")
+        Quickshell.execDetached(["sh", "-c",
+            "printf %s \"$1\" > \"$2\"; sleep 20; "
+            + "[ \"$(cat \"$2\" 2>/dev/null)\" = \"$1\" ] && hyprctl dispatch 'hl.dsp.submap(\"reset\")' >/dev/null 2>&1",
+            "record", id, root._recordMark])
     }
 
     function endRecord() {
-        Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.submap(\"reset\")"])
+        Quickshell.execDetached(["sh", "-c", "rm -f \"$1\"; hyprctl dispatch 'hl.dsp.submap(\"reset\")' >/dev/null 2>&1",
+            "record", root._recordMark])
     }
 
     function _eval(code) {

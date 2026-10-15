@@ -195,8 +195,11 @@ Item {
                     root.dragDismissed(d > 0)
                 else
                     root.dragCancelled()
-            } else if (event.button === Qt.LeftButton && dragArea.containsMouse && root.multiple) {
-                root.expanded = true
+            } else if (event.button === Qt.LeftButton && dragArea.containsMouse) {
+                if (root.multiple)
+                    root.expanded = true
+                else
+                    loneRow.isExtended = !loneRow.isExtended
             }
         }
 

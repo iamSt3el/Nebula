@@ -12,13 +12,14 @@ Rectangle {
 
     property string icon: ""
     property bool active: false
+    property bool clickable: true
     property string label: ""
     property string tip: ""
 
     signal activated()
 
     readonly property bool showLabel: BarLayout.opt(root.itemId, "showLabel") === true
-    readonly property color ink: hov.containsMouse ? Colors.primaryContainerText
+    readonly property color ink: root.clickable && hov.containsMouse ? Colors.primaryContainerText
                                : root.alert ? Colors.error
                                : root.active ? Colors.primary : Colors.surfaceText
     readonly property bool iconSizable: true
@@ -29,9 +30,9 @@ Rectangle {
     readonly property real iconPx: BarLayout.iconPxFor(root.itemId, root.box, root.defaultIcon)
     readonly property real plate: BarLayout.platePxFor(root.box, root.iconPx,
                                                        root.defaultIcon, root.defaultPlate)
-    readonly property color plateColor: hov.containsMouse ? Colors.primaryContainer
+    readonly property color plateColor: root.clickable && hov.containsMouse ? Colors.primaryContainer
          : root.alert ? Qt.alpha(Colors.error, 0.16)
-         : root.active ? Qt.alpha(Colors.primary, 0.18) : "transparent"
+         : root.active ? Qt.alpha(Colors.primary, 0.18) : Qt.alpha(Colors.primaryContainer, 0)
     readonly property bool plateless: BarLayout.chipHovers(root.itemId, root.implicitWidth,
                                                            root.implicitHeight)
     readonly property bool plateOn: root.plateColor.a > 0.01
@@ -42,7 +43,7 @@ Rectangle {
     implicitWidth: root.showLabel ? row.implicitWidth + root.padPx : root.plate
     implicitHeight: root.plate
     radius: root.plate / 2
-    color: root.plateless ? "transparent" : root.plateColor
+    color: root.plateless ? Qt.alpha(root.plateColor, 0) : root.plateColor
     Behavior on color { EffectsColorAnim {} }
 
     Row {
@@ -71,8 +72,8 @@ Rectangle {
         id: hov
         anchors.fill: parent
         hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: root.activated()
+        cursorShape: root.clickable ? Qt.PointingHandCursor : Qt.ArrowCursor
+        onClicked: if (root.clickable) root.activated()
     }
 
     CustomToolTip {

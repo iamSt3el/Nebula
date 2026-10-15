@@ -12,7 +12,7 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
         CACHE PATH "QML plugin install prefix" FORCE)
 endif()
 
-find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Qml Quick)
+find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Qml Quick ShaderTools)
 qt_standard_project_setup()
 
 qt_add_qml_module(nebulaplugin
@@ -28,7 +28,18 @@ qt_add_qml_module(nebulaplugin
         shapes.cpp
         shapepainter.h
         shapepainter.cpp
+        barfield.h
+        barfield.cpp
     OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Nebula
+)
+
+qt_add_shaders(nebulaplugin "nebula_barfield_shaders"
+    BATCHABLE OPTIMIZED NOHLSL NOMSL
+    GLSL "300es,330"
+    PREFIX "/"
+    FILES
+        shaders/barfield.vert
+        shaders/barfield.frag
 )
 
 target_link_libraries(nebulaplugin PRIVATE

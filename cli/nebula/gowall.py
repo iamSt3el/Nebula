@@ -77,12 +77,24 @@ def _write_theme_file(palette: list, key: str) -> Path:
 def resolve_theme_arg(theme: str):
     """(argument for gowall -t, cache key). "match" is materialized into a theme
     file built from the live M3 palette; everything else passes through."""
+    if theme.lower() == "kindle":
+        from nebula.paths import SHELL_DIR
+        return str(SHELL_DIR / "assets" / "gowall" / "kindle.json"), "kindle"
     if theme.lower() != "match":
         return theme, theme
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     palette = _match_palette()
     digest = hashlib.sha256(",".join(palette).encode()).hexdigest()[:16]
     return str(_write_theme_file(palette, digest)), f"match-{digest}"
+
+
+def _nn_env() -> dict:
+    home = CACHE_DIR / "nn-home"
+    (home / ".config" / "gowall").mkdir(parents=True, exist_ok=True)
+    (home / ".config" / "gowall" / "config.yml").write_text("ColorCorrectionBackend: nn\n")
+    env = dict(os.environ)
+    env["HOME"] = str(home)
+    return env
 
 
 def recover_palette(theme: str) -> list:
@@ -113,16 +125,10 @@ def recover_palette(theme: str) -> list:
     img.putdata(grid)
     img.resize((len(grid) * 2, 2), Image.NEAREST).save(probe)
 
-    home = CACHE_DIR / "nn-home"
-    (home / ".config" / "gowall").mkdir(parents=True, exist_ok=True)
-    (home / ".config" / "gowall" / "config.yml").write_text("ColorCorrectionBackend: nn\n")
-    env = dict(os.environ)
-    env["HOME"] = str(home)
-
     proc = subprocess.run(
         ["gowall", "convert", str(probe), "-t", theme_arg,
          "--output", str(out), "--preview", "false", "--yes"],
-        capture_output=True, text=True, timeout=TIMEOUT, env=env)
+        capture_output=True, text=True, timeout=TIMEOUT, env=_nn_env())
     if proc.returncode != 0 or not out.is_file():
         raise RuntimeError((proc.stderr or proc.stdout or "gowall failed").strip().splitlines()[-1])
 
@@ -172,24 +178,23 @@ def main() -> int:
         print(f"Usage: {sys.argv[0]} <image> <theme>", file=sys.stderr)
         return 1
 
-    image = sys.argv[1]
-    theme = sys.argv[2].strip()
-    invert = "--invert" in sys.argv
+    print(convert(sys.argv[1], sys.argv[2].strip(), "--invert" in sys.argv, "--nn" in sys.argv))
+    return 0
+
+
+def convert(image: str, theme: str, invert: bool = False, nn: bool = False) -> str:
     themed = bool(theme) and theme.lower() not in ("off", "none")
 
     if not themed and not invert:
-        print(image)
-        return 0
+        return image
 
     if not os.path.isfile(image):
         _log(f"image not found: {image}")
-        print(image)
-        return 0
+        return image
 
     if shutil.which("gowall") is None:
         _log("gowall is not installed — passing the original through")
-        print(image)
-        return 0
+        return image
 
     fresh = not CACHE_DIR.is_dir()
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -210,17 +215,15 @@ def main() -> int:
             theme_arg, theme_key = resolve_theme_arg(theme)
         except Exception as e:
             _log(f"cannot resolve theme '{theme}': {e}")
-            print(image)
-            return 0
+            return image
 
     key = hashlib.sha256(
-        f"{_image_hash(image)}|{theme_key}|{'inv' if invert else 'std'}".encode()).hexdigest()[:24]
+        f"{_image_hash(image)}|{theme_key}|{'inv' if invert else 'std'}{'|nn' if nn else ''}".encode()).hexdigest()[:24]
     out = CACHE_DIR / f"{key}.png"
 
     if out.is_file() and out.stat().st_size > 0:
         _log(f"cache hit — {out.name}")
-        print(str(out))
-        return 0
+        return str(out)
 
     try:
         source = image
@@ -229,24 +232,21 @@ def main() -> int:
             # the flipped image rather than being flipped itself.
             flipped = CACHE_DIR / f"{key}-inverted.png"
             if not _invert(image, flipped):
-                print(image)
-                return 0
+                return image
             if not themed:
                 flipped.replace(out)
                 _log(f"inverted → {out.name}")
                 _prune()
-                print(str(out))
-                return 0
+                return str(out)
             source = str(flipped)
 
         proc = subprocess.run(
             ["gowall", "convert", source, "-t", theme_arg,
              "--output", str(out), "--preview", "false", "--yes"],
-            capture_output=True, text=True, timeout=TIMEOUT)
+            capture_output=True, text=True, timeout=TIMEOUT, env=_nn_env() if nn else None)
     except subprocess.TimeoutExpired:
         _log(f"gowall timed out after {TIMEOUT}s")
-        print(image)
-        return 0
+        return image
 
     if proc.returncode != 0 or not (out.is_file() and out.stat().st_size > 0):
         detail = (proc.stderr or proc.stdout or "").strip().splitlines()
@@ -255,8 +255,7 @@ def main() -> int:
             out.unlink()
         except OSError:
             pass
-        print(image)
-        return 0
+        return image
 
     if invert:
         try:
@@ -266,8 +265,7 @@ def main() -> int:
 
     _log(f"converted with '{theme}'{' (inverted)' if invert else ''} → {out.name}")
     _prune()
-    print(str(out))
-    return 0
+    return str(out)
 
 
 if __name__ == "__main__":

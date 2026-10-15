@@ -2,6 +2,7 @@ import QtQuick
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
+import qs.modules.components.LockScreen
 
 Item {
     id: root
@@ -13,7 +14,10 @@ Item {
     readonly property string look: BarLayout.opt(root.itemId, "look") ?? "chip"
     readonly property real size: BarLayout.opt(root.itemId, "size") ?? 20
     readonly property string role: BarLayout.opt(root.itemId, "role") ?? "primary"
-    readonly property string action: BarLayout.opt(root.itemId, "action") ?? "dashboard"
+    readonly property string action: {
+        const a = BarLayout.opt(root.itemId, "action") ?? "launcher"
+        return a === "dashboard" ? "launcher" : a
+    }
     readonly property bool clickable: root.action !== "none"
     readonly property bool hot: area.containsMouse && root.clickable
     readonly property color tone: BarLayout.roleColor(root.role)
@@ -30,7 +34,6 @@ Item {
     readonly property real box: root.look === "plain" ? root.size + 6 : root.size + 12
     readonly property bool active: {
         switch (root.action) {
-        case "dashboard": return !!root.host && root.host.panelKind === "dashboard"
         case "power":     return !!root.host && root.host.panelKind === "power"
         case "launcher":  return GlobalStates.appLauncherOpen
         case "overview":  return GlobalStates.overviewOpen
@@ -44,9 +47,6 @@ Item {
 
     function trigger() {
         switch (root.action) {
-        case "dashboard":
-            if (root.host) root.host.openPanel("dashboard", root)
-            break
         case "power":
             if (root.host) root.host.openPanel("power", root)
             break
@@ -67,7 +67,7 @@ Item {
 
     Rectangle {
         anchors.centerIn: parent
-        visible: root.look !== "plain"
+        visible: root.look !== "plain" && root.look !== "avatar"
         width: root.box
         height: root.box
         radius: root.hot || root.active ? root.box * 0.32 : root.box / 2
@@ -80,8 +80,19 @@ Item {
         Behavior on color { EffectsColorAnim { speed: "fast" } }
     }
 
+    LockShapeImage {
+        anchors.centerIn: parent
+        visible: root.look === "avatar"
+        width: root.box
+        height: root.box
+        source: root.look === "avatar" ? (SettingsConfig.general.profile ?? "") : ""
+        shapeName: "circle"
+        sourceSize: 96
+    }
+
     NebulaLogo {
         anchors.centerIn: parent
+        visible: root.look !== "avatar"
         width: root.size
         height: root.size
         color: root.look === "filled" ? root.onTone : root.tone
@@ -101,7 +112,6 @@ Item {
     CustomToolTip {
         content: {
             switch (root.action) {
-            case "dashboard": return "Dashboard"
             case "power":     return "Power menu"
             case "launcher":  return "Apps"
             case "overview":  return "Overview"

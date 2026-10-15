@@ -118,7 +118,10 @@ Item {
         anchors.right: parent.right
         anchors.top: parent.top
         height: root.heroH
-        radius: Math.max(12, ServiceLauncher.radius - 8)
+        topLeftRadius: root.launcher.innerCorner("tl")
+        topRightRadius: root.launcher.innerCorner("tr")
+        bottomLeftRadius: root.launcher.innerCorner("tl")
+        bottomRightRadius: root.launcher.innerCorner("tr")
         color: Colors.surfaceContainerHigh
 
         Image {

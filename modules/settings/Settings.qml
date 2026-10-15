@@ -150,6 +150,10 @@ Singleton{
         {
             name: "Keybinds",
             icon: "keyboard"
+        },
+        {
+            name: "Profile",
+            icon: "account_circle"
         }
     ]
 
@@ -241,7 +245,10 @@ Singleton{
         },
         {
             name: "scheme-rainbow"
-        }    
+        },
+        {
+            name: "scheme-kindle"
+        }
     ]
 
     function setActiveTheme(theme): void{

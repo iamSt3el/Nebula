@@ -133,7 +133,7 @@ Scope {
 
             function begin() {
                 let t = root.transition
-                if (t === "none") {
+                if (t === "none" || ServiceReveal.busy) {
                     win.finish()
                     return
                 }
@@ -226,6 +226,12 @@ Scope {
                 property vector4d view: win.viewFor(win.frontImg)
                 property var source: win.frontImg
                 fragmentShader: Qt.resolvedUrl("../../../shaders/qsb/ripple.frag.qsb")
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                visible: KindleMode.wallpaper === "blank"
+                color: Colors.surfaceContainer
             }
         }
     }

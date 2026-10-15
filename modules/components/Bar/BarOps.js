@@ -1,15 +1,9 @@
 .pragma library
 
+const SIDES = ["top", "bottom", "left", "right"]
+
 function isBottom(edge) {
     return edge === "bottom" || edge === "dock"
-}
-
-function allows(entry, edge) {
-    if (!entry)
-        return false
-    if (!entry.surfaces)
-        return true
-    return entry.surfaces.indexOf(isBottom(edge) ? "dock" : "bar") >= 0
 }
 
 function defaultDock(musicOn) {
@@ -36,10 +30,10 @@ function sanitize(blocks, legacy, entryOf, anchors) {
         if (!b || !b.id || ids[b.id])
             continue
         ids[b.id] = true
-        const edge = b.edge === "bottom" ? "bottom" : "top"
+        const edge = normSide(b.edge, "top")
         const items = []
         for (const i of (b.items ?? [])) {
-            if (seen[i] || !allows(entryOf(i), edge))
+            if (seen[i] || !entryOf(i))
                 continue
             seen[i] = true
             items.push(i)
@@ -55,7 +49,7 @@ function sanitize(blocks, legacy, entryOf, anchors) {
     if (!lg.migrated && !out.some(b => b.edge === "bottom")) {
         const items = []
         for (const i of (lg.dockItems ?? defaultDock(lg.musicOn ?? true))) {
-            if (seen[i] || !allows(entryOf(i), "bottom"))
+            if (seen[i] || !entryOf(i))
                 continue
             seen[i] = true
             items.push(i)
@@ -79,7 +73,7 @@ function strip(list, id) {
 
 function move(blocks, id, toBlock, index, entryOf) {
     const target = blocks.find(b => b.id === toBlock)
-    if (!target || !allows(entryOf(id), target.edge))
+    if (!target || !entryOf(id))
         return null
     const s = clone(blocks)
     strip(s, id)
@@ -105,36 +99,9 @@ function hidden(catalog, blocks, grouped) {
     return catalog.filter(e => e.multi || !used[e.id]).map(e => e.id)
 }
 
-function hasBottom(blocks) {
-    return blocks.some(b => b.edge === "bottom")
-}
-
-function hasDockMusic(blocks) {
-    return blocks.some(b => b.items.indexOf("dockMusic") >= 0)
-}
-
-function setDockMusic(blocks, on, newId) {
-    const s = clone(blocks)
-    strip(s, "dockMusic")
-    if (on) {
-        let t = s.find(b => b.edge === "bottom" && b.anchor === "center")
-        if (!t) {
-            t = { id: newId, anchor: "center", edge: "bottom", items: [] }
-            s.push(t)
-        }
-        t.items.push("dockMusic")
-    }
-    return s
-}
-
 function prune(blocks) {
-    const needTop = !blocks.some(b => b.edge !== "bottom" && b.items.length > 0)
-    const keepTop = needTop ? blocks.find(b => b.edge !== "bottom") : null
-    return blocks.filter(b => b.items.length > 0 || b === keepTop)
-}
-
-function canMoveBlock(block, edge, entryOf) {
-    return block.items.every(i => allows(entryOf(i), edge))
+    const kept = blocks.filter(b => b.items.length > 0)
+    return kept.length ? kept : blocks.slice(0, 1)
 }
 
 function movePin(pins, id, index) {
@@ -177,27 +144,91 @@ function isShape(s) {
 }
 
 function edgeOf(block) {
-    return isBottom(block && block.edge) ? "bottom" : "top"
+    return normSide(block && block.edge, "top")
 }
 
-function legacyShape(edge, barCfg, general) {
+function isEdgeV2(barCfg) {
+    return !!barCfg && barCfg.edgeVersion === 2
+}
+
+function upgradeBlocks(blocks, barCfg) {
+    if (isEdgeV2(barCfg))
+        return blocks
+    const s = sidesOf(barCfg)
+    return blocks.map(b => Object.assign({}, b, { edge: isBottom(b.edge) ? s.dock : s.bar }))
+}
+
+function edgeDefaults(barCfg, general) {
+    const c = barCfg ?? {}
     const g = general ?? {}
-    if (isBottom(edge))
-        return dockStyleOf(barCfg ? barCfg.dock : null, g)
-    return g.barMode ?? (g.flatBarMode === false ? "stepped" : "flat")
+    return {
+        height: Math.max(32, Math.min(56, c.height ?? 40)),
+        iconSize: 0,
+        itemGap: c.itemGap ?? 6,
+        blockGap: c.blockGap ?? -1,
+        radius: c.radius ?? 18,
+        pillGap: g.pillMargin ?? 6,
+        pillStart: g.pillLeftMargin ?? 6,
+        pillEnd: g.pillRightMargin ?? 6,
+        lineUp: false,
+        autoHide: false,
+        gameHide: false,
+        hidden: false,
+        sys: false,
+        shape: g.barMode ?? (g.flatBarMode === false ? "stepped" : "flat")
+    }
+}
+
+function legacyEdges(barCfg, general) {
+    const c = barCfg ?? {}
+    const g = general ?? {}
+    const d = c.dock ?? {}
+    const s = sidesOf(c)
+    const out = {}
+    out[s.bar] = {}
+    out[s.dock] = {
+        height: d.height ?? 60,
+        iconSize: d.iconSize ?? 32,
+        itemGap: d.itemGap ?? 2,
+        blockGap: d.blockGap ?? -1,
+        radius: d.radius ?? 18,
+        pillGap: d.pillGap ?? g.pillMargin ?? 6,
+        autoHide: g.dockAutoHide ?? true,
+        gameHide: true,
+        hidden: g.dock === false,
+        sys: true,
+        shape: dockStyleOf(d, g)
+    }
+    return out
+}
+
+function storedEdges(barCfg, general) {
+    return isEdgeV2(barCfg) ? (barCfg.edges ?? {}) : legacyEdges(barCfg, general)
+}
+
+function edgeCfg(barCfg, general, side) {
+    return Object.assign(edgeDefaults(barCfg, general), storedEdges(barCfg, general)[side] ?? {})
+}
+
+function sysEdge(barCfg, general) {
+    const all = storedEdges(barCfg, general)
+    for (const side of SIDES)
+        if (all[side] && all[side].sys)
+            return side
+    return "bottom"
 }
 
 function blockShapes(barCfg, general, sanitized) {
-    const blocks = sanitized || (barCfg && barCfg.blocks) || []
+    const blocks = sanitized || upgradeBlocks((barCfg && barCfg.blocks) || [], barCfg)
     const styles = (barCfg && barCfg.blockStyles) || {}
     const out = { ids: {}, edges: {} }
-    for (const e of ["top", "bottom"]) {
+    for (const e of SIDES) {
         const list = blocks.filter(b => edgeOf(b) === e)
         const own = list.map(b => {
             const s = styles[b.id] ? styles[b.id].shape : undefined
             return isShape(s) ? s : ""
         })
-        const legacy = legacyShape(e, barCfg, general)
+        const legacy = edgeCfg(barCfg, general, e).shape
         for (let i = 0; i < list.length; i++) {
             let s = own[i]
             for (let d = 1; !s && d < list.length; d++)
@@ -215,20 +246,28 @@ function shapeIn(shapes, id, edge) {
     const s = shapes.ids[id]
     if (s)
         return s
-    return shapes.edges[isBottom(edge) ? "bottom" : "top"][0]
+    return shapes.edges[normSide(edge, "top")][0]
 }
 
-function dockReserve(barCfg, general, hidden, hasDock) {
-    const g = general ?? {}
-    if (hidden || hasDock === false || g.dock === false)
+function edgePresent(barCfg, side) {
+    const blocks = upgradeBlocks((barCfg && barCfg.blocks) || [], barCfg)
+    return blocks.some(b => edgeOf(b) === side && (b.items ?? []).length > 0)
+}
+
+function edgeReserve(barCfg, general, side, gameHidden) {
+    if (!edgePresent(barCfg, side))
         return 0
-    const d = (barCfg && barCfg.dock) ?? {}
-    const h = d.height ?? 60
-    const shapes = blockShapes(barCfg, g).edges.bottom
-    if (shapes.indexOf("flat") >= 0)
-        return Math.round(h)
-    if (shapes.indexOf("pill") >= 0 && !(g.dockAutoHide ?? true))
-        return Math.round(h + (d.pillGap ?? g.pillMargin ?? 6) + 10)
+    const cfg = edgeCfg(barCfg, general, side)
+    if (cfg.hidden || (gameHidden && cfg.gameHide))
+        return 0
+    const shapes = blockShapes(barCfg, general).edges[side]
+    const flat = shapes.indexOf("flat") >= 0
+    if (cfg.autoHide)
+        return 0
+    if (shapes.indexOf("pill") >= 0)
+        return Math.round(cfg.height + cfg.pillGap + 10)
+    if (flat)
+        return Math.round(cfg.height)
     return 0
 }
 
@@ -246,7 +285,6 @@ function reorder(list, id, delta) {
     return out
 }
 
-const SIDES = ["top", "bottom", "left", "right"]
 
 function normSide(side, fallback) {
     return SIDES.indexOf(side) >= 0 ? side : fallback
@@ -268,21 +306,6 @@ function sidesOf(barCfg) {
     if (dock === bar)
         dock = oppositeSide(bar)
     return { bar: bar, dock: dock }
-}
-
-function withSide(barCfg, which, side) {
-    const c = barCfg ?? {}
-    const cur = sidesOf(c)
-    const s = normSide(side, which === "dock" ? cur.dock : cur.bar)
-    let bar = which === "dock" ? cur.bar : s
-    let dock = which === "dock" ? s : cur.dock
-    if (bar === dock) {
-        if (which === "dock")
-            bar = oppositeSide(s)
-        else
-            dock = oppositeSide(s)
-    }
-    return { side: bar, dock: Object.assign({}, c.dock ?? {}, { side: dock }) }
 }
 
 function isVerticalSide(side) {

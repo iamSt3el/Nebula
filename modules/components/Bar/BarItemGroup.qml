@@ -87,6 +87,19 @@ Item {
                 width: member.memberShown ? memberLoader.width : 0
                 height: member.memberShown ? memberLoader.height : 0
 
+                Rectangle {
+                    anchors.fill: memberLoader
+                    visible: BarLayout.tintOwner(member.modelData) !== ""
+                    radius: Math.min(width, height) / 2
+                    color: BarLayout.tintHover(member.modelData)
+                    opacity: memberHover.hovered ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                }
+
+                HoverHandler {
+                    id: memberHover
+                }
+
                 Loader {
                     id: memberLoader
                     anchors.centerIn: parent

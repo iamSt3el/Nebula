@@ -10,6 +10,7 @@ WidgetHost {
     tile: Qt.size(WidgetSizes.span(4), WidgetSizes.span(2))
     defaultPos: Qt.point(100, 100)
     backdrop: false
+    outlined: false
 
     readonly property bool showLabel: SettingsConfig.widgets.clockLabel ?? true
     readonly property string _display: "Fira Sans Condensed"

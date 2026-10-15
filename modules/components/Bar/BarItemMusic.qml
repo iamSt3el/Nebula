@@ -455,7 +455,7 @@ Item {
                     Layout.preferredWidth: root.h - 16
                     Layout.preferredHeight: root.h - 16
                     radius: width / 2
-                    color: root.playing ? Colors.primary : "transparent"
+                    color: root.playing ? Colors.primary : Qt.alpha(Colors.primary, 0)
                     border.width: root.playing ? 0 : 1.5
                     border.color: Colors.outline
                     Behavior on color { EffectsColorAnim {} }

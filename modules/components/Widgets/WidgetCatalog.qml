@@ -8,6 +8,29 @@ import qs.modules.utils
 Singleton {
     id: root
 
+    Component.onCompleted: {
+        EditSession.namers.widget = key => {
+            const f = root.familyFor(key)
+            return f ? (f.items.length > 1 ? f.section : f.items[0].label) : key
+        }
+        EditSession.namers.widgetShow = show => {
+            for (const sec of root.catalog) {
+                const it = sec.items.find(i => i.show === show)
+                if (it)
+                    return sec.items.filter(i => i.show === show).length > 1 ? sec.section : it.label
+            }
+            return show.replace(/^show/, "")
+        }
+        EditSession.searchers.widgets = q => {
+            let n = 0
+            for (const sec of root.catalog)
+                for (const it of sec.items)
+                    if (it.label.toLowerCase().indexOf(q) >= 0 || sec.section.toLowerCase().indexOf(q) >= 0)
+                        n++
+            return n
+        }
+    }
+
     readonly property Component cProfileBadge:   Component { ProfileBadgeWidget   { preview: true } }
     readonly property Component cProfileDay:     Component { ProfileDayWidget     { preview: true } }
     readonly property Component cProfileStatus:  Component { ProfileStatusWidget  { preview: true } }

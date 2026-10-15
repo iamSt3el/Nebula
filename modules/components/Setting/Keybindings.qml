@@ -12,6 +12,7 @@ Item {
     anchors.margins: 5
 
     property string filter: "All"
+    property int feedTurn: 0
     readonly property var entries: ServiceKeybinds.entries
     readonly property var groupNames: ServiceKeybinds.groupOrder.filter(g => root.entries.some(e => e.group === g))
     readonly property bool anyChanged: root.entries.some(e => e.changed)
@@ -99,9 +100,50 @@ Item {
                 ColumnLayout {
                     id: groupCol
                     required property string modelData
+                    required property int index
                     readonly property var rows: root.entries.filter(e => e.group === groupCol.modelData)
+                    property int built: 0
                     Layout.fillWidth: true
                     spacing: 0
+
+                    readonly property bool done: groupCol.built >= groupCol.rows.length
+
+                    function feedRows(step) {
+                        const n = Math.min(groupCol.built + step, groupCol.rows.length)
+                        for (; groupCol.built < n; groupCol.built++)
+                            rowModel.append({ i: groupCol.built })
+                        if (groupCol.done && root.feedTurn === groupCol.index)
+                            root.feedTurn++
+                    }
+
+                    onRowsChanged: {
+                        if (rowModel.count === groupCol.rows.length)
+                            return
+                        rowModel.clear()
+                        groupCol.built = 0
+                        if (groupCol.index === 0) {
+                            root.feedTurn = 0
+                            groupCol.feedRows(8)
+                        } else if (root.feedTurn > groupCol.index) {
+                            root.feedTurn = groupCol.index
+                        }
+                    }
+
+                    Component.onCompleted: {
+                        if (groupCol.index === 0) {
+                            root.feedTurn = 0
+                            groupCol.feedRows(8)
+                        }
+                    }
+
+                    ListModel { id: rowModel }
+
+                    Timer {
+                        interval: 16
+                        repeat: true
+                        running: root.feedTurn === groupCol.index && !groupCol.done
+                        onTriggered: groupCol.feedRows(3)
+                    }
 
                     RowLayout {
                         Layout.topMargin: 18
@@ -113,18 +155,19 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: 6
+                        Layout.preferredHeight: rowModel.count < groupCol.rows.length
+                            ? implicitHeight + (groupCol.rows.length - rowModel.count) * 67 : -1
                         spacing: 3
 
                         Repeater {
-                            model: groupCol.rows
+                            model: rowModel
 
                             BindRow {
-                                required property var modelData
-                                required property int index
-                                entry: modelData
+                                required property int i
+                                entry: groupCol.rows[i] ?? ({})
                                 autoRadius: false
-                                topRadius: index === 0 ? 20 : 5
-                                bottomRadius: index === groupCol.rows.length - 1 ? 20 : 5
+                                topRadius: i === 0 ? 20 : 5
+                                bottomRadius: i === groupCol.rows.length - 1 ? 20 : 5
                             }
                         }
                     }
@@ -209,31 +252,43 @@ Item {
                 CustomText { id: unsetText; anchors.centerIn: parent; content: "Not set"; size: 12; customColor: Colors.outline }
             }
 
-            M3IconButton {
-                visible: !!row.entry.changed && !row.entry.placeholder
-                implicitWidth: 36; implicitHeight: 36
-                icon: row.entry.addedBind ? "delete" : "undo"
-                iconSize: 18
-                iconColor: Colors.outline
-                onClicked: ServiceHyprConfig.resetBind(row.entry)
+            Loader {
+                active: !!row.entry.changed && !row.entry.placeholder
+                visible: active
+                sourceComponent: M3IconButton {
+                    implicitWidth: 36; implicitHeight: 36
+                    icon: row.entry.addedBind ? "delete" : "undo"
+                    iconSize: 18
+                    iconColor: Colors.outline
+                    onClicked: ServiceHyprConfig.resetBind(row.entry)
+                }
             }
 
-            M3IconButton {
-                visible: !!row.entry.editable
-                implicitWidth: 36; implicitHeight: 36
-                icon: row.entry.unset ? "add" : "edit"
-                iconSize: 18
-                onClicked: dialog.openFor(row.entry)
-            }
-
-            MaterialIconSymbol {
-                visible: !row.entry.editable
+            Rectangle {
                 Layout.preferredWidth: 36
-                horizontalAlignment: Text.AlignHCenter
-                content: "lock_open_right"
-                iconSize: 16
-                customColor: Colors.outlineVariant
+                Layout.preferredHeight: 36
+                radius: 18
+                color: row.entry.editable && rowHover.hovered ? Colors.surfaceContainerHighest : Qt.alpha(Colors.surfaceContainerHighest, 0)
+                Behavior on color { EffectsColorAnim { speed: "fast" } }
+
+                MaterialIconSymbol {
+                    anchors.centerIn: parent
+                    content: !row.entry.editable ? "lock_open_right" : row.entry.unset ? "add" : "edit"
+                    iconSize: row.entry.editable ? 18 : 16
+                    customColor: row.entry.editable ? Colors.surfaceText : Colors.outlineVariant
+                }
             }
+        }
+
+        HoverHandler {
+            id: rowHover
+            enabled: !!row.entry.editable
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        TapHandler {
+            enabled: !!row.entry.editable
+            onTapped: dialog.openFor(row.entry)
         }
     }
 

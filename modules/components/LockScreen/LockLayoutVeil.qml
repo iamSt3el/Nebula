@@ -226,6 +226,7 @@ Item {
                 LockShapeImage {
                     Layout.preferredWidth: 80 * root.u
                     Layout.preferredHeight: 80 * root.u
+                    visible: LockSession.cfg.showAvatar !== false
                     source: SettingsConfig.general.profile ?? ""
                     shapeName: "circle"
 

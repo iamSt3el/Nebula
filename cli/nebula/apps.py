@@ -25,6 +25,14 @@ GTK3_HOOK = ('gsettings set org.gnome.desktop.interface gtk-theme "" && '
              'gsettings set org.gnome.desktop.interface gtk-theme '
              '"adw-gtk3$([ "${NEBULA_MODE:-dark}" = dark ] && echo -dark)"')
 
+HYPR_HOOK = (
+    'F="$HOME/.config/hypr/lua/colors.lua"; '
+    r"""a=$(sed -n 's/^M\.active_border *= *"\(.*\)".*/\1/p' "$F"); """
+    r"""i=$(sed -n 's/^M\.inactive_border *= *"\(.*\)".*/\1/p' "$F"); """
+    '[ -n "$a" ] && [ -n "$i" ] && hyprctl eval '
+    r'''"hl.config({ general = { col = { active_border = \"$a\", inactive_border = \"$i\" } } })"'''
+)
+
 PAPIRUS_DIRS = [
     Path("/usr/share/icons/Papirus"),
     Path("/usr/share/icons/Papirus-Dark"),
@@ -48,7 +56,7 @@ APPS = [
     {"id": "hyprland", "name": "Hyprland borders", "group": "desktop", "bins": ["hyprctl", "Hyprland"],
      "files": [{"input": "hyprland-colors.conf", "output": ".config/hypr/colors.conf"},
                {"input": "hyprland-colors.lua", "output": ".config/hypr/lua/colors.lua", "needs": ".config/hypr/lua"}],
-     "hook": "hyprctl reload"},
+     "hook": HYPR_HOOK},
     {"id": "gtk3", "name": "GTK 3", "group": "desktop", "libs": ["libgtk-3.so.0"], "whole": True,
      "files": [{"input": "gtk-colors.css", "output": ".config/gtk-3.0/gtk.css"}], "hook": GTK3_HOOK},
     {"id": "gtk4", "name": "GTK 4", "group": "desktop", "libs": ["libgtk-4.so.1"], "whole": True,

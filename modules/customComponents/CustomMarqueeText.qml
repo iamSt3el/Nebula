@@ -58,22 +58,36 @@ Item {
         }
     }
 
-    SequentialAnimation {
+    Timer {
+        id: holdTimer
+        interval: root.startDelay
         running: root.animating
-        loops: Animation.Infinite
+        onTriggered: stepTimer.start()
+    }
 
-        PauseAnimation { duration: root.startDelay }
-
-        NumberAnimation {
-            target: track
-            property: "x"
-            from: 0
-            to: -(primary.implicitWidth + root.gap)
-            duration: Math.max(1, (primary.implicitWidth + root.gap) / root.speed * 1000)
-            easing.type: Easing.Linear
+    Timer {
+        id: stepTimer
+        interval: Math.max(16, Math.round(1000 / root.speed))
+        repeat: true
+        onTriggered: {
+            const end = -Math.round(primary.implicitWidth + root.gap)
+            track.x = Math.max(end, track.x - 1)
+            if (track.x <= end) {
+                stepTimer.stop()
+                track.x = 0
+                holdTimer.restart()
+            }
         }
     }
 
-    onAnimatingChanged: if (!root.animating) track.x = 0
-    onContentChanged: track.x = 0
+    onAnimatingChanged: {
+        stepTimer.stop()
+        track.x = 0
+    }
+    onContentChanged: {
+        stepTimer.stop()
+        track.x = 0
+        if (root.animating)
+            holdTimer.restart()
+    }
 }

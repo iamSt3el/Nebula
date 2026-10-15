@@ -13,7 +13,8 @@ Item {
     property string itemId: ""
     readonly property bool shown: root.groups.length > 0
 
-    readonly property real icon: root.host && root.host.iconSize ? root.host.iconSize : 32
+    readonly property real icon: root.host && root.host.appIconSize ? root.host.appIconSize : 32
+    readonly property real across: Math.min(root.icon + 22, root.host && root.host.barH ? root.host.barH : root.icon + 22)
     readonly property bool vertical: !!root.host && root.host.vertical === true
     readonly property bool verticalReady: true
     readonly property int entriesVersion: ServiceApps.list.length
@@ -48,8 +49,8 @@ Item {
         return out
     }
 
-    implicitWidth: root.vertical ? root.icon + 22 : row.implicitWidth
-    implicitHeight: root.vertical ? row.implicitHeight : root.icon + 22
+    implicitWidth: root.vertical ? root.across : row.implicitWidth
+    implicitHeight: root.vertical ? row.implicitHeight : root.across
 
     Grid {
         id: row
@@ -121,16 +122,24 @@ Item {
                             width: root.icon
                             height: root.icon + 8
 
+                            Rectangle {
+                                anchors.centerIn: appIcon
+                                width: root.icon + 4
+                                height: width
+                                radius: root.host && root.host.isPill ? Math.max(0, root.host.pillRadius - (root.host.barH - width) / 2) : 8
+                                color: appMa.containsMouse ? Colors.primaryContainer : Qt.alpha(Colors.primaryContainer, 0)
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+
                             Image {
                                 id: appIcon
                                 anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: (root.icon - 2 - height) / 2 }
-                                width: appMa.containsMouse ? Math.round((root.icon - 2) * 1.12) : root.icon - 2
+                                width: root.icon - 2
                                 height: width
-                                Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
                                 smooth: true
                                 mipmap: true
                                 source: root.entriesVersion >= 0
-                                    ? Quickshell.iconPath(
+                                    ? IconUtil.themeIcon(
                                         DesktopEntries.heuristicLookup(app.modelData.appId)?.icon, "image-missing")
                                     : ""
                                 sourceSize.width: 96

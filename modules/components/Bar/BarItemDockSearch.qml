@@ -11,15 +11,16 @@ Item {
     property string itemId: ""
     readonly property bool shown: true
 
-    readonly property real icon: root.host && root.host.iconSize ? root.host.iconSize : 32
+    readonly property real icon: root.host && root.host.appIconSize ? root.host.appIconSize : 32
+    readonly property real across: Math.min(root.icon + 22, root.host && root.host.barH ? root.host.barH : root.icon + 22)
     readonly property real pillH: root.icon + 12
     readonly property real pillW: BarLayout.opt(root.itemId, "width") ?? 200
     readonly property bool editing: !!root.host && !!root.host.editing
     readonly property bool vertical: !!root.host && root.host.vertical === true
     readonly property bool verticalReady: true
 
-    implicitWidth: root.vertical ? root.icon + 22 : root.pillW
-    implicitHeight: root.icon + 22
+    implicitWidth: root.vertical ? root.across : root.pillW
+    implicitHeight: root.across
 
     function handOff(text) {
         GlobalStates.launcherSeed = text

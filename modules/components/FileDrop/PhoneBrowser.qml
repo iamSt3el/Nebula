@@ -3,7 +3,6 @@ import Quickshell.Io
 import Quickshell.Widgets
 import QtQuick
 import QtQuick.Layouts
-import Qt.labs.folderlistmodel
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
@@ -28,6 +27,22 @@ Item {
     readonly property real selBytes: Object.values(root.selected).reduce((n, v) => n + v, 0)
     property var thumbs: ({})
     property int thumbVersion: 0
+    property var thumbQueue: []
+    property var thumbInflight: ({})
+    property var thumbLive: ({})
+    property var entries: []
+    property bool listing: false
+    property string listError: ""
+
+    readonly property var shown: {
+        const q = root.filter.toLowerCase()
+        const list = q === "" ? root.entries.slice() : root.entries.filter(e => e.key.indexOf(q) >= 0)
+        const byTime = root.byTime
+        list.sort((a, b) => a.dir !== b.dir ? (a.dir ? -1 : 1)
+                          : byTime && a.mtime !== b.mtime ? b.mtime - a.mtime
+                          : a.key < b.key ? -1 : a.key > b.key ? 1 : 0)
+        return list
+    }
     property bool grid: true
     property bool byTime: true
     property string filter: ""
@@ -48,6 +63,16 @@ Item {
         { rel: "Pictures/Telegram", label: "Telegram", icon: "send" }
     ]
 
+    readonly property string activePlace: {
+        let best = ""
+        for (const p of root.places) {
+            const path = root.base + "/" + p.rel
+            if ((root.current === path || root.current.startsWith(path + "/")) && path.length > best.length)
+                best = path
+        }
+        return best !== "" ? best : root.base
+    }
+
     readonly property var crumbs: {
         if (root.base === "" || root.current === "") return []
         const rel = root.current.slice(root.base.length).split("/").filter(p => p !== "")
@@ -61,10 +86,44 @@ Item {
     }
 
     function go(path) {
+        if (path === root.current) return
         root.current = path
+        root.entries = []
         root.selected = ({})
         root.filter = ""
         search.text = ""
+        root.list()
+        root.thumbQueue = []
+        if (thumbProc.busy) {
+            thumbProc.aborted = true
+            thumbProc.running = false
+        }
+    }
+
+    function reload() {
+        root.list()
+    }
+
+    function list() {
+        root.listError = ""
+        if (root.current === "") {
+            root.listing = false
+            return
+        }
+        root.listing = true
+        if (listProc.busy) {
+            listProc.again = true
+            listProc.running = false
+            return
+        }
+        listProc.target = root.current
+        listProc.busy = true
+        listProc.command = ["bash", "-c", "cd -- \"$1\" || exit 3; find . -mindepth 1 -maxdepth 1 ! -name '.*' -printf '%y\\t%s\\t%T@\\t%f\\0'", "list", root.current]
+        listProc.running = true
+    }
+
+    function fileUri(path) {
+        return "file://" + path.split("/").map(encodeURIComponent).join("/")
     }
 
     function isMedia(name) {
@@ -102,87 +161,146 @@ Item {
     }
 
     function copyToPc(paths) {
-        if (paths.length === 0 || copyProc.running) return
-        copyProc.files = paths
-        copyProc.command = ["bash", "-c", "d=\"$1\"; shift; cp -n -- \"$@\" \"$d\"/", "copy", ServicePhone.downloads].concat(paths)
-        copyProc.running = true
-        root.toast = "Copying " + paths.length + (paths.length === 1 ? " file…" : " files…")
+        if (paths.length === 0) return
+        ServicePhone.pull(paths)
+        root.selected = ({})
+        root.toast = ""
     }
 
-    function requestThumbs() {
-        if (root.base === "" || !root.current.startsWith(root.base)) return
-        const want = []
-        for (let i = 0; i < folder.count && want.length < 300; i++) {
-            if (folder.get(i, "fileIsDir")) continue
-            const p = folder.get(i, "filePath")
-            if (root.isMedia(p) && root.thumbs[p] === undefined) want.push(p)
-        }
-        if (want.length === 0) return
-        thumbProc.running = false
-        thumbProc.command = [Quickshell.shellDir + "/bin/nebula", "phone-thumbs"].concat(want)
+    function want(path) {
+        if (!root.isMedia(path)) return
+        root.thumbLive[path] = (root.thumbLive[path] ?? 0) + 1
+        if (root.thumbs[path] !== undefined || root.thumbInflight[path] || root.thumbQueue.indexOf(path) >= 0) return
+        root.thumbQueue.push(path)
+        thumbKick.restart()
+    }
+
+    function unwant(path) {
+        const n = (root.thumbLive[path] ?? 0) - 1
+        if (n > 0) root.thumbLive[path] = n
+        else delete root.thumbLive[path]
+    }
+
+    function pumpThumbs() {
+        if (thumbProc.busy) return
+        const live = root.thumbQueue.filter(p => root.thumbLive[p] !== undefined && root.thumbs[p] === undefined)
+        const batch = live.slice(0, 12)
+        root.thumbQueue = live.slice(12)
+        if (batch.length === 0) return
+        const inflight = {}
+        for (const p of batch) inflight[p] = true
+        root.thumbInflight = inflight
+        thumbProc.aborted = false
+        thumbProc.busy = true
+        thumbProc.command = [Quickshell.shellDir + "/bin/nebula", "phone-thumbs"].concat(batch)
         thumbProc.running = true
     }
 
-    onBaseChanged: {
-        if (root.base !== "" && root.current === "") {
-            placeProc.running = true
-            root.go(root.base + "/DCIM/Camera")
-        }
+    function open() {
+        root.places = []
+        placeProc.command = ["bash", "-c", "cd \"$1\" 2>/dev/null || exit 0; shift; for d in \"$@\"; do [ -d \"$d\" ] && echo \"$d\"; done", "places", root.base]
+            .concat(root.placeDefs.map(p => p.rel))
+        placeProc.running = true
     }
 
     function ensureMounted() {
-        if (root.base === "" && ServicePhone.ready && !ServicePhone.mounting)
+        if (ServicePhone.ready && !ServicePhone.mounting)
             ServicePhone.mount()
     }
 
+    onBaseChanged: {
+        root.go("")
+        if (root.base !== "") root.open()
+    }
+
     Component.onCompleted: {
-        if (root.base === "") root.ensureMounted()
-        else {
-            placeProc.running = true
-            root.go(root.base + "/DCIM/Camera")
-        }
+        if (root.base !== "") root.open()
+        root.ensureMounted()
     }
 
     Connections {
         target: ServicePhone
         function onReadyChanged() { root.ensureMounted() }
+        function onStorageVersionChanged() {
+            if (root.base !== "" && root.current !== "") root.reload()
+        }
+        function onPullFinished(copied, failed) {
+            root.toast = failed === 0 ? "Copied " + copied + " to " + ServicePhone.baseName(ServicePhone.downloads)
+                       : copied === 0 ? "Couldn't copy " + (failed === 1 ? "the file" : failed + " files")
+                       : "Copied " + copied + ", " + failed + " failed"
+            toastTimer.restart()
+        }
     }
 
-    FolderListModel {
-        id: folder
-        folder: "file://" + (root.current !== "" ? root.current : "/nonexistent-phone-root")
-        showDirsFirst: true
-        showDotAndDotDot: false
-        showHidden: false
-        caseSensitive: false
-        sortField: root.byTime ? FolderListModel.Time : FolderListModel.Name
-        nameFilters: root.filter !== "" ? ["*" + root.filter + "*"] : []
-        onStatusChanged: if (status === FolderListModel.Ready) thumbTimer.restart()
-        onCountChanged: thumbTimer.restart()
+    Process {
+        id: listProc
+        property string target: ""
+        property bool busy: false
+        property bool again: false
+        stdout: StdioCollector {
+            id: listOut
+        }
+        onExited: code => {
+            listProc.busy = false
+            if (listProc.again || listProc.target !== root.current) {
+                listProc.again = false
+                root.list()
+                return
+            }
+            const out = []
+            for (const rec of listOut.text.split("\0")) {
+                const f = rec.split("\t")
+                if (f.length < 4) continue
+                const name = f.slice(3).join("\t")
+                out.push({ name: name, key: name.toLowerCase(), path: listProc.target + "/" + name, dir: f[0] === "d",
+                           size: Number(f[1]), mtime: Number(f[2]) * 1000 })
+            }
+            root.entries = out
+            root.listing = false
+            root.listError = code === 0 || out.length > 0 ? "" : "Couldn't open this folder"
+        }
     }
 
     Timer {
-        id: thumbTimer
-        interval: 250
-        onTriggered: root.requestThumbs()
+        id: thumbKick
+        interval: 120
+        onTriggered: root.pumpThumbs()
+    }
+
+    Timer {
+        id: thumbFlush
+        interval: 90
+        onTriggered: root.thumbVersion++
     }
 
     Process {
         id: thumbProc
+        property bool aborted: false
+        property bool busy: false
         stdout: SplitParser {
             onRead: line => {
                 const i = line.indexOf("\t")
-                if (i < 0) return
-                root.thumbs[line.slice(0, i)] = line.slice(i + 1)
-                root.thumbVersion++
+                if (i < 0 || thumbProc.aborted) return
+                const path = line.slice(0, i)
+                root.thumbs[path] = line.slice(i + 1)
+                delete root.thumbInflight[path]
+                if (!thumbFlush.running) thumbFlush.start()
             }
+        }
+        onExited: {
+            if (!thumbProc.aborted) {
+                for (const p in root.thumbInflight) root.thumbs[p] = ""
+                if (!thumbFlush.running) thumbFlush.start()
+            }
+            root.thumbInflight = ({})
+            thumbProc.aborted = false
+            thumbProc.busy = false
+            root.pumpThumbs()
         }
     }
 
     Process {
         id: placeProc
-        command: ["bash", "-c", "cd \"$1\" 2>/dev/null || exit 0; shift; for d in \"$@\"; do [ -d \"$d\" ] && echo \"$d\"; done", "places", root.base]
-            .concat(root.placeDefs.map(p => p.rel))
         stdout: StdioCollector {
             onStreamFinished: {
                 const have = text.split("\n").filter(l => l !== "")
@@ -192,20 +310,9 @@ Item {
                     seen[p.label] = true
                     return true
                 })
+                if (root.current === "" && root.base !== "")
+                    root.go(root.places.length > 0 ? root.base + "/" + root.places[0].rel : root.base)
             }
-        }
-    }
-
-    Process {
-        id: copyProc
-        property var files: []
-        onExited: code => {
-            for (const f of copyProc.files)
-                ServicePhone.noteReceived(ServicePhone.downloads + "/" + ServicePhone.baseName(f))
-            root.toast = code === 0 ? "Copied " + copyProc.files.length + " to " + ServicePhone.baseName(ServicePhone.downloads)
-                                    : "Some files were not copied"
-            root.selected = ({})
-            toastTimer.restart()
         }
     }
 
@@ -276,12 +383,11 @@ Item {
                         id: place
                         required property var modelData
                         readonly property string path: root.base + (place.modelData.rel !== "" ? "/" + place.modelData.rel : "")
-                        readonly property bool on: place.modelData.rel === "" ? root.current === root.base
-                                                                              : root.current === place.path || root.current.startsWith(place.path + "/")
+                        readonly property bool on: root.activePlace === place.path
                         Layout.fillWidth: true
                         implicitHeight: 40
                         radius: 20
-                        color: place.on ? Colors.secondaryContainer : placeMouse.containsMouse ? Colors.surfaceContainerHigh : "transparent"
+                        color: place.on ? Colors.secondaryContainer : placeMouse.containsMouse ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0)
                         Behavior on color { EffectsColorAnim {} }
 
                         RowLayout {
@@ -364,11 +470,13 @@ Item {
                 spacing: 8
 
                 Flickable {
+                    id: crumbFlick
                     Layout.fillWidth: true
                     Layout.preferredHeight: 34
                     contentWidth: crumbRow.implicitWidth
-                    contentX: Math.max(0, contentWidth - width)
                     clip: true
+                    onContentWidthChanged: crumbFlick.contentX = Math.max(0, crumbFlick.contentWidth - crumbFlick.width)
+                    onWidthChanged: crumbFlick.contentX = Math.max(0, crumbFlick.contentWidth - crumbFlick.width)
                     interactive: contentWidth > width
 
                     Row {
@@ -474,6 +582,19 @@ Item {
                 M3IconButton {
                     Layout.preferredWidth: 38
                     Layout.preferredHeight: 38
+                    enabled: root.current !== ""
+                    icon: "refresh"
+                    iconSize: 18
+                    iconColor: Colors.surfaceVariantText
+                    onClicked: {
+                        root.reload()
+                        root.ensureMounted()
+                    }
+                }
+
+                M3IconButton {
+                    Layout.preferredWidth: 38
+                    Layout.preferredHeight: 38
                     icon: root.byTime ? "schedule" : "sort_by_alpha"
                     iconSize: 18
                     iconColor: Colors.surfaceVariantText
@@ -514,13 +635,14 @@ Item {
 
                 ColumnLayout {
                     anchors.centerIn: parent
-                    visible: !ServicePhone.ready || root.base === "" || (folder.status === FolderListModel.Ready && folder.count === 0)
-                             || folder.status === FolderListModel.Loading
+                    visible: !ServicePhone.ready || root.base === "" || root.current === "" || root.listing || root.shown.length === 0
                     spacing: 10
 
                     MaterialIconSymbol {
                         Layout.alignment: Qt.AlignHCenter
-                        content: !ServicePhone.ready ? "phonelink_off" : root.base === "" || folder.status === FolderListModel.Loading ? "hourglass_top" : "folder_open"
+                        content: !ServicePhone.ready ? "phonelink_off"
+                               : root.base === "" ? (ServicePhone.mounting ? "hourglass_top" : "folder_off")
+                               : root.current === "" || root.listing ? "hourglass_top" : root.listError !== "" ? "folder_off" : "folder_open"
                         iconSize: 40
                         customColor: Colors.outline
                     }
@@ -529,7 +651,8 @@ Item {
                         Layout.alignment: Qt.AlignHCenter
                         content: !ServicePhone.ready ? ServicePhone.label + " isn't connected"
                                : root.base === "" ? (ServicePhone.mounting ? "Opening phone storage…" : "Couldn't open the phone's storage")
-                               : folder.status === FolderListModel.Loading ? "Loading…"
+                               : root.current === "" || root.listing ? "Loading…"
+                               : root.listError !== "" ? root.listError
                                : root.filter !== "" ? "Nothing matches “" + root.filter + "”" : "This folder is empty"
                         size: 14
                         weight: 500
@@ -550,9 +673,10 @@ Item {
                 GridView {
                     id: gridView
                     anchors.fill: parent
-                    visible: root.grid && folder.count > 0 && ServicePhone.ready && root.base !== ""
+                    visible: root.grid && root.shown.length > 0 && ServicePhone.ready && root.base !== "" && !root.listing
                     clip: true
-                    model: folder
+                    model: root.grid ? root.shown : []
+                    cacheBuffer: 400
                     boundsBehavior: Flickable.StopAtBounds
                     readonly property int cols: Math.max(3, Math.floor(width / 168))
                     cellWidth: Math.floor(width / gridView.cols)
@@ -561,21 +685,24 @@ Item {
 
                     delegate: Item {
                         id: tile
-                        required property string fileName
-                        required property string filePath
-                        required property bool fileIsDir
-                        required property var fileSize
+                        required property var modelData
+                        readonly property string fileName: tile.modelData.name
+                        readonly property string filePath: tile.modelData.path
+                        readonly property bool fileIsDir: tile.modelData.dir
+                        readonly property real fileSize: tile.modelData.size
                         readonly property bool picked: root.selected[tile.filePath] !== undefined
                         readonly property string thumb: { root.thumbVersion; return root.thumbs[tile.filePath] ?? "" }
                         width: gridView.cellWidth
                         height: gridView.cellHeight
+                        Component.onCompleted: if (!tile.fileIsDir) root.want(tile.filePath)
+                        Component.onDestruction: if (!tile.fileIsDir) root.unwant(tile.filePath)
 
                         Rectangle {
                             id: tileBox
                             anchors.fill: parent
                             anchors.margins: 5
                             radius: 18
-                            color: tile.picked ? Colors.secondaryContainer : tileMouse.containsMouse ? Colors.surfaceContainerHigh : "transparent"
+                            color: tile.picked ? Colors.secondaryContainer : tileMouse.containsMouse ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0)
                             border.width: tile.picked ? 2 : 0
                             border.color: Colors.primary
                             Behavior on color { EffectsColorAnim {} }
@@ -669,7 +796,7 @@ Item {
                             Drag.dragType: Drag.Automatic
                             Drag.supportedActions: Qt.CopyAction
                             Drag.mimeData: ({ "text/uri-list": (tile.picked ? root.selectedPaths() : [tile.filePath])
-                                                                   .map(p => "file://" + encodeURI(p)).join("\r\n") })
+                                                                   .map(p => root.fileUri(p)).join("\r\n") })
                         }
 
                         MouseArea {
@@ -680,9 +807,13 @@ Item {
                             drag.target: tile.fileIsDir ? null : dragProxy
                             onClicked: {
                                 if (tile.fileIsDir) root.go(tile.filePath)
-                                else root.toggle(tile.filePath, Number(tile.fileSize))
+                                else root.toggle(tile.filePath, tile.fileSize)
                             }
-                            onDoubleClicked: if (!tile.fileIsDir) root.launch(["xdg-open", tile.filePath])
+                            onDoubleClicked: {
+                                if (tile.fileIsDir) return
+                                root.toggle(tile.filePath, tile.fileSize)
+                                root.launch(["xdg-open", tile.filePath])
+                            }
                         }
                     }
                 }
@@ -690,24 +821,27 @@ Item {
                 ListView {
                     id: listView
                     anchors.fill: parent
-                    visible: !root.grid && folder.count > 0 && ServicePhone.ready && root.base !== ""
+                    visible: !root.grid && root.shown.length > 0 && ServicePhone.ready && root.base !== "" && !root.listing
                     clip: true
                     spacing: 4
-                    model: folder
+                    model: root.grid ? [] : root.shown
+                    cacheBuffer: 400
                     boundsBehavior: Flickable.StopAtBounds
                     bottomMargin: root.selCount > 0 ? 80 : 0
 
                     delegate: Rectangle {
                         id: row
-                        required property string fileName
-                        required property string filePath
-                        required property bool fileIsDir
-                        required property var fileSize
-                        required property var fileModified
+                        required property var modelData
+                        readonly property string fileName: row.modelData.name
+                        readonly property string filePath: row.modelData.path
+                        readonly property bool fileIsDir: row.modelData.dir
+                        readonly property real fileSize: row.modelData.size
                         readonly property bool picked: root.selected[row.filePath] !== undefined
                         readonly property string thumb: { root.thumbVersion; return root.thumbs[row.filePath] ?? "" }
                         width: listView.width
                         height: 52
+                        Component.onCompleted: if (!row.fileIsDir) root.want(row.filePath)
+                        Component.onDestruction: if (!row.fileIsDir) root.unwant(row.filePath)
                         radius: 14
                         color: row.picked ? Colors.secondaryContainer : rowMouse.containsMouse ? Colors.surfaceContainerHigh : Colors.surfaceContainer
 
@@ -753,7 +887,7 @@ Item {
 
                             CustomText {
                                 visible: !row.fileIsDir
-                                content: root.human(Number(row.fileSize))
+                                content: root.human(row.fileSize)
                                 size: 11
                                 weight: 400
                                 customColor: Colors.outline
@@ -762,7 +896,7 @@ Item {
                             CustomText {
                                 Layout.preferredWidth: 90
                                 horizontalAlignment: Text.AlignRight
-                                content: Qt.formatDate(row.fileModified, "d MMM yyyy")
+                                content: Qt.formatDate(new Date(row.modelData.mtime), "d MMM yyyy")
                                 size: 11
                                 weight: 400
                                 customColor: Colors.outline
@@ -776,9 +910,13 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 if (row.fileIsDir) root.go(row.filePath)
-                                else root.toggle(row.filePath, Number(row.fileSize))
+                                else root.toggle(row.filePath, row.fileSize)
                             }
-                            onDoubleClicked: if (!row.fileIsDir) root.launch(["xdg-open", row.filePath])
+                            onDoubleClicked: {
+                                if (row.fileIsDir) return
+                                root.toggle(row.filePath, row.fileSize)
+                                root.launch(["xdg-open", row.filePath])
+                            }
                         }
                     }
                 }
@@ -787,7 +925,7 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 8
-                    visible: root.selCount > 0 || root.toast !== ""
+                    visible: root.selCount > 0 || root.toast !== "" || ServicePhone.pulling
                     width: barRow.implicitWidth + 24
                     height: 56
                     radius: 28
@@ -801,8 +939,9 @@ Item {
                         CustomText {
                             Layout.leftMargin: 8
                             Layout.rightMargin: 6
-                            content: root.toast !== "" && root.selCount === 0 ? root.toast
-                                   : root.selCount + " selected · " + root.human(root.selBytes)
+                            content: root.selCount > 0 ? root.selCount + " selected · " + root.human(root.selBytes)
+                                   : ServicePhone.pulling ? "Copying " + (ServicePhone.pullDone + 1) + " of " + ServicePhone.pullTotal + "…"
+                                   : root.toast
                             size: 13
                             weight: 600
                         }
@@ -829,7 +968,7 @@ Item {
                         }
 
                         M3Button {
-                            visible: root.selCount === 0 && root.toast.startsWith("Copied")
+                            visible: root.selCount === 0 && !ServicePhone.pulling && root.toast.startsWith("Copied")
                             size: "xsmall"
                             variant: "tonal"
                             icon: "folder_open"

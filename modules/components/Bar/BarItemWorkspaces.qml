@@ -128,7 +128,7 @@ Item {
                         width: 28 * root.k
                         height: st.active ? 42 * root.k : 28 * root.k
                         radius: 14 * root.k
-                        color: st.active ? Colors.primary : st.occupied ? Colors.surfaceContainerHighest : "transparent"
+                        color: st.active ? Colors.primary : st.occupied ? Colors.surfaceContainerHighest : Qt.alpha(Colors.surfaceContainerHighest, 0)
                         border.width: st.onOther ? 1 * root.k : 0
                         border.color: Qt.alpha(Colors.outline, 0.35)
                         Behavior on height { SpatialAnim { speed: "fast" } }
@@ -286,7 +286,7 @@ Item {
                     opacity: root.showOtherIndicator ? 1 : 0
                     visible: Layout.preferredWidth > 0
                     radius: 15 * root.k
-                    color: root.otherFocused ? Colors.primary : "transparent"
+                    color: root.otherFocused ? Colors.primary : Qt.alpha(Colors.primary, 0)
                     border.width: root.otherFocused ? 0 : 1 * root.k
                     border.color: Qt.alpha(Colors.outline, 0.35)
 
@@ -332,6 +332,9 @@ Item {
                         anchors.centerIn: parent
                         width: cell.side
                         height: cell.side
+                        transform: Matrix4x4 {
+                            matrix: root.rotatesWithBar ? Qt.matrix4x4(0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1) : Qt.matrix4x4()
+                        }
                         roundedPolygon: ShapeLibrary.get(st.active ? "cookie12"
                                                           : root.shapeCycle[cell.index % root.shapeCycle.length])
                         color: st.active ? Colors.primary
@@ -401,7 +404,7 @@ Item {
                     width: st.active ? track.pill : track.dot
                     height: track.dot
                     radius: track.dot / 2
-                    color: st.active ? Colors.primary : st.occupied ? Colors.outline : "transparent"
+                    color: st.active ? Colors.primary : st.occupied ? Colors.outline : Qt.alpha(Colors.outline, 0)
                     border.width: st.active || st.occupied ? 0 : 1.5 * root.k
                     border.color: Colors.outlineVariant
                     Behavior on x { SpatialAnim { speed: "fast" } }
@@ -483,7 +486,7 @@ Item {
                     width: 26 * root.k
                     height: 26 * root.k
                     radius: 13 * root.k
-                    color: st.active ? Colors.primary : "transparent"
+                    color: st.active ? Colors.primary : Qt.alpha(Colors.primary, 0)
                     Behavior on color { EffectsColorAnim {} }
 
                     CustomText {

@@ -21,6 +21,7 @@ Singleton {
     readonly property real memUsedGb: 9.7
     readonly property real memTotalGb: 16.0
     readonly property real cpuTemp: 52
+    readonly property var fanRpms: [2140, 2260]
     readonly property string cpuName: "CPU"
 
     readonly property real diskUsage: 0.73

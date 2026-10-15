@@ -8,9 +8,9 @@ Scope {
     id: root
 
     property int held: 0
-    readonly property bool active: ServiceWallpaper.flipPhase > 0
+    readonly property bool active: ServiceReveal.phase > 0
 
-    Component.onCompleted: ServiceWallpaper.flipAvailable = true
+    Component.onCompleted: ServiceReveal.available = true
 
     onActiveChanged: {
         if (!root.active)
@@ -21,22 +21,22 @@ Scope {
 
     function frameHeld() {
         root.held++
-        if (root.held >= Quickshell.screens.length && ServiceWallpaper.flipPhase === 1) {
+        if (root.held >= Quickshell.screens.length && ServiceReveal.phase === 1) {
             captureFallback.stop()
-            ServiceWallpaper.flipCaptured()
+            ServiceReveal.captured()
         }
     }
 
     Timer {
         id: captureFallback
         interval: 600
-        onTriggered: if (ServiceWallpaper.flipPhase === 1) ServiceWallpaper.flipCaptured()
+        onTriggered: if (ServiceReveal.phase === 1) ServiceReveal.captured()
     }
 
     Timer {
-        running: ServiceWallpaper.flipPhase === 3
+        running: ServiceReveal.phase === 3
         interval: 800
-        onTriggered: ServiceWallpaper.flipDone()
+        onTriggered: ServiceReveal.done()
     }
 
     Variants {
@@ -57,7 +57,7 @@ Scope {
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
             readonly property point center: {
-                const p = ServiceWallpaper.flipPoint
+                const p = ServiceReveal.point
                 return p ? Qt.point(p.x - win.modelData.x, p.y - win.modelData.y)
                          : Qt.point(win.width / 2, win.height / 2)
             }
@@ -66,7 +66,20 @@ Scope {
                 Math.hypot(win.width - win.center.x, win.center.y),
                 Math.hypot(win.center.x, win.height - win.center.y),
                 Math.hypot(win.width - win.center.x, win.height - win.center.y))
-            property real radius: -2
+            readonly property real feather: Math.max(24, Math.min(64, win.far * 0.05))
+            property real radius: -win.feather
+            readonly property bool sampler: win.modelData === Quickshell.screens[0]
+            property int calm: 0
+
+            FrameAnimation {
+                running: win.sampler && ServiceReveal.idleWait
+                onRunningChanged: win.calm = 0
+                onTriggered: {
+                    win.calm = frameTime < 0.022 ? win.calm + 1 : 0
+                    if (win.calm >= 8)
+                        ServiceReveal.idle()
+                }
+            }
 
             ScreencopyView {
                 anchors.fill: parent
@@ -79,7 +92,8 @@ Scope {
                     property vector2d itemSize: Qt.vector2d(width, height)
                     property vector2d center: Qt.vector2d(win.center.x, win.center.y)
                     property real radius: win.radius
-                    fragmentShader: Qt.resolvedUrl("../../../shaders/qsb/themeflip.frag.qsb")
+                    property real feather: win.feather
+                    fragmentShader: Qt.resolvedUrl("../../../shaders/qsb/reveal.frag.qsb")
                 }
             }
 
@@ -92,12 +106,12 @@ Scope {
             NumberAnimation {
                 target: win
                 property: "radius"
-                from: -2
-                to: win.far + 4
+                from: -win.feather
+                to: win.far + win.feather + 2
                 duration: 750
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: M3Motion.emphasizedCurve
-                running: ServiceWallpaper.flipPhase === 3
+                running: ServiceReveal.phase === 3
             }
         }
     }

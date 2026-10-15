@@ -75,22 +75,27 @@ Item {
 
             SidesEditor {
                 Layout.topMargin: 3
-                barSide: ServiceGaps.barSide
-                maxValue: 20
+                barSide: ["right", "bottom", "left"].reduce((a, k) => (ServiceGaps.occupied[k] ?? 0) > (ServiceGaps.occupied[a] ?? 0) ? k : a, "top")
+                maxValue: 40
                 values: ({
-                    top: ServiceGaps.extraFor("top"),
-                    right: ServiceGaps.extraFor("right"),
-                    bottom: ServiceGaps.extraFor("bottom"),
-                    left: ServiceGaps.extraFor("left")
+                    top: ServiceGaps.gapFor("top"),
+                    right: ServiceGaps.gapFor("right"),
+                    bottom: ServiceGaps.gapFor("bottom"),
+                    left: ServiceGaps.gapFor("left")
                 })
                 onChanged: patch => {
-                    const g = {}
-                    if (patch.top !== undefined) g.gapTop = patch.top
-                    if (patch.right !== undefined) g.gapRight = patch.right
-                    if (patch.bottom !== undefined) g.gapBottom = patch.bottom
-                    if (patch.left !== undefined) g.gapLeft = patch.left
-                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, g)
+                    const g = Object.assign({}, ServiceGaps.windowGaps, patch)
+                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { windowGaps: g })
                 }
+            }
+
+            CustomText {
+                Layout.topMargin: 10
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                content: "Gap between windows and the bar, the dock and the screen border. Sides you haven't changed follow the border thickness."
+                size: 11
+                customColor: Colors.outline
             }
 
             CustomText { Layout.topMargin: 16; content: "Borders and corners"; size: 13; customColor: Colors.primary }

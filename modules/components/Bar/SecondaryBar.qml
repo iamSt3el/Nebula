@@ -11,7 +11,7 @@ import qs.modules.customComponents
 // Minimal bar for secondary monitors: workspaces | clock | status icons
 Item {
     id: root
-    readonly property bool atBottom: ServiceGaps.barSide === "bottom"
+    readonly property bool atBottom: ServiceGaps.secondaryEdge === "bottom"
     y: root.atBottom ? parent.height - root.height : 0
     anchors.left:  parent.left
     anchors.right: parent.right
@@ -143,7 +143,7 @@ Item {
                     opacity: root.perMonitorMode && root.otherOccupied > 0 ? 1 : 0
                     visible: Layout.preferredWidth > 0
                     radius: 12
-                    color: root.otherActive > 0 ? Colors.primary : "transparent"
+                    color: root.otherActive > 0 ? Colors.primary : Qt.alpha(Colors.primary, 0)
                     border.width: root.otherActive > 0 ? 0 : 1
                     border.color: Qt.alpha(Colors.outline, 0.35)
 

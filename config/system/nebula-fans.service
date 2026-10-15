@@ -1,0 +1,13 @@
+[Unit]
+Description=Publish laptop fan RPM from the embedded controller to /run/nebula-fans
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/modprobe ec_sys write_support=0
+ExecStart=/bin/sh -c 'while :; do od -An -t u2 -j 19 -N 4 /sys/kernel/debug/ec/ec0/io > /run/nebula-fans.tmp && mv -f /run/nebula-fans.tmp /run/nebula-fans; sleep 2; done'
+ExecStopPost=/usr/bin/rm -f /run/nebula-fans /run/nebula-fans.tmp
+UMask=0022
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

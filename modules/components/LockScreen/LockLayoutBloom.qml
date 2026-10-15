@@ -203,6 +203,7 @@ Item {
                 Layout.preferredWidth: 92 * root.u
                 Layout.preferredHeight: 92 * root.u
                 Layout.alignment: Qt.AlignTop
+                visible: LockSession.cfg.showAvatar !== false
                 source: SettingsConfig.general.profile ?? ""
                 shapeName: (root.context?.unlockInProgress ?? false) ? "softBurst"
                          : (root.context?.showFailure ?? false) ? "clover4" : "cookie9"

@@ -19,7 +19,7 @@ Rectangle {
     Layout.fillWidth: true
     implicitHeight: 52
     radius: 14
-    color: hover.containsMouse ? Qt.alpha(Colors.surfaceText, 0.06) : "transparent"
+    color: hover.containsMouse ? Qt.alpha(Colors.surfaceText, 0.06) : Qt.alpha(Colors.surfaceText, 0)
 
     Behavior on color { ColorAnimation { duration: M3Motion.effects.fastDuration } }
 

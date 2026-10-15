@@ -215,7 +215,7 @@ ColumnLayout {
             implicitWidth: changeText.implicitWidth + 20
             implicitHeight: 24
             radius: 12
-            color: changeMa.containsMouse ? Qt.alpha(Colors.surfaceText, 0.08) : "transparent"
+            color: changeMa.containsMouse ? Qt.alpha(Colors.surfaceText, 0.08) : Qt.alpha(Colors.surfaceText, 0)
             border.width: 1
             border.color: Colors.outlineVariant
             Behavior on color { EffectsColorAnim { speed: "fast" } }

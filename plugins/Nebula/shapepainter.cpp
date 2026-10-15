@@ -1,4 +1,6 @@
 #include "shapepainter.h"
+#include <QPainterPathStroker>
+#include <QTransform>
 
 #include <QPainter>
 #include <QPainterPath>
@@ -32,6 +34,30 @@ void ShapePainter::setStrokeProgress(qreal v) { setStyle(m_strokeProgress, v); }
 void ShapePainter::setStrokeWidth(qreal v) { setStyle(m_strokeWidth, v); }
 void ShapePainter::setStrokeColor(const QColor &v) { setStyle(m_strokeColor, v); }
 void ShapePainter::setStrokeTrackColor(const QColor &v) { setStyle(m_strokeTrackColor, v); }
+void ShapePainter::setAngle(qreal v) { setStyle(m_angle, v); }
+void ShapePainter::setFillLevel(qreal v) { setStyle(m_fillLevel, v); }
+void ShapePainter::setLevelColor(const QColor &v) { setStyle(m_levelColor, v); }
+
+QTransform ShapePainter::spin(const QPainterPath &shape, qreal pad) const
+{
+    QTransform t;
+    if (std::fmod(m_angle, 360.0) == 0 || shape.isEmpty())
+        return t;
+    const QPointF c(width() / 2, height() / 2);
+    QTransform r;
+    r.translate(c.x(), c.y());
+    r.rotate(m_angle);
+    r.translate(-c.x(), -c.y());
+    const QRectF before = shape.boundingRect().adjusted(-pad, -pad, pad, pad);
+    const QRectF turned = r.map(shape).boundingRect().adjusted(-pad, -pad, pad, pad);
+    const qreal fit = std::min({ 1.0, std::max(before.width(), width()) / turned.width(),
+                                 std::max(before.height(), height()) / turned.height() });
+    t.translate(c.x(), c.y());
+    t.scale(fit, fit);
+    t.rotate(m_angle);
+    t.translate(-c.x(), -c.y());
+    return t;
+}
 
 void ShapePainter::setFromShape(const QString &v)
 {
@@ -122,6 +148,9 @@ void ShapePainter::paint(QPainter *painter)
         const std::vector<QPointF> &pts = m_ring;
         if (pts.size() < 3)
             return;
+        QPainterPath ringPath;
+        ringPath.addPolygon(QPolygonF(QList<QPointF>(pts.begin(), pts.end())));
+        painter->setTransform(spin(ringPath, m_strokeWidth / 2), true);
         QPen pen(m_strokeTrackColor, m_strokeWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
         painter->setBrush(Qt::NoBrush);
         painter->setPen(pen);
@@ -158,12 +187,12 @@ void ShapePainter::paint(QPainter *painter)
     }
 
     const qreal size = std::min(width(), height());
-    painter->save();
+    QTransform toItem;
     if (m_normalized) {
         if (m_stretch)
-            painter->scale(width(), height());
+            toItem.scale(width(), height());
         else
-            painter->scale(size, size);
+            toItem.scale(size, size);
     }
 
     QPainterPath path;
@@ -172,13 +201,29 @@ void ShapePainter::paint(QPainter *painter)
     for (const mshape::Cubic &c : m_cubics)
         path.cubicTo(c.c0x(), c.c0y(), c.c1x(), c.c1y(), c.a1x(), c.a1y());
     path.closeSubpath();
-    painter->fillPath(path, m_color);
+    const QPainterPath flat = toItem.map(path);
+    const QPainterPath itemPath = spin(flat, 0).map(flat);
+    painter->fillPath(itemPath, m_color);
+    if (m_fillLevel > 0) {
+        const qreal level = std::min<qreal>(1, m_fillLevel);
+        const QRectF b = itemPath.boundingRect();
+        painter->save();
+        painter->setClipRect(QRectF(b.left(), b.bottom() - b.height() * level, b.width(), b.height() * level));
+        painter->fillPath(itemPath, m_levelColor);
+        painter->restore();
+    }
 
     if (m_borderWidth > 0) {
-        QPen pen(m_borderColor, m_borderWidth, Qt::SolidLine, Qt::FlatCap, Qt::MiterJoin);
-        pen.setMiterLimit(10);
-        painter->strokePath(path, pen);
+        QPainterPathStroker stroker;
+        stroker.setWidth(m_borderWidth * 2);
+        stroker.setJoinStyle(Qt::RoundJoin);
+        stroker.setCapStyle(Qt::RoundCap);
+        const QPainterPath ring = stroker.createStroke(itemPath).intersected(itemPath);
+        painter->fillPath(ring, m_borderColor);
     }
+
+    painter->save();
+    painter->setTransform(toItem, true);
 
     if (m_debug) {
         painter->setPen(Qt::NoPen);

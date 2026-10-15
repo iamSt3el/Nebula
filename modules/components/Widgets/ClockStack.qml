@@ -9,6 +9,7 @@ WidgetHost {
     tile: Qt.size(WidgetSizes.span(2), WidgetSizes.span(3))
     defaultPos: Qt.point(100, 100)
     backdrop: false
+    outlined: false
 
     readonly property bool alignLeft: SettingsConfig.widgets.clockAlignLeft ?? false
     readonly property int _align: root.alignLeft ? Text.AlignLeft : Text.AlignRight

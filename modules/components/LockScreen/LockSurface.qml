@@ -11,6 +11,7 @@ Item {
     property bool exiting: false
     property bool greeter: LockSession.greeter
     property url desk: ""
+    property bool primary: true
     focus: true
 
     readonly property var _cfg: (root.greeter ? SettingsConfig.greeter : SettingsConfig.lockscreen) ?? ({})
@@ -130,6 +131,13 @@ Item {
         exiting: root.exiting
         greeter: root.greeter
         onLoaded: Qt.callLater(root.focusInput)
+    }
+
+    Binding {
+        target: layoutLoader.authField
+        property: "opacity"
+        value: 0
+        when: !root.primary && layoutLoader.authField !== null
     }
 
     Timer {

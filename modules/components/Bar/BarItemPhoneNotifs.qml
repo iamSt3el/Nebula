@@ -17,7 +17,8 @@ Rectangle {
     readonly property bool open: !!root.host && root.host.panelKind === "phoneNotifs"
     readonly property int count: ServicePhone.notifications.length
     readonly property bool vertical: !!root.host && root.host.vertical === true
-    readonly property bool verticalReady: true
+        && (!root.host.compactFor || root.host.compactFor(root.itemId))
+    readonly property bool verticalReady: root.vertical
     readonly property bool alertOn: BarLayout.opt(root.itemId, "peek") !== false
     readonly property bool tonal: root.count > 0 && !ServicePhone.muted
     readonly property bool hot: hov.containsMouse || root.open
@@ -36,7 +37,7 @@ Rectangle {
     implicitWidth: root.tonal && !root.vertical ? idle.implicitWidth + root.plate - root.iconPx : root.plate
     implicitHeight: root.vertical && root.tonal ? Math.max(root.plate, idle.implicitHeight + 10) : root.plate
     radius: Math.min(width, height) / 2
-    color: root.plateless ? "transparent" : root.plateColor
+    color: root.plateless ? Qt.alpha(root.plateColor, 0) : root.plateColor
     Behavior on implicitWidth { SpatialAnim { speed: "fast" } }
     Behavior on color { EffectsColorAnim { speed: "fast" } }
 

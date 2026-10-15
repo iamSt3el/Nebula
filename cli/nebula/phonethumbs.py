@@ -61,7 +61,7 @@ def main():
             emit(f, out)
         else:
             todo.append((f, out))
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         list(pool.map(work, todo))
     return 0
 

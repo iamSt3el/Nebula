@@ -379,23 +379,29 @@ Item {
                     Layout.fillWidth: true
                     spacing: 12
 
-                    CustomText {
+                    Item {
                         Layout.fillWidth: true
-                        Layout.preferredWidth: 100
                         Layout.minimumWidth: 0
                         Layout.alignment: Qt.AlignTop
-                        content: root.headline
-                        size: root.wide ? 30 : 26
-                        weight: 400
-                        family: SettingsConfig.general.displayFont ?? "Titan One"
-                        renderType: Text.QtRendering
-                        wrapMode: Text.WordWrap
-                        elide: Text.ElideNone
-                        lineHeight: 1.1
-                        verticalAlignment: Text.AlignTop
+                        implicitHeight: headlineText.implicitHeight
+
+                        CustomText {
+                            id: headlineText
+                            width: Math.max(0, root.leftW - tempCol.implicitWidth - hero.spacing)
+                            content: root.headline
+                            size: root.wide ? 30 : 26
+                            weight: 400
+                            family: SettingsConfig.general.displayFont ?? "Titan One"
+                            renderType: Text.QtRendering
+                            wrapMode: Text.WordWrap
+                            elide: Text.ElideNone
+                            lineHeight: 1.1
+                            verticalAlignment: Text.AlignTop
+                        }
                     }
 
                     ColumnLayout {
+                        id: tempCol
                         Layout.alignment: Qt.AlignTop
                         spacing: 4
 
@@ -419,17 +425,23 @@ Item {
                     }
                 }
 
-                CustomText {
+                Item {
                     Layout.fillWidth: true
                     visible: root.showStory
-                    content: root.story
-                    textFormat: Text.StyledText
-                    size: 14
-                    weight: 400
-                    lineHeight: 1.35
-                    wrapMode: Text.WordWrap
-                    elide: Text.ElideNone
-                    customColor: Colors.surfaceVariantText
+                    implicitHeight: storyText.implicitHeight
+
+                    CustomText {
+                        id: storyText
+                        width: root.leftW
+                        content: root.story
+                        textFormat: Text.StyledText
+                        size: 14
+                        weight: 400
+                        lineHeight: 1.35
+                        wrapMode: Text.WordWrap
+                        elide: Text.ElideNone
+                        customColor: Colors.surfaceVariantText
+                    }
                 }
             }
 

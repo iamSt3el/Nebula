@@ -79,6 +79,30 @@ Singleton {
         iconProc.running = true
     }
 
+    readonly property bool kindleIcons: KindleMode.recolorIcons
+    readonly property string kindleIconTheme: KindleMode.iconTheme
+    onKindleIconThemeChanged: if (root.kindleIcons) root.syncKindleIcons()
+    property bool iconPending: false
+    onKindleIconsChanged: root.syncKindleIcons()
+    Component.onCompleted: if (root.kindleIcons) root.syncKindleIcons()
+
+    function syncKindleIcons() {
+        if (iconProc.running) {
+            root.iconPending = true
+            return
+        }
+        if (root.kindleIcons) {
+            root.iconProgress = 0
+            root.iconStatus = "Making grey icons…"
+            iconProc.command = [root.cli, "gowall-icons", KindleMode.iconTheme, "--apply"]
+            iconProc.running = true
+        } else if (root.gowallIcons && root.gowallActive) {
+            root.buildGowallIcons(false)
+        } else {
+            root.restoreIconTheme()
+        }
+    }
+
     Process {
         id: iconProc
 
@@ -91,6 +115,8 @@ Singleton {
                     if (total > 0) root.iconProgress = done / total
                 } else if (t.startsWith("theme=")) {
                     root.iconThemeName = t.substring(6)
+                } else if (t.startsWith("assets=")) {
+                    KindleMode.iconAssets = KindleMode.iconTheme !== "" && t.endsWith("/assets-" + KindleMode.iconTheme) ? t.substring(7) : ""
                 }
             }
         }
@@ -107,6 +133,10 @@ Singleton {
         onExited: code => {
             root.iconProgress = code === 0 ? 1 : 0
             if (code !== 0) root.iconStatus = "Icon recolor failed"
+            if (root.iconPending) {
+                root.iconPending = false
+                root.syncKindleIcons()
+            }
         }
     }
 
@@ -223,7 +253,7 @@ Singleton {
         applyProc.command = [root.cli, "wallpaper", "set", path,
                              "--scheme", root.scheme, "--mode", root.theme,
                              "--gowall", root.gowallTheme,
-                             "--gowall-icons", root.gowallIcons ? "on" : "off",
+                             "--gowall-icons", root.gowallIcons && !root.kindleIcons ? "on" : "off",
                              "--invert", root.gowallInvert ? "on" : "off",
                              "--gowall-shell", root.gowallShell ? "on" : "off"]
         applyProc.running = true
@@ -281,68 +311,10 @@ Singleton {
         themeProc.running = true
     }
 
-    property bool flipAvailable: false
-    property int flipPhase: 0
-    property var flipPoint: null
-    property string _flipMode: ""
-
     function flipMode(mode) {
         if (!mode || mode === root.theme) return
-        if (!root.flipAvailable || root.flipPhase !== 0) {
-            SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenTheme: mode })
-            root.applyTheme()
-            return
-        }
-        root._flipMode = mode
-        root.flipPoint = null
-        flipCursorProc.running = true
-    }
-
-    function flipCaptured() {
-        if (root.flipPhase !== 1) return
-        root.flipPhase = 2
-        SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenTheme: root._flipMode })
+        SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenTheme: mode })
         root.applyTheme()
-        flipTimeout.restart()
-    }
-
-    function flipDone() {
-        flipTimeout.stop()
-        root.flipPhase = 0
-    }
-
-    Process {
-        id: flipCursorProc
-        command: ["hyprctl", "cursorpos", "-j"]
-        stdout: StdioCollector { id: flipCursorOut }
-        onExited: {
-            try {
-                const c = JSON.parse(flipCursorOut.text)
-                root.flipPoint = Qt.point(c.x, c.y)
-            } catch (e) {
-                root.flipPoint = null
-            }
-            root.flipPhase = 1
-        }
-    }
-
-    Connections {
-        target: WallpaperTheme
-        function onApplied() {
-            if (root.flipPhase === 2) flipSettle.restart()
-        }
-    }
-
-    Timer {
-        id: flipSettle
-        interval: 180
-        onTriggered: if (root.flipPhase === 2) root.flipPhase = 3
-    }
-
-    Timer {
-        id: flipTimeout
-        interval: 6000
-        onTriggered: if (root.flipPhase === 2) root.flipPhase = 3
     }
 
     Process {
@@ -422,131 +394,445 @@ Singleton {
     property list<var> onlineWallpapers: []
     property bool isFetchingOnline: false
     property int  onlinePage: 1
+    property int  onlineLastPage: 1
+    property int  onlineTotal: 0
     property bool hasMorePages: false
+    property int onlineRetryIn: 0
+    property int _requestPage: 1
+    readonly property int requestPage: _requestPage
+    property bool _refetchPending: false
+    readonly property string _statusMark: "@@NEBULA_HTTP@@"
     property string _fetchBuffer: ""
     property string _pendingDownloadPath: ""
+    property string _partialPath: ""
     property string onlineError: ""
+    property string onlineErrorKind: ""
+    property string onlineColor: ""
     property string downloadingId: ""
     property int downloadedBytes: 0
     property int downloadTotalBytes: 0
     readonly property real downloadProgress: downloadTotalBytes > 0
         ? Math.min(1.0, downloadedBytes / downloadTotalBytes) : 0
     property bool _cancelingDownload: false
+    property var _downloadQueue: []
+    readonly property var queuedIds: _downloadQueue.map(w => w.id)
+    readonly property var queuedItems: _downloadQueue
+    property var failedIds: []
+    property string _applyId: ""
+    readonly property string applyId: _applyId
+    property var _thumbQueue: []
+
+    readonly property var wallhavenColors: [
+        "660000", "990000", "cc0000", "cc3333", "ea4c88", "993399", "663399", "333399", "0066cc", "0099cc",
+        "66cccc", "77cc33", "669900", "336600", "666600", "999900", "cccc33", "ffff00", "ffcc33", "ff9900",
+        "ff6600", "cc6633", "996633", "663300", "000000", "999999", "cccccc", "ffffff", "424153"
+    ]
+    readonly property var wallhavenRatios: ["16x9", "16x10", "21x9", "32x9", "48x9", "4x3", "5x4", "3x2", "1x1"]
+
+    readonly property var _bigScreen: {
+        let best = null
+        const list = Quickshell.screens
+        for (let i = 0; i < list.length; i++) {
+            const s = list[i]
+            const w = Math.round(s.width * (s.devicePixelRatio || 1))
+            const h = Math.round(s.height * (s.devicePixelRatio || 1))
+            if (!best || w * h > best.w * best.h) best = { w: w, h: h }
+        }
+        return best || { w: 1920, h: 1080 }
+    }
+    readonly property string fitAtleast: _bigScreen.w + "x" + _bigScreen.h
+    readonly property string fitRatio: {
+        const r = _bigScreen.w / _bigScreen.h
+        let best = "16x9"
+        let gap = 99
+        for (const k of wallhavenRatios) {
+            const p = k.split("x")
+            const d = Math.abs(Number(p[0]) / Number(p[1]) - r)
+            if (d < gap) { gap = d; best = k }
+        }
+        return best
+    }
+
+    function fitsScreen(wh) {
+        const w = wh || SettingsConfig.wallhaven
+        return w.atleast === fitAtleast && w.ratios === fitRatio
+    }
+
+    function matchThemeColor() {
+        const pri = Colors.primary
+        let best = "cc6633"
+        let gap = 999
+        for (const hex of wallhavenColors) {
+            const c = Qt.color("#" + hex)
+            if (c.hsvSaturation < 0.35 || c.hsvValue < 0.3) continue
+            let d = Math.abs(c.hsvHue - pri.hsvHue)
+            d = Math.min(d, 1 - d) + Math.abs(c.hsvSaturation - pri.hsvSaturation) * 0.05
+            if (d < gap) { gap = d; best = hex }
+        }
+        return best
+    }
 
     onOnlineModeChanged: {
+        onlineRetry.stop()
+        onlineRetryIn = 0
         if (onlineMode) {
             onlineWallpapers = []
             onlinePage = 1
             onlineError = ""
+            onlineErrorKind = ""
         }
     }
 
-    function buildWallhavenUrl(page) {
+    function isQueued(id) {
+        return id !== "" && queuedIds.indexOf(id) >= 0
+    }
+
+    function queuePosition(id) {
+        return queuedIds.indexOf(id) + 1
+    }
+
+    function buildWallhavenUrl(page, wh) {
+        const w = wh || SettingsConfig.wallhaven
         const p = []
-        p.push("categories=" + SettingsConfig.wallhaven.categories)
-        p.push("purity="     + SettingsConfig.wallhaven.purity)
-        p.push("sorting="    + SettingsConfig.wallhaven.sorting)
-        p.push("order="      + SettingsConfig.wallhaven.order)
-        if (SettingsConfig.wallhaven.sorting === "toplist")
-            p.push("topRange=" + SettingsConfig.wallhaven.topRange)
-        if (SettingsConfig.wallhaven.atleast.length > 0)
-            p.push("atleast=" + SettingsConfig.wallhaven.atleast)
-        if (SettingsConfig.wallhaven.ratios.length > 0)
-            p.push("ratios=" + SettingsConfig.wallhaven.ratios)
+        p.push("categories=" + w.categories)
+        p.push("purity="     + w.purity)
+        p.push("sorting="    + w.sorting)
+        p.push("order="      + w.order)
+        if (w.sorting === "toplist")
+            p.push("topRange=" + w.topRange)
+        if ((w.atleast ?? "").length > 0)
+            p.push("atleast=" + encodeURIComponent(w.atleast))
+        if ((w.ratios ?? "").length > 0)
+            p.push("ratios=" + encodeURIComponent(w.ratios))
+        if (onlineColor.length > 0)
+            p.push("colors=" + onlineColor)
         if (currentSearchText.length > 0)
             p.push("q=" + encodeURIComponent(currentSearchText))
-        if (SettingsConfig.wallhaven.apiKey.length > 0)
-            p.push("apikey=" + SettingsConfig.wallhaven.apiKey)
+        if ((w.apiKey ?? "").length > 0)
+            p.push("apikey=" + encodeURIComponent(w.apiKey))
         p.push("page=" + page)
         return "https://wallhaven.cc/api/v1/search?" + p.join("&")
     }
 
     function fetchWallhaven(resetPage) {
-        if (isFetchingOnline) return
+        if (isFetchingOnline) {
+            if (resetPage) _refetchPending = true
+            return
+        }
+        onlineRetry.stop()
+        onlineRetryIn = 0
         if (resetPage) {
             onlinePage = 1
             onlineWallpapers = []
+            onlineTotal = 0
+            onlineLastPage = 1
+            hasMorePages = false
+            _requestPage = 1
         }
         isFetchingOnline = true
         onlineError = ""
+        onlineErrorKind = ""
         _fetchBuffer = ""
-        const url = buildWallhavenUrl(onlinePage)
-        console.log("[ServiceWallpaper] Fetching Wallhaven page", onlinePage, "–", url)
-        wallhavenFetcher.command = ["bash", "-c", "curl -s '" + url + "'"]
+        console.log("[ServiceWallpaper] Fetching Wallhaven page", _requestPage)
+        wallhavenFetcher.command = [
+            "curl", "-sS", "--max-time", "20",
+            "-w", "\n" + _statusMark + "%{http_code}",
+            buildWallhavenUrl(_requestPage)
+        ]
         wallhavenFetcher.running = true
     }
 
-    function _parseWallhavenResults(json) {
-        try {
-            const data = JSON.parse(json)
+    function searchOnline(text) {
+        currentSearchText = text
+        fetchWallhaven(true)
+    }
 
-            // API-level error (e.g. bad API key, invalid params)
+    function setOnlineColor(hex) {
+        if (onlineColor === hex) return
+        onlineColor = hex
+        fetchWallhaven(true)
+    }
+
+    function patchWallhaven(p) {
+        SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, p)
+        fetchWallhaven(true)
+    }
+
+    function retryOnlineNow() {
+        onlineRetry.stop()
+        onlineRetryIn = 0
+        fetchWallhaven(false)
+    }
+
+    readonly property var recentSearches: SettingsConfig.wallhaven.recent ?? []
+
+    function _rememberSearch(text) {
+        const low = text.toLowerCase()
+        if (low.startsWith("like:")) return
+        const next = [text].concat(recentSearches.filter(t => t.toLowerCase() !== low)).slice(0, 6)
+        SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, { recent: next })
+    }
+
+    function forgetSearch(text) {
+        SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven,
+            { recent: recentSearches.filter(t => t !== text) })
+    }
+
+    function _rateLimited() {
+        onlineRetryIn = 15
+        onlineErrorKind = "rate"
+        onlineError = "Wallhaven is busy — retrying in " + onlineRetryIn + "s"
+        onlineRetry.restart()
+    }
+
+    function _parseWallhavenResults(raw) {
+        const at = raw.lastIndexOf(_statusMark)
+        const status = at >= 0 ? parseInt(raw.slice(at + _statusMark.length)) : 0
+        const body = at >= 0 ? raw.slice(0, at) : raw
+
+        if (status === 429) {
+            _rateLimited()
+            return
+        }
+        if (status === 401) {
+            onlineErrorKind = "key"
+            onlineError = "Wallhaven didn't accept your API key"
+            return
+        }
+        if (status !== 200) {
+            onlineErrorKind = "http"
+            onlineError = "Wallhaven returned an error (HTTP " + status + ")"
+            console.error("[ServiceWallpaper] Wallhaven HTTP", status, "| body:", body.trim().slice(0, 200))
+            return
+        }
+
+        try {
+            const data = JSON.parse(body)
             if (data.error) {
+                onlineErrorKind = "http"
                 onlineError = data.error
                 console.error("[ServiceWallpaper] Wallhaven API error:", data.error)
-                isFetchingOnline = false
                 return
             }
 
             const items = data.data || []
             const meta  = data.meta || {}
 
-            const parsed = items.map(item => ({
+            const seen = {}
+            if (_requestPage > 1)
+                for (const w of onlineWallpapers) seen[w.id] = true
+            const parsed = items.filter(item => !seen[item.id]).map(item => ({
                 id:         item.id,
                 thumbUrl:   item.thumbs.large,
                 fullUrl:    item.path,
+                pageUrl:    item.url || ("https://wallhaven.cc/w/" + item.id),
                 resolution: item.resolution,
                 fileType:   item.file_type,
-                fileSize:   item.file_size || 0
+                fileSize:   item.file_size || 0,
+                views:      item.views || 0,
+                favorites:  item.favorites || 0,
+                category:   item.category || "",
+                purity:     item.purity || "sfw",
+                colors:     item.colors || []
             }))
 
-            onlineWallpapers = (onlinePage === 1)
+            onlinePage = _requestPage
+            onlineWallpapers = (_requestPage === 1)
                 ? parsed
                 : [...onlineWallpapers, ...parsed]
 
+            onlineTotal = meta.total || onlineWallpapers.length
+            if (_requestPage === 1 && onlineTotal > 0 && currentSearchText.trim().length > 0)
+                _rememberSearch(currentSearchText.trim())
+            onlineLastPage = meta.last_page || 1
             hasMorePages = (meta.current_page || 1) < (meta.last_page || 1)
             onlineError = ""
+            onlineErrorKind = ""
             console.log("[ServiceWallpaper] Wallhaven: got", parsed.length,
                         "wallpapers, page", meta.current_page, "/", meta.last_page)
         } catch (e) {
-            // Non-JSON response — usually the rate-limit plain-text message
-            const msg = json.trim()
-            onlineError = msg.length > 0 ? msg : "Failed to parse response"
-            console.error("[ServiceWallpaper] Wallhaven parse error:", e, "| body:", msg)
+            onlineErrorKind = "http"
+            onlineError = "Wallhaven sent something unreadable — try again"
+            console.error("[ServiceWallpaper] Wallhaven parse error:", e, "| body:", body.trim().slice(0, 200))
         }
-        isFetchingOnline = false
     }
 
     function fetchNextPage() {
-        if (!hasMorePages || isFetchingOnline) return
-        onlinePage++
+        if (!hasMorePages || isFetchingOnline || onlineRetry.running) return
+        _requestPage = onlinePage + 1
         fetchWallhaven(false)
     }
 
-    function downloadAndSetWallpaper(wallpaper) {
-        if (_pendingDownloadPath.length > 0) {
-            console.warn("[ServiceWallpaper] Download already in progress")
+    property var onlineDetails: ({})
+    property string _detailNext: ""
+
+    function detailsFor(id) {
+        return id ? onlineDetails[id] ?? null : null
+    }
+
+    function requestDetails(id) {
+        if (!id || onlineDetails[id]) return
+        if (detailProc.running) {
+            _detailNext = id
             return
         }
+        detailProc._id = id
+        detailProc._buf = ""
+        const key = SettingsConfig.wallhaven.apiKey ?? ""
+        detailProc.command = ["curl", "-sS", "--max-time", "15",
+            "https://wallhaven.cc/api/v1/w/" + id + (key.length > 0 ? "?apikey=" + encodeURIComponent(key) : "")]
+        detailProc.running = true
+    }
+
+    property var onlineThumbs: ({})
+    property var _onlineThumbNext: null
+    readonly property string onlineThumbDir: StandardPaths.writableLocation(StandardPaths.CacheLocation).toString().replace("file://", "") + "/wallhaven-thumbs"
+
+    function onlinePreviewFor(item) {
+        if (!item || typeof item !== "object" || !item.id) return null
+        const p = onlineThumbs[item.id]
+        return p ? previewFor(p) : null
+    }
+
+    function requestOnlinePreview(item) {
+        if (!item || typeof item !== "object" || !item.id || !item.thumbUrl || !previewUsable) return
+        const p = onlineThumbs[item.id]
+        if (p) {
+            requestPreview(p)
+            return
+        }
+        if (onlineThumbProc.running) {
+            _onlineThumbNext = item
+            return
+        }
+        onlineThumbProc._id = item.id
+        onlineThumbProc._path = onlineThumbDir + "/" + item.id + ".jpg"
+        onlineThumbProc.command = ["sh", "-c", "mkdir -p \"$1\" && { [ -s \"$2\" ] || { curl -sSfL --max-time 15 -o \"$2.part\" \"$3\" && mv -f \"$2.part\" \"$2\"; } || { rm -f \"$2.part\"; exit 1; }; }",
+            "sh", onlineThumbDir, onlineThumbProc._path, item.thumbUrl]
+        onlineThumbProc.running = true
+    }
+
+    property int draftCount: -1
+    property var _countDraft: null
+
+    function requestCount(wh) {
+        _countDraft = wh
+        draftCount = -1
+        countDebounce.restart()
+    }
+
+    function _runCount() {
+        if (!_countDraft) return
+        if (countProc.running) {
+            countDebounce.restart()
+            return
+        }
+        countProc._buf = ""
+        countProc.command = ["curl", "-sS", "--max-time", "15", buildWallhavenUrl(1, _countDraft)]
+        countProc.running = true
+    }
+
+    function _savePathFor(wallpaper) {
         const ext = wallpaper.fullUrl.split('.').pop().split('?')[0] || "jpg"
-        const savePath = root.wallpaperDir + "/" + wallpaper.id + "." + ext
+        return root.wallpaperDir + "/" + wallpaper.id + "." + ext
+    }
+
+    function downloadAndSetWallpaper(wallpaper, apply) {
+        if (!wallpaper || typeof wallpaper !== "object" || !wallpaper.fullUrl) return
+        const applyIt = apply !== false
+        failedIds = failedIds.filter(x => x !== wallpaper.id)
+        const local = localFor(wallpaper)
+        if (local !== "") {
+            if (applyIt) {
+                _applyId = ""
+                applyFile(local)
+            }
+            return
+        }
+        if (applyIt) _applyId = wallpaper.id
+        if (wallpaper.id === downloadingId) return
+        if (wallhavenDownloader.running || _pendingDownloadPath.length > 0) {
+            if (!_downloadQueue.some(w => w.id === wallpaper.id))
+                _downloadQueue = [..._downloadQueue, wallpaper]
+            return
+        }
+        _downloadQueue = _downloadQueue.filter(w => w.id !== wallpaper.id)
+        _startDownload(wallpaper)
+    }
+
+    function saveWallpaper(wallpaper) {
+        downloadAndSetWallpaper(wallpaper, false)
+    }
+
+    function _startDownload(wallpaper) {
+        const savePath = _savePathFor(wallpaper)
         _pendingDownloadPath = savePath
+        _partialPath = onlineThumbDir + "/" + wallpaper.id + ".part"
         downloadingId = wallpaper.id
         downloadedBytes = 0
         downloadTotalBytes = wallpaper.fileSize || 0
         downloadPoller.restart()
         console.log("[ServiceWallpaper] Downloading wallpaper", wallpaper.id, "->", savePath)
-        wallhavenDownloader.command = [
-            "bash", "-c",
-            "curl -sL '" + wallpaper.fullUrl + "' -o '" + savePath + "'"
-        ]
+        wallhavenDownloader.command = ["sh", "-c",
+            "mkdir -p \"$(dirname \"$1\")\" || exit 1; curl -sSfL --max-time 300 -o \"$1\" \"$3\" & c=$!; "
+            + "trap 'kill $c 2>/dev/null; exit 143' TERM INT; wait $c || exit $?; mv -f \"$1\" \"$2\"",
+            "sh", _partialPath, savePath, wallpaper.fullUrl]
         wallhavenDownloader.running = true
+    }
+
+    function _nextDownload() {
+        while (_downloadQueue.length > 0) {
+            const next = _downloadQueue[0]
+            _downloadQueue = _downloadQueue.slice(1)
+            const local = localFor(next)
+            if (local === "") {
+                _startDownload(next)
+                return
+            }
+            if (_applyId === next.id) {
+                _applyId = ""
+                applyFile(local)
+            }
+        }
+    }
+
+    function unqueueDownload(id) {
+        _downloadQueue = _downloadQueue.filter(w => w.id !== id)
+        if (_applyId === id) _applyId = ""
     }
 
     function cancelDownload() {
         if (!wallhavenDownloader.running) return
         _cancelingDownload = true
         wallhavenDownloader.running = false
+    }
+
+    function cancelAllDownloads() {
+        _downloadQueue = []
+        _applyId = ""
+        cancelDownload()
+    }
+
+    function openOnWallhaven(item) {
+        if (!item || !item.id) return
+        ServiceApps.spawn(["xdg-open", item.pageUrl || ("https://wallhaven.cc/w/" + item.id)])
+    }
+
+    function _runThumbJob() {
+        if (downloadedThumbGen.running || _thumbQueue.length === 0) return
+        const job = _thumbQueue[0]
+        _thumbQueue = _thumbQueue.slice(1)
+        downloadedThumbGen.savePath = job.savePath
+        downloadedThumbGen.thumbPath = job.thumbPath
+        downloadedThumbGen.command = [
+            "convert", job.savePath,
+            "-resize", root.thumbSize + "x" + root.thumbSize + "^",
+            "-gravity", "center",
+            "-extent", root.thumbSize + "x" + root.thumbSize,
+            "-quality", "85",
+            job.thumbPath
+        ]
+        downloadedThumbGen.running = true
     }
     // ── End Online ──────────────────────────────────────────────────────────
 
@@ -805,14 +1091,36 @@ Singleton {
             onRead: line => { root._fetchBuffer += line }
         }
         onExited: (exitCode) => {
-            if (exitCode === 0) {
-                root._parseWallhavenResults(root._fetchBuffer)
-            } else {
-                root.onlineError = "Network error — check your connection (curl exit " + exitCode + ")"
-                console.error("[ServiceWallpaper] Wallhaven curl failed, exit:", exitCode)
-                root.isFetchingOnline = false
-            }
+            const raw = root._fetchBuffer
             root._fetchBuffer = ""
+            root.isFetchingOnline = false
+            if (root._refetchPending || !root.onlineMode) {
+                root._refetchPending = false
+                if (root.onlineMode) root.fetchWallhaven(true)
+                return
+            }
+            if (exitCode === 0) {
+                root._parseWallhavenResults(raw)
+            } else {
+                root.onlineErrorKind = "network"
+                root.onlineError = "Can't reach Wallhaven — check your connection"
+                console.error("[ServiceWallpaper] Wallhaven curl failed, exit:", exitCode)
+            }
+        }
+    }
+
+    Timer {
+        id: onlineRetry
+        interval: 1000
+        repeat: true
+        onTriggered: {
+            root.onlineRetryIn = Math.max(0, root.onlineRetryIn - 1)
+            if (root.onlineRetryIn > 0) {
+                root.onlineError = "Wallhaven is busy — retrying in " + root.onlineRetryIn + "s"
+                return
+            }
+            stop()
+            if (root.onlineMode) root.fetchWallhaven(false)
         }
     }
 
@@ -820,39 +1128,43 @@ Singleton {
         id: wallhavenDownloader
         onExited: (exitCode) => {
             downloadPoller.stop()
+            const savePath = root._pendingDownloadPath
+            const partial = root._partialPath
+            root._partialPath = ""
+            const id = root.downloadingId
+            root._pendingDownloadPath = ""
             root.downloadingId = ""
             root.downloadedBytes = 0
             if (root._cancelingDownload) {
-                console.log("[ServiceWallpaper] Download canceled:", root._pendingDownloadPath)
-                Quickshell.execDetached(["rm", "-f", root._pendingDownloadPath])
+                console.log("[ServiceWallpaper] Download canceled:", savePath)
+                Quickshell.execDetached(["rm", "-f", partial])
                 root._cancelingDownload = false
+                if (root._applyId === id) root._applyId = ""
             } else if (exitCode === 0) {
-                console.log("[ServiceWallpaper] Download complete:", root._pendingDownloadPath)
-                const savePath = root._pendingDownloadPath
-                const thumbPath = root.cacheDir + "/" + Qt.md5(savePath) + ".jpg"
+                console.log("[ServiceWallpaper] Download complete:", savePath)
                 root.processedFiles[savePath] = true
-                downloadedThumbGen.savePath = savePath
-                downloadedThumbGen.thumbPath = thumbPath
-                downloadedThumbGen.command = [
-                    "convert", savePath,
-                    "-resize", root.thumbSize + "x" + root.thumbSize + "^",
-                    "-gravity", "center",
-                    "-extent", root.thumbSize + "x" + root.thumbSize,
-                    "-quality", "85",
-                    thumbPath
-                ]
-                downloadedThumbGen.running = true
-                root._enqueue(savePath)
+                root._thumbQueue = [...root._thumbQueue, {
+                    savePath: savePath,
+                    thumbPath: root.cacheDir + "/" + Qt.md5(savePath) + ".jpg"
+                }]
+                root._runThumbJob()
+                if (root._applyId === id) {
+                    root._applyId = ""
+                    root._enqueue(savePath)
+                }
             } else {
-                console.error("[ServiceWallpaper] Download failed for:", root._pendingDownloadPath)
+                console.error("[ServiceWallpaper] Download failed for:", savePath, "exit", exitCode)
+                Quickshell.execDetached(["rm", "-f", partial])
+                if (root._applyId === id) root._applyId = ""
+                root.failedIds = [...root.failedIds.filter(x => x !== id), id]
                 ServiceNotification.sendNotification(
                     "Wallpaper Download Failed",
-                    root._pendingDownloadPath.split("/").pop(),
+                    savePath.split("/").pop(),
                     "Wallpaper",
                     "dialog-error"
                 )
             }
-            root._pendingDownloadPath = ""
+            root._nextDownload()
         }
     }
 
@@ -882,6 +1194,78 @@ Singleton {
                     "dialog-error"
                 )
             }
+            root._runThumbJob()
+        }
+    }
+
+    Process {
+        id: detailProc
+        property string _id: ""
+        property string _buf: ""
+        stdout: SplitParser { onRead: line => detailProc._buf += line }
+        onExited: exitCode => {
+            if (exitCode === 0) {
+                try {
+                    const d = JSON.parse(detailProc._buf).data
+                    if (d) {
+                        const next = Object.assign({}, root.onlineDetails)
+                        next[detailProc._id] = {
+                            tags: (d.tags || []).map(t => ({ id: t.id, name: t.name })),
+                            uploader: d.uploader ? d.uploader.username : "",
+                            source: d.source || ""
+                        }
+                        root.onlineDetails = next
+                    }
+                } catch (e) {
+                    console.warn("[ServiceWallpaper] Wallhaven details unreadable for", detailProc._id)
+                }
+            }
+            detailProc._buf = ""
+            const queued = root._detailNext
+            root._detailNext = ""
+            if (queued) Qt.callLater(root.requestDetails, queued)
+        }
+    }
+
+    Process {
+        id: onlineThumbProc
+        property string _id: ""
+        property string _path: ""
+        onExited: exitCode => {
+            if (exitCode === 0) {
+                const next = Object.assign({}, root.onlineThumbs)
+                next[onlineThumbProc._id] = onlineThumbProc._path
+                root.onlineThumbs = next
+                root.requestPreview(onlineThumbProc._path)
+            }
+            const queued = root._onlineThumbNext
+            root._onlineThumbNext = null
+            if (queued) Qt.callLater(root.requestOnlinePreview, queued)
+        }
+    }
+
+    Timer {
+        id: countDebounce
+        interval: 450
+        onTriggered: root._runCount()
+    }
+
+    Process {
+        id: countProc
+        property string _buf: ""
+        stdout: SplitParser { onRead: line => countProc._buf += line }
+        onExited: exitCode => {
+            if (exitCode === 0) {
+                try {
+                    const meta = JSON.parse(countProc._buf).meta
+                    if (meta) root.draftCount = meta.total || 0
+                } catch (e) {
+                    root.draftCount = -2
+                }
+            } else {
+                root.draftCount = -2
+            }
+            countProc._buf = ""
         }
     }
 
@@ -891,9 +1275,9 @@ Singleton {
         repeat: true
         running: false
         onTriggered: {
-            if (root._pendingDownloadPath.length > 0 && !fileSizeChecker.running) {
+            if (root._partialPath.length > 0 && !fileSizeChecker.running) {
                 fileSizeChecker._buf = ""
-                fileSizeChecker.command = ["stat", "-c", "%s", root._pendingDownloadPath]
+                fileSizeChecker.command = ["stat", "-c", "%s", root._partialPath]
                 fileSizeChecker.running = true
             }
         }
@@ -975,19 +1359,8 @@ Singleton {
     }
     // ── End File management ──────────────────────────────────────────────────
 
-    readonly property var panelStyles: [
-        { value: "classic", label: "Classic",     icon: "grid_view",     height: 520, width: 1560 },
-        { value: "hearth",  label: "Hearth",      icon: "fireplace",     height: 520, width: 1560 },
-        { value: "seat",    label: "Window seat", icon: "view_carousel", height: 400, width: 1560 },
-        { value: "gallery", label: "Gallery",     icon: "photo_library", height: 600, width: 1480 },
-        { value: "stage",   label: "Stage",       icon: "theaters",      height: 700, width: 1040 }
-    ]
-    readonly property string panelStyle: {
-        const s = SettingsConfig.general.wallpaperStyle ?? "classic"
-        return root.panelStyles.some(x => x.value === s) ? s : "classic"
-    }
-    readonly property int panelHeight: root.panelStyles.find(x => x.value === root.panelStyle).height
-    readonly property int panelWidth: root.panelStyles.find(x => x.value === root.panelStyle).width
+    readonly property int panelHeight: 600
+    readonly property int panelWidth: 1480
 
     readonly property string currentCachePath: root.currentSource
         ? root.cacheDir + "/" + Qt.md5(root.currentSource) + ".jpg" : ""

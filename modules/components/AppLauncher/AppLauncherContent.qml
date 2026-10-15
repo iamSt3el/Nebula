@@ -12,6 +12,13 @@ import qs.modules.customComponents
 
 Item {
     id: appLauncher
+
+    property var outerCorners: null
+    readonly property real contentInset: 10
+    function innerCorner(c) {
+        const o = appLauncher.outerCorners ? (appLauncher.outerCorners[c] ?? ServiceLauncher.radius) : ServiceLauncher.radius
+        return Math.max(0, o - appLauncher.contentInset)
+    }
     implicitHeight: parent.height
 
     signal closed
@@ -259,11 +266,24 @@ Item {
         ctxMenu.y = clickY
     }
 
+    function replayEntrance() {
+        if (col.visible || showTimer.running)
+            return
+        col.opacity = 0
+        col.scale = appLauncher.entranceScale
+        showTimer.restart()
+    }
+
     Connections {
         target: GlobalStates
+        function onLauncherPreviewChanged() {
+            if (GlobalStates.launcherPreview)
+                appLauncher.replayEntrance()
+        }
         function onAppLauncherOpenChanged() {
             if (GlobalStates.appLauncherOpen) {
                 appLauncher.clearSearch()
+                appLauncher.replayEntrance()
                 return
             }
             if (!appLauncher.preview) {
@@ -278,7 +298,7 @@ Item {
     Item {
         id: col
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.margins: appLauncher.contentInset
         visible: false
         opacity: 0
         scale: appLauncher.entranceScale

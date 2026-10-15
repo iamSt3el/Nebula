@@ -27,7 +27,7 @@ Item {
 
     SequentialAnimation {
         loops: Animation.Infinite
-        running: root.running
+        running: root.running && root.visible
 
         // Advance shape first — ShapeCanvas auto-morphs via its Behavior on progress
         ScriptAction {

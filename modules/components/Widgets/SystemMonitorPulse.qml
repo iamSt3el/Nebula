@@ -64,6 +64,20 @@ WidgetHost {
 
             Item { Layout.fillWidth: true }
 
+            MaterialIconSymbol {
+                visible: (root.si.fanRpms ?? []).length > 0
+                content: "mode_fan"
+                iconSize: 14
+                customColor: Colors.outline
+            }
+            CustomText {
+                visible: (root.si.fanRpms ?? []).length > 0
+                Layout.rightMargin: 6
+                content: (root.si.fanRpms ?? []).join(" · ") + " rpm"
+                size: 12
+                customColor: Colors.outline
+            }
+
             MaterialIconSymbol { content: "thermostat"; iconSize: 14; customColor: Colors.outline }
             CustomText {
                 content: Math.round(root.si.cpuTemp) + "°C"

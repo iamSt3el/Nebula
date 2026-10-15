@@ -20,6 +20,7 @@ PASSTHROUGH = {
     "gowall":        ("nebula.gowall",        "<image> <theme> | --palette <theme>", "recolour an image with gowall"),
     "gowall-icons":  ("nebula.gowall_icons",  "<theme> [--apply|--preview|--restore]", "recolour the icon theme"),
     "phone-thumbs":  ("nebula.phonethumbs",   "<file>...", "cached thumbnails for files on the phone"),
+    "kindle":        ("nebula.kindle",        "render|serve|assets|frame IMG", "Kindle e-ink dashboard PNG (port 8777)"),
 }
 
 SHELL_TOOLS = {
@@ -111,7 +112,8 @@ def cmd_wallpaper(a) -> int:
         return 0
     if a.action == "screen":
         from nebula import screen
-        sys.argv = ["nebula wallpaper screen", a.src, a.out, str(a.width), str(a.height)]
+        sys.argv = ["nebula wallpaper screen", a.src, a.out, str(a.width), str(a.height),
+                    *(["--grey"] if a.grey else []), *(["--eink"] if a.eink else [])]
         screen.main()
         return 0
 
@@ -339,6 +341,8 @@ def _shell_env() -> dict:
     preload = [p for p in env.get("LD_PRELOAD", "").split() if p]
     if os.path.exists(TCMALLOC) and not any("tcmalloc" in p for p in preload):
         env["LD_PRELOAD"] = " ".join([TCMALLOC, *preload])
+    if any("tcmalloc" in p for p in env.get("LD_PRELOAD", "").split()):
+        env.setdefault("TCMALLOC_AGGRESSIVE_DECOMMIT", "t")
     venv = HOME / ".local/state/quickshell/.venv"
     if "NEBULA_VENV" not in env and (venv / "bin/python").exists():
         has_lib = subprocess.run(["python3", "-c", "import materialyoucolor"],
@@ -400,8 +404,47 @@ def cmd_start(a) -> int:
     env = _shell_env()
     if a.foreground:
         os.execvpe(qs, [qs, "-n", "-p", config], env)
-    return subprocess.run([qs, "-n", "-d", "-p", config], env=env, stdin=subprocess.DEVNULL,
+    code = subprocess.run([qs, "-n", "-d", "-p", config], env=env, stdin=subprocess.DEVNULL,
                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+    if code != 0 or not sys.stderr.isatty():
+        return code
+    return _check_load(qs)
+
+
+def _check_load(qs: str, wait: float = 20.0) -> int:
+    import re
+    import time
+    ansi = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+    deadline = time.time() + wait
+    seen = False
+    while time.time() < deadline:
+        time.sleep(0.3)
+        pids = _instance_pids(qs)
+        if not pids:
+            if seen:
+                break
+            continue
+        seen = True
+        r = subprocess.run([qs, "log", "--pid", str(pids[-1])], capture_output=True, text=True)
+        lines = ansi.sub("", r.stdout + r.stderr).splitlines()
+        fail = [i for i, line in enumerate(lines) if "Failed to load configuration" in line]
+        loaded = [i for i, line in enumerate(lines) if "Configuration Loaded" in line]
+        if fail and (not loaded or fail[-1] > loaded[-1]):
+            print("nebula: the shell couldn't load its config:", file=sys.stderr)
+            for line in lines[fail[-1] + 1:]:
+                if "ERROR" not in line:
+                    break
+                print("  " + line.split("ERROR", 1)[1].lstrip(" :"), file=sys.stderr)
+            print("nebula: it keeps running and reloads as soon as the file is fixed.", file=sys.stderr)
+            return 1
+        if loaded:
+            return 0
+    if not seen or not _instance_pids(qs):
+        print("nebula: the shell exited while starting. Run `nebula start --foreground` to see why.",
+              file=sys.stderr)
+        return 1
+    print("nebula: the shell is still loading.", file=sys.stderr)
+    return 0
 
 
 def _instance_pids(qs: str) -> list:
@@ -504,6 +547,8 @@ def build_parser() -> argparse.ArgumentParser:
     sc.add_argument("out")
     sc.add_argument("width", type=int)
     sc.add_argument("height", type=int)
+    sc.add_argument("--grey", action="store_true", help="greyscale copy (Kindle mode)")
+    sc.add_argument("--eink", action="store_true", help="16-grey e-ink copy through gowall (Kindle mode)")
 
     s = sub.add_parser("scheme", help="colour scheme")
     ss = s.add_subparsers(dest="action", required=True)
@@ -531,7 +576,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("index", type=int)
     st = ss.add_parser("set")
     st.add_argument("--mode", choices=["dark", "light"])
-    st.add_argument("--variant", help="content, tonalspot, vibrant, expressive, fidelity, fruitsalad, rainbow, neutral, monochrome")
+    st.add_argument("--variant", help="content, tonalspot, vibrant, expressive, fidelity, fruitsalad, rainbow, neutral, monochrome, kindle")
 
     a = sub.add_parser("apps", help="which apps follow the palette")
     as_ = a.add_subparsers(dest="action")

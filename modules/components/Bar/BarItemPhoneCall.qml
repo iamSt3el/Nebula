@@ -21,7 +21,8 @@ Rectangle {
     readonly property real dot: root.plate - 2 * root.inset
     readonly property bool open: !!root.host && root.host.panelKind === "phoneCall"
     readonly property bool vertical: !!root.host && root.host.vertical === true
-    readonly property bool verticalReady: true
+        && (!root.host.compactFor || root.host.compactFor(root.itemId))
+    readonly property bool verticalReady: root.vertical
     readonly property bool hot: hov.containsMouse || root.open
     readonly property color plateColor: root.ringing ? Colors.primary
         : root.hot ? Colors.primaryContainer : Qt.alpha(Colors.primaryContainer, 0)

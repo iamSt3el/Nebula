@@ -52,9 +52,6 @@ Item {
         id: art
         anchors.fill: parent
         visible: false
-        layer.enabled: true
-        layer.smooth: true
-        layer.mipmap: true
 
         Image {
             id: img

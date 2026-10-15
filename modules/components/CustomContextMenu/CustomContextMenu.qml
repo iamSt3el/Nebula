@@ -44,7 +44,7 @@ Item {
 
                     Image {
                         width: 32; height: 32
-                        source: Quickshell.iconPath(
+                        source: IconUtil.themeIcon(
                             DesktopEntries.heuristicLookup(root.appEntry?.appId ?? "")?.icon,
                             "image-missing")
                         sourceSize.width: 32

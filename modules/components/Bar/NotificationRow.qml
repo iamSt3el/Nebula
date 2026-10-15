@@ -17,9 +17,58 @@ Item {
     property bool isExtended: false
     property bool interactive: true
 
-    readonly property bool hasActions: (row.notifData?.actions?.length ?? 0) > 0
     readonly property bool hasBody: (row.notifData?.body ?? "").length > 0
-    readonly property bool hasImage: !!row.notifData?.image
+    readonly property string imageSrc: IconUtil.imageSource(row.notifData?.image)
+    readonly property bool hasImage: row.imageSrc !== "" && !row.imageSrc.startsWith("image://icon/")
+    readonly property bool bigImage: row.hasImage && row.showIcon
+    readonly property var defaultAction: (row.notifData?.notification?.actions ?? []).find(a => a.identifier === "default") ?? null
+    readonly property var acts: {
+        const out = []
+        if (row.defaultAction)
+            out.push({ label: "Open", act: row.defaultAction })
+        for (const a of (row.notifData?.actions ?? []))
+            out.push({ label: a.text ?? "", act: a })
+        out.push({ label: "Copy", icon: "content_copy", kind: "copy" })
+        out.push({ label: "Dismiss", icon: "close", kind: "dismiss" })
+        return out
+    }
+    readonly property bool hasActions: row.acts.length > 2
+    readonly property string clock: {
+        const d = new Date(row.notifData?.arrivalTimestamp ?? Date.now())
+        return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0")
+    }
+
+    function runAction(entry) {
+        const item = row.notifData
+        if (entry.kind === "copy") {
+            Quickshell.clipboardText = [item?.summary ?? "", item?.body ?? ""].filter(t => t !== "").join("\n")
+            row.copied = true
+            copiedTimer.restart()
+            return
+        }
+        if (entry.kind !== "dismiss")
+            entry.act.invoke()
+        ServiceNotification.removeNotification(item)
+    }
+
+    property bool copied: false
+    Timer {
+        id: copiedTimer
+        interval: 1400
+        onTriggered: row.copied = false
+    }
+
+    onIsExtendedChanged: if (row.isExtended) extraFx.restart()
+
+    SequentialAnimation {
+        id: extraFx
+        ScriptAction { script: { extraCol.opacity = 0; extraLift.y = 8 } }
+        PauseAnimation { duration: 60 }
+        ParallelAnimation {
+            NumberAnimation { target: extraCol; property: "opacity"; to: 1; duration: 320; easing.type: Easing.OutCubic }
+            NumberAnimation { target: extraLift; property: "y"; to: 0; duration: 400; easing.type: Easing.BezierSpline; easing.bezierCurve: M3Motion.panel.openCurve }
+        }
+    }
 
     property string relativeTime: row.computeRelative(row.notifData?.arrivalTimestamp ?? Date.now())
 
@@ -174,9 +223,9 @@ Item {
 
                             Image {
                                 anchors.fill: parent
-                                source: row.notifData?.image ?? ""
-                                sourceSize: Qt.size(36, 36)
-                                asynchronous: true
+                                source: row.hasImage ? row.imageSrc : ""
+                                sourceSize: Qt.size(72, 72)
+                                asynchronous: row.imageSrc.startsWith("file:")
                                 fillMode: Image.PreserveAspectCrop
                             }
                         }
@@ -201,6 +250,8 @@ Item {
                             weight: row.headerShowsAppName ? 500 : 700
                             customColor: row.headerShowsAppName ? Colors.outline : Colors.surfaceText
                             elide: Text.ElideRight
+                            wrapMode: row.isExtended && !row.headerShowsAppName ? Text.Wrap : Text.NoWrap
+                            maximumLineCount: 3
                         }
 
                         CustomText {
@@ -210,7 +261,7 @@ Item {
                         }
 
                         CustomText {
-                            content: row.relativeTime
+                            content: row.isExtended ? row.clock : row.relativeTime
                             size: 11
                             customColor: Colors.outline
                         }
@@ -243,8 +294,8 @@ Item {
                 Loader {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
-                    Layout.alignment: row.isExtended ? Qt.AlignTop : Qt.AlignVCenter
-                    active: row.hasImage && row.showIcon
+                    Layout.alignment: Qt.AlignVCenter
+                    active: row.bigImage && !row.isExtended
                     visible: active
 
                     sourceComponent: ClippingRectangle {
@@ -253,9 +304,9 @@ Item {
 
                         Image {
                             anchors.fill: parent
-                            source: row.notifData?.image ?? ""
-                            sourceSize: Qt.size(40, 40)
-                            asynchronous: true
+                            source: row.imageSrc
+                            sourceSize: Qt.size(80, 80)
+                            asynchronous: row.imageSrc.startsWith("file:")
                             fillMode: Image.PreserveAspectCrop
                         }
                     }
@@ -293,45 +344,74 @@ Item {
                 }
             }
 
-            Item {
+            ColumnLayout {
+                id: extraCol
+                visible: row.isExtended
                 Layout.fillWidth: true
-                Layout.preferredHeight: (row.isExtended && row.hasActions) ? 34 : 0
-                clip: true
-                visible: row.hasActions
+                Layout.leftMargin: row.showIcon || row.reserveIconColumn ? 46 : 0
+                Layout.topMargin: 8
+                Layout.bottomMargin: 2
+                spacing: 10
+                transform: Translate { id: extraLift }
 
-                RowLayout {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.leftMargin: row.showIcon ? 46 : 0
-                    spacing: 2
-                    opacity: row.isExtended ? 1 : 0
-                    Behavior on opacity { EffectsAnim {} }
+                ClippingRectangle {
+                    visible: row.bigImage
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.min(170, Math.round(extraCol.width * 0.56))
+                    radius: 14
+                    color: Colors.surfaceContainerHighest
+
+                    Image {
+                        anchors.fill: parent
+                        source: row.isExtended && row.bigImage ? row.imageSrc : ""
+                        sourceSize: Qt.size(640, 360)
+                        asynchronous: row.imageSrc.startsWith("file:")
+                        fillMode: Image.PreserveAspectCrop
+                    }
+                }
+
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: 6
 
                     Repeater {
-                        model: row.notifData?.actions ?? []
+                        model: row.acts
 
                         delegate: Rectangle {
                             id: actionBtn
                             required property var modelData
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 28
-                            radius: 14
-                            color: actionHover.containsMouse
-                                ? Qt.alpha(Colors.primary, 0.12) : "transparent"
+                            required property int index
+                            readonly property bool builtIn: !!actionBtn.modelData.kind
+                            readonly property bool primary: actionBtn.index === 0 && !actionBtn.builtIn
+                            width: actionInner.implicitWidth + (actionBtn.builtIn ? 24 : 28)
+                            height: 32
+                            radius: 16
+                            color: actionBtn.primary
+                                ? (actionHover.containsMouse ? Qt.lighter(Colors.primary, 1.08) : Colors.primary)
+                                : actionHover.containsMouse ? Qt.alpha(Colors.primary, 0.10) : "transparent"
+                            border.width: actionBtn.primary ? 0 : 1
+                            border.color: Colors.outlineVariant
                             Behavior on color { EffectsColorAnim {} }
 
-                            CustomText {
-                                anchors.fill: parent
-                                anchors.leftMargin: 6
-                                anchors.rightMargin: 6
-                                content: actionBtn.modelData.text ?? ""
-                                size: 12
-                                weight: 600
-                                customColor: Colors.primary
-                                elide: Text.ElideRight
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
+                            RowLayout {
+                                id: actionInner
+                                anchors.centerIn: parent
+                                spacing: 5
+
+                                MaterialIconSymbol {
+                                    visible: actionBtn.builtIn
+                                    content: actionBtn.modelData.kind === "copy" && row.copied ? "check" : (actionBtn.modelData.icon ?? "")
+                                    iconSize: 15
+                                    customColor: Colors.surfaceVariantText
+                                }
+
+                                CustomText {
+                                    content: actionBtn.modelData.kind === "copy" && row.copied ? "Copied" : actionBtn.modelData.label
+                                    size: 12
+                                    weight: 600
+                                    customColor: actionBtn.primary ? Colors.primaryText
+                                               : actionBtn.builtIn ? Colors.surfaceVariantText : Colors.surfaceText
+                                }
                             }
 
                             MouseArea {
@@ -339,10 +419,7 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    actionBtn.modelData.invoke()
-                                    ServiceNotification.removeNotification(row.notifData)
-                                }
+                                onClicked: row.runAction(actionBtn.modelData)
                             }
                         }
                     }

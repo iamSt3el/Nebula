@@ -5,12 +5,31 @@ import Qt.labs.platform
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
+import qs.modules.components.Bar
 import QtQuick.Controls
 
 Item {
     id: root
     anchors.fill: parent
     anchors.margins: 5
+
+    readonly property bool popupsOn: SettingsConfig.notifications?.showBanners ?? true
+    readonly property bool popupItemPlaced: BarLayout.baseId(BarLayout.popupHostItem) === "popups"
+    readonly property string popupWhere: {
+        const mode = BarLayout.popupMode
+        const host = BarLayout.popupHostItem
+        if (mode === "item") {
+            const b = BarLayout.allBlocks.find(x => x.items.indexOf(host) >= 0)
+            const where = b && b.edge === "bottom" ? "the dock" : "the bar"
+            return root.popupItemPlaced ? "The Popups item on " + where : "The bell on " + where
+        }
+        if (mode === "icon")
+            return "Dock icons"
+        return "The screen corner"
+    }
+    readonly property string popupIcon: root.popupItemPlaced ? "notifications_active"
+        : BarLayout.popupMode === "item" ? "notifications"
+        : BarLayout.popupMode === "icon" ? "chat_bubble" : "bottom_right_click"
 
     FileDialog {
         id: notifSoundPicker
@@ -78,31 +97,173 @@ Item {
 
                 CustomCard {
                     autoRadius: false; topRadius: 20; bottomRadius: 5
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            CustomText { content: "Show Popups"; size: 14 }
+                            CustomText { content: "Show new notifications as popups. They always land in the notification center too"; size: 12; customColor: Colors.outline; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                        }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.notifications?.showBanners ?? true
+                            onToggled: function(state) {
+                                SettingsConfig.notifications = Object.assign({}, SettingsConfig.notifications, { showBanners: state })
+                            }
+                        }
+                    }
+                }
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    visible: root.popupsOn
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 10
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Popup Style"; size: 14 }
-                            CustomText { content: "Where new notifications appear and how they arrive"; size: 12; customColor: Colors.outline }
+                        spacing: 12
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 12
+
+                            Rectangle {
+                                Layout.preferredWidth: 40
+                                Layout.preferredHeight: 40
+                                radius: 14
+                                color: Colors.secondaryContainer
+
+                                MaterialIconSymbol {
+                                    anchors.centerIn: parent
+                                    content: root.popupIcon
+                                    iconSize: 20
+                                    customColor: Colors.secondaryContainerText
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                CustomText { content: "Popups open from"; size: 12; customColor: Colors.outline }
+                                CustomText { content: root.popupWhere; size: 14; weight: 600; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                            }
+
+                            M3Button {
+                                icon: "edit"
+                                label: root.popupItemPlaced ? "Move it" : "Place it"
+                                onClicked: {
+                                    GlobalStates.settingsOpen = false
+                                    GlobalStates.openEdit("edges")
+                                }
+                            }
                         }
+
+                        CustomText {
+                            Layout.fillWidth: true
+                            content: root.popupItemPlaced
+                                ? "Popups grow out of the block holding the Popups item, floating or merged like that block's panels."
+                                : "In edit mode, add the Popups item to any bar or dock block and popups will open from it. Until then:"
+                            size: 12
+                            customColor: Colors.outline
+                            wrapMode: Text.WordWrap
+                        }
+
                         M3ButtonGroup {
+                            visible: !root.popupItemPlaced
                             model: [
-                                { value: "corner", label: "Corner",      icon: "bottom_right_click" },
-                                { value: "bar",    label: "Bar tab",     icon: "top_panel_open" },
-                                { value: "dock",   label: "Dock toast",  icon: "bottom_panel_open" },
-                                { value: "icon",   label: "Icon bubble", icon: "chat_bubble" }
+                                { value: "item", label: "From the bell", icon: "notifications" },
+                                { value: "icon", label: "Dock icons",    icon: "chat_bubble" }
                             ]
-                            activeCheck: function(value) { return (SettingsConfig.general?.notifPopupStyle ?? "corner") === value }
+                            activeCheck: function(value) { return ((SettingsConfig.general?.notifPopupStyle ?? "item") === "icon" ? "icon" : "item") === value }
                             onSegmentClicked: function(value) {
                                 SettingsConfig.general = Object.assign({}, SettingsConfig.general, { notifPopupStyle: value })
                             }
                         }
                     }
                 }
-
                 CustomCard {
                     autoRadius: false; topRadius: 5; bottomRadius: 5
+                    visible: root.popupsOn
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            CustomText { content: "Popup Timeout"; size: 14 }
+                            CustomText { content: "Seconds a popup stays before it leaves. Hovering pauses it"; size: 12; customColor: Colors.outline; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                        }
+                        CustomSpinBox {
+                            color: Colors.surfaceContainerHighest
+                            inc: 1
+                            limit: 30
+                            Component.onCompleted: val = SettingsConfig.notifications?.popupTimeout ?? 5
+                            onValChanged: {
+                                if (val > 0)
+                                    SettingsConfig.notifications = Object.assign({}, SettingsConfig.notifications, { popupTimeout: val })
+                            }
+                        }
+                    }
+                }
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    visible: root.popupsOn
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            CustomText { content: "Cards at Once"; size: 14 }
+                            CustomText { content: "How many popup cards show together. The rest wait behind a +N more row"; size: 12; customColor: Colors.outline; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                        }
+                        CustomSpinBox {
+                            color: Colors.surfaceContainerHighest
+                            inc: 1
+                            limit: 5
+                            Component.onCompleted: val = SettingsConfig.notifications?.maxVisible ?? 3
+                            onValChanged: {
+                                if (val > 0)
+                                    SettingsConfig.notifications = Object.assign({}, SettingsConfig.notifications, { maxVisible: val })
+                            }
+                        }
+                    }
+                }
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    visible: root.popupsOn
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            CustomText { content: "Group by App"; size: 14 }
+                            CustomText { content: "Several popups from one app share a single card with a count"; size: 12; customColor: Colors.outline; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                        }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.notifications?.groupPopups ?? true
+                            onToggled: function(state) {
+                                SettingsConfig.notifications = Object.assign({}, SettingsConfig.notifications, { groupPopups: state })
+                            }
+                        }
+                    }
+                }
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    visible: root.popupsOn
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            CustomText { content: "Keep Urgent Until Dismissed"; size: 14 }
+                            CustomText { content: "Urgent notifications, like low battery, stay until you close them"; size: 12; customColor: Colors.outline; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                        }
+                        CustomToogle {
+                            isToggleOn: SettingsConfig.notifications?.urgentSticky ?? true
+                            onToggled: function(state) {
+                                SettingsConfig.notifications = Object.assign({}, SettingsConfig.notifications, { urgentSticky: state })
+                            }
+                        }
+                    }
+                }
+                CustomCard {
+                    autoRadius: false; topRadius: 5; bottomRadius: 20
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 10
@@ -167,70 +328,6 @@ Item {
                     }
                 }
 
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Show Banners"; size: 14 }
-                            CustomText { content: "Display popup banners for new notifications"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.notifications?.showBanners ?? true
-                            onToggled: function(state) {
-                                SettingsConfig.notifications = Object.assign({}, SettingsConfig.notifications, { showBanners: state })
-                            }
-                        }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Popup Timeout"; size: 14 }
-                            CustomText { content: "Seconds before a banner auto-dismisses"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomSpinBox {
-                            color: Colors.surfaceContainerHighest
-                            inc: 1
-                            limit: 30
-                            Component.onCompleted: val = SettingsConfig.notifications?.popupTimeout ?? 5
-                            onValChanged: {
-                                if (val > 0)
-                                    SettingsConfig.notifications = Object.assign({}, SettingsConfig.notifications, { popupTimeout: val })
-                            }
-                        }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Max Visible"; size: 14 }
-                            CustomText { content: "Maximum number of banners shown at once"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomSpinBox {
-                            color: Colors.surfaceContainerHighest
-                            inc: 1
-                            limit: 5
-                            Component.onCompleted: val = SettingsConfig.notifications?.maxVisible ?? 3
-                            onValChanged: {
-                                if (val > 0)
-                                    SettingsConfig.notifications = Object.assign({}, SettingsConfig.notifications, { maxVisible: val })
-                            }
-                        }
-                    }
-                }
             }
 
             // ── Notification Center ──────────────────────────────────────

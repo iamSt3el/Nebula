@@ -5,17 +5,18 @@ import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
+import qs.modules.components.Edit
 
 ColumnLayout {
     id: row
 
     property string instanceId: ""
     property var spec: ({})
-    property var getter: function(key) { return DashLayout.opt(row.instanceId, key) }
-    property var setter: function(key, v) { DashLayout.setOption(row.instanceId, key, v) }
-    property var listGetter: function(key) { return DashLayout.itemList(row.instanceId, key) }
-    property var listAdd: function(key, v) { DashLayout.addItem(row.instanceId, key, v) }
-    property var listRemove: function(key, v) { DashLayout.removeItem(row.instanceId, key, v) }
+    property var getter: function(key) { return BarLayout.opt(row.instanceId, key) }
+    property var setter: function(key, v) { BarLayout.setOption(row.instanceId, key, v) }
+    property var listGetter: function(key) { return [] }
+    property var listAdd: function(key, v) {}
+    property var listRemove: function(key, v) {}
 
     readonly property string kind: row.spec.type ?? ""
     readonly property var value: row.getter(row.spec.key)
@@ -24,6 +25,9 @@ ColumnLayout {
     readonly property bool swatches: row.kind === "choice" && row.spec.key === "color"
     readonly property bool picker: (row.kind === "choice" && !row.swatches) || row.kind === "grid"
     readonly property int off: row.spec.auto ? 1 : 0
+    readonly property int stops: row.kind === "slider" ? Math.round(((row.spec.max ?? 1) - (row.spec.min ?? 0)) / (row.spec.step ?? 1)) + 1 : 0
+    readonly property bool stepper: row.kind === "slider" && (row.stops > 8 || (row.spec.presets ?? []).length > 0)
+    readonly property bool stepperInline: row.stepper && (row.spec.presets ?? []).length === 0 && !row.spec.auto
 
     function set(v) {
         row.setter(row.spec.key, v)
@@ -35,6 +39,7 @@ ColumnLayout {
         case "secondary": return Colors.secondary
         case "tertiary": return Colors.tertiary
         case "error": return Colors.error
+        case "surfaceText": return Colors.surfaceText
         }
         return Colors.primary
     }
@@ -95,7 +100,7 @@ ColumnLayout {
     RowLayout {
         visible: row.kind !== "heading"
         Layout.fillWidth: true
-        Layout.minimumHeight: row.kind === "toggle" ? 40 : 22
+        Layout.minimumHeight: row.kind === "toggle" || row.stepperInline ? 40 : 22
         spacing: 12
 
         ColumnLayout {
@@ -105,9 +110,9 @@ ColumnLayout {
             CustomText {
                 Layout.fillWidth: true
                 content: row.spec.label ?? ""
-                size: row.kind === "toggle" ? 14 : 13
-                weight: row.kind === "toggle" ? 500 : 600
-                customColor: row.kind === "toggle" ? Colors.surfaceText : Colors.surfaceVariantText
+                size: row.kind === "toggle" || row.stepperInline ? 14 : 13
+                weight: row.kind === "toggle" || row.stepperInline ? 500 : 600
+                customColor: row.kind === "toggle" || row.stepperInline ? Colors.surfaceText : Colors.surfaceVariantText
                 wrapMode: Text.WordWrap
                 elide: Text.ElideNone
             }
@@ -129,8 +134,21 @@ ColumnLayout {
             onToggled: state => row.set(state)
         }
 
+        EditStepper {
+            visible: row.stepperInline
+            value: row.value ?? (row.spec.min ?? 0)
+            from: row.spec.min ?? 0
+            to: row.spec.max ?? 1
+            stepSize: row.spec.step ?? 1
+            unit: row.spec.unit ?? ""
+            onPicked: v => {
+                if (v !== row.value)
+                    row.set(v)
+            }
+        }
+
         CustomText {
-            visible: row.kind === "slider"
+            visible: row.kind === "slider" && !row.stepper
             content: row.off && (row.value ?? 0) < 0 ? String(row.spec.auto) : String(row.value ?? "")
             size: 12
             weight: 600
@@ -213,9 +231,29 @@ ColumnLayout {
         onPicked: v => row.set(v)
     }
 
+    EditStepper {
+        visible: row.stepper && !row.stepperInline
+        Layout.fillWidth: true
+        value: row.off && (row.value ?? 0) < 0 ? (row.spec.min ?? 0) : (row.value ?? (row.spec.min ?? 0))
+        from: row.spec.min ?? 0
+        to: row.spec.max ?? 1
+        stepSize: row.spec.step ?? 1
+        unit: row.spec.unit ?? ""
+        presets: row.spec.presets ?? []
+        canAuto: !!row.spec.auto
+        isAuto: !!row.spec.auto && (row.value ?? 0) < 0
+        autoLabel: row.spec.auto ? String(row.spec.auto) : "Auto"
+        autoText: row.spec.auto ? String(row.spec.auto) : "Auto"
+        onPicked: v => {
+            if (v !== row.value)
+                row.set(v)
+        }
+        onAutoPicked: row.set(-1)
+    }
+
     M3Slider {
         id: slider
-        visible: row.kind === "slider"
+        visible: row.kind === "slider" && !row.stepper
         Layout.fillWidth: true
         Layout.preferredHeight: 30
         readonly property real lo: row.spec.min ?? 0
@@ -274,6 +312,7 @@ ColumnLayout {
     ShapePicker {
         visible: row.kind === "shape"
         Layout.fillWidth: true
+        centered: true
         showAuto: false
         selected: row.kind === "shape" ? String(row.value ?? "") : ""
         onPicked: name => row.set(name)

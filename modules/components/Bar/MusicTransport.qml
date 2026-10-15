@@ -84,7 +84,7 @@ RowLayout {
         implicitWidth: 30
         implicitHeight: 30
         radius: 15
-        color: ti.on ? Qt.alpha(Colors.primary, 0.16) : "transparent"
+        color: ti.on ? Qt.alpha(Colors.primary, 0.16) : Qt.alpha(Colors.primary, 0)
         opacity: ti.enabled_ ? 1 : 0.3
         Behavior on color { ColorAnimation { duration: 130 } }
 

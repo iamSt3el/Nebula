@@ -70,6 +70,16 @@ Singleton {
             root._procUsers--
     }
 
+    property int cores: 1
+
+    Process {
+        running: true
+        command: ["nproc"]
+        stdout: StdioCollector {
+            onStreamFinished: root.cores = Math.max(1, parseInt(text.trim()) || 1)
+        }
+    }
+
     Process {
         id: psProc
         command: ["top", "-b", "-n", "2", "-d", "0.8", "-w", "512", "-o", "%CPU"]
@@ -94,6 +104,7 @@ Singleton {
                     e.mem += parseFloat(f[9].replace(",", ".")) || 0
                 }
                 root.processes = Object.values(byName).filter(e => e.name !== "top")
+                    .map(e => Object.assign(e, { cpu: e.cpu / root.cores }))
             }
         }
     }

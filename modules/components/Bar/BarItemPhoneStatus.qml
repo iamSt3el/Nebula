@@ -19,9 +19,10 @@ Rectangle {
     readonly property bool showPercent: BarLayout.opt(root.itemId, "showPercent") !== false
     readonly property bool showSignal: BarLayout.opt(root.itemId, "showSignal") !== false
     readonly property bool vertical: !!root.host && root.host.vertical === true
-    readonly property bool verticalReady: true
+        && (!root.host.compactFor || root.host.compactFor(root.itemId))
+    readonly property bool verticalReady: root.vertical
     readonly property color plateColor: hov.containsMouse || root.open ? Colors.primaryContainer
-         : root.low ? Qt.alpha(Colors.error, 0.15) : "transparent"
+         : root.low ? Qt.alpha(Colors.error, 0.15) : Qt.alpha(Colors.primaryContainer, 0)
     readonly property bool plateless: BarLayout.chipHovers(root.itemId, root.implicitWidth,
                                                            root.implicitHeight)
     readonly property bool plateOn: root.plateColor.a > 0.01
@@ -40,7 +41,7 @@ Rectangle {
         : root.labelOn || root.barsOn ? row.implicitWidth + root.padPx : root.plate
     implicitHeight: root.vertical ? Math.max(root.plate, row.implicitHeight + 8) : root.plate
     radius: Math.min(width, height) / 2
-    color: root.plateless ? "transparent" : root.plateColor
+    color: root.plateless ? Qt.alpha(root.plateColor, 0) : root.plateColor
     border.width: root.low && !hov.containsMouse && !root.open ? 2 : 0
     border.color: Colors.error
     opacity: root.away && !hov.containsMouse && !root.open ? 0.6 : 1

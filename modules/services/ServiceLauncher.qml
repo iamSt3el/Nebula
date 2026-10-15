@@ -29,7 +29,7 @@ Singleton {
     ]
 
     readonly property var _g: SettingsConfig.general ?? ({})
-    readonly property string position: root._g.launcherPosition ?? "edge"
+    readonly property string position: (root._g.launcherPosition ?? "item") === "center" ? "center" : "item"
     readonly property var styles: [
         { value: "spotlight",  label: "Spotlight",  icon: "search",            w: 680, h: 560 },
         { value: "rail",       label: "Rail",       icon: "view_sidebar",      w: 560, h: 720 },

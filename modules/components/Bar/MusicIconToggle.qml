@@ -18,7 +18,7 @@ Rectangle {
     implicitHeight: root.side
     radius: root.side / 2
     opacity: root.usable ? 1 : 0.3
-    color: root.on ? Qt.alpha(Colors.primary, 0.16) : area.containsMouse ? Colors.surfaceContainerHigh : "transparent"
+    color: root.on ? Qt.alpha(Colors.primary, 0.16) : area.containsMouse ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0)
     Behavior on color { EffectsColorAnim {} }
 
     MaterialIconSymbol {

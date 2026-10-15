@@ -10,12 +10,6 @@ BarStatItem {
 
     widthTemplate: root.direction === "both" ? "↓ 1023.9 KB/s  ↑ 1023.9 KB/s" : "↓ 1023.9 KB/s"
     icon: "swap_vert"
-    shortLabel: "NET"
-    value: 0
-    graphValue: root.style === "mirror" ? ServiceSystemInfo.netDownloadBps
-        : root.direction === "up" ? ServiceSystemInfo.netUploadBps : ServiceSystemInfo.netDownloadBps
-    altValue: ServiceSystemInfo.netUploadBps
-    graphMax: 0
     label: root.direction === "down" ? root.down : root.direction === "up" ? root.up : root.down + "  " + root.up
     tip: root.down + "   " + root.up
     compactLabel: ServiceSystemInfo.formatNetSpeed(root.direction === "up" ? ServiceSystemInfo.netUploadBps : ServiceSystemInfo.netDownloadBps)

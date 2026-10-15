@@ -8,14 +8,20 @@ import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
+import qs.modules.components.Edit
 
 Item {
     id: chrome
     anchors.fill: parent
 
     property QtObject editor: null
-    property Item topSurface: null
-    property Item bottomSurface: null
+    property var surfaces: []
+    readonly property Item surfTop: chrome.surfaces.find(s => s && s.edge === "top") ?? null
+    readonly property Item surfBottom: chrome.surfaces.find(s => s && s.edge === "bottom") ?? null
+    readonly property Item surfLeft: chrome.surfaces.find(s => s && s.edge === "left") ?? null
+    readonly property Item surfRight: chrome.surfaces.find(s => s && s.edge === "right") ?? null
+    readonly property real insetLeft: chrome.surfLeft && chrome.surfLeft.visible && chrome.surfLeft.present ? chrome.surfLeft.thickness : 0
+    readonly property real insetRight: chrome.surfRight && chrome.surfRight.visible && chrome.surfRight.present ? chrome.surfRight.thickness : 0
     property bool editing: false
     property bool previewRight: true
 
@@ -30,13 +36,33 @@ Item {
     property real t: 0
 
     visible: chrome.t > 0.01
+    opacity: EditSession.peek ? 0 : 1
+    Behavior on opacity { EffectsAnim { speed: "fast" } }
     Behavior on t { SpatialAnim { speed: "default" } }
 
     onEditingChanged: {
         chrome.t = chrome.editing ? 1 : 0
         chrome.shelfOpen = false
+        chrome.resetArmed = false
         chrome.pop = ""
-        if (chrome.editing) chrome.resetHistory()
+        if (chrome.editing) Qt.callLater(chrome.takeOpenAdd)
+    }
+
+    function takeOpenAdd() {
+        if (!chrome.editing || GlobalStates.editOpenAdd !== "parts")
+            return
+        GlobalStates.editOpenAdd = ""
+        chrome.pop = ""
+        if (chrome.editor) {
+            chrome.editor.drawerMode = ""
+            chrome.editor.panelStage = false
+        }
+        chrome.shelfOpen = true
+    }
+
+    Connections {
+        target: GlobalStates
+        function onEditOpenAddChanged() { chrome.takeOpenAdd() }
     }
     onSelChanged: chrome.pop = ""
     onSelBlockChanged: chrome.pop = ""
@@ -44,8 +70,11 @@ Item {
     readonly property rect shelfRect: shelf.visible ? Qt.rect(shelf.x, shelf.y, shelf.width, shelf.height) : Qt.rect(0, 0, 0, 0)
 
     function closeAll() {
-        if (DashLayout.activeDash && DashLayout.activeDash.dragId !== "") { DashLayout.activeDash.cancelDrag(); return true }
+        if (GlobalStates.editKeysOpen) { GlobalStates.editKeysOpen = false; return true }
+        if (capRow.closeAll()) return true
         if (chrome.pop !== "") { chrome.pop = ""; return true }
+        if (lanes.popSurf !== null) { lanes.closePop(); return true }
+        if (chrome.resetArmed) { chrome.resetArmed = false; return true }
         if (chrome.shelfOpen) { chrome.shelfOpen = false; return true }
         if (chrome.editor && chrome.editor.drawerMode !== "") { chrome.editor.drawerMode = ""; return true }
         if (chrome.stage) { chrome.editor.panelStage = false; return true }
@@ -53,17 +82,120 @@ Item {
     }
 
     readonly property var panelList: [
-        { item: "clock",     kind: "calendar",  label: "Calendar",  icon: "calendar_month" },
-        { item: "weather",   kind: "weather",   label: "Weather",   icon: "partly_cloudy_day" },
-        { item: "dashboard", kind: "dashboard", label: "Dashboard", icon: "dashboard" },
-        { item: "launcher",  kind: "launcher",  label: "Apps",      icon: "apps" },
-        { item: "wallpaper", kind: "wallpaper", label: "Wallpaper", icon: "wallpaper" },
-        { item: "clipboard", kind: "clipboard", label: "Clipboard", icon: "content_paste" }
+        { item: "clock",         kind: "calendar",      label: "Calendar",      icon: "calendar_month" },
+        { item: "weather",       kind: "weather",       label: "Weather",       icon: "partly_cloudy_day" },
+        { item: "notifications", kind: "notifications", label: "Notifications", icon: "notifications" },
+        { item: "dashboard",     kind: "dashboard",     label: "Dashboard",     icon: "space_dashboard" },
+        { item: "launcher",      kind: "launcher",      label: "Apps",          icon: "apps" },
+        { item: "wallpaper",     kind: "wallpaper",     label: "Wallpaper",     icon: "wallpaper" },
+        { item: "clipboard",     kind: "clipboard",     label: "Clipboard",     icon: "content_paste" },
+        { item: "popups",        kind: "notifPopup",    label: "Popups",        icon: "notifications_active" },
+        { item: "osd",           kind: "osd",           label: "OSD",           icon: "volume_up" }
     ]
 
     function panelOf(id) {
         const k = BarLayout.panelFor(id)
-        return chrome.panelList.find(p => p.kind === k) ?? null
+        if (k !== "")
+            return chrome.panelList.find(p => p.kind === k) ?? null
+        const base = id ? BarLayout.baseId(id) : ""
+        return chrome.panelList.find(p => p.item === base && (p.kind === "notifPopup" || p.kind === "osd")) ?? null
+    }
+
+    function toggleOptsOf(id) {
+        const e = id && id.indexOf("dash:") !== 0 ? BarLayout.entry(id) : null
+        return e && e.options ? e.options.filter(o => o.type === "toggle" && o.key !== "showLabel") : []
+    }
+
+    function blockOfItem(id) {
+        return BarLayout.allBlocks.find(b => b.id !== "__sys" && b.items.indexOf(id) >= 0) ?? null
+    }
+
+    function hostOf(p) {
+        const placed = id => id !== "" && BarLayout.isPlaced(id)
+        const gen = SettingsConfig.general ?? {}
+        switch (p.kind) {
+        case "calendar":
+        case "weather":
+        case "notifications":
+        case "dashboard":
+            return placed(p.item) ? { type: "item", item: p.item } : { type: "none", item: "" }
+        case "launcher":
+            return BarLayout.launcherItemHost ? { type: "item", item: "launcher" } : { type: "center", item: "" }
+        case "wallpaper":
+        case "clipboard": {
+            const mode = p.kind === "wallpaper" ? gen.wallpaperPanelMode : gen.clipboardPanelMode
+            if ((mode ?? "dock") === "center")
+                return { type: "center", item: "" }
+            return BarLayout.panelItemHost(p.kind) ? { type: "item", item: p.item } : { type: "sys", item: "" }
+        }
+        case "notifPopup":
+            if (BarLayout.popupMode === "item")
+                return { type: "item", item: BarLayout.popupHostItem }
+            return BarLayout.popupMode === "icon" ? { type: "icons", item: "" } : { type: "corner", item: "" }
+        case "osd":
+            return BarLayout.osdHostItem !== "" ? { type: "item", item: BarLayout.osdHostItem } : { type: "sys", item: "" }
+        }
+        return { type: "none", item: "" }
+    }
+
+    function hostText(p) {
+        const h = chrome.hostOf(p)
+        const name = id => {
+            const e = BarLayout.entry(id)
+            return e ? e.label : id
+        }
+        switch (h.type) {
+        case "item": return h.item === p.item || BarLayout.baseId(h.item) === p.item
+            ? "From its " + name(p.item) + " item" : "From the " + name(h.item) + " item"
+        case "sys": return "Centre of the " + BarLayout.sysEdge + " edge"
+        case "center": return "Centre of the screen"
+        case "icons": return "Over the app's dock icon"
+        case "corner": return "Screen corner"
+        }
+        return "Its " + name(p.item) + " item isn't placed"
+    }
+
+    function dragItemOf(p) {
+        return p.item
+    }
+
+    function startPinDrag(p, mx, my, w) {
+        const item = chrome.dragItemOf(p)
+        const blk = chrome.blockOfItem(item)
+        chrome.editor.beginItem(item, blk ? blk.id : "", blk ? blk.items.indexOf(item) : -1, w)
+        chrome.editor.update(mx, my)
+    }
+
+    function finishPinDrag(p) {
+        const e = chrome.editor
+        const landed = e.dropBlock !== "" && !e.overDrawer
+        e.finish()
+        if (!landed)
+            return
+        if (p.kind === "launcher")
+            BarLayout.setOption("launcher", "position", "item")
+        else if (p.kind === "wallpaper" || p.kind === "clipboard")
+            BarLayout.setOption(p.item, "place", "dock")
+    }
+
+    function openRects() {
+        const out = []
+        for (const s of chrome.surfaces) {
+            if (!s || !s.visible)
+                continue
+            for (const blk of s.visibleBlocks)
+                if (blk.tabH > blk.barH + 1)
+                    out.push(s.tabRect(blk))
+        }
+        return out
+    }
+
+    function toolRects() {
+        const out = []
+        for (const t of [toolbar, blockBar, styleCard, cornersCard])
+            if (t.visible)
+                out.push(Qt.rect(t.x, t.y, t.width, t.height))
+        return out
     }
 
     function openStage(itemId) {
@@ -83,66 +215,42 @@ Item {
         { value: "surfaceText", label: "Neutral" }
     ]
 
-    property var history: []
-    property int historyIndex: -1
-    property bool restoring: false
-    readonly property bool canUndo: chrome.historyIndex > 0
-    readonly property bool canRedo: chrome.historyIndex >= 0 && chrome.historyIndex < chrome.history.length - 1
+    function undo() { EditSession.undo() }
+    function redo() { EditSession.redo() }
 
-    function canonOf(v) {
-        if (v === null || typeof v !== "object")
-            return JSON.stringify(v)
-        if (Array.isArray(v))
-            return "[" + v.map(x => chrome.canonOf(x)).join(",") + "]"
-        return "{" + Object.keys(v).sort().map(k => JSON.stringify(k) + ":" + chrome.canonOf(v[k])).join(",") + "}"
+    function avoidCap(x, w, y, h) {
+        const cx = capsule.restX
+        const cw = capsule.fullW
+        const cy = capsule.restY
+        const lo = 12
+        const hi = chrome.height - h - 12
+        let out = Math.max(lo, Math.min(hi, y))
+        if (x + w <= cx - 8 || x >= cx + cw + 8)
+            return out
+        if (out < cy + 56 + 12 && out + h > cy - 12)
+            out = capsule.lowered ? Math.min(out, cy - h - 12) : Math.max(out, cy + 56 + 12)
+        return Math.max(lo, Math.min(hi, out))
     }
 
-    function snapshot() {
-        return chrome.canonOf(JSON.parse(JSON.stringify({ bar: SettingsConfig.bar ?? {}, general: SettingsConfig.general ?? {} })))
+    readonly property real cardTop: capsule.lowered ? capsule.topY : capsule.topY + 56 + 14
+
+    function besideX(w) {
+        const r = chrome.selRect
+        if (chrome.selEdge === "left")
+            return Math.max(12, Math.min(chrome.width - w - 12, r.x + r.width + 28))
+        if (chrome.selEdge === "right")
+            return Math.max(12, r.x - w - 28)
+        return Math.max(12, Math.min(chrome.width - w - 12, r.x + r.width / 2 - w / 2))
     }
 
-    function resetHistory() {
-        recordTimer.stop()
-        chrome.history = [chrome.snapshot()]
-        chrome.historyIndex = 0
-    }
-
-    function restoreAt(i) {
-        recordTimer.stop()
-        chrome.restoring = true
-        chrome.historyIndex = i
-        const s = JSON.parse(chrome.history[i])
-        SettingsConfig.bar = s.bar
-        SettingsConfig.general = s.general
-        restoreRelease.restart()
-    }
-
-    function undo() { if (chrome.canUndo) chrome.restoreAt(chrome.historyIndex - 1) }
-    function redo() { if (chrome.canRedo) chrome.restoreAt(chrome.historyIndex + 1) }
-
-    Timer {
-        id: restoreRelease
-        interval: 500
-        onTriggered: chrome.restoring = false
-    }
-
-    Timer {
-        id: recordTimer
-        interval: 300
-        onTriggered: {
-            const s = chrome.snapshot()
-            if (chrome.historyIndex >= 0 && s === chrome.history[chrome.historyIndex])
-                return
-            const next = chrome.history.slice(0, chrome.historyIndex + 1).concat([s])
-            chrome.history = next.length > 80 ? next.slice(next.length - 80) : next
-            chrome.historyIndex = chrome.history.length - 1
-        }
-    }
-
-    Connections {
-        target: SettingsConfig
-        function onBarChanged() { if (chrome.editing && !chrome.restoring) recordTimer.restart() }
-        function onGeneralChanged() { if (chrome.editing && !chrome.restoring) recordTimer.restart() }
+    function besideY(w, h) {
+        const r = chrome.selRect
+        const x = chrome.besideX(w)
+        if (chrome.selEdge === "left" || chrome.selEdge === "right")
+            return chrome.avoidCap(x, w, r.y + r.height / 2 - h / 2, h)
+        if (chrome.selEdge === "bottom")
+            return chrome.avoidCap(x, w, r.y - h - 28, h)
+        return chrome.avoidCap(x, w, r.y + r.height + 28, h)
     }
 
     property rect selRect: Qt.rect(0, 0, 0, 0)
@@ -151,7 +259,7 @@ Item {
 
     function locate() {
         const id = chrome.sel
-        for (const surf of [chrome.topSurface, chrome.bottomSurface]) {
+        for (const surf of chrome.surfaces) {
             if (!surf || !surf.visible) continue
             for (const b of surf.visibleBlocks) {
                 if (!b.hasItem(id)) continue
@@ -179,7 +287,7 @@ Item {
     property bool blockFound: false
 
     function locateBlock() {
-        for (const surf of [chrome.topSurface, chrome.bottomSurface]) {
+        for (const surf of chrome.surfaces) {
             if (!surf || !surf.visible) continue
             const b = surf.visibleBlocks.find(v => v.blockId === chrome.selBlock)
             if (!b) continue
@@ -206,14 +314,21 @@ Item {
     ]
 
     function addTarget(id) {
-        const dockOnly = !BarLayout.allows(id, "bar")
-        const edge = dockOnly ? "bottom" : "top"
-        const blocks = BarLayout.allBlocks.filter(b => b.edge === edge && b.id !== "__sys")
-        if (chrome.sel !== "" && !dockOnly) {
-            const own = blocks.find(b => b.items.indexOf(chrome.sel) >= 0)
+        const real = BarLayout.allBlocks.filter(b => b.id !== "__sys")
+        if (chrome.selBlock !== "") {
+            const blk = real.find(b => b.id === chrome.selBlock)
+            if (blk)
+                return { block: blk.id, index: blk.items.length }
+        }
+        if (chrome.sel !== "") {
+            const own = real.find(b => b.items.indexOf(chrome.sel) >= 0)
             if (own)
                 return { block: own.id, index: own.items.indexOf(chrome.sel) + 1 }
         }
+        const entry = BarLayout.entry(id)
+        const dockish = !!entry && entry.id.indexOf("dock") === 0
+        const onEdge = real.filter(b => b.edge === (dockish ? "bottom" : "top"))
+        const blocks = onEdge.length > 0 ? onEdge : real
         const pref = blocks.find(b => b.anchor === "right") ?? blocks.find(b => b.anchor === "center") ?? blocks[0]
         return pref ? { block: pref.id, index: pref.items.length } : null
     }
@@ -228,140 +343,37 @@ Item {
         })
     }
 
-    component Pill: Rectangle {
-        id: pill
-        property string icon: ""
-        property string label: ""
-        property bool lit: false
-        property bool danger: false
-        property bool filled: false
-        property bool tonal: false
-        property bool usable: true
-        property int box: 40
-        signal clicked
-
-        implicitHeight: pill.box
-        implicitWidth: pill.label !== "" ? pillRow.implicitWidth + (pill.icon !== "" ? 30 : 32) : pill.box
-        radius: pillArea.pressed ? 12 : pill.box / 2
-        opacity: pill.usable ? 1 : 0.38
-        color: pill.filled ? Colors.primary
-            : pill.tonal ? Colors.primaryContainer
-            : pill.lit ? Colors.secondaryContainer
-            : pillArea.containsMouse && pill.usable ? Qt.alpha(Colors.surfaceText, 0.08) : "transparent"
-        Behavior on radius { SpatialAnim { speed: "fast" } }
-        Behavior on color { EffectsColorAnim { speed: "fast" } }
-
-        readonly property color ink: pill.filled ? Colors.primaryText
-            : pill.tonal ? Colors.primaryContainerText
-            : pill.danger ? Colors.error
-            : pill.lit ? Colors.secondaryContainerText : Colors.surfaceText
-
-        RowLayout {
-            id: pillRow
-            anchors.centerIn: parent
-            spacing: 7
-
-            MaterialIconSymbol {
-                visible: pill.icon !== ""
-                content: pill.icon
-                iconSize: 19
-                customColor: pill.ink
-            }
-
-            CustomText {
-                visible: pill.label !== ""
-                content: pill.label
-                size: 13
-                weight: 600
-                customColor: pill.ink
-            }
-        }
-
-        MouseArea {
-            id: pillArea
-            anchors.fill: parent
-            hoverEnabled: true
-            enabled: pill.usable
-            cursorShape: Qt.PointingHandCursor
-            onClicked: pill.clicked()
-        }
-    }
-
-    component Divider: Rectangle {
-        implicitWidth: 1
-        implicitHeight: 24
-        color: Colors.outlineVariant
-    }
-
-    component Card: Rectangle {
-        color: Colors.surfaceContainer
-        border.width: 1
-        border.color: Qt.alpha(Colors.outline, 0.18)
-    }
-
-    component SectionLabel: CustomText {
-        size: 13
-        weight: 500
-        customColor: Colors.primary
-    }
-
-    component ChoiceChip: Rectangle {
-        id: cc
-        property string label: ""
-        property string icon: ""
-        property bool lit: false
-        signal clicked
-        implicitHeight: 34
-        implicitWidth: ccRow.implicitWidth + 24
-        radius: 17
-        color: cc.lit ? Colors.secondaryContainer
-            : ccArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
-        Behavior on color { EffectsColorAnim { speed: "fast" } }
-        RowLayout {
-            id: ccRow
-            anchors.centerIn: parent
-            spacing: 6
-            MaterialIconSymbol {
-                visible: cc.icon !== "" || cc.lit
-                content: cc.lit ? "check" : cc.icon
-                iconSize: 15
-                customColor: cc.lit ? Colors.secondaryContainerText : Colors.surfaceVariantText
-            }
-            CustomText {
-                content: cc.label
-                size: 12
-                weight: cc.lit ? 700 : 500
-                customColor: cc.lit ? Colors.secondaryContainerText : Colors.surfaceText
-            }
-        }
-        MouseArea {
-            id: ccArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: cc.clicked()
-        }
-    }
-
     MouseArea {
         anchors.fill: parent
         visible: chrome.pop !== ""
         onClicked: chrome.pop = ""
     }
 
-    Card {
+    EditKit.Card {
         id: capsule
-        readonly property Item floor: chrome.bottomSurface && chrome.bottomSurface.visible && chrome.bottomSurface.side === "bottom"
-            ? chrome.bottomSurface : chrome.topSurface && chrome.topSurface.side === "bottom" ? chrome.topSurface : null
+        readonly property Item floor: chrome.surfBottom && chrome.surfBottom.visible && chrome.surfBottom.present ? chrome.surfBottom : null
         readonly property real dockTop: capsule.floor ? capsule.floor.bandRect.y : chrome.height
-        readonly property bool raised: chrome.stage && chrome.dashLow
-        readonly property real restY: capsule.raised
-            ? (BarLayout.barSide === "top" && chrome.topSurface ? chrome.topSurface.rowItem.y + Appearance.size.barHeight + 16 : 20)
-            : capsule.dockTop - 56 - 22
+        readonly property real topY: chrome.surfTop && chrome.surfTop.visible && chrome.surfTop.present
+            ? chrome.surfTop.thickness + (chrome.topGrips ? 46 : 16)
+            : chrome.surfTop && chrome.surfTop.visible ? 56 : 20
+        readonly property bool lowered: chrome.topBusy && !chrome.bottomBusy
+        function spans(x, w) {
+            return x < capsule.restX + capsule.fullW + 8 && x + w > capsule.restX - 8
+        }
+        readonly property real yieldTo: {
+            let b = 0
+            if (toolbar.shown && !toolbar.side && toolbar.below && capsule.spans(toolbar.x, toolbar.width))
+                b = Math.max(b, chrome.selRect.y + chrome.selRect.height + 44 + toolbar.height)
+            if (blockBar.shown && !blockBar.side && blockBar.below && capsule.spans(blockBar.x, blockBar.width))
+                b = Math.max(b, chrome.blockRect.y + chrome.blockRect.height + 48 + blockBar.height)
+            return b
+        }
+        readonly property real restY: capsule.lowered ? capsule.dockTop - 56 - 52
+            : Math.max(capsule.topY, capsule.yieldTo > 0 ? capsule.yieldTo + 14 : 0)
         property real restYAnim: capsule.restY
         Behavior on restYAnim { SpatialAnim { speed: "default" } }
         readonly property real fullW: capRow.implicitWidth + 12
-        readonly property real restX: (chrome.width - capsule.fullW) / 2
+        readonly property real restX: (chrome.width - capsule.fullW) / 2 + chrome.capShift
 
         property real capT: chrome.editing ? 1 : 0
         Behavior on capT {
@@ -388,11 +400,11 @@ Item {
             }
             return l < r ? Qt.rect(l, top, r - l, 0) : Qt.rect(0, 0, 0, 0)
         }
-        readonly property bool fromDock: capsule.dockRect.width > 0 && !capsule.raised
+        readonly property bool fromDock: capsule.dockRect.width > 0 && capsule.lowered
         readonly property real startW: capsule.fromDock ? Math.min(capsule.fullW, capsule.dockRect.width) : capsule.fullW * 0.6
         readonly property real startX: capsule.fromDock ? capsule.dockRect.x + capsule.dockRect.width / 2 - capsule.startW / 2
                                                         : (chrome.width - capsule.startW) / 2
-        readonly property real startY: capsule.fromDock ? capsule.dockRect.y - 4 : capsule.restYAnim + 26
+        readonly property real startY: capsule.fromDock ? capsule.dockRect.y - 4 : capsule.restYAnim + (capsule.lowered ? 26 : -26)
 
         property real shelfFactor: chrome.shelfOpen ? 0 : 1
         Behavior on shelfFactor { EffectsAnim { speed: "fast" } }
@@ -424,10 +436,9 @@ Item {
             }
         }
 
-        RowLayout {
+        EditCapsuleRow {
             id: capRow
             anchors.centerIn: parent
-            spacing: 4
             layer.enabled: capsule.wipe < 0.999
             layer.effect: MultiEffect {
                 maskEnabled: true
@@ -435,82 +446,38 @@ Item {
                 maskThresholdMin: 0.5
                 maskSpreadAtMin: 1.0
             }
-
-            Rectangle {
-                id: logoBtn
-                implicitWidth: 44
-                implicitHeight: 44
-                radius: logoArea.pressed ? 12 : 22
-                color: logoArea.containsMouse ? Colors.primary : Colors.primaryContainer
-                Behavior on radius { SpatialAnim { speed: "fast" } }
-                Behavior on color { EffectsColorAnim { speed: "fast" } }
-
-                NebulaLogo {
-                    anchors.centerIn: parent
-                    width: 26
-                    height: 26
-                    color: logoArea.containsMouse ? Colors.primaryText : Colors.primaryContainerText
-                    rotation: logoArea.containsMouse ? -8 : 0
-                    Behavior on rotation { SpatialAnim { speed: "fast" } }
-                }
-
-                MouseArea {
-                    id: logoArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        GlobalStates.barEditMode = false
-                        GlobalStates.settingsPage = 9
-                        GlobalStates.settingsOpen = true
-                    }
-                }
-
-                CustomToolTip { content: "Nebula settings"; visible: logoArea.containsMouse }
+            addLabel: "Add"
+            addLit: chrome.shelfOpen
+            actions: [
+                { key: "panels", icon: "view_quilt", label: "Panels", lit: chrome.stage },
+                { key: "edges", icon: "tune", label: "Edges", lit: chrome.editor !== null && chrome.editor.drawerMode === "settings" },
+                { key: "reset", icon: "restart_alt", label: chrome.resetArmed ? "Reset layout" : "",
+                  tip: chrome.resetArmed ? "" : "Reset layout", danger: chrome.resetArmed, lit: chrome.resetArmed }
+            ]
+            onLogo: {
+                GlobalStates.closeEdit()
+                GlobalStates.settingsPage = 9
+                GlobalStates.settingsOpen = true
             }
-
-            Divider { Layout.leftMargin: 2; Layout.rightMargin: 2 }
-
-            Pill {
-                icon: "add"
-                label: "Add to bar"
-                tonal: true
-                box: 44
-                onClicked: {
-                    chrome.pop = ""
-                    if (chrome.editor) {
-                        chrome.editor.drawerMode = ""
-                        chrome.editor.panelStage = false
-                    }
-                    chrome.shelfOpen = true
+            onAdd: {
+                chrome.pop = ""
+                if (chrome.editor) {
+                    chrome.editor.drawerMode = ""
+                    chrome.editor.panelStage = false
                 }
+                chrome.shelfOpen = !chrome.shelfOpen
             }
-            Pill { icon: "undo"; box: 44; usable: chrome.canUndo; onClicked: chrome.undo() }
-            Pill { icon: "redo"; box: 44; usable: chrome.canRedo; onClicked: chrome.redo() }
-            Divider { Layout.leftMargin: 2; Layout.rightMargin: 2 }
-            Pill {
-                icon: "view_quilt"
-                label: "Panels"
-                box: 44
-                lit: chrome.stage
-                onClicked: {
+            onAction: key => {
+                const e = chrome.editor
+                if (key === "panels") {
                     if (chrome.stage) {
-                        chrome.editor.panelStage = false
+                        e.panelStage = false
                         return
                     }
                     const own = chrome.panelOf(chrome.sel)
                     const first = chrome.panelList.find(p => BarLayout.isPlaced(p.item) || p.kind === "wallpaper" || p.kind === "launcher" || p.kind === "clipboard")
                     chrome.openStage(own ? chrome.sel : first ? first.item : "wallpaper")
-                }
-            }
-            Pill {
-                id: capSettings
-                icon: "tune"
-                label: "Bar & dock"
-                box: 44
-                lit: chrome.editor !== null && chrome.editor.drawerMode === "settings"
-                onClicked: {
-                    const e = chrome.editor
+                } else if (key === "edges") {
                     if (!e) return
                     if (e.drawerMode === "settings") {
                         e.drawerMode = ""
@@ -518,22 +485,31 @@ Item {
                     }
                     e.panelStage = false
                     e.selectedItem = ""
-                    e.drawerFrom = capSettings.mapToItem(chrome, 0, 0, capSettings.width, capSettings.height)
+                    e.drawerFrom = Qt.rect(capsule.x + capsule.width / 2 - 60, capsule.y, 120, capsule.height)
                     e.drawerMode = "settings"
+                } else if (key === "reset") {
+                    if (!chrome.resetArmed) {
+                        chrome.resetArmed = true
+                        resetDisarm.restart()
+                        return
+                    }
+                    chrome.resetArmed = false
+                    resetDisarm.stop()
+                    BarLayout.reset()
                 }
-            }
-            Pill { icon: "restart_alt"; box: 44; onClicked: BarLayout.reset() }
-            Pill {
-                icon: "check"
-                label: "Done"
-                filled: true
-                box: 44
-                onClicked: GlobalStates.barEditMode = false
             }
         }
     }
 
-    Card {
+    EditHistoryCard {
+        z: 5
+        open: capRow.historyOpen && chrome.editing
+        x: Math.max(12, Math.min(chrome.width - width - 12, capsule.x + capsule.width / 2 - width / 2))
+        y: capsule.lowered ? capsule.y - height - 10 : capsule.y + capsule.height + 10
+        onPicked: capRow.historyOpen = false
+    }
+
+    EditKit.Card {
         id: toolbar
         readonly property var entry: chrome.sel !== "" && chrome.sel.indexOf("dash:") !== 0 ? BarLayout.entry(chrome.sel) : null
         readonly property var styleSpec: toolbar.entry && toolbar.entry.options
@@ -548,6 +524,16 @@ Item {
         }
         readonly property var panel: chrome.panelOf(chrome.sel)
         readonly property string tint: chrome.sel !== "" ? BarLayout.itemStyle(chrome.sel, "tint", "none") : "none"
+        readonly property var colorSpec: {
+            const opts = toolbar.entry && toolbar.entry.options ? toolbar.entry.options : []
+            const c = opts.find(o => o.key === "color" && o.type === "choice")
+            if (!c)
+                return null
+            if (c.onlyIf && c.onlyIf.values.indexOf(BarLayout.opt(chrome.sel, c.onlyIf.key)) < 0)
+                return null
+            return c
+        }
+        readonly property string colorValue: toolbar.colorSpec ? String(BarLayout.opt(chrome.sel, "color")) : ""
         readonly property bool placed: chrome.sel !== "" && BarLayout.isPlaced(chrome.sel)
         readonly property bool shown: chrome.editing && toolbar.entry !== null && chrome.selFound && !chrome.dragging
                                       && !chrome.stage && !chrome.drawerShown && !chrome.shelfOpen
@@ -576,9 +562,9 @@ Item {
             chrome.selEdge === "left" ? chrome.selRect.x + chrome.selRect.width + 44
             : chrome.selEdge === "right" ? chrome.selRect.x - width - 44
             : chrome.selRect.x + chrome.selRect.width / 2 - width / 2))
-        y: toolbar.side ? Math.max(12, Math.min(capsule.y - height - 12, chrome.selRect.y + chrome.selRect.height / 2 - height / 2))
+        y: chrome.avoidCap(x, width, toolbar.side ? chrome.selRect.y + chrome.selRect.height / 2 - height / 2
             : toolbar.below ? chrome.selRect.y + chrome.selRect.height + 44
-            : Math.min(chrome.selRect.y - height - 44, capsule.y - height - 12)
+            : chrome.selRect.y - height - 44, height)
         height: 52
         width: toolRow.implicitWidth + 12
         radius: 26
@@ -648,12 +634,13 @@ Item {
                 visible: toolbar.placed
 
                 Repeater {
-                    model: chrome.tints
+                    model: toolbar.colorSpec ? toolbar.colorSpec.choices : chrome.tints
 
                     Rectangle {
                         id: dot
                         required property var modelData
-                        readonly property bool on: toolbar.tint === dot.modelData.value
+                        readonly property bool on: toolbar.colorSpec ? toolbar.colorValue === dot.modelData.value
+                                                                     : toolbar.tint === dot.modelData.value
                         width: 22
                         height: 22
                         radius: 11
@@ -676,28 +663,40 @@ Item {
                             anchors.fill: parent
                             anchors.margins: -3
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: BarLayout.setItemStyle(chrome.sel, "tint", dot.modelData.value)
+                            onClicked: {
+                                if (toolbar.colorSpec)
+                                    BarLayout.setOption(chrome.sel, "color", dot.modelData.value)
+                                else
+                                    BarLayout.setItemStyle(chrome.sel, "tint", dot.modelData.value)
+                            }
                         }
                     }
                 }
             }
 
-            Divider { Layout.leftMargin: 4; Layout.rightMargin: 4 }
+            EditKit.Divider { Layout.leftMargin: 4; Layout.rightMargin: 4 }
 
-            Pill {
+            EditKit.Pill {
                 visible: toolbar.labelSpec !== null && toolbar.placed
                 icon: "text_fields"
                 lit: toolbar.labelSpec !== null && BarLayout.opt(chrome.sel, "showLabel") === true
                 onClicked: BarLayout.setOption(chrome.sel, "showLabel", !(BarLayout.opt(chrome.sel, "showLabel") === true))
             }
-            Pill {
+            EditKit.Pill {
+                id: optsPill
+                visible: chrome.toggleOptsOf(chrome.sel).length > 0
+                icon: "toggle_on"
+                lit: chrome.pop === "opts"
+                onClicked: chrome.pop = chrome.pop === "opts" ? "" : "opts"
+            }
+            EditKit.Pill {
                 visible: toolbar.panel !== null
                 icon: "open_in_full"
                 label: toolbar.panel ? toolbar.panel.label : ""
                 lit: true
                 onClicked: chrome.openStage(chrome.sel)
             }
-            Pill {
+            EditKit.Pill {
                 id: toolTune
                 icon: "tune"
                 onClicked: {
@@ -707,7 +706,7 @@ Item {
                     chrome.editor.drawerMode = "options"
                 }
             }
-            Pill {
+            EditKit.Pill {
                 visible: toolbar.placed
                 icon: "delete"
                 danger: true
@@ -720,11 +719,13 @@ Item {
         }
     }
 
-    Card {
+    EditKit.Card {
         id: blockBar
         readonly property string shape: chrome.selBlock !== "" ? BarLayout.blockShape(chrome.selBlock) : ""
         readonly property var blockInfo: chrome.selBlock !== "" ? BarLayout.blockById(chrome.selBlock) : null
-        readonly property string panels: blockBar.blockInfo ? BarLayout.blockPanels(chrome.selBlock, blockBar.blockInfo.edge) : ""
+        readonly property string tint: chrome.selBlock !== "" ? BarLayout.blockStyle(chrome.selBlock, "tint", "none") : "none"
+        readonly property bool split: chrome.selBlock !== "" && BarLayout.splitBlock(chrome.selBlock)
+        readonly property string panels: blockBar.blockInfo ? BarLayout.panelStyleFor(chrome.selBlock, blockBar.blockInfo.edge, blockBar.shape) : ""
         readonly property bool shown: chrome.editing && chrome.selBlock !== "" && chrome.blockFound && !chrome.dragging
                                       && !chrome.stage && !chrome.drawerShown && !chrome.shelfOpen
         readonly property bool side: chrome.blockEdge === "left" || chrome.blockEdge === "right"
@@ -747,12 +748,12 @@ Item {
             yScale: 0.3 + 0.7 * blockBar.showT
         }
         x: Math.max(12, Math.min(chrome.width - width - 12,
-            chrome.blockEdge === "left" ? chrome.blockRect.x + chrome.blockRect.width + 44
-            : chrome.blockEdge === "right" ? chrome.blockRect.x - width - 44
+            chrome.blockEdge === "left" ? chrome.blockRect.x + chrome.blockRect.width + 104
+            : chrome.blockEdge === "right" ? chrome.blockRect.x - width - 104
             : chrome.blockRect.x + chrome.blockRect.width / 2 - width / 2))
-        y: blockBar.side ? Math.max(12, Math.min(capsule.y - height - 12, chrome.blockRect.y + chrome.blockRect.height / 2 - height / 2))
+        y: chrome.avoidCap(x, width, blockBar.side ? chrome.blockRect.y + chrome.blockRect.height / 2 - height / 2
             : blockBar.below ? chrome.blockRect.y + chrome.blockRect.height + 48
-            : Math.min(chrome.blockRect.y - height - 48, capsule.y - height - 12)
+            : chrome.blockRect.y - height - 48, height)
         height: 52
         width: blockRow.implicitWidth + 12
         radius: 26
@@ -773,7 +774,7 @@ Item {
             Repeater {
                 model: chrome.shapeChoices
 
-                Pill {
+                EditKit.Pill {
                     required property var modelData
                     icon: modelData.icon
                     label: modelData.label
@@ -782,33 +783,204 @@ Item {
                 }
             }
 
-            Divider {
-                visible: blockBar.shape === "pill"
+            EditKit.Divider {
+                visible: blockBar.shape !== ""
                 Layout.leftMargin: 4
                 Layout.rightMargin: 4
             }
 
-            Pill {
+            Row {
+                Layout.leftMargin: 6
+                Layout.rightMargin: 8
+                spacing: 7
+                visible: blockBar.shape !== ""
+
+                Repeater {
+                    model: chrome.tints
+
+                    Rectangle {
+                        id: blockDot
+                        required property var modelData
+                        readonly property bool on: blockBar.tint === blockDot.modelData.value
+                        width: 22
+                        height: 22
+                        radius: 11
+                        color: blockDot.modelData.value === "none" ? "transparent" : BarLayout.roleColor(blockDot.modelData.value)
+                        border.width: blockDot.modelData.value === "none" ? 2 : 0
+                        border.color: Colors.outline
+
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: 30
+                            height: 30
+                            radius: 15
+                            color: "transparent"
+                            border.width: 2
+                            border.color: Colors.primary
+                            visible: blockDot.on
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -3
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: BarLayout.setBlockStyle(chrome.selBlock, "tint", blockDot.modelData.value)
+                        }
+                    }
+                }
+            }
+
+            EditKit.Pill {
                 visible: blockBar.shape === "pill"
+                icon: "interests"
+                label: "Shapes"
+                lit: blockBar.split
+                onClicked: BarLayout.setBlockSplit(chrome.selBlock, !blockBar.split)
+            }
+
+            RowLayout {
+                id: radiusCtl
+                visible: blockBar.shape === "pill" && !blockBar.split
+                spacing: 0
+                readonly property real full: blockBar.blockInfo ? BarLayout.edge(blockBar.blockInfo.edge).height / 2 : 20
+                readonly property real cur: BarLayout.blockStyle(chrome.selBlock, "radius", -1)
+                readonly property real now: radiusCtl.cur < 0 ? radiusCtl.full : Math.min(radiusCtl.cur, radiusCtl.full)
+                function nudge(d) {
+                    const n = Math.max(0, radiusCtl.now + d)
+                    BarLayout.setBlockStyle(chrome.selBlock, "radius", n >= radiusCtl.full ? -1 : n)
+                }
+                MaterialIconSymbol {
+                    Layout.leftMargin: 8
+                    content: "rounded_corner"
+                    iconSize: 18
+                    customColor: Colors.surfaceVariantText
+                }
+                EditKit.Pill {
+                    icon: "remove"
+                    box: 32
+                    tip: "Less rounded"
+                    usable: radiusCtl.now > 0
+                    onClicked: radiusCtl.nudge(-1)
+                }
+                CustomText {
+                    Layout.preferredWidth: 38
+                    horizontalAlignment: Text.AlignHCenter
+                    content: radiusCtl.cur < 0 ? "Full" : Math.round(radiusCtl.now) + ""
+                    size: 12
+                    weight: 600
+                    font.features: { "tnum": 1 }
+                }
+                EditKit.Pill {
+                    icon: "add"
+                    box: 32
+                    tip: "More rounded"
+                    usable: radiusCtl.cur >= 0
+                    onClicked: radiusCtl.nudge(1)
+                }
+                WheelHandler {
+                    onWheel: e => radiusCtl.nudge(e.angleDelta.y > 0 ? 1 : -1)
+                }
+            }
+
+            EditKit.Pill {
+                id: cornersPill
+                visible: radiusCtl.visible
+                icon: "rounded_corner"
+                box: 32
+                tip: "Each corner"
+                lit: chrome.pop === "corners" || cornersCard.custom
+                onClicked: chrome.pop = chrome.pop === "corners" ? "" : "corners"
+            }
+
+            EditKit.Divider {
+                Layout.leftMargin: 4
+                Layout.rightMargin: 4
+            }
+
+            EditKit.Pill {
                 icon: "vertical_align_top"
                 label: "Attached"
                 lit: blockBar.panels === "attached"
                 onClicked: BarLayout.setBlockStyle(chrome.selBlock, "panels", "attached")
             }
 
-            Pill {
-                visible: blockBar.shape === "pill"
+            EditKit.Pill {
+                icon: "join_inner"
+                label: "Merged"
+                lit: blockBar.panels === "merged"
+                onClicked: BarLayout.setBlockStyle(chrome.selBlock, "panels", "merged")
+            }
+
+            EditKit.Pill {
                 icon: "bubble_chart"
                 label: "Floating"
                 lit: blockBar.panels === "floating"
                 onClicked: BarLayout.setBlockStyle(chrome.selBlock, "panels", "floating")
             }
+
+            RowLayout {
+                id: panelGapCtl
+                visible: blockBar.panels === "floating" || blockBar.panels === "merged"
+                spacing: 0
+                readonly property real now: BarLayout.blockPanelGap(chrome.selBlock)
+                readonly property bool own: BarLayout.blockStyle(chrome.selBlock, "panelGap", null) !== null
+                function nudge(d) {
+                    BarLayout.setBlockStyle(chrome.selBlock, "panelGap", Math.max(0, Math.min(40, panelGapCtl.now + d)))
+                    BarLayout.flashGap("panelGap", "", chrome.selBlock)
+                }
+                EditKit.Divider {
+                    Layout.leftMargin: 4
+                    Layout.rightMargin: 4
+                }
+                MaterialIconSymbol {
+                    Layout.leftMargin: 4
+                    content: blockBar.side ? "width" : "height"
+                    iconSize: 18
+                    customColor: Colors.surfaceVariantText
+                }
+                EditKit.Pill {
+                    icon: "remove"
+                    box: 32
+                    tip: "Smaller panel gap"
+                    usable: panelGapCtl.now > 0
+                    onClicked: panelGapCtl.nudge(-2)
+                }
+                CustomText {
+                    Layout.preferredWidth: 38
+                    horizontalAlignment: Text.AlignHCenter
+                    content: Math.round(panelGapCtl.now) + ""
+                    size: 12
+                    weight: 600
+                    font.features: { "tnum": 1 }
+                }
+                EditKit.Pill {
+                    icon: "add"
+                    box: 32
+                    tip: "Bigger panel gap"
+                    usable: panelGapCtl.now < 40
+                    onClicked: panelGapCtl.nudge(2)
+                }
+                EditKit.Pill {
+                    visible: panelGapCtl.own
+                    icon: "sync"
+                    box: 32
+                    tip: "Use the bar's panel gap"
+                    onClicked: BarLayout.setBlockStyle(chrome.selBlock, "panelGap", null)
+                }
+                WheelHandler {
+                    onWheel: e => panelGapCtl.nudge(e.angleDelta.y > 0 ? 2 : -2)
+                }
+                HoverHandler {
+                    onHoveredChanged: BarLayout.hoverGap(hovered, "panelGap", "", chrome.selBlock)
+                }
+            }
         }
     }
 
-    Card {
+    EditKit.Card {
         id: styleCard
         readonly property bool shown: chrome.pop === "style" && toolbar.shown && toolbar.styleSpec !== null
+        readonly property bool up: !toolbar.below || toolbar.y + toolbar.height + 8 + styleCard.height > chrome.height - 12
         property real showT: styleCard.shown ? 1 : 0
         Behavior on showT {
             NumberAnimation {
@@ -821,12 +993,12 @@ Item {
         opacity: Math.min(1, styleCard.showT * 1.5)
         transform: Scale {
             origin.x: toolbar.x + 6 + nameBtn.width / 2 - styleCard.x
-            origin.y: toolbar.below ? -8 : styleCard.height + 8
+            origin.y: styleCard.up ? styleCard.height + 8 : -8
             xScale: 0.5 + 0.5 * styleCard.showT
             yScale: 0.15 + 0.85 * styleCard.showT
         }
         x: Math.max(12, Math.min(chrome.width - width - 12, toolbar.x))
-        y: toolbar.below ? toolbar.y + toolbar.height + 8 : toolbar.y - height - 8
+        y: styleCard.up ? Math.max(12, toolbar.y - height - 8) : toolbar.y + toolbar.height + 8
         width: 380
         height: styleFlow.implicitHeight + 28
         radius: 22
@@ -842,7 +1014,7 @@ Item {
             Repeater {
                 model: toolbar.styleSpec ? toolbar.styleSpec.choices : []
 
-                ChoiceChip {
+                EditKit.ChoiceChip {
                     required property var modelData
                     label: modelData.label
                     icon: modelData.icon ?? ""
@@ -853,827 +1025,322 @@ Item {
         }
     }
 
-    readonly property string dashId: chrome.sel.indexOf("dash:") === 0 ? chrome.sel.slice(5) : ""
-    property rect dashCellRect: Qt.rect(0, 0, 0, 0)
-    property rect dashPanelRect: Qt.rect(0, 0, 0, 0)
-    property bool dashCellFound: false
-
-    function locateDash() {
-        const d = DashLayout.activeDash
-        if (!d) {
-            chrome.dashCellFound = false
-            chrome.dashPanelRect = Qt.rect(0, 0, 0, 0)
-            return
-        }
-        chrome.dashPanelRect = d.mapToItem(chrome, 0, 0, d.width, d.height)
-        const c = chrome.dashId !== "" ? d.cellItem(chrome.dashId) : null
-        chrome.dashCellFound = c !== null
-        if (c)
-            chrome.dashCellRect = c.mapToItem(chrome, 0, 0, c.width, c.height)
-    }
-
-    Timer {
-        interval: 50
-        repeat: true
-        running: chrome.editing && DashLayout.activeDash !== null
-        triggeredOnStart: true
-        onTriggered: chrome.locateDash()
-    }
-
-    readonly property bool dashLow: chrome.dashPanelRect.height > 0
-        && chrome.dashPanelRect.y + chrome.dashPanelRect.height / 2 > chrome.height / 2
-
-    Card {
-        id: dashBar
-        readonly property var entry: chrome.dashId !== "" ? DashLayout.entry(chrome.dashId) : null
-        readonly property var spec: DashLayout.items.find(i => i.id === chrome.dashId) ?? null
-        readonly property bool legacy: dashBar.entry ? dashBar.entry.legacy === true : false
-        readonly property var picks: chrome.dashId !== "" ? DashLayout.lookPicks(chrome.dashId) : []
-        readonly property bool framed: !dashBar.legacy && DashLayout.opt(chrome.dashId, "background") !== false
-        readonly property bool busy: DashLayout.activeDash !== null && DashLayout.activeDash.dragId !== ""
-        readonly property bool shown: chrome.editing && dashBar.entry !== null && chrome.dashCellFound && !dashBar.busy
-            && !(chrome.editor && chrome.editor.drawerMode === "inspector") && !chrome.shelfOpen
-        readonly property bool below: chrome.dashCellRect.y - height - 14 < 12
-
-        visible: dashBar.shown
-        x: Math.max(12, Math.min(chrome.width - width - 12, chrome.dashCellRect.x - 6))
-        y: dashBar.below ? chrome.dashCellRect.y + chrome.dashCellRect.height + 14 : chrome.dashCellRect.y - height - 14
-        height: 52
-        width: dashRow.implicitWidth + 12
-        radius: 26
-        z: 5
-
-        RowLayout {
-            id: dashRow
-            anchors.centerIn: parent
-            spacing: 2
-
-            RowLayout {
-                Layout.leftMargin: 6
-                Layout.rightMargin: 6
-                spacing: 8
-
-                Rectangle {
-                    implicitWidth: 26
-                    implicitHeight: 26
-                    radius: 8
-                    color: Colors.primaryContainer
-                    MaterialIconSymbol {
-                        anchors.centerIn: parent
-                        content: dashBar.entry ? dashBar.entry.icon : "widgets"
-                        iconSize: 15
-                        customColor: Colors.primaryContainerText
-                    }
-                }
-
-                CustomText {
-                    content: dashBar.entry ? dashBar.entry.label : ""
-                    size: 13
-                    weight: 600
-                }
-
-                CustomText {
-                    content: dashBar.spec ? dashBar.spec.w + "×" + dashBar.spec.h : ""
-                    size: 12
-                    weight: 400
-                    customColor: Colors.outline
-                }
-            }
-
-            Divider { Layout.leftMargin: 4; Layout.rightMargin: 4 }
-
-            Pill {
-                visible: dashBar.picks.length > 0
-                icon: "palette"
-                lit: chrome.pop === "dashlook"
-                onClicked: chrome.pop = chrome.pop === "dashlook" ? "" : "dashlook"
-            }
-            Pill {
-                visible: !dashBar.legacy
-                icon: dashBar.framed ? "crop_square" : "crop_free"
-                lit: dashBar.framed
-                onClicked: DashLayout.setOption(chrome.dashId, "background", !dashBar.framed)
-            }
-            Pill {
-                visible: !dashBar.legacy
-                icon: "content_copy"
-                onClicked: {
-                    const nid = DashLayout.duplicateItem(chrome.dashId)
-                    if (nid !== "" && chrome.editor)
-                        chrome.editor.selectedItem = "dash:" + nid
-                }
-            }
-            Pill {
-                icon: "tune"
-                onClicked: {
-                    chrome.pop = ""
-                    if (chrome.editor) chrome.editor.drawerMode = "inspector"
-                }
-            }
-
-            Divider { Layout.leftMargin: 4; Layout.rightMargin: 4 }
-
-            Pill {
-                icon: "delete"
-                danger: true
-                onClicked: {
-                    const id = chrome.dashId
-                    const d = DashLayout.activeDash
-                    chrome.pop = ""
-                    Qt.callLater(() => { if (d) d.removeItem(id); else DashLayout.dropItem(id) })
-                }
+    EditKit.Card {
+        id: optsCard
+        readonly property var opts: chrome.toggleOptsOf(chrome.sel)
+        readonly property bool shown: chrome.pop === "opts" && toolbar.shown && optsCard.opts.length > 0
+        readonly property bool up: !toolbar.below || toolbar.y + toolbar.height + 8 + optsCard.height > chrome.height - 12
+        readonly property real anchorX: toolbar.x + toolRow.x + optsPill.x + optsPill.width / 2
+        property real showT: optsCard.shown ? 1 : 0
+        Behavior on showT {
+            NumberAnimation {
+                duration: optsCard.shown ? 300 : 180
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: optsCard.shown ? [0.2, 0, 0, 1, 1, 1] : [0.3, 0, 0.8, 0.15, 1, 1]
             }
         }
-    }
-
-    Card {
-        id: dashLook
-        readonly property real thumbW: 104
-        readonly property real thumbH: 74
-        visible: chrome.pop === "dashlook" && dashBar.visible && dashBar.picks.length > 0
-        x: Math.max(12, Math.min(chrome.width - width - 12, dashBar.x))
-        y: dashBar.below ? dashBar.y + dashBar.height + 8 : dashBar.y - height - 8
-        width: Math.max(300, lookCol.implicitWidth + 28)
-        height: lookCol.implicitHeight + 28
-        radius: 24
-        z: 6
-
-        MouseArea { anchors.fill: parent }
-
-        ColumnLayout {
-            id: lookCol
-            x: 14
-            y: 14
-            spacing: 14
-
-            Repeater {
-                model: dashLook.visible ? dashBar.picks : []
-
-                delegate: ColumnLayout {
-                    id: pick
-                    required property var modelData
-                    readonly property var value: DashLayout.opt(chrome.dashId, pick.modelData.key)
-                    readonly property bool visual: pick.modelData.key !== "color" && pick.modelData.choices.length <= 4
-                    spacing: 8
-
-                    CustomText {
-                        content: pick.modelData.label
-                        size: 13
-                        weight: 600
-                    }
-
-                    Row {
-                        visible: pick.visual
-                        spacing: 8
-
-                        Repeater {
-                            model: pick.visual ? pick.modelData.choices : []
-
-                            delegate: Rectangle {
-                                id: face
-                                required property var modelData
-                                readonly property bool on: pick.value === face.modelData.value
-                                width: dashLook.thumbW
-                                height: dashLook.thumbH + 26
-                                radius: 16
-                                color: face.on ? Colors.secondaryContainer
-                                    : faceArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
-                                border.width: face.on ? 2 : 0
-                                border.color: Colors.primary
-                                Behavior on color { EffectsColorAnim { speed: "fast" } }
-
-                                DashThumb {
-                                    x: 6
-                                    y: 6
-                                    width: parent.width - 12
-                                    height: dashLook.thumbH - 6
-                                    instanceId: chrome.dashId
-                                    overrides: {
-                                        const o = {}
-                                        o[pick.modelData.key] = face.modelData.value
-                                        return o
-                                    }
-                                    srcW: chrome.dashCellRect.width
-                                    srcH: chrome.dashCellRect.height
-                                }
-
-                                CustomText {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    anchors.bottom: parent.bottom
-                                    anchors.bottomMargin: 6
-                                    content: face.modelData.label
-                                    size: 12
-                                    weight: face.on ? 700 : 500
-                                    customColor: face.on ? Colors.secondaryContainerText : Colors.surfaceVariantText
-                                }
-
-                                MouseArea {
-                                    id: faceArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: DashLayout.setOption(chrome.dashId, pick.modelData.key, face.modelData.value)
-                                }
-                            }
-                        }
-                    }
-
-                    EditOptionRow {
-                        visible: !pick.visual
-                        Layout.preferredWidth: 300
-                        instanceId: chrome.dashId
-                        spec: pick.modelData
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: 36
-                radius: 18
-                color: moreArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 6
-                    MaterialIconSymbol { content: "tune"; iconSize: 16; customColor: Colors.primary }
-                    CustomText { content: "All options"; size: 13; weight: 600; customColor: Colors.primary }
-                }
-
-                MouseArea {
-                    id: moreArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        chrome.pop = ""
-                        if (chrome.editor) chrome.editor.drawerMode = "inspector"
-                    }
-                }
-            }
+        visible: optsCard.showT > 0.01
+        opacity: Math.min(1, optsCard.showT * 1.5)
+        transform: Scale {
+            origin.x: optsCard.anchorX - optsCard.x
+            origin.y: optsCard.up ? optsCard.height + 8 : -8
+            xScale: 0.5 + 0.5 * optsCard.showT
+            yScale: 0.15 + 0.85 * optsCard.showT
         }
-    }
+        x: Math.max(12, Math.min(chrome.width - width - 12, optsCard.anchorX - width / 2))
+        y: optsCard.up ? Math.max(12, toolbar.y - height - 8) : toolbar.y + toolbar.height + 8
+        width: 340
+        height: optsFlow.implicitHeight + 28
+        radius: 22
 
-    Card {
-        id: stageCard
-        readonly property var panel: chrome.panelOf(chrome.sel)
-        readonly property string kind: stageCard.panel ? stageCard.panel.kind : ""
-        readonly property var spec: stageCard.kind !== "" ? BarLayout.panelSpecs[stageCard.kind] ?? null : null
-        readonly property var styleOpt: {
-            const map = { launcher: ["launcher", "style"], wallpaper: ["wallpaper", "style"], clipboard: ["clipboard", "style"] }
-            const m = map[stageCard.kind]
-            if (!m) return null
-            const s = BarLayout.specFor(m[0], m[1])
-            return s && s.choices ? { item: m[0], key: m[1], spec: s } : null
-        }
-        readonly property string opener: {
-            switch (stageCard.kind) {
-            case "wallpaper": return "Bottom centre of the screen, or its keyboard shortcut"
-            case "clipboard": return "Bottom centre of the screen, or its keyboard shortcut"
-            case "launcher": return ServiceLauncher.position === "item" ? "From the Apps item" : ServiceLauncher.position === "center" ? "Centre of the screen" : "Left edge of the screen"
-            case "dashboard": {
-                const host = BarLayout.baseId(BarLayout.panelHostItem("dashboard"))
-                return "From " + (host === "notifications" ? "Notifications" : host === "logo" ? "the Logo" : "Dashboard")
-            }
-            case "calendar": return "From the Clock"
-            case "weather": return "From Weather"
-            }
-            return ""
-        }
-        readonly property bool hostMissing: stageCard.kind !== "" && stageCard.kind !== "wallpaper" && stageCard.kind !== "launcher" && stageCard.kind !== "clipboard"
-            && !BarLayout.isPlaced(BarLayout.panelHostItem(stageCard.kind))
-
-        visible: chrome.editing && chrome.stage && !chrome.drawerShown && stageCard.kind !== "dashboard"
-        x: chrome.previewRight ? 24 : chrome.width - width - 24
-        y: BarLayout.barSide === "top" ? (chrome.topSurface ? chrome.topSurface.rowItem.y : 0) + Appearance.size.barHeight + 40
-            : ServiceGaps.topFinal + 24
-        width: 400
-        height: stageBody.implicitHeight + 36
-        radius: 28
-
-        ColumnLayout {
-            id: stageBody
+        Flow {
+            id: optsFlow
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: 18
-            spacing: 14
+            anchors.margins: 14
+            spacing: 6
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
+            Repeater {
+                model: optsCard.opts
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 0
-                    CustomText {
-                        content: stageCard.panel ? stageCard.panel.label + " panel" : "Panels"
-                        size: 18
-                        weight: 600
-                    }
-                    CustomText {
-                        Layout.fillWidth: true
-                        content: stageCard.hostMissing ? "Its bar item isn't placed, so there's nothing to preview"
-                            : stageCard.spec ? "Open live · drag its edges to resize" : "Open live"
-                        size: 12
-                        weight: 400
-                        customColor: Colors.surfaceVariantText
-                        wrapMode: Text.WordWrap
-                        elide: Text.ElideNone
-                    }
-                }
-
-                Pill {
-                    icon: "close"
-                    box: 38
-                    onClicked: chrome.editor.panelStage = false
-                }
-            }
-
-            EditChoice {
-                Layout.fillWidth: true
-                maxPerRow: 3
-                choices: chrome.panelList.map(p => ({ value: p.item, label: p.label, icon: p.icon }))
-                isActive: function(v) { return stageCard.panel !== null && stageCard.panel.item === v }
-                onPicked: v => chrome.openStage(v)
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: 1
-                color: Colors.outlineVariant
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                visible: stageCard.styleOpt !== null
-
-                SectionLabel { content: "Style" }
-
-                EditChoice {
-                    Layout.fillWidth: true
-                    choices: stageCard.styleOpt ? stageCard.styleOpt.spec.choices : []
-                    value: stageCard.styleOpt ? BarLayout.opt(stageCard.styleOpt.item, stageCard.styleOpt.key) : undefined
-                    onPicked: v => BarLayout.setOption(stageCard.styleOpt.item, stageCard.styleOpt.key, v)
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                visible: stageCard.spec !== null
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    SectionLabel { content: "Size"; Layout.fillWidth: true }
-                    CustomText {
-                        content: stageCard.spec
-                            ? BarLayout.panelW(stageCard.kind) + " × " + (BarLayout.panelH(stageCard.kind) < 0 ? "auto" : BarLayout.panelH(stageCard.kind))
-                            : ""
-                        size: 12
-                        weight: 700
-                        customColor: Colors.primary
-                    }
-                }
-
-                EditChoice {
-                    Layout.fillWidth: true
-                    choices: BarLayout.panelPresets(stageCard.kind)
-                    isActive: function(v) { return BarLayout.presetActive(stageCard.kind, v) }
-                    onPicked: v => BarLayout.applyPreset(stageCard.kind, v)
-                }
-
-                PanelSizeSliders {
-                    Layout.fillWidth: true
-                    kind: stageCard.kind
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 10
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: openCol.implicitHeight + 28
-                    radius: 20
-                    color: Colors.surfaceContainerHigh
-
-                    ColumnLayout {
-                        id: openCol
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: 14
-                        anchors.rightMargin: 14
-                        spacing: 1
-                        CustomText { content: "Opens from"; size: 13; weight: 500 }
-                        CustomText {
-                            Layout.fillWidth: true
-                            content: stageCard.opener
-                            size: 11
-                            weight: 400
-                            customColor: Colors.surfaceVariantText
-                            wrapMode: Text.WordWrap
-                            elide: Text.ElideNone
-                        }
-                    }
-                }
-
-                Pill {
-                    id: stageMore
-                    icon: "tune"
-                    label: "More"
-                    onClicked: {
-                        chrome.editor.drawerFrom = stageMore.mapToItem(chrome, 0, 0, stageMore.width, stageMore.height)
-                        chrome.editor.drawerMode = "options"
-                    }
+                EditKit.ChoiceChip {
+                    required property var modelData
+                    readonly property bool isOn: BarLayout.opt(chrome.sel, modelData.key) === true
+                    label: modelData.label
+                    lit: isOn
+                    onClicked: BarLayout.setOption(chrome.sel, modelData.key, !isOn)
                 }
             }
         }
     }
 
-    Card {
-        id: shelf
-        readonly property bool wanted: chrome.shelfOpen && chrome.editing
-        property real openT: shelf.wanted ? 1 : 0
-        Behavior on openT {
+    EditKit.Card {
+        id: cornersCard
+        readonly property var corners: chrome.selBlock !== "" ? BarLayout.blockCorners(chrome.selBlock) : ({ tl: null, tr: null, br: null, bl: null })
+        readonly property bool custom: ["tl", "tr", "br", "bl"].some(k => cornersCard.corners[k] !== null)
+        readonly property real full: radiusCtl.full
+        readonly property real base: radiusCtl.now
+        property bool linked: false
+        readonly property bool shown: chrome.pop === "corners" && blockBar.shown && cornersPill.visible
+        readonly property bool up: !blockBar.side && !blockBar.below
+        readonly property real anchorX: blockBar.x + blockRow.x + cornersPill.x + cornersPill.width / 2
+        function valueOf(k) {
+            const v = cornersCard.corners[k]
+            return v === null ? cornersCard.base : Math.min(v, cornersCard.full)
+        }
+        function nudge(k, d) {
+            const n = Math.max(0, Math.min(cornersCard.full, cornersCard.valueOf(k) + d))
+            BarLayout.setBlockCorner(chrome.selBlock, cornersCard.linked ? "all" : k, n)
+        }
+        property real showT: cornersCard.shown ? 1 : 0
+        Behavior on showT {
             NumberAnimation {
-                duration: shelf.wanted ? 520 : 400
+                duration: cornersCard.shown ? 300 : 180
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: shelf.wanted ? [0.2, 0, 0, 1, 1, 1] : [0.3, 0, 0.8, 0.15, 1, 1]
+                easing.bezierCurve: cornersCard.shown ? [0.2, 0, 0, 1, 1, 1] : [0.3, 0, 0.8, 0.15, 1, 1]
             }
         }
-        readonly property real fullW: Math.min(1180, chrome.width - 64)
-        readonly property real fullX: (chrome.width - shelf.fullW) / 2
-        readonly property real fullY: chrome.height - 360 - 24
-        readonly property real inT: Math.max(0, Math.min(1, (shelf.openT - 0.6) / 0.4))
-        property real cardsT: 1
-
-        onWantedChanged: {
-            if (!shelf.wanted)
-                return
-            shelf.cardsT = 0
-            cascade.restart()
+        visible: cornersCard.showT > 0.01
+        opacity: Math.min(1, cornersCard.showT * 1.5)
+        transform: Scale {
+            origin.x: cornersCard.anchorX - cornersCard.x
+            origin.y: cornersCard.up ? cornersCard.height + 8 : -8
+            xScale: 0.5 + 0.5 * cornersCard.showT
+            yScale: 0.15 + 0.85 * cornersCard.showT
         }
-
-        SequentialAnimation {
-            id: cascade
-            PauseAnimation { duration: 380 }
-            NumberAnimation { target: shelf; property: "cardsT"; from: 0; to: 1; duration: 640 }
-        }
-
-        visible: shelf.openT > 0.01
-        opacity: Math.min(1, shelf.openT * 4)
-        clip: true
-        x: capsule.restX + (shelf.fullX - capsule.restX) * shelf.openT
-        y: capsule.restYAnim + (shelf.fullY - capsule.restYAnim) * shelf.openT
-        width: capsule.fullW + (shelf.fullW - capsule.fullW) * shelf.openT
-        height: 56 + 304 * shelf.openT
-        radius: 28 + 2 * shelf.openT
-        border.width: shelf.dropping ? 2 : 1
-        border.color: shelf.dropping ? Colors.error : Qt.alpha(Colors.outline, 0.18)
-
-        readonly property bool dropping: chrome.editor !== null && chrome.editor.mode === "item"
-                                         && chrome.editor.fromBlock !== "" && chrome.editor.overDrawer
-
-        property string group: "All"
-        property string filter: ""
-        readonly property string needle: shelf.filter.trim().toLowerCase()
-        readonly property var parts: BarLayout.hiddenItems.filter(id => {
-            const e = BarLayout.entry(id)
-            if (!e) return false
-            if (shelf.needle !== "")
-                return e.label.toLowerCase().indexOf(shelf.needle) >= 0 || (e.group ?? "").toLowerCase().indexOf(shelf.needle) >= 0
-            return shelf.group === "All" || e.group === shelf.group
-        })
-
-        MouseArea {
-            anchors.fill: parent
-        }
+        x: Math.max(12, Math.min(chrome.width - width - 12, cornersCard.anchorX - width / 2))
+        y: cornersCard.up ? Math.max(12, blockBar.y - height - 8)
+            : Math.min(chrome.height - height - 12, blockBar.y + blockBar.height + 8)
+        width: 340
+        height: cornersCol.implicitHeight + 28
+        radius: 22
 
         ColumnLayout {
-            x: 20
-            y: 16
-            width: shelf.fullW - 40
-            height: 324
-            spacing: 14
-            opacity: (shelf.dropping ? 0.25 : 1) * shelf.inT
+            id: cornersCol
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 14
+            spacing: 10
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 12
-
+                spacing: 6
                 CustomText {
-                    content: "Parts"
-                    size: 22
+                    Layout.fillWidth: true
+                    content: "Corners"
+                    size: 13
                     weight: 600
-                    family: "Noto Serif Display"
-                    renderType: Text.QtRendering
                 }
-
-                CustomText {
-                    Layout.fillWidth: true
-                    content: "drag one onto the bar or dock · click + to drop it next to your selection"
-                    size: 12
-                    weight: 400
-                    customColor: Colors.outline
+                EditKit.Pill {
+                    icon: cornersCard.linked ? "link" : "link_off"
+                    box: 30
+                    tip: cornersCard.linked ? "Changing one changes all" : "Corners change separately"
+                    lit: cornersCard.linked
+                    onClicked: cornersCard.linked = !cornersCard.linked
                 }
+                EditKit.Pill {
+                    icon: "restart_alt"
+                    box: 30
+                    tip: "Follow the block radius"
+                    usable: cornersCard.custom
+                    onClicked: BarLayout.setBlockCorner(chrome.selBlock, "all", null)
+                }
+            }
 
+            GridLayout {
+                Layout.alignment: Qt.AlignHCenter
+                columns: 3
+                rowSpacing: 8
+                columnSpacing: 10
+
+                EditCornerStep { key: "tl"; card: cornersCard }
                 Rectangle {
-                    Layout.preferredWidth: 260
+                    Layout.rowSpan: 2
+                    Layout.alignment: Qt.AlignCenter
+                    implicitWidth: 64
                     implicitHeight: 40
-                    radius: 20
-                    color: Colors.surfaceContainerHigh
-                    border.width: 1
-                    border.color: partSearch.activeFocus ? Qt.alpha(Colors.primary, 0.7) : "transparent"
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 14
-                        anchors.rightMargin: 12
-                        spacing: 8
-
-                        MaterialIconSymbol {
-                            content: "search"
-                            iconSize: 16
-                            customColor: Colors.outline
-                        }
-
-                        TextInput {
-                            id: partSearch
-                            Layout.fillWidth: true
-                            clip: true
-                            text: shelf.filter
-                            font.family: SettingsConfig.general.defaultFont ?? "Rubik"
-                            font.pixelSize: 13
-                            color: Colors.surfaceText
-                            verticalAlignment: TextInput.AlignVCenter
-                            onTextChanged: shelf.filter = partSearch.text
-                            Keys.onEscapePressed: {
-                                if (partSearch.text !== "") partSearch.text = ""
-                                else chrome.shelfOpen = false
-                            }
-
-                            CustomText {
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible: partSearch.text === "" && !partSearch.activeFocus
-                                content: "Search parts"
-                                size: 13
-                                customColor: Colors.outline
-                            }
-                        }
-                    }
+                    readonly property real k: 40 / Math.max(1, cornersCard.full * 2)
+                    color: Colors.secondaryContainer
+                    topLeftRadius: cornersCard.valueOf("tl") * k
+                    topRightRadius: cornersCard.valueOf("tr") * k
+                    bottomRightRadius: cornersCard.valueOf("br") * k
+                    bottomLeftRadius: cornersCard.valueOf("bl") * k
                 }
-
-                Pill {
-                    icon: "close"
-                    onClicked: chrome.shelfOpen = false
-                }
+                EditCornerStep { key: "tr"; card: cornersCard }
+                EditCornerStep { key: "bl"; card: cornersCard }
+                EditCornerStep { key: "br"; card: cornersCard }
             }
+        }
+    }
 
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                spacing: 16
+    property bool resetArmed: false
 
-                ColumnLayout {
-                    Layout.preferredWidth: 160
-                    Layout.maximumWidth: 160
-                    Layout.fillWidth: false
-                    Layout.alignment: Qt.AlignTop
-                    spacing: 2
+    Timer {
+        id: resetDisarm
+        interval: 3500
+        onTriggered: chrome.resetArmed = false
+    }
 
-                    Repeater {
-                        model: ["All"].concat(BarLayout.groups)
+    property bool bottomBusy: false
+    property bool topBusy: false
+    property bool topGrips: false
+    property string stageSide: ""
+    property real stageRoom: 1e9
+    property bool stageHold: false
 
-                        Rectangle {
-                            id: grp
-                            required property string modelData
-                            readonly property bool on: shelf.needle === "" && shelf.group === grp.modelData
-                            Layout.fillWidth: true
-                            implicitHeight: 38
-                            radius: 19
-                            color: grp.on ? Colors.secondaryContainer
-                                : grpArea.containsMouse ? Qt.alpha(Colors.surfaceText, 0.06) : "transparent"
-
-                            CustomText {
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.left: parent.left
-                                anchors.leftMargin: 16
-                                content: grp.modelData
-                                size: 13
-                                weight: grp.on ? 700 : 500
-                                customColor: grp.on ? Colors.secondaryContainerText : Colors.surfaceVariantText
-                            }
-
-                            MouseArea {
-                                id: grpArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    partSearch.text = ""
-                                    shelf.group = grp.modelData
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Flickable {
-                    id: partFlick
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    contentWidth: width
-                    contentHeight: partGrid.implicitHeight
-                    boundsBehavior: Flickable.StopAtBounds
-                    ScrollBar.vertical: CustomScrollBar {}
-
-                    GridLayout {
-                        id: partGrid
-                        width: partFlick.width
-                        columns: Math.max(2, Math.floor(partFlick.width / 230))
-                        columnSpacing: 12
-                        rowSpacing: 12
-
-                        Repeater {
-                            model: shelf.visible ? shelf.parts : []
-
-                            Rectangle {
-                                id: part
-                                required property string modelData
-                                required property int index
-                                readonly property real delay: Math.floor(part.index / Math.max(1, partGrid.columns)) * 70
-                                    + (part.index % Math.max(1, partGrid.columns)) * 30
-                                readonly property real landT: {
-                                    const t = Math.max(0, Math.min(1, (shelf.cardsT * 640 - part.delay) / 260))
-                                    return 1 - Math.pow(1 - t, 3)
-                                }
-                                transform: Translate { y: 12 * (1 - part.landT) }
-                                readonly property var entry: BarLayout.entry(part.modelData)
-                                readonly property bool multi: !!part.entry && !!part.entry.multi
-                                readonly property bool dockOnly: !!part.entry && !BarLayout.allows(part.modelData, "bar")
-
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 126
-                                radius: 20
-                                color: partArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
-                                opacity: (chrome.editor && chrome.editor.mode === "item" && chrome.editor.itemId === part.modelData ? 0.35 : 1) * part.landT
-
-                                Item {
-                                    id: partStub
-                                    visible: false
-                                    readonly property bool editing: false
-                                    readonly property real maxWidth: 220
-                                    readonly property real fixedWidth: 0
-                                    readonly property real iconSize: 18
-                                    function hoverOpen(kind, item) {}
-                                    function openPanel(kind, item) {}
-                                    function closePanel() {}
-                                }
-
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 10
-                                    spacing: 8
-
-                                    Rectangle {
-                                        id: partPreview
-                                        Layout.fillWidth: true
-                                        Layout.preferredHeight: 58
-                                        radius: 14
-                                        color: Colors.surface
-                                        clip: true
-
-                                        Loader {
-                                            id: partLoader
-                                            anchors.centerIn: parent
-                                            enabled: false
-                                            asynchronous: true
-                                            active: !part.multi
-                                            source: active ? BarLayout.urlFor(part.modelData) : ""
-                                            scale: item && item.implicitWidth > partPreview.width - 16
-                                                ? (partPreview.width - 16) / item.implicitWidth : 1
-                                            onLoaded: {
-                                                item.host = partStub
-                                                if ("itemId" in item)
-                                                    item.itemId = part.modelData
-                                            }
-                                        }
-
-                                        MaterialIconSymbol {
-                                            anchors.centerIn: parent
-                                            visible: part.multi || partLoader.status !== Loader.Ready
-                                                     || (partLoader.item && partLoader.item.implicitWidth < 2)
-                                            content: part.entry ? part.entry.icon : "widgets"
-                                            iconSize: 24
-                                            customColor: Colors.primary
-                                        }
-                                    }
-
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 6
-
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: 0
-                                            CustomText {
-                                                Layout.fillWidth: true
-                                                content: part.entry ? part.entry.label : part.modelData
-                                                size: 13
-                                                weight: 600
-                                            }
-                                            CustomText {
-                                                Layout.fillWidth: true
-                                                content: (part.entry ? part.entry.group : "") + (part.dockOnly ? " · dock" : part.multi ? " · add many" : "")
-                                                size: 11
-                                                weight: 400
-                                                customColor: Colors.surfaceVariantText
-                                            }
-                                        }
-
-                                        Pill {
-                                            icon: "add"
-                                            box: 32
-                                            lit: true
-                                            onClicked: chrome.addItem(part.modelData)
-                                        }
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: partArea
-                                    anchors.fill: parent
-                                    z: -1
-                                    hoverEnabled: true
-                                    preventStealing: true
-                                    cursorShape: chrome.editor && chrome.editor.mode === "item" ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-
-                                    property real sx: 0
-                                    property real sy: 0
-
-                                    onPressed: mouse => {
-                                        partArea.sx = mouse.x
-                                        partArea.sy = mouse.y
-                                    }
-                                    onPositionChanged: mouse => {
-                                        if (!partArea.pressed)
-                                            return
-                                        const e = chrome.editor
-                                        if (e.mode === "" && Math.hypot(mouse.x - partArea.sx, mouse.y - partArea.sy) > 4)
-                                            e.beginItem(part.modelData, "", -1, 32)
-                                        if (e.mode !== "") {
-                                            const p = partArea.mapToItem(null, mouse.x, mouse.y)
-                                            e.update(p.x, p.y)
-                                        }
-                                    }
-                                    onReleased: if (chrome.editor.mode !== "") chrome.editor.finish()
-                                    onCanceled: chrome.editor.cancel()
-                                }
-                            }
-                        }
-                    }
-
-                    CustomText {
-                        anchors.centerIn: parent
-                        visible: shelf.parts.length === 0
-                        content: shelf.needle !== "" ? "Nothing matches that" : "Everything here is already on your bar"
-                        size: 13
-                        customColor: Colors.outline
-                    }
+    function placeStage() {
+        if (!chrome.stage) {
+            chrome.stageSide = ""
+            chrome.stageRoom = 1e9
+            chrome.stageHold = false
+            return
+        }
+        let l = 1e9
+        let r = -1e9
+        const closing = []
+        for (const s of chrome.surfaces) {
+            if (!s || !s.visible)
+                continue
+            for (const blk of s.visibleBlocks) {
+                if (blk.shownKind !== "") {
+                    const q = s.tabGoalRect(blk)
+                    l = Math.min(l, q.x)
+                    r = Math.max(r, q.x + q.width)
+                } else if (blk.tabOpen) {
+                    closing.push(s.tabRect(blk))
                 }
             }
         }
+        let side = chrome.stageSide
+        let room = 1e9
+        if (l < r) {
+            const roomL = l - chrome.insetLeft - 32
+            const roomR = chrome.width - chrome.insetRight - r - 32
+            if (side === "")
+                side = stageCard.defaultLeft ? "left" : "right"
+            if ((side === "left" ? roomL : roomR) < 400)
+                side = roomL >= roomR ? "left" : "right"
+            room = side === "left" ? roomL : roomR
+        }
+        if (side !== chrome.stageSide)
+            chrome.stageSide = side
+        if (Math.abs(room - chrome.stageRoom) > 1)
+            chrome.stageRoom = room
+        const w = Math.min(400, Math.max(320, room))
+        const left = side !== "" ? side === "left" : stageCard.defaultLeft
+        const cx = left ? chrome.insetLeft + 16 : chrome.width - w - chrome.insetRight - 16
+        const hold = closing.some(q => q.width > 0 && q.x < cx + w && q.x + q.width > cx && q.y < stageCard.y + stageCard.height && q.y + q.height > stageCard.y)
+        if (hold !== chrome.stageHold)
+            chrome.stageHold = hold
+    }
+    property real capShiftTarget: 0
+    property real capShift: chrome.capShiftTarget
+    Behavior on capShift { SpatialAnim { speed: "default" } }
 
-        ColumnLayout {
-            anchors.centerIn: parent
-            visible: shelf.dropping
-            spacing: 8
+    function freeShift(rects, w, y) {
+        const lane = rects.filter(r => r.width > 0 && r.y < y + 68 && r.y + r.height > y - 12)
+                          .map(r => ({ l: r.x - 12, r: r.x + r.width + 12 }))
+                          .sort((a, b) => a.l - b.l)
+        const gaps = []
+        let cur = 12
+        for (const b of lane) {
+            if (b.l > cur)
+                gaps.push({ l: cur, r: b.l })
+            cur = Math.max(cur, b.r)
+        }
+        if (chrome.width - 12 > cur)
+            gaps.push({ l: cur, r: chrome.width - 12 })
+        const centre = (chrome.width - w) / 2
+        let best = null
+        for (const g of gaps) {
+            if (g.r - g.l < w)
+                continue
+            const x = Math.max(g.l, Math.min(g.r - w, centre))
+            if (best === null || Math.abs(x - centre) < Math.abs(best - centre))
+                best = x
+        }
+        return best === null ? 0 : best - centre
+    }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignHCenter
-                implicitWidth: 56
-                implicitHeight: 56
-                radius: 28
-                color: Colors.errorContainer
-                MaterialIconSymbol {
-                    anchors.centerIn: parent
-                    content: "delete"
-                    iconSize: 26
-                    customColor: Colors.errorContainerText
-                }
-            }
-
-            CustomText {
-                Layout.alignment: Qt.AlignHCenter
-                content: "Release to remove " + (chrome.editor ? chrome.editor.label : "")
-                size: 15
-                weight: 600
+    function scanBusy() {
+        const w = capsule.fullW
+        const x = (chrome.width - w) / 2
+        const bottomY = capsule.dockTop - 56 - 22
+        const topY = chrome.surfTop && chrome.surfTop.present ? chrome.surfTop.thickness + 16 : 20
+        const hit = (r, y) => r.width > 0 && r.x < x + w + 12 && r.x + r.width > x - 12 && r.y < y + 68 && r.y + r.height > y - 12
+        let bottom = false
+        let top = false
+        let grips = false
+        if (chrome.surfTop && chrome.surfTop.visible && chrome.surfTop.present) {
+            for (const blk of chrome.surfTop.visibleBlocks) {
+                const q = blk.mapToItem(chrome, 0, 0, blk.width, blk.height)
+                if (q.x < x + w + 8 && q.x + q.width > x - 8)
+                    grips = true
             }
         }
+        if (chrome.topGrips !== grips)
+            chrome.topGrips = grips
+        chrome.placeStage()
+        for (const s of chrome.surfaces) {
+            if (!s || !s.visible)
+                continue
+            for (const blk of s.visibleBlocks) {
+                if (blk.tabH <= blk.barH + 1)
+                    continue
+                const r = s.tabRect(blk)
+                if (hit(r, bottomY))
+                    bottom = true
+                if (hit(r, topY))
+                    top = true
+            }
+        }
+        if (chrome.bottomBusy !== bottom)
+            chrome.bottomBusy = bottom
+        if (chrome.topBusy !== top)
+            chrome.topBusy = top
+        const shift = top && bottom ? chrome.freeShift(chrome.openRects(), w, topY) : 0
+        if (Math.abs(shift - chrome.capShiftTarget) > 1)
+            chrome.capShiftTarget = shift
+    }
+
+    Timer {
+        interval: 120
+        repeat: true
+        running: chrome.editing
+        onTriggered: chrome.scanBusy()
+    }
+
+    Connections {
+        target: GlobalStates
+        function onPanelPreviewChanged() { Qt.callLater(chrome.placeStage) }
+        function onLauncherPreviewChanged() { Qt.callLater(chrome.placeStage) }
+    }
+
+    BarEdgeLanes {
+        id: lanes
+        host: chrome
+    }
+
+    BarEditPins {
+        id: pins
+        host: chrome
+    }
+
+    BarEditStage {
+        id: stageCard
+        host: chrome
+    }
+
+    BarEditShelf {
+        id: shelf
+        host: chrome
+        capsuleItem: capsule
+    }
+
+    EditKeysSheet {
+        z: 400
+        desktop: false
     }
 }

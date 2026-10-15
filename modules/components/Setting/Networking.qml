@@ -349,9 +349,7 @@ Item {
                         anchors.fill: parent
                         cursorShape: Networking.wifiEnabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
                         onClicked: {
-                            if (!Networking.wifiEnabled) return
-                            if (!ServiceNetwork.currentNetwork) return
-                            ServiceNetwork.currentNetwork.scannerEnabled = true
+                            if (!ServiceNetwork.scan()) return
                             root.scanning = true
                             scanTimer.restart()
                         }

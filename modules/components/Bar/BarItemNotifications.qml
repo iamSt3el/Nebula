@@ -15,7 +15,7 @@ Rectangle {
     readonly property bool open: !!root.host && root.host.panelKind === "notifications"
     readonly property bool dnd: ServiceNotification.dnd
     readonly property int count: ServiceNotification.notificationsNumber
-    readonly property color plateColor: hov.containsMouse || root.open ? Colors.primaryContainer : "transparent"
+    readonly property color plateColor: hov.containsMouse || root.open ? Colors.primaryContainer : Qt.alpha(Colors.primaryContainer, 0)
     property int peek: -1
     property real wheelAcc: 0
 
@@ -36,7 +36,7 @@ Rectangle {
     implicitWidth: root.plate
     implicitHeight: root.plate
     radius: root.plate / 2
-    color: root.plateless ? "transparent" : root.plateColor
+    color: root.plateless ? Qt.alpha(root.plateColor, 0) : root.plateColor
     Behavior on color { ColorAnimation { duration: 150 } }
 
     MaterialIconSymbol {

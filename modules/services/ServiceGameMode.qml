@@ -2,6 +2,7 @@ pragma Singleton
 pragma ComponentBehavior: Bound
 
 import Quickshell
+import Quickshell.Hyprland
 import QtQuick
 import qs.modules.settings
 
@@ -40,8 +41,7 @@ Singleton {
     // Applying is a one-liner. Reverting is the hard part: we never knew the
     // user's original blur/animation values, so instead of snapshotting them
     // we `hyprctl reload`, which re-reads hyprland.conf and restores exactly
-    // what they configured. That also wipes the gaps ServiceGaps applied, so
-    // gaps get re-pushed once the reload has settled.
+    // what they configured.
     function _applyHyprPerf() {
         Quickshell.execDetached(["hyprctl", "eval",
             "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } }," +
@@ -50,14 +50,14 @@ Singleton {
 
     function _revertHyprPerf() {
         Quickshell.execDetached(["hyprctl", "reload"])
-        gapsRestore.restart()
     }
 
-    Timer {
-        id: gapsRestore
-        interval: 200
-        repeat: false
-        onTriggered: ServiceGaps.exec()
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "configreloaded" && root.active && root.optHyprPerf)
+                root._applyHyprPerf()
+        }
     }
 
     onActiveChanged: {
