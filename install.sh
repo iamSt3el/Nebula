@@ -14,7 +14,7 @@ BOLD='\033[1m'; DIM='\033[2m'; RESET='\033[0m'
 RULE='──────────────────────────────────────────────────────────────'
 
 STEP_N=0
-TOTAL_STEPS=20
+TOTAL_STEPS=19
 WARNINGS=()
 START_TS=$SECONDS
 
@@ -261,9 +261,9 @@ PACMAN_PKGS=(
   pipewire pipewire-pulse wireplumber libpipewire libpulse
   networkmanager bluez bluez-utils upower
   python grim slurp wf-recorder swappy wl-clipboard wtype ffmpeg ffmpegthumbnailer
-  cava brightnessctl playerctl curl unzip jq xdg-utils libnotify qrencode sound-theme-freedesktop
+  cava brightnessctl playerctl curl unzip jq xdg-utils xdg-user-dirs libnotify qrencode sound-theme-freedesktop
   imagemagick kdeconnect sshfs mpv tesseract tesseract-data-eng gperftools
-  qt6-base qt6-declarative qt6-wayland qt6-svg qt6-multimedia
+  qt6-base qt6-declarative qt6-wayland qt6-svg qt6-multimedia qt6-shadertools
   libqalculate
   noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-fira-sans ttf-fira-code ttf-jetbrains-mono ttf-firacode-nerd
   kitty fastfetch librsvg starship
