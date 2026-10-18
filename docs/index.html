@@ -10,10 +10,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Rubik:wght@400;500;600&family=Titan+One&display=swap">
 <style>
-/* Layout: the page is a Nebula desktop. A working Nebula bar is the navigation; sections sit on the page like panels and widgets do on the screen. Palette = M3 tokens Nebula generated from the hero wallpaper (scheme-content). */
+/* Palette = M3 tokens Nebula generated from the hero wallpaper (scheme-content). */
 :root {
   --bg: #171210;
-  --bar: #2a2522;
   --card: #1f1b18;
   --card-hi: #2e2926;
   --fg: #ebe0dc;
@@ -36,13 +35,13 @@
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg: #fff8f5; --bar: #f1e6e1; --card: #fcf1ed; --card-hi: #ebe0dc; --fg: #1f1b18; --muted: #51443d;
+    --bg: #fff8f5; --card: #fcf1ed; --card-hi: #ebe0dc; --fg: #1f1b18; --muted: #51443d;
     --faint: #817269; --line: #d5c3b9; --accent: #805436; --on-accent: #ffffff; --soft: #fcdcca; --on-soft: #2c160a;
     --tertiary: #5c5d2f; --code-bg: #f6ece7; --shadow: rgba(80, 50, 30, .16); color-scheme: light;
   }
 }
 :root[data-theme="light"] {
-  --bg: #fff8f5; --bar: #f1e6e1; --card: #fcf1ed; --card-hi: #ebe0dc; --fg: #1f1b18; --muted: #51443d;
+  --bg: #fff8f5; --card: #fcf1ed; --card-hi: #ebe0dc; --fg: #1f1b18; --muted: #51443d;
   --faint: #817269; --line: #d5c3b9; --accent: #805436; --on-accent: #ffffff; --soft: #fcdcca; --on-soft: #2c160a;
   --tertiary: #5c5d2f; --code-bg: #f6ece7; --shadow: rgba(80, 50, 30, .16); color-scheme: light;
 }
@@ -64,40 +63,25 @@ section { padding-block: clamp(72px, 10vw, 128px) 0; }
 .head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px 56px; align-items: end; margin-bottom: 40px; }
 .head .lead { justify-self: start; }
 
-/* ---------- The bar (navigation) ---------- */
-.bar {
-  --edge: 8px; --end: 12px; --gap: 8px; --r: 22px; --rt: 22px;
-  --blk: var(--bar); --grp: transparent; --strip: transparent;
+/* ---------- Site header ---------- */
+.site {
   position: sticky; top: 0; z-index: 40;
-  padding: calc(var(--edge) + env(safe-area-inset-top, 0px)) max(var(--end), env(safe-area-inset-right, 0px)) 0 max(var(--end), env(safe-area-inset-left, 0px));
-  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: start; gap: var(--gap);
-  background: var(--strip);
-  transition: padding .45s var(--ease), background-color .45s var(--ease), gap .45s var(--ease);
+  padding-top: env(safe-area-inset-top, 0px);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-bottom: 1px solid transparent;
+  transition: border-color .3s var(--ease);
 }
-.bar[data-shape="merged"] { --gap: 8px; --blk: transparent; --grp: var(--bar); }
-.bar[data-shape="stepped"] { --edge: 0px; --rt: 0px; }
-.bar[data-shape="full"] { --edge: 0px; --end: 0px; --r: 0px; --rt: 0px; --blk: transparent; --strip: var(--bar); }
-.bar[data-shape="merged"] .grp, .bar[data-shape="full"] .grp { gap: 0; }
-.grp {
-  display: flex; align-items: stretch; gap: var(--gap); min-width: 0;
-  background: var(--grp); border-radius: var(--rt) var(--rt) var(--r) var(--r);
-  transition: gap .45s var(--ease), background-color .45s var(--ease), border-radius .45s var(--ease);
-}
-.grp.l { justify-self: start; } .grp.c { justify-self: center; } .grp.r { justify-self: end; }
-.blk {
-  height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 8px;
-  background: var(--blk); border-radius: var(--rt) var(--rt) var(--r) var(--r);
-  transition: background-color .45s var(--ease), border-radius .45s var(--ease);
-}
-.bar[data-shape="full"] { box-shadow: 0 1px 0 var(--line); }
-.bar a, .bar button { font: 500 14px/1 var(--body); color: var(--fg); text-decoration: none; border: 0; background: none; cursor: pointer; padding: 8px 10px; border-radius: 16px; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-.bar a:hover, .bar button:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); }
-.logo { font: 400 19px/1 var(--display) !important; letter-spacing: .01em; padding-left: 6px !important; }
-.logo svg { width: 22px; height: 22px; }
-.dots { display: flex; align-items: center; gap: 6px; padding: 0 10px; }
-.dots a { width: 8px; height: 8px; padding: 0 !important; border-radius: 4px !important; background: var(--faint) !important; opacity: .55; transition: width .35s var(--ease), opacity .35s var(--ease), background-color .35s; }
-.dots a.on { width: 22px; opacity: 1; background: var(--accent) !important; }
-.clock { font: 400 22px/1 var(--display); letter-spacing: .03em; padding: 0 14px; font-variant-numeric: tabular-nums; color: var(--fg); }
+.site.scrolled { border-bottom-color: var(--line); }
+.site .wrap { height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.site nav { display: flex; align-items: center; gap: 4px; }
+.site a, .site button { font: 500 15px/1 var(--body); color: var(--muted); text-decoration: none; border: 0; background: none; cursor: pointer; padding: 10px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.site a:hover, .site button:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 8%, transparent); }
+.site .logo { font: 400 20px/1 var(--display); letter-spacing: .01em; color: var(--fg); padding-left: 0; }
+.site .logo:hover { background: none; }
+.logo svg { width: 24px; height: 24px; color: var(--accent); }
+.site .gh { color: var(--on-accent); background: var(--accent); margin-left: 6px; }
+.site .gh:hover { color: var(--on-accent); background: color-mix(in srgb, var(--accent) 88%, var(--fg)); }
 .gh { background: var(--accent) !important; color: var(--on-accent) !important; }
 .icon-btn { width: 36px; height: 36px; justify-content: center; padding: 0 !important; border-radius: 18px !important; }
 .icon-btn svg, .gh svg { width: 18px; height: 18px; }
@@ -191,7 +175,7 @@ pre.term .c { color: var(--faint); }
 pre.term .k { color: var(--accent); }
 
 /* ---------- Install ---------- */
-.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; counter-reset: s; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; counter-reset: s; }
 .steps li { background: var(--card); border-radius: 28px; padding: 26px; display: grid; gap: 12px; align-content: start; counter-increment: s; min-width: 0; }
 .steps li::before { content: counter(s); font: 400 22px/1 var(--display); width: 44px; height: 44px; border-radius: 15px; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); }
 .steps p { color: var(--muted); font-size: 16px; }
@@ -217,8 +201,7 @@ footer a { color: var(--muted); }
 }
 @media (max-width: 560px) {
   body { font-size: 16px; }
-  .dots, .bar .ghl { display: none !important; }
-  .clock { font-size: 19px; padding: 0 10px; }
+  .site .ghl { display: none; }
   .seg button { padding: 12px 13px; font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -229,29 +212,21 @@ footer a { color: var(--muted); }
 </head>
 <body>
 
-<nav class="bar" id="bar" data-shape="pill" aria-label="Site">
-  <div class="grp l">
-    <div class="blk">
-      <a class="logo" href="#top" aria-label="Nebula, back to top">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2c.6 4.9 2.6 7.6 7.8 8.4-5.2.8-7.2 3.5-7.8 8.4-.6-4.9-2.6-7.6-7.8-8.4C9.4 9.6 11.4 6.9 12 2Z"/><circle cx="19" cy="19" r="2.2" fill="currentColor" opacity=".6"/></svg>
-        Nebula
-      </a>
-    </div>
-    <div class="blk dots" id="dots" aria-label="Sections"></div>
-  </div>
-  <div class="grp c">
-    <div class="blk"><span class="clock" id="clock" aria-label="Current time">12:00</span></div>
-  </div>
-  <div class="grp r">
-    <div class="blk links">
-      <a href="#shapes">Shapes</a>
-      <a href="#panels">Panels</a>
-      <a href="#edit">Edit</a>
-      <a href="#gallery">Gallery</a>
-      <a href="#widgets">Widgets</a>
-      <a href="#install">Install</a>
-    </div>
-    <div class="blk">
+<header class="site" id="site">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="Nebula, back to top">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2c.6 4.9 2.6 7.6 7.8 8.4-5.2.8-7.2 3.5-7.8 8.4-.6-4.9-2.6-7.6-7.8-8.4C9.4 9.6 11.4 6.9 12 2Z"/><circle cx="19" cy="19" r="2.2" fill="currentColor" opacity=".6"/></svg>
+      Nebula
+    </a>
+    <nav aria-label="Site">
+      <span class="links">
+        <a href="#shapes">Shapes</a>
+        <a href="#panels">Panels</a>
+        <a href="#edit">Edit</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#widgets">Widgets</a>
+        <a href="#install">Install</a>
+      </span>
       <button class="icon-btn" id="theme" type="button" aria-label="Switch between light and dark">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z"/></svg>
       </button>
@@ -259,9 +234,9 @@ footer a { color: var(--muted); }
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.4-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2Z"/></svg>
         <span class="ghl">GitHub</span>
       </a>
-    </div>
+    </nav>
   </div>
-</nav>
+</header>
 
 <main id="top">
   <header class="hero wrap" data-section="Home">
@@ -301,7 +276,7 @@ footer a { color: var(--muted); }
   <section id="shapes" class="wrap" data-section="Shapes">
     <div class="head">
       <h2>One bar, four shapes</h2>
-      <p class="lead">Blocks on an edge can float as pills, fuse into one piece, step down from the screen edge or join into a full strip. Three numbers make the difference: how far the bar sits from the edge, the gap between blocks, and how much of the space between groups gets filled. Try them on the bar at the top of this page.</p>
+      <p class="lead">Blocks on an edge can float as pills, fuse into one piece, step down from the screen edge or join into a full strip. Three numbers make the difference: how far the bar sits from the edge, the gap between blocks, and how much of the space between groups gets filled.</p>
     </div>
     <div class="shape-panel">
       <div class="shape-controls">
@@ -409,12 +384,8 @@ footer a { color: var(--muted); }
     <ol class="steps">
       <li>
         <h3>Run the installer</h3>
-        <p>It installs the packages, builds the plugins, installs the <code>nebula</code> command and copies Nebula's Hyprland config into <code>~/.config/hypr</code>, offering a backup first.</p>
+        <p>It installs the packages, builds the plugins, installs the <code>nebula</code> command and copies Nebula's Hyprland config into <code>~/.config/hypr</code>, offering a backup first. It also sets up kitty, the Starship prompt and the Nebula login screen.</p>
         <div class="cmd"><code id="cmd2">bash &lt;(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/master/install.sh)</code><button class="copy" type="button" data-copy="cmd2">Copy</button></div>
-      </li>
-      <li>
-        <h3>Log in again</h3>
-        <p>Hyprland starts Nebula from its new config. The installer also sets up kitty, the Starship prompt and the Nebula login screen.</p>
       </li>
       <li>
         <h3>Run <code>nebula setup</code></h3>
@@ -443,13 +414,6 @@ footer a { color: var(--muted); }
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   };
 
-  const clock = $("clock");
-  const tick = () => {
-    const d = new Date();
-    clock.textContent = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
-  };
-  tick();
-  setInterval(tick, 10000);
 
   const root = document.documentElement;
   const saved = store.get("nebula-theme");
@@ -472,24 +436,10 @@ footer a { color: var(--muted); }
     });
   });
 
-  const sections = [...document.querySelectorAll("[data-section]")];
-  const dots = $("dots");
-  sections.forEach(s => {
-    const a = document.createElement("a");
-    a.href = "#" + (s.id || "top");
-    a.setAttribute("aria-label", s.dataset.section);
-    a.title = s.dataset.section;
-    dots.appendChild(a);
-  });
-  const dotLinks = [...dots.children];
-  const spy = () => {
-    const y = scrollY + innerHeight * 0.35;
-    let idx = 0;
-    sections.forEach((s, i) => { if (s.offsetTop <= y) idx = i; });
-    dotLinks.forEach((d, i) => d.classList.toggle("on", i === idx));
-  };
-  addEventListener("scroll", spy, { passive: true });
-  spy();
+  const site = $("site");
+  const onScroll = () => site.classList.toggle("scrolled", scrollY > 8);
+  addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
 
   const SHAPES = {
     pill:    { edge: 8, block: 10, end: 10, fill: 0, radius: 20, note: "Pill: every block floats off the edge with its own rounded ends." },
@@ -497,10 +447,9 @@ footer a { color: var(--muted); }
     stepped: { edge: 0, block: 10, end: 0,  fill: 0, radius: -1, note: "Stepped: blocks hang from the screen edge and curve into it." },
     full:    { edge: 0, block: 0,  end: 0,  fill: 1, radius: -1, note: "Full: one strip from side to side, the classic bar." }
   };
-  const bar = $("bar"), spec = $("spec"), strip = $("strip"), note = $("strip-note");
+  const spec = $("spec"), strip = $("strip"), note = $("strip-note");
   const setShape = name => {
     const s = SHAPES[name];
-    bar.dataset.shape = name;
     document.querySelectorAll("#seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.shape === name)));
     spec.innerHTML = [
       ["Edge gap", s.edge + " px"], ["Block gap", s.block + " px"], ["Fill", Math.round(s.fill * 100) + " %"],
