@@ -232,8 +232,8 @@ function sdfTabs(ts, segs, o) {
             const hb = t.bot - bt
             if (t.w < 0.5 || hb <= 0.01)
                 continue
-            const bl = t.bx
-            const br = t.bx + t.bw
+            const bl = t.bodyL ?? t.bx
+            const br = t.bodyR ?? t.bx + t.bw
             let x0 = t.x
             let x1 = t.x + t.w
             if (Math.abs(x0 - bl) < 4)

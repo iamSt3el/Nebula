@@ -144,12 +144,33 @@ Item {
         }
     }
 
+    MouseArea {
+        x: 0
+        y: 0
+        z: 2
+        width: edits.block.width
+        height: edits.block.barH
+        enabled: edits.block.editing && BarLayout.gapModel
+        visible: edits.block.editing && BarLayout.gapModel
+        acceptedButtons: Qt.RightButton
+        onClicked: {
+            const e = edits.block.editor
+            if (!e)
+                return
+            const id = edits.block.blockId
+            const open = e.gimbalBlock === id
+            e.selectedItem = ""
+            e.selectedBlock = ""
+            e.gimbalBlock = open ? "" : id
+        }
+    }
+
     Item {
         id: gripClip
         z: 1
         readonly property real across: edits.block.vertical ? gripPill.width : gripPill.height
-        x: -60
-        width: edits.block.width + 120
+        x: -120
+        width: edits.block.width + 240
         y: edits.block.far ? -(gripClip.across + 12) : edits.block.barH
         height: gripClip.across + 12
         clip: true
@@ -158,10 +179,12 @@ Item {
         Rectangle {
             id: gripPill
             readonly property bool shown: edits.block.handlesIn && !edits.block.tabOpen && !BarLayout.isMore(edits.block.blockId)
+                && (!edits.block.editor || edits.block.editor.gimbalBlock !== edits.block.blockId)
                 && GlobalStates.panelPreview === "" && !GlobalStates.launcherPreview
                 && (edits.engaged || edits.lingering)
             readonly property bool roomy: edits.block.vertical || edits.block.width + 8 >= 84
             readonly property bool expanded: gripPill.roomy || gripHover.hovered || edits.block.blockSelected
+                || edits.block.hovering || edits.holdsSelection
             HoverHandler { id: gripHover }
             property real slide: gripPill.shown ? 1 : 0
             Behavior on slide { SpatialAnim { speed: "fast" } }
@@ -169,7 +192,9 @@ Item {
             readonly property real across: edits.block.vertical ? width : height
             readonly property real off: (1 - gripPill.slide) * (gripPill.across + 8) * (edits.block.far ? 1 : -1)
             y: (edits.block.far ? gripClip.height - 6 - across : 6) + (across - height) / 2 + gripPill.off
-            anchors.horizontalCenter: parent.horizontalCenter
+            readonly property real along: edits.block.vertical ? height : width
+            x: 120 - width / 2 + Math.max(6 - edits.block.absX + gripPill.along / 2,
+                                          Math.min(edits.block.frameW - edits.block.absX - 6 - gripPill.along / 2, edits.block.width / 2))
             width: handleRow.implicitWidth + 8
             height: 28
             transform: edits.block.vertical ? [gripFlip] : []

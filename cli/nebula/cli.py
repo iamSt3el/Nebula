@@ -244,11 +244,11 @@ def cmd_layout(a) -> int:
     if act == "save":
         return layouts.save(a.name, only)
     if act == "load":
-        return layouts.load(a.name, only)
+        return layouts.load(a.name, only, a.emit)
     if act == "update":
         return layouts.update(a.name)
     if act == "undo":
-        return layouts.undo()
+        return layouts.undo(a.emit)
     if act == "delete":
         return layouts.delete(a.name)
     if act == "import":
@@ -608,6 +608,7 @@ def build_parser() -> argparse.ArgumentParser:
     lo.add_argument("--only", help="comma-separated: bar,widgets,dashboard,panels,lockscreen,look")
     lo.add_argument("--rename")
     lo.add_argument("--json", action="store_true")
+    lo.add_argument("--emit", action="store_true", help=argparse.SUPPRESS)
 
     i = sub.add_parser("ipc", help="call the running shell")
     i.add_argument("args", nargs=argparse.REMAINDER)

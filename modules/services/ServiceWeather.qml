@@ -11,7 +11,7 @@ Singleton {
     property string location: SettingsConfig.weather.location
     onLocationChanged: Qt.callLater(root.fetchWeather)
     property bool useMetric: SettingsConfig.weather.useMetric ?? true
-    property int refreshInterval: (SettingsConfig.weather.refreshInterval ?? 15) * 60000
+    property int refreshInterval: Math.max(5, SettingsConfig.weather.refreshInterval ?? 15) * 60000
     property bool isLoading: false
     property bool hasError: false
     property var lastUpdated: null

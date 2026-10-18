@@ -202,38 +202,61 @@ def update(ref: str) -> int:
     return 0
 
 
-def apply_sections(sections: dict, only=None) -> list:
-    want = set(only or SECTIONS)
-    s = _read_settings()
+def _patch(sections: dict, want: set) -> tuple:
+    patch = {}
+    general = {}
     applied = []
     if "bar" in want and "bar" in sections:
-        s["bar"] = sections["bar"].get("bar", s.get("bar"))
-        s.setdefault("general", {}).update(sections["bar"].get("general") or {})
+        if "bar" in sections["bar"]:
+            patch["bar"] = sections["bar"]["bar"]
+        general.update(sections["bar"].get("general") or {})
         applied.append("bar")
     if "widgets" in want and "widgets" in sections:
-        cur = s.get("widgets") or {}
-        keep = {k: v for k, v in cur.items() if k in WIDGET_DATA}
-        s["widgets"] = {**sections["widgets"], **keep}
+        patch["widgets"] = sections["widgets"]
         applied.append("widgets")
-    if "dashboard" in want and "dashboard" in sections:
-        s["dashboard"] = sections["dashboard"]
-        applied.append("dashboard")
+    for key in ("dashboard", "lockscreen"):
+        if key in want and key in sections:
+            patch[key] = sections[key]
+            applied.append(key)
     if "panels" in want and "panels" in sections:
-        s.setdefault("general", {}).update(sections["panels"])
+        general.update(sections["panels"])
         applied.append("panels")
-    if "lockscreen" in want and "lockscreen" in sections:
-        s["lockscreen"] = sections["lockscreen"]
-        applied.append("lockscreen")
-    _write_settings(s)
+    if general:
+        patch["general"] = general
+    return patch, applied
+
+
+def _apply_look(sections: dict, want: set) -> bool:
     look = sections.get("look")
     if "look" in want and look and os.path.isfile(look.get("wallpaper", "")):
         from nebula import wallpaper
         wallpaper.apply(look["wallpaper"], look.get("scheme", "scheme-content"), look.get("mode", "dark"))
+        return True
+    return False
+
+
+def apply_sections(sections: dict, only=None, emit=False) -> list:
+    want = set(only or SECTIONS)
+    patch, applied = _patch(sections, want)
+    if emit:
+        print(json.dumps({"apply": patch, "sections": applied}), flush=True)
+    else:
+        s = _read_settings()
+        for key, value in patch.items():
+            if key == "general":
+                s.setdefault("general", {}).update(value)
+            elif key == "widgets":
+                cur = s.get("widgets") or {}
+                s["widgets"] = {**value, **{k: v for k, v in cur.items() if k in WIDGET_DATA}}
+            else:
+                s[key] = value
+        _write_settings(s)
+    if _apply_look(sections, want):
         applied.append("look")
     return applied
 
 
-def load(ref: str, only=None) -> int:
+def load(ref: str, only=None, emit=False) -> int:
     path = _resolve(ref)
     if not path.is_file():
         print(f"[nebula] no layout '{ref}'", file=sys.stderr)
@@ -247,18 +270,18 @@ def load(ref: str, only=None) -> int:
     before = _doc("Before " + doc.get("name", path.stem), capture(touched))
     before["active"] = _get_active()
     _atomic_json(PREVIOUS, before)
-    applied = apply_sections(doc["sections"], only)
+    applied = apply_sections(doc["sections"], only, emit)
     _set_active(path.stem if path.parent == DIR else None)
     print(json.dumps({"loaded": doc.get("name", path.stem), "sections": applied}))
     return 0
 
 
-def undo() -> int:
+def undo(emit=False) -> int:
     if not PREVIOUS.is_file():
         print("[nebula] nothing to undo", file=sys.stderr)
         return 1
     doc = _load_doc(PREVIOUS)
-    applied = apply_sections(doc["sections"])
+    applied = apply_sections(doc["sections"], emit=emit)
     PREVIOUS.unlink()
     _set_active(doc.get("active"))
     print(json.dumps({"restored": doc.get("name", ""), "sections": applied}))

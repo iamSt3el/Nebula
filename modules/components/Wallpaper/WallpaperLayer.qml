@@ -9,7 +9,6 @@ import qs.modules.services
 Scope {
     id: root
 
-    required property var ripple
 
     readonly property string source: WallpaperTheme.wallpaperScreen !== "" ? "file://" + WallpaperTheme.wallpaperScreen : ""
     readonly property var effects: ({
@@ -133,7 +132,7 @@ Scope {
 
             function begin() {
                 let t = root.transition
-                if (t === "none" || ServiceReveal.busy) {
+                if (t === "none" || ServiceReveal.busy || ServiceLayouts.quiet) {
                     win.finish()
                     return
                 }
@@ -204,28 +203,6 @@ Scope {
                 property var fromTex: win.frontImg
                 property var toTex: win.backImg
                 fragmentShader: Qt.resolvedUrl("../../../shaders/qsb/wallswap.frag.qsb")
-            }
-
-            ShaderEffect {
-                anchors.fill: parent
-                visible: root.ripple.moving && root.ripple.monitorName === win.modelData.name
-                    && win.frontImg.status === Image.Ready
-                property vector2d itemSize: Qt.vector2d(width, height)
-                property vector4d r0: root.ripple.uniformFor(0)
-                property vector4d r1: root.ripple.uniformFor(1)
-                property vector4d r2: root.ripple.uniformFor(2)
-                property vector4d r3: root.ripple.uniformFor(3)
-                property vector4d r4: root.ripple.uniformFor(4)
-                property vector4d r5: root.ripple.uniformFor(5)
-                property vector4d r6: root.ripple.uniformFor(6)
-                property vector4d r7: root.ripple.uniformFor(7)
-                property vector4d r8: root.ripple.uniformFor(8)
-                property vector4d r9: root.ripple.uniformFor(9)
-                property color tint: Colors.primary
-                property real strength: root.ripple.strength
-                property vector4d view: win.viewFor(win.frontImg)
-                property var source: win.frontImg
-                fragmentShader: Qt.resolvedUrl("../../../shaders/qsb/ripple.frag.qsb")
             }
 
             Rectangle {

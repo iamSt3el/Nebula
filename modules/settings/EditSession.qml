@@ -14,6 +14,7 @@ Singleton {
     property bool peek: false
     property bool peeked: false
     property string hint: ""
+    property bool holding: false
 
     readonly property bool canUndo: root.index > 0
     readonly property bool canRedo: root.index >= 0 && root.index < root.history.length - 1
@@ -143,8 +144,13 @@ Singleton {
     }
 
     function changed() {
-        if (GlobalStates.editMode && !root.restoring)
+        if (GlobalStates.editMode && !root.restoring && !root.holding)
             recordTimer.restart()
+    }
+
+    function release() {
+        root.holding = false
+        root.changed()
     }
 
     Timer {

@@ -116,7 +116,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 32
                             progress: ServicePipewire.volume
-                            onMoved: ServicePipewire.setVolume(progress)
+                            onMoved: v => ServicePipewire.setVolume(v)
                         }
 
                         ValueChip {
@@ -168,7 +168,7 @@ Item {
                             progress: ServicePipewire.micVolume
                             peakLevel: inputPeak.peak
                             showPeak: true
-                            onMoved: ServicePipewire.setMicVolume(progress)
+                            onMoved: v => ServicePipewire.setMicVolume(v)
                         }
 
                         ValueChip {
@@ -303,7 +303,7 @@ Item {
                                 handleGap: 4
                                 showStopIndicator: false
                                 progress: stream.vol
-                                onMoved: ServicePipewire.setSinkVolume(stream.modelData, progress)
+                                onMoved: v => ServicePipewire.setSinkVolume(stream.modelData, v)
                             }
                         }
                     }

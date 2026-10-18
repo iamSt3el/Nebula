@@ -182,7 +182,7 @@ Item {
                                     Layout.preferredHeight: 24
                                     progress: ch.lvl / 100
                                     showValueLabel: false
-                                    onMoved: ServiceSoundscape.setLevel(ch.modelData.key, progress * 100)
+                                    onMoved: v => ServiceSoundscape.setLevel(ch.modelData.key, v * 100)
                                 }
                             }
                         }
@@ -209,7 +209,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 30
                             progress: ServiceSoundscape.master / 100
-                            onMoved: ServiceSoundscape.setMaster(progress * 100)
+                            onMoved: v => ServiceSoundscape.setMaster(v * 100)
                         }
                     }
 

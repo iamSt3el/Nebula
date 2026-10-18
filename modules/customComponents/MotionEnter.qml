@@ -41,14 +41,25 @@ Item {
     ]
 
     SequentialAnimation {
+        id: inAnim
         running: root.animated
         PauseAnimation { duration: root.delay }
         SpatialAnim { target: root; property: "p"; from: 0; to: 1; speed: root.speed }
     }
 
-    onExitingChanged: if (root.exiting) {
-        root._out = true
-        outAnim.restart()
+    onExitingChanged: {
+        if (root.exiting) {
+            inAnim.stop()
+            root._out = true
+            outAnim.restart()
+        } else if (root._out) {
+            outAnim.stop()
+            root._out = false
+            if (root.animated)
+                inAnim.restart()
+            else
+                root.p = 1
+        }
     }
 
     NumberAnimation {

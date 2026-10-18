@@ -31,7 +31,7 @@ RowLayout {
         Layout.fillWidth: true
         Layout.preferredHeight: 32
         progress: root.level
-        onMoved: root.set(progress)
+        onMoved: v => root.set(v)
     }
 
     Rectangle {

@@ -9,7 +9,9 @@ Item {
     property real from: 0.0
     property real to:   1.0
     property real progress: 0.0
-    readonly property real value: from + progress * _span
+    readonly property real value: from + _shown * _span
+    property real _held: -1
+    readonly property real _shown: _held >= 0 ? _held : progress
 
     property real peakLevel: 0.0
     property bool showPeak: false
@@ -64,7 +66,7 @@ Item {
     readonly property real _span: Math.max(1e-6, to - from)
     readonly property real position: stepped
         ? Math.max(0, Math.min(1, currentStep / (stepCount - 1)))
-        : Math.max(0, Math.min(1, progress))
+        : Math.max(0, Math.min(1, _shown))
     readonly property bool pressed: drag.pressed
 
     // Constants, not derived from trackHeight/handleHeight: those now depend on
@@ -96,10 +98,25 @@ Item {
             if (step !== currentStep) stepChanged(step)
             return
         }
-        if (p === progress) return
-        progress = p
+        if (p === _shown) return
+        holdTimer.stop()
+        _held = p
         moved(value)
     }
+
+    function _release() {
+        if (_held >= 0)
+            holdTimer.restart()
+    }
+
+    Timer {
+        id: holdTimer
+        interval: 400
+        onTriggered: if (!root.pressed) root._held = -1
+    }
+
+    property real _wheelAcc: 0
+    property real _wheelAt: 0
 
     // ── Horizontal ────────────────────────────────────────────────────────
     Item {
@@ -274,21 +291,40 @@ Item {
         onPositionChanged: mouse => {
             if (pressed) root._applyAt(root.vertical ? mouse.y : mouse.x)
         }
-        onReleased: root.committed(root.value)
+        onReleased: { root.committed(root.value); root._release() }
+        onCanceled: root._release()
 
         onWheel: wheel => {
+            const d = wheel.angleDelta.y
+            if (d === 0) {
+                wheel.accepted = false
+                return
+            }
+            const now = Date.now()
+            if (now - root._wheelAt > 400 || (root._wheelAcc !== 0 && Math.sign(d) !== Math.sign(root._wheelAcc)))
+                root._wheelAcc = 0
+            root._wheelAt = now
+            root._wheelAcc += d
+            if (Math.abs(root._wheelAcc) < 120)
+                return
+            const dir = root._wheelAcc > 0 ? 1 : -1
+            const n = Math.floor(Math.abs(root._wheelAcc) / 120)
+            root._wheelAcc -= dir * n * 120
             root._recent = true; labelTimer.restart()
             const stepFrac = root.stepCount > 1 ? 1 / (root.stepCount - 1) : 0.05
-            const dir = wheel.angleDelta.y > 0 ? 1 : -1
-            const p = Math.max(0, Math.min(1, root.position + dir * stepFrac))
+            const p = Math.max(0, Math.min(1, root.position + dir * n * stepFrac))
             if (root.stepped) {
                 const step = Math.round(p * (root.stepCount - 1))
                 if (step !== root.currentStep) root.stepChanged(step)
                 return
             }
-            root.progress = root._quantise(p)
+            const q = root._quantise(p)
+            if (q === root._shown)
+                return
+            root._held = q
             root.moved(root.value)
             root.committed(root.value)
+            holdTimer.restart()
         }
     }
 }

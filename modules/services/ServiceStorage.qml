@@ -12,7 +12,7 @@ Singleton {
     readonly property string cli: Quickshell.shellDir + "/bin/nebula"
 
     property var drives: []
-    property var children: []
+    property var entries: []
     property bool mapScanning: false
 
     property string childrenPath: ""
@@ -78,14 +78,14 @@ Singleton {
         rows.sort((a, b) => b.bytes - a.bytes)
         root.childrenPath = root.scanTarget
         if (rows.length <= 40) {
-            root.children = rows
+            root.entries = rows
             return
         }
         const top = rows.slice(0, 40)
         let o = 0
         for (let i = 40; i < rows.length; i++) o += rows[i].bytes
         if (o > 0) top.push({ bytes: o, isDir: false, name: "(other)" })
-        root.children = top
+        root.entries = top
     }
 
     function openRoot(path) {

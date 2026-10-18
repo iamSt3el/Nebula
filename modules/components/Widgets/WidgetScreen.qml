@@ -64,27 +64,6 @@ PanelWindow{
             mouse.accepted = false
         }
     }
-    MouseArea {
-        id: rippleArea
-        anchors.fill: parent
-        z: -3
-        enabled: (SettingsConfig.general.desktopRipple ?? false) && !GlobalStates.widgetEditMode
-        acceptedButtons: Qt.AllButtons
-        property point last: Qt.point(0, 0)
-        onPressed: mouse => {
-            GlobalStates.desktopClicked(widgetScreen.screen?.name ?? "", mouse.x, mouse.y)
-            rippleArea.last = Qt.point(mouse.x, mouse.y)
-            mouse.accepted = mouse.button === Qt.LeftButton && (SettingsConfig.general.desktopRippleDrag ?? true)
-        }
-        onPositionChanged: mouse => {
-            const dx = mouse.x - rippleArea.last.x
-            const dy = mouse.y - rippleArea.last.y
-            if (dx * dx + dy * dy < 8100)
-                return
-            rippleArea.last = Qt.point(mouse.x, mouse.y)
-            GlobalStates.desktopDragged(widgetScreen.screen?.name ?? "", mouse.x, mouse.y)
-        }
-    }
     color: "transparent"
 
     Item {

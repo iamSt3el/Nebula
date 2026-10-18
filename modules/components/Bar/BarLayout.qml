@@ -124,6 +124,94 @@ Singleton {
     }
 
     readonly property bool edgeV2: BarOps.isEdgeV2(SettingsConfig.bar)
+    readonly property bool gapModel: BarOps.gapModel(SettingsConfig.bar)
+
+    property var gapDraft: null
+    readonly property bool gapDragging: root.gapDraft !== null
+    property real gapDragT: root.gapDragging ? 1 : 0
+    Behavior on gapDragT { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+
+    readonly property var gapCfg: {
+        const bar = SettingsConfig.bar ?? {}
+        const d = root.gapDraft
+        if (!d)
+            return bar
+        const out = Object.assign({}, bar)
+        if (d.gaps) {
+            out.edges = Object.assign({}, bar.edges ?? {})
+            out.edges[d.side] = Object.assign({}, out.edges[d.side] ?? {}, {
+                gaps: Object.assign({}, BarOps.edgeGaps(bar, SettingsConfig.general, d.side), d.gaps)
+            })
+        }
+        if (d.block && d.style) {
+            out.blockStyles = Object.assign({}, bar.blockStyles ?? {})
+            out.blockStyles[d.block] = Object.assign({}, out.blockStyles[d.block] ?? {}, d.style)
+        }
+        return out
+    }
+
+    function edgeGaps(side) {
+        return BarOps.edgeGaps(root.gapCfg, SettingsConfig.general, side)
+    }
+
+    function blockGaps(blockId, side) {
+        return BarOps.blockGaps(root.gapCfg, SettingsConfig.general, blockId, side)
+    }
+
+    function draftGaps(side, gaps) {
+        root.gapDraft = { side: side, gaps: gaps }
+    }
+
+    function draftBlockStyle(side, blockId, style) {
+        root.gapDraft = { side: side, block: blockId, style: style }
+    }
+
+    function commitGapDraft(extra) {
+        const d = root.gapDraft
+        if (!d) {
+            if (extra)
+                extra()
+            return
+        }
+        const round = (k, v) => k === "fill" ? Math.round(v * 20) / 20 : Math.round(v)
+        if (d.gaps) {
+            const g = {}
+            for (const k in d.gaps)
+                g[k] = round(k, d.gaps[k])
+            root.setEdgeGaps(d.side, g)
+        }
+        if (d.block && d.style)
+            for (const k in d.style)
+                root.setBlockStyle(d.block, k, round(k, d.style[k]))
+        if (extra)
+            extra()
+        root.gapDraft = null
+    }
+
+    readonly property var gapPresets: ({
+        pill:    { edge: 8, block: 10, end: 10, fill: 0, radius: 20 },
+        stepped: { edge: 0, block: 10, end: 0,  fill: 0, radius: -1 },
+        merged:  { edge: 8, block: 0,  end: 10, fill: 0, radius: 20 },
+        full:    { edge: 0, block: 0,  end: 0,  fill: 1, radius: -1 }
+    })
+
+    function setRenderer(value) {
+        root._patch({ renderer: value })
+    }
+
+    function setEdgeGaps(side, patch) {
+        root.setEdge(side, "gaps", Object.assign({}, root.edgeGaps(side), patch))
+    }
+
+    function gapPresetOf(side) {
+        const g = root.edgeGaps(side)
+        for (const name in root.gapPresets) {
+            const p = root.gapPresets[name]
+            if (Object.keys(p).every(k => Math.abs((g[k] ?? 0) - p[k]) < 0.01))
+                return name
+        }
+        return ""
+    }
 
     readonly property var allBlocks: {
         const saved = root._list(SettingsConfig.bar?.blocks)
@@ -211,6 +299,11 @@ Singleton {
         interval: 1000
         running: SettingsConfig.settingsReady && !root.settled
         onTriggered: root.settled = true
+    }
+
+    Connections {
+        target: ServiceLayouts
+        function onApplying() { root.settled = false }
     }
 
     readonly property bool launcherItemHost: ServiceLauncher.position === "item"
@@ -367,6 +460,49 @@ Singleton {
         root._patch(patch)
     }
 
+    function joinBlocks(fromId, toId, atEnd) {
+        if (fromId === toId)
+            return
+        const list = root._clone()
+        const src = list.find(b => b.id === fromId)
+        const dst = list.find(b => b.id === toId)
+        if (!src || !dst)
+            return
+        dst.items = atEnd ? dst.items.concat(src.items) : src.items.concat(dst.items)
+        const patch = root._statePatch(list.filter(b => b.id !== fromId))
+        if (root.blockStyles[fromId] !== undefined) {
+            const st = Object.assign({}, root.blockStyles)
+            delete st[fromId]
+            patch.blockStyles = st
+        }
+        root._patch(patch)
+    }
+
+    function splitBlockAt(blockId, itemId) {
+        const list = root._clone()
+        const k = list.findIndex(b => b.id === blockId)
+        if (k < 0)
+            return ""
+        const blk = list[k]
+        const at = blk.items.indexOf(itemId)
+        if (at <= 0)
+            return ""
+        const piece = { id: root.newBlockId(), anchor: blk.anchor, edge: blk.edge, items: blk.items.slice(at) }
+        blk.items = blk.items.slice(0, at)
+        list.splice(k + 1, 0, piece)
+        const patch = root._statePatch(list)
+        const own = root.blockStyles[blockId]
+        if (own !== undefined) {
+            const st = Object.assign({}, root.blockStyles)
+            const copy = Object.assign({}, own)
+            delete copy.gapBefore
+            st[piece.id] = copy
+            patch.blockStyles = st
+        }
+        root._patch(patch)
+        return piece.id
+    }
+
     function moveBlock(id, anchor, index, edge) {
         const list = root._clone()
         const k = list.findIndex(b => b.id === id)
@@ -405,10 +541,12 @@ Singleton {
     function setBlockStyle(blockId, key, value) {
         const all = Object.assign({}, root.blockStyles)
         all[blockId] = Object.assign({}, all[blockId] ?? {}, { [key]: value })
+        if (value === undefined)
+            delete all[blockId][key]
         root._patch({ blockStyles: all })
     }
 
-    readonly property var shapes: root._stable("shapes", BarOps.blockShapes(SettingsConfig.bar, SettingsConfig.general, root.allBlocks))
+    readonly property var shapes: root._stable("shapes", BarOps.blockShapes(root.gapCfg, SettingsConfig.general, root.allBlocks))
 
     function blockShape(blockId, edge) {
         if (root.isMore(blockId)) {
@@ -471,15 +609,59 @@ Singleton {
             return "floating"
         if (shape === "pill")
             return root.blockPanels(blockId, edge)
-        const v = root.blockStyle(blockId, "panels", "")
+        const v = root.ownPanels(blockId) || root.edgePanels(edge)
         return v === "floating" || v === "merged" ? v : "attached"
     }
 
+    function validPanels(v) {
+        return v === "floating" || v === "attached" || v === "merged" ? v : ""
+    }
+
+    function ownPanels(blockId) {
+        return root.validPanels(root.blockStyle(blockId, "panels", ""))
+    }
+
+    function edgePanels(edge) {
+        return root.validPanels(root.edge(edge).panels)
+    }
+
     function blockPanels(blockId, edge) {
-        const v = root.blockStyle(blockId, "panels", "")
-        if (v === "floating" || v === "attached" || v === "merged")
+        const v = root.ownPanels(blockId) || root.edgePanels(edge)
+        if (v !== "")
             return v
         return root.edge(edge).sys ? "attached" : "floating"
+    }
+
+    function setEdgePanels(edge, value) {
+        root.setEdge(edge, "panels", value)
+    }
+
+    function edgePanelGap(edge) {
+        const v = root.edge(edge).panelGap
+        return typeof v === "number" && v >= 0 ? v : root.panelGap
+    }
+
+    function setEdgePanelGap(edge, value) {
+        root.setEdge(edge, "panelGap", value)
+    }
+
+    function edgeOverrides(edge, key) {
+        return root.allBlocks.filter(b => b.edge === edge && root.blockStyle(b.id, key, null) !== null)
+    }
+
+    function clearEdgeOverrides(edge, key) {
+        const all = Object.assign({}, root.blockStyles)
+        let hit = false
+        for (const b of root.allBlocks) {
+            if (b.edge !== edge || !all[b.id] || all[b.id][key] === undefined)
+                continue
+            const st = Object.assign({}, all[b.id])
+            delete st[key]
+            all[b.id] = st
+            hit = true
+        }
+        if (hit)
+            root._patch({ blockStyles: all })
     }
 
     function edgeShapes(edge) {
@@ -838,7 +1020,10 @@ Singleton {
 
     function panelHostItem(kind) {
         if (kind === "calendar") return "clock"
-        return kind
+        if (root.blockOfItem(kind))
+            return kind
+        const ids = Object.keys(root.followKinds).filter(id => root.followKinds[id] === kind)
+        return ids.find(id => root.blockOfItem(id)) ?? ids[0] ?? kind
     }
 
     function logoFor(action) {
@@ -1070,7 +1255,18 @@ Singleton {
             delete st.panelGap
             all[id] = st
         }
-        root._patch({ panelGap: v, blockStyles: all })
+        const patch = { panelGap: v, blockStyles: all }
+        const stored = SettingsConfig.bar?.edges
+        if (stored && typeof stored === "object") {
+            const edges = {}
+            for (const side in stored) {
+                const e = Object.assign({}, stored[side])
+                delete e.panelGap
+                edges[side] = e
+            }
+            patch.edges = edges
+        }
+        root._patch(patch)
     }
 
     function blockCorners(blockId) {
@@ -1093,7 +1289,10 @@ Singleton {
 
     function blockPanelGap(blockId) {
         const v = root.blockStyle(blockId, "panelGap", null)
-        return v === null || v === undefined ? root.panelGap : Math.max(0, Number(v) || 0)
+        if (v !== null && v !== undefined)
+            return Math.max(0, Number(v) || 0)
+        const b = root.blockById(blockId)
+        return b ? root.edgePanelGap(b.edge) : root.panelGap
     }
 
     function reset() {

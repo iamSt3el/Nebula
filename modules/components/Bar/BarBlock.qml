@@ -111,11 +111,17 @@ Item {
     property real flatT: barBlock.shape === "flat" ? 1 : 0
     Behavior on pillT { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
     Behavior on flatT { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
-    readonly property real drop: (barBlock.frame ? barBlock.frame.pillMargin : 0) * barBlock.pillT
-    readonly property real pillRadius: {
-        const r = BarLayout.blockStyle(barBlock.blockId, "radius", -1)
+    readonly property var gaps: BarLayout.gapModel ? BarLayout.blockGaps(barBlock.blockId, barBlock.edge) : null
+    readonly property real gapBefore: barBlock.gaps ? barBlock.gaps.gapBefore : -1
+    readonly property real offset: barBlock.gaps ? barBlock.gaps.offset : 0
+    property real drop: barBlock.gaps ? Math.max(0, barBlock.gaps.edge)
+        : (barBlock.frame ? barBlock.frame.pillMargin : 0) * barBlock.pillT
+    Behavior on drop { enabled: BarLayout.settled && barBlock.gaps !== null && !BarLayout.gapDragging; SpatialAnim { speed: "default" } }
+    property real pillRadius: {
+        const r = barBlock.gaps ? barBlock.gaps.radius : BarLayout.blockStyle(barBlock.blockId, "radius", -1)
         return r < 0 ? barBlock.barH / 2 : Math.min(r, barBlock.barH / 2)
     }
+    Behavior on pillRadius { enabled: BarLayout.settled && barBlock.gaps !== null && !BarLayout.gapDragging; SpatialAnim { speed: "default" } }
     readonly property var screenCorners: {
         const c = BarLayout.blockCorners(barBlock.blockId)
         const f = k => c[k] === null ? barBlock.pillRadius : Math.min(c[k], barBlock.barH / 2)
@@ -162,10 +168,27 @@ Item {
         return barBlock.acrossOf(barBlock.lastKind) >= barBlock.panelRoom - 1 ? 0 : barBlock.panelCorner
     }
     readonly property bool floating: barBlock.panelStyle === "floating"
-    readonly property bool merged: barBlock.panelStyle === "merged"
+    readonly property bool fusedAttach: barBlock.panelStyle === "attached" && barBlock.isPill && !!barBlock.frame
+        && !!barBlock.frame.fused && (barBlock.frame.fused[barBlock.blockId]?.ids.length ?? 1) > 1
+    readonly property bool merged: barBlock.panelStyle === "merged" || barBlock.crowded || barBlock.fusedAttach
+    property bool crowded: false
+    function updateCrowded() {
+        if (barBlock.shownKind !== "") {
+            if (!barBlock.crowded)
+                barBlock.crowded = barBlock.panelStyle === "attached" && !!barBlock.frame && !!barBlock.frame.crowds
+                    && barBlock.frame.crowds(barBlock)
+        } else if (!barBlock.tabOpen) {
+            barBlock.crowded = false
+        }
+    }
+    onTabOpenChanged: barBlock.updateCrowded()
+    onTabNaturalWChanged: barBlock.updateCrowded()
     readonly property real panelGapSetting: BarLayout.blockPanelGap(barBlock.blockId)
+    readonly property bool fusedHost: barBlock.merged && !!barBlock.frame && !!barBlock.frame.fusedCovers
+        && barBlock.frame.fusedCovers(barBlock, barBlock.tabTargetX, barBlock.tabNaturalW)
     readonly property real floatGap: barBlock.floating ? barBlock.panelGapSetting
-        : barBlock.merged ? barBlock.panelGapSetting * Math.max(0, Math.min(1, (barBlock.tabH - barBlock.barH) / 24)) : 0
+        : barBlock.fusedHost ? 0
+        : barBlock.merged ? Math.max(barBlock.panelGapSetting, barBlock.crowded || barBlock.fusedAttach ? 8 : 0) * Math.max(0, Math.min(1, (barBlock.tabH - barBlock.barH) / 24)) : 0
     property real goo: barBlock.floating && barBlock.shownKind !== "" ? 1 : 0
     Behavior on goo {
         enabled: barBlock.floating
@@ -187,6 +210,7 @@ Item {
     }
     property int openSeq: 0
     onShownKindChanged: {
+        barBlock.updateCrowded()
         if (barBlock.shownKind !== "" && layout.nextPanelSeq)
             barBlock.openSeq = layout.nextPanelSeq()
         barBlock.trackGoo()
@@ -311,6 +335,8 @@ Item {
     }
 
     function measureEdges() {
+        if (typeof barBlock.edgeShape !== "function")
+            return
         let first = null
         let last = null
         for (let i = 0; i < rep.count; i++) {
@@ -846,8 +872,8 @@ Item {
         if (!obs.length)
             return { x: x, ok: true, host: "" }
         const corner = barBlock.floating ? 0 : barBlock.panelCorner
-        const sl = barBlock.spanL - barBlock.absX
-        const sr = barBlock.spanR - barBlock.absX - w
+        const sl = barBlock.spanL - barBlock.absX + barBlock.sideInset
+        const sr = barBlock.spanR - barBlock.absX - w - barBlock.sideInset
         const minOverlap = loose ? -Infinity : Math.min(24, barBlock.width / 2)
         const fits = cx => {
             if (cx < sl - 0.5 || cx > sr + 0.5)
@@ -986,10 +1012,12 @@ Item {
             r = barBlock.width
         return r - l
     }
+    readonly property real sideInset: barBlock.floating ? barBlock.panelGapSetting : 0
+
     function alignX(w, cx) {
         const x = cx - w / 2
-        const sl = barBlock.spanL - barBlock.absX
-        const sr = barBlock.spanR - barBlock.absX - w
+        const sl = barBlock.spanL - barBlock.absX + barBlock.sideInset
+        const sr = barBlock.spanR - barBlock.absX - w - barBlock.sideInset
         if (sr < sl)
             return Math.max(Math.min(sl, barBlock.spanF - barBlock.absX), sr)
         return Math.max(sl, Math.min(sr, x))
@@ -1327,8 +1355,9 @@ Item {
         ? Math.min(barBlock.naturalWidth, Math.max(barBlock.maxWidth, barBlock.fixedWidth))
         : barBlock.naturalWidth
 
-    readonly property bool isDropTarget: !!barBlock.editor && barBlock.editor.mode === "item"
+    readonly property bool isDropTarget: !!barBlock.editor && (barBlock.editor.mode === "item"
         && barBlock.editor.dropBlock === barBlock.blockId && !barBlock.editor.overDrawer
+        || barBlock.editor.mode === "block" && barBlock.editor.joinTarget === barBlock.blockId)
     readonly property bool isDraggedBlock: !!barBlock.editor && barBlock.editor.mode === "block"
         && barBlock.editor.fromBlock === barBlock.blockId
 
@@ -1906,7 +1935,7 @@ Item {
                     readonly property bool sideways: barBlock.vertical && slot.loaded && !slot.turns && !slot.upright
                     readonly property bool fullForm: barBlock.vertical && slot.loaded && loader.item.verticalReady !== true
                     function noteFull() {
-                        if (slot.fullForm)
+                        if (barBlock && slot.fullForm)
                             barBlock.noteFull(slot.itemId, slot.rawW)
                     }
                     onRawWChanged: if (slot.fullForm) Qt.callLater(slot.noteFull)
@@ -2324,8 +2353,8 @@ Item {
         y: 0
         width: barBlock.width
         height: barBlock.barH
-        visible: barBlock.revealT > 0.001
-        opacity: barBlock.revealT
+        visible: barBlock.revealT > 0.001 && BarLayout.gapDragT < 0.999
+        opacity: barBlock.revealT * (1 - BarLayout.gapDragT)
         layer.enabled: true
         layer.samples: 4
 
@@ -2351,6 +2380,7 @@ Item {
     BarBlockEditLayer {
         id: editLayer
         z: 50
+        opacity: 1 - BarLayout.gapDragT
         block: barBlock
     }
 }

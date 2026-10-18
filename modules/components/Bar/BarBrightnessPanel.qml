@@ -138,7 +138,7 @@ Item {
                             pressedHandleWidth: 4
                             handleGap: 4
                             progress: card.modelData.brightness ?? 0
-                            onMoved: card.modelData.setBrightness(Math.max(0.01, progress))
+                            onMoved: v => card.modelData.setBrightness(Math.max(0.01, v))
                         }
 
                         ValueChip {
@@ -166,7 +166,7 @@ Item {
                             pressedHandleWidth: 4
                             handleGap: 4
                             progress: card.modelData.contrast ?? 0
-                            onMoved: card.modelData.setContrast(progress)
+                            onMoved: v => card.modelData.setContrast(v)
                         }
 
                         ValueChip {

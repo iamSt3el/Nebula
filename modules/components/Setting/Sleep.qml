@@ -150,8 +150,9 @@ Item {
                         color: Colors.surfaceContainerHighest
                         inc: 5
                         limit: 100
-                        Component.onCompleted: val = SettingsConfig.sleep?.dimLevel ?? 10
-                        onValChanged: if (val > 0) root.patch("dimLevel", val)
+                        min: 5
+                        value: SettingsConfig.sleep?.dimLevel ?? 10
+                        onValChanged: if (val !== value) root.patch("dimLevel", val)
                     }
                 }
             }
@@ -228,8 +229,9 @@ Item {
                     inc: 1
                     limit: 180
                     enabled: stage.on
-                    Component.onCompleted: val = SettingsConfig.sleep?.[stage.minutesKey] ?? 10
-                    onValChanged: if (val > 0) root.patch(stage.minutesKey, val)
+                    min: 1
+                    value: SettingsConfig.sleep?.[stage.minutesKey] ?? 10
+                    onValChanged: if (val !== value) root.patch(stage.minutesKey, val)
                 }
 
                 CustomText { content: "min"; size: 12; customColor: Colors.outline }

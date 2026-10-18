@@ -21,10 +21,7 @@ CustomCard {
 
     readonly property real current: Number(ServiceHyprConfig.value(row.path, row.from))
     property real shown: row.current
-    onCurrentChanged: {
-        row.shown = row.current
-        slider.progress = row._progressOf(row.current)
-    }
+    onCurrentChanged: row.shown = row.current
 
     function _progressOf(v) {
         return Math.max(0, Math.min(1, (v - row.from) / Math.max(1e-6, row.to - row.from)))
@@ -74,7 +71,7 @@ CustomCard {
             from: row.from
             to: row.to
             showValueLabel: false
-            Component.onCompleted: progress = row._progressOf(row.current)
+            progress: row._progressOf(row.shown)
             onMoved: v => {
                 row.shown = row.snap(v)
                 ServiceHyprConfig.preview(row.path, row.shown)

@@ -12,7 +12,6 @@ Rectangle {
     readonly property bool iconSizable: true
     readonly property bool verticalReady: root.vertical
     readonly property bool vertical: !!root.host && root.host.vertical === true
-        && (!root.host.compactFor || root.host.compactFor(root.itemId))
     readonly property real box: BarLayout.boxFor(root.itemId, root.host)
     readonly property real iconPx: BarLayout.iconPxFor(root.itemId, root.box, 18)
     readonly property real plate: BarLayout.platePxFor(root.box, root.iconPx, 18, 28)
@@ -91,7 +90,7 @@ Rectangle {
 
         CustomText {
             visible: root.hasLimits
-            content: Math.round(root.sessionPct) + (root.vertical ? "" : "%")
+            content: Math.round(root.sessionPct) + "%"
             size: root.vertical ? root.labelPx - 2 : root.labelPx
             weight: 700
             customColor: root.hot && !hov.containsMouse ? root.sessionTone : root.ink
@@ -103,6 +102,18 @@ Rectangle {
             size: root.labelPx - 1
             weight: 500
             customColor: hov.containsMouse ? Colors.primaryContainerText : Colors.surfaceVariantText
+        }
+
+        Repeater {
+            model: root.hasLimits && root.vertical ? root.countdown.split(" ").filter(p => p !== "") : []
+
+            CustomText {
+                required property string modelData
+                content: modelData
+                size: root.labelPx - 3
+                weight: 500
+                customColor: hov.containsMouse ? Colors.primaryContainerText : Colors.surfaceVariantText
+            }
         }
     }
 

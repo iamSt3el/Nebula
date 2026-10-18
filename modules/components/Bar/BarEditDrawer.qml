@@ -7,6 +7,8 @@ import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
 import qs.modules.components.Edit
+import "../../MatrialShapes/" as MaterialShapes
+import "../../MatrialShapes/shape-library.js" as ShapeLibrary
 
 Item {
     id: drawer
@@ -62,11 +64,35 @@ Item {
 
     property QtObject editor: null
     property bool alive: false
+    property bool shapeOpen: false
+    onAliveChanged: if (!drawer.alive) drawer.shapeOpen = false
+
+    function shapeName(name) {
+        if (name === "" || name === "none")
+            return "None"
+        const words = name.replace(/([A-Z0-9]+)/g, " $1").trim().toLowerCase()
+        return words.charAt(0).toUpperCase() + words.slice(1)
+    }
     property real maxHeight: 600
     property string tab: "add"
     property string edgeSide: "top"
     readonly property var edgeCfg: BarLayout.edge(drawer.edgeSide)
     readonly property var edgeBlocks: BarLayout.allBlocks.filter(b => b.edge === drawer.edgeSide)
+    readonly property string edgePanels: {
+        const own = BarLayout.edgePanels(drawer.edgeSide)
+        if (own !== "")
+            return own
+        const styles = drawer.edgeBlocks.filter(b => BarLayout.ownPanels(b.id) === "")
+            .map(b => BarLayout.panelStyleFor(b.id, drawer.edgeSide, BarLayout.blockShape(b.id, drawer.edgeSide)))
+        return styles.length > 0 && styles.every(v => v === styles[0]) ? styles[0] : ""
+    }
+    readonly property int panelOverrides: BarLayout.edgeOverrides(drawer.edgeSide, "panels").length
+    readonly property int gapOverrides: BarLayout.edgeOverrides(drawer.edgeSide, "panelGap").length
+    readonly property var panelChoices: [
+        { value: "attached", label: "Attached", icon: "vertical_align_top" },
+        { value: "merged",   label: "Merged",   icon: "join_inner" },
+        { value: "floating", label: "Floating", icon: "bubble_chart" }
+    ]
 
     Connections {
         target: drawer.editor
@@ -348,6 +374,76 @@ Item {
         anchors.fill: parent
     }
 
+    onSelectedChanged: drawer.shapeOpen = false
+
+    Rectangle {
+        id: shapePanel
+        readonly property bool room: !!drawer.parent && drawer.parent.width - (drawer.x + drawer.width) >= shapePanel.width + 16
+        readonly property bool shown: drawer.shapeOpen && drawer.alive && drawer.itemPage && drawer.iconItem
+        z: 2
+        width: 340
+        height: shapeCol.implicitHeight + 32
+        x: shapePanel.room ? drawer.width + 12 : -shapePanel.width - 12
+        y: 0
+        radius: 24
+        color: Colors.surfaceContainer
+        border.width: 1
+        border.color: Qt.alpha(Colors.outline, 0.2)
+        opacity: shapePanel.shown ? 1 : 0
+        visible: shapePanel.opacity > 0.01
+        Behavior on opacity { EffectsAnim { speed: "fast" } }
+
+        MouseArea {
+            anchors.fill: parent
+        }
+
+        ColumnLayout {
+            id: shapeCol
+            x: 16
+            y: 16
+            width: shapePanel.width - 32
+            spacing: 12
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: 100000
+                    spacing: 0
+                    CustomText {
+                        content: "Shape"
+                        size: 16
+                        weight: 600
+                    }
+                    CustomText {
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        content: (BarLayout.entry(drawer.selected) ? BarLayout.entry(drawer.selected).label : "") + " · " + drawer.shapeName(drawer.itemShape)
+                        size: 12
+                        customColor: Colors.surfaceVariantText
+                    }
+                }
+                M3IconButton {
+                    icon: "close"
+                    onClicked: drawer.shapeOpen = false
+                }
+            }
+
+            ShapePicker {
+                Layout.fillWidth: true
+                columns: 7
+                centered: true
+                autoLabel: "None"
+                autoIcon: "crop_square"
+                autoHint: "Rounded rectangle"
+                pickedHint: ""
+                selected: drawer.itemShape === "none" ? "" : drawer.itemShape
+                onPicked: name => BarLayout.setItemStyle(drawer.selected, "shape", name === "" ? "none" : name)
+            }
+        }
+    }
+
     MorphCard {
         id: morph
         anchors.fill: parent
@@ -398,12 +494,15 @@ Item {
                             Layout.maximumWidth: 100000
                             spacing: 0
                             CustomText {
-                                content: "Edges"
+                                content: drawer.tab === "general" ? "All edges"
+                                    : drawer.edgeSide.charAt(0).toUpperCase() + drawer.edgeSide.slice(1) + " edge"
                                 size: 18
                                 weight: 600
                             }
                             CustomText {
-                                content: "Shape, size and blocks"
+                                content: drawer.tab === "general" ? "Border, shadow, panels and pinned apps"
+                                    : drawer.edgeBlocks.length === 0 ? "Nothing here yet · drag an item onto this edge or add a block"
+                                    : drawer.edgeBlocks.length === 1 ? "1 block" : drawer.edgeBlocks.length + " blocks"
                                 size: 12
                                 weight: 400
                                 customColor: Colors.surfaceVariantText
@@ -413,21 +512,6 @@ Item {
                             icon: "close"
                             onClicked: if (drawer.editor) drawer.editor.drawerMode = ""
                         }
-                    }
-
-                    M3ButtonGroup {
-                        visible: !drawer.itemPage
-                        Layout.preferredWidth: drawerCol.width
-                        Layout.preferredHeight: 36
-                        fillWidth: true
-                        iconSize: 16
-                        textSize: 12
-                        model: [
-                            { value: "edges",   label: "Edges",   icon: "border_outer" },
-                            { value: "general", label: "General", icon: "tune" }
-                        ]
-                        activeCheck: function(v) { return drawer.tab === v || (v === "edges" && drawer.tab !== "general") }
-                        onSegmentClicked: function(v) { drawer.tab = v }
                     }
 
                     ColumnLayout {
@@ -885,17 +969,58 @@ ColumnLayout {
                                         customColor: Colors.outline
                                     }
 
-                                    ShapePicker {
+                                    RowLayout {
                                         Layout.fillWidth: true
-                                        centered: true
                                         visible: drawer.iconItem
-                                        autoLabel: "None"
-                                        autoIcon: "crop_square"
-                                        autoHint: "Rounded rectangle"
-                                        pickedHint: ""
-                                        selected: drawer.itemShape === "none" ? "" : drawer.itemShape
-                                        onPicked: name => BarLayout.setItemStyle(drawer.selected, "shape",
-                                                                                name === "" ? "none" : name)
+                                        spacing: 10
+
+                                        Rectangle {
+                                            implicitWidth: 40
+                                            implicitHeight: 40
+                                            radius: 12
+                                            color: Colors.surfaceContainerHigh
+
+                                            MaterialShapes.ShapeCanvas {
+                                                anchors.centerIn: parent
+                                                visible: drawer.itemShape !== "none" && drawer.itemShape !== ""
+                                                width: 26
+                                                height: 26
+                                                roundedPolygon: visible ? ShapeLibrary.get(drawer.itemShape) : ShapeLibrary.get("circle")
+                                                color: Colors.primary
+                                            }
+                                            MaterialIconSymbol {
+                                                anchors.centerIn: parent
+                                                visible: drawer.itemShape === "none" || drawer.itemShape === ""
+                                                content: "crop_square"
+                                                iconSize: 22
+                                                customColor: Colors.surfaceVariantText
+                                            }
+                                        }
+
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            Layout.maximumWidth: 100000
+                                            spacing: 0
+                                            CustomText {
+                                                content: drawer.shapeName(drawer.itemShape)
+                                                size: 13
+                                                weight: 600
+                                            }
+                                            CustomText {
+                                                content: drawer.itemShape === "none" || drawer.itemShape === "" ? "Rounded rectangle" : "Material shape"
+                                                size: 11
+                                                customColor: Colors.outline
+                                            }
+                                        }
+
+                                        EditPill {
+                                            icon: drawer.shapeOpen ? "close" : "interests"
+                                            label: drawer.shapeOpen ? "Close" : "Choose"
+                                            tonal: !drawer.shapeOpen
+                                            lit: drawer.shapeOpen
+                                            box: 36
+                                            onClicked: drawer.shapeOpen = !drawer.shapeOpen
+                                        }
                                     }
                                 }
     }
@@ -1333,41 +1458,6 @@ ColumnLayout {
     visible: true
     spacing: 8
     EditRow {
-        visible: true
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 8
-
-                                    CustomText { Layout.fillWidth: true; content: "Screen edge"; size: 13; weight: 600; customColor: Colors.surfaceVariantText }
-                                    CustomText {
-                                        Layout.fillWidth: true
-                                        wrapMode: Text.WordWrap
-                                        content: drawer.edgeBlocks.length === 0
-                                            ? "Nothing here yet. Drag an item onto this edge, or add a block below."
-                                            : drawer.edgeBlocks.length === 1 ? "1 block on this edge" : drawer.edgeBlocks.length + " blocks on this edge"
-                                        size: 11
-                                        customColor: Colors.outline
-                                    }
-                                    M3ButtonGroup {
-                                        Layout.fillWidth: true
-                                        Layout.preferredHeight: 38
-                                        fillWidth: true
-                                        iconSize: 16
-                                        textSize: 12
-                                        activeColor: Colors.secondaryContainer
-                                        activeTextColor: Colors.secondaryContainerText
-                                        model: [
-                                            { value: "top",    label: "Top",    icon: "border_top" },
-                                            { value: "right",  label: "Right",  icon: "border_right" },
-                                            { value: "bottom", label: "Bottom", icon: "border_bottom" },
-                                            { value: "left",   label: "Left",   icon: "border_left" }
-                                        ]
-                                        activeCheck: function(value) { return drawer.edgeSide === value }
-                                        onSegmentClicked: function(value) { drawer.edgeSide = value }
-                                    }
-                                }
-    }
-    EditRow {
         visible: drawer.edgeBlocks.length > 0
                                 RowLayout {
                                     Layout.fillWidth: true
@@ -1458,7 +1548,7 @@ ColumnLayout {
     visible: true
     spacing: 8
     EditRow {
-        visible: true
+        visible: !BarLayout.gapModel
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 8
@@ -1493,6 +1583,49 @@ ColumnLayout {
                                     }
                                 }
     }
+    EditRow {
+        visible: BarLayout.gapModel
+                                Repeater {
+                                    model: [
+                                        { key: "edge",   label: "Edge gap",  min: -60, max: 40, step: 1 },
+                                        { key: "block",  label: "Block gap", min: 0,   max: 60, step: 1 },
+                                        { key: "end",    label: "End gap",   min: 0,   max: 120, step: 2 },
+                                        { key: "fill",   label: "Fill",      min: 0,   max: 100, step: 5, scale: 100 },
+                                        { key: "radius", label: "Corners",   min: 0,   max: 28, step: 1, auto: -1 }
+                                    ]
+                                    delegate: RowLayout {
+                                        id: gapRow
+                                        required property var modelData
+                                        readonly property real scale: gapRow.modelData.scale ?? 1
+                                        readonly property real value: Number(BarLayout.edgeGaps(drawer.edgeSide)[gapRow.modelData.key] ?? 0) * gapRow.scale
+                                        readonly property bool isAuto: gapRow.modelData.auto !== undefined && gapRow.value < 0
+
+                                        Layout.fillWidth: true
+                                        spacing: 12
+
+                                        CustomText {
+                                            Layout.preferredWidth: 84
+                                            content: gapRow.modelData.label
+                                            size: 12
+                                        }
+                                        EditStepper {
+                                            Layout.fillWidth: true
+                                            value: gapRow.isAuto ? gapRow.modelData.min : gapRow.value
+                                            from: gapRow.modelData.min
+                                            to: gapRow.modelData.max
+                                            stepSize: gapRow.modelData.step
+                                            canAuto: gapRow.modelData.auto !== undefined
+                                            isAuto: gapRow.isAuto
+                                            autoText: "Auto"
+                                            offValue: gapRow.modelData.key === "radius"
+                                                ? Math.min(gapRow.modelData.max, Math.round(Number(drawer.edgeCfg.radius ?? 18))) : gapRow.modelData.min
+                                            unit: gapRow.modelData.key === "fill" ? "%" : "px"
+                                            onPicked: v => BarLayout.setEdgeGaps(drawer.edgeSide, { [gapRow.modelData.key]: v / gapRow.scale })
+                                            onAutoPicked: BarLayout.setEdgeGaps(drawer.edgeSide, { [gapRow.modelData.key]: gapRow.modelData.auto })
+                                        }
+                                    }
+                                }
+    }
 }
 
 EditHeading {
@@ -1519,7 +1652,8 @@ ColumnLayout {
                                           presets: [{ label: "Soft", value: 12 }, { label: "Round", value: 20 }, { label: "Full", value: 28 }] },
                                         { key: "itemGap",  label: "Item gap",   min: 0,  max: 16,  step: 1, auto: -9 },
                                         { key: "blockGap", label: "Block gap",  min: 0,  max: 120, step: 8, auto: -1, autoText: "Auto" }
-                                    ].concat(BarLayout.edgeShapes(drawer.edgeSide).indexOf("pill") >= 0
+                                    ].filter(r => !BarLayout.gapModel || (r.key !== "radius" && r.key !== "blockGap"))
+                                    .concat(!BarLayout.gapModel && BarLayout.edgeShapes(drawer.edgeSide).indexOf("pill") >= 0
                                         ? (drawer.edgeSide === "left" || drawer.edgeSide === "right"
                                             ? [{ key: "pillGap",   label: drawer.edgeSide === "left" ? "Left gap" : "Right gap", min: 0, max: 40, step: 1, auto: -9 },
                                                { key: "pillStart", label: "Top gap",    min: 0, max: 80, step: 1, auto: -9 },
@@ -1575,7 +1709,7 @@ ColumnLayout {
                                     Layout.fillWidth: true
                                     visible: {
                                         const shapes = BarLayout.edgeShapes(drawer.edgeSide)
-                                        return shapes.indexOf("pill") >= 0 && shapes.indexOf("stepped") >= 0
+                                        return !BarLayout.gapModel && shapes.indexOf("pill") >= 0 && shapes.indexOf("stepped") >= 0
                                     }
                                     spacing: 10
 
@@ -1600,6 +1734,112 @@ ColumnLayout {
                                     }
                                 }
 
+    }
+}
+
+EditHeading {
+    Layout.fillWidth: true
+    Layout.topMargin: 10
+    visible: true
+    content: "Panels"
+    size: 13
+    customColor: Colors.primary
+}
+ColumnLayout {
+    id: drawerGroupEdgePanels
+    Layout.fillWidth: true
+    visible: true
+    spacing: 8
+    EditRow {
+        visible: true
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    CustomText {
+                                        Layout.fillWidth: true
+                                        content: "How panels open on this edge"
+                                        size: 13
+                                        weight: 600
+                                        customColor: Colors.surfaceVariantText
+                                    }
+                                    CustomText {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.WordWrap
+                                        content: drawer.panelOverrides === 0
+                                            ? "Every block on this edge follows this. Select a block to give it its own style."
+                                            : drawer.panelOverrides + (drawer.panelOverrides === 1 ? " block uses its own style." : " blocks use their own style.")
+                                        size: 11
+                                        customColor: Colors.outline
+                                    }
+                                    M3ButtonGroup {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 38
+                                        fillWidth: true
+                                        iconSize: 16
+                                        textSize: 12
+                                        activeColor: Colors.secondaryContainer
+                                        activeTextColor: Colors.secondaryContainerText
+                                        model: drawer.panelChoices
+                                        activeCheck: function(value) { return drawer.edgePanels === value }
+                                        onSegmentClicked: function(value) { BarLayout.setEdgePanels(drawer.edgeSide, value) }
+                                    }
+                                    M3Button {
+                                        Layout.alignment: Qt.AlignRight
+                                        visible: drawer.panelOverrides > 0
+                                        size: "xsmall"
+                                        variant: "text"
+                                        icon: "sync"
+                                        label: "Use edge style for all blocks"
+                                        onClicked: BarLayout.clearEdgeOverrides(drawer.edgeSide, "panels")
+                                    }
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 12
+
+                                        HoverHandler {
+                                            onHoveredChanged: BarLayout.hoverGap(hovered, "panelGap", "", "")
+                                        }
+
+                                        CustomText {
+                                            Layout.preferredWidth: 84
+                                            content: "Panel gap"
+                                            size: 12
+                                        }
+                                        EditStepper {
+                                            readonly property bool own: typeof drawer.edgeCfg.panelGap === "number" && drawer.edgeCfg.panelGap >= 0
+                                            Layout.fillWidth: true
+                                            value: BarLayout.edgePanelGap(drawer.edgeSide)
+                                            from: 0
+                                            to: 40
+                                            stepSize: 2
+                                            canAuto: true
+                                            isAuto: !own
+                                            autoLabel: "Bar"
+                                            autoText: "Bar · " + Math.round(BarLayout.panelGap) + " px"
+                                            offValue: Math.round(BarLayout.panelGap / 2) * 2
+                                            onPicked: v => {
+                                                if (!own || v !== BarLayout.edgePanelGap(drawer.edgeSide))
+                                                    BarLayout.setEdgePanelGap(drawer.edgeSide, v)
+                                                BarLayout.flashGap("panelGap", "", "")
+                                            }
+                                            onAutoPicked: {
+                                                BarLayout.setEdgePanelGap(drawer.edgeSide, null)
+                                                BarLayout.flashGap("panelGap", "", "")
+                                            }
+                                        }
+                                    }
+                                    M3Button {
+                                        Layout.alignment: Qt.AlignRight
+                                        visible: drawer.gapOverrides > 0
+                                        size: "xsmall"
+                                        variant: "text"
+                                        icon: "sync"
+                                        label: "Use edge gap for all blocks"
+                                        onClicked: BarLayout.clearEdgeOverrides(drawer.edgeSide, "panelGap")
+                                    }
+                                }
     }
 }
 
@@ -1645,6 +1885,46 @@ ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 12
                         visible: !drawer.itemPage && drawer.tab === "general"
+
+EditHeading {
+    Layout.fillWidth: true
+    Layout.topMargin: 10
+    visible: true
+    content: "Bar shapes"
+    size: 13
+    customColor: Colors.primary
+}
+ColumnLayout {
+    Layout.fillWidth: true
+    spacing: 8
+    EditRow {
+        visible: true
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        Layout.maximumWidth: 100000
+                                        spacing: 1
+
+                                        CustomText { content: "Gap shapes (beta)"; size: 13 }
+                                        CustomText {
+                                            Layout.fillWidth: true
+                                            wrapMode: Text.WordWrap
+                                            content: "Shape every block with gaps instead of fixed styles. Touching blocks merge."
+                                            size: 11
+                                            customColor: Colors.outline
+                                        }
+                                    }
+
+                                    CustomToogle {
+                                        isToggleOn: BarLayout.gapModel
+                                        onToggled: state => BarLayout.setRenderer(state ? "blob" : "")
+                                    }
+                                }
+    }
+}
 
 EditHeading {
     Layout.fillWidth: true
@@ -1875,7 +2155,7 @@ ColumnLayout {
                                     }
                                     CustomText {
                                         Layout.fillWidth: true
-                                        content: "Space between floating or merged panels and their bar, and beside blocks on the side edges. Changing it resets every block to this gap."
+                                        content: "Space between floating or merged panels and their bar, and beside blocks on the side edges. Changing it resets every edge and block to this gap."
                                         size: 11
                                         wrapMode: Text.WordWrap
                                         customColor: Colors.outline

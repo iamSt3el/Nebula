@@ -19,7 +19,16 @@ Item {
     signal listChildClicked(var child)
     height: 30
 
-    readonly property string shownName: root.currentVal ?? root.objectVal?.name ?? ""
+    property var _picked: null
+    readonly property string shownName: root._picked ?? root.currentVal ?? root.objectVal?.name ?? ""
+    onCurrentValChanged: root._picked = null
+    onObjectValChanged: root._picked = null
+
+    Timer {
+        id: pickedTimer
+        interval: 1500
+        onTriggered: root._picked = null
+    }
     readonly property int selectedIndex: {
         const l = root.list ?? []
         for (let i = 0; i < l.length; i++)
@@ -159,7 +168,8 @@ Item {
                 const l = root.list ?? []
                 if (i < 0 || i >= l.length)
                     return
-                root.currentVal = l[i].name
+                root._picked = l[i].name
+                pickedTimer.restart()
                 root.listChildClicked(l[i])
                 popup.close()
             }

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.customComponents
+import qs.modules.components.Edit
 
 RowLayout {
     id: step
@@ -31,7 +32,7 @@ RowLayout {
         usable: step.card.valueOf(step.key) < step.card.full
         onClicked: step.card.nudge(step.key, 1)
     }
-    WheelHandler {
-        onWheel: e => step.card.nudge(step.key, e.angleDelta.y > 0 ? 1 : -1)
+    WheelStep {
+        onStepped: dir => step.card.nudge(step.key, dir)
     }
 }

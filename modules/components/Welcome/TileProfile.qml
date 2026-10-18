@@ -133,8 +133,9 @@ WelcomeTile {
             Layout.preferredHeight: 30
             color: Colors.surfaceContainerHighest
             list: Settings.fonts
-            Component.onCompleted: currentVal = SettingsConfig.general.defaultFont
-            onCurrentValChanged: {
+            currentVal: SettingsConfig.general.defaultFont
+            onListChildClicked: child => {
+                const currentVal = child.name
                 if (!currentVal || currentVal === SettingsConfig.general.defaultFont) return
                 SettingsConfig.general = Object.assign({}, SettingsConfig.general, { defaultFont: currentVal })
             }

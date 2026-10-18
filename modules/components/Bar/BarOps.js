@@ -218,10 +218,58 @@ function sysEdge(barCfg, general) {
     return "bottom"
 }
 
+function gapModel(barCfg) {
+    return !!barCfg && barCfg.renderer === "blob"
+}
+
+function gapDefaults(cfg) {
+    const block = cfg.blockGap >= 0 ? cfg.blockGap : 10
+    if (cfg.shape === "pill")
+        return { edge: cfg.pillGap, block: block, end: cfg.pillEnd, fill: 0, radius: cfg.radius }
+    if (cfg.shape === "flat")
+        return { edge: 0, block: 0, end: 0, fill: 1, radius: -1 }
+    return { edge: 0, block: block, end: 0, fill: 0, radius: -1 }
+}
+
+function edgeGaps(barCfg, general, side) {
+    const cfg = edgeCfg(barCfg, general, side)
+    const g = cfg.gaps
+    return Object.assign(gapDefaults(cfg), g && typeof g === "object" ? g : {})
+}
+
+function blockGaps(barCfg, general, id, side) {
+    const cfg = edgeCfg(barCfg, general, side)
+    const e = edgeGaps(barCfg, general, side)
+    const st = (barCfg && barCfg.blockStyles && barCfg.blockStyles[id]) || {}
+    let edge = typeof st.edgeGap === "number" ? st.edgeGap : undefined
+    if (edge === undefined && isShape(st.shape) && st.shape !== cfg.shape && !(cfg.gaps && typeof cfg.gaps === "object"))
+        edge = st.shape === "pill" ? cfg.pillGap : 0
+    const radius = typeof st.radius === "number" && st.radius >= 0 ? st.radius : e.radius
+    const gapBefore = typeof st.gapBefore === "number" && st.gapBefore >= 0 ? st.gapBefore : -1
+    const offset = typeof st.offset === "number" && st.offset > 0 ? st.offset : 0
+    return { edge: edge ?? e.edge, radius: radius, fill: e.fill, gapBefore: gapBefore, offset: offset }
+}
+
+function gapShape(barCfg, general, id, side) {
+    const g = blockGaps(barCfg, general, id, side)
+    if (g.edge > 0.5)
+        return "pill"
+    return g.fill >= 0.999 ? "flat" : "stepped"
+}
+
 function blockShapes(barCfg, general, sanitized) {
     const blocks = sanitized || upgradeBlocks((barCfg && barCfg.blocks) || [], barCfg)
     const styles = (barCfg && barCfg.blockStyles) || {}
     const out = { ids: {}, edges: {} }
+    if (gapModel(barCfg)) {
+        for (const e of SIDES) {
+            const list = blocks.filter(b => edgeOf(b) === e)
+            for (const b of list)
+                out.ids[b.id] = gapShape(barCfg, general, b.id, e)
+            out.edges[e] = list.length ? list.map(b => out.ids[b.id]) : [gapDefaults(edgeCfg(barCfg, general, e)).edge > 0.5 ? "pill" : "stepped"]
+        }
+        return out
+    }
     for (const e of SIDES) {
         const list = blocks.filter(b => edgeOf(b) === e)
         const own = list.map(b => {

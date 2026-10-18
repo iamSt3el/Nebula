@@ -22,6 +22,13 @@ Item {
     property real spermAmplitudeMultiplier: sperm ? 0.5 : 0
     property real spermFrequency: 8
     property real spermFps: 60
+    onBaseColorChanged: canvas.requestPaint()
+    onLineColorChanged: canvas.requestPaint()
+    onThicknessChanged: canvas.requestPaint()
+    onRadiusChanged: canvas.requestPaint()
+    onWidthChanged: canvas.requestPaint()
+    onHeightChanged: canvas.requestPaint()
+    onGapChanged: canvas.requestPaint()
 
     Behavior on spermAmplitudeMultiplier {
         NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
@@ -100,7 +107,7 @@ Item {
 
         Timer {
             interval: 1000 / root.spermFps
-            running: root.animateSperm
+            running: root.animateSperm && root.visible
             repeat: root.sperm
             onTriggered: canvas.requestPaint()
         }

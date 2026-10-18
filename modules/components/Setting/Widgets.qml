@@ -371,6 +371,7 @@ Item {
                         Item { Layout.fillWidth: true }
                         CustomSpinBox {
                             color: Colors.surfaceContainerHighest
+                            min: 10
                             value: SettingsConfig.general.musicVisBars ?? 60
                             onValChanged: {
                                 if (val !== value)

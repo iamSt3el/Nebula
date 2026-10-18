@@ -57,9 +57,9 @@ Item {
         actProc.running = true
     }
 
-    function runRevealed(args, message) {
+    function runLayout(args, message) {
         const page = root
-        const ok = ServiceReveal.runLayout(args, (code, out, err) => {
+        const ok = ServiceLayouts.run(args, (code, out, err) => {
             try {
                 page.busyId = ""
                 const e = err.trim().split("\n").pop().replace(/^\[nebula\]\s*/, "")
@@ -406,7 +406,7 @@ Item {
                     spacing: 10
                     MaterialIconSymbol { content: "history"; iconSize: 20; customColor: Colors.secondaryContainerText }
                     CustomText { Layout.fillWidth: true; content: "Your previous layout was kept when you loaded one."; size: 13; customColor: Colors.secondaryContainerText }
-                    Pill { icon: "undo"; label: "Undo"; filled: true; onClicked: root.runRevealed(["undo"], "Previous layout restored") }
+                    Pill { icon: "undo"; label: "Undo"; filled: true; onClicked: root.runLayout(["undo"], "Previous layout restored") }
                 }
             }
 
@@ -543,7 +543,7 @@ Item {
                                     filled: !card.current
                                     onClicked: {
                                         root.busyId = card.modelData.id
-                                        root.runRevealed(["load", card.modelData.id],
+                                        root.runLayout(["load", card.modelData.id],
                                                  (card.modified ? "Reverted to “" : "Applied “") + card.modelData.name + "”")
                                     }
                                 }

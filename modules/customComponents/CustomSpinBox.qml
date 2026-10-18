@@ -7,8 +7,9 @@ import qs.modules.customComponents
 Item {
     id: root
     property int value: 0
-    property int val
+    property int val: root.value
     property int inc: 10
+    property int min: 0
     property int limit: 100
 
     onValueChanged: { if (val !== value) val = value }
@@ -34,9 +35,9 @@ Item {
                 MaterialIconSymbol {
                     anchors.centerIn: parent
                     content: "remove"
-                    iconSize: minusMouse.containsMouse && root.val > 0 ? 20 : 17
+                    iconSize: minusMouse.containsMouse && root.val > root.min ? 20 : 17
                     Behavior on iconSize { SpatialAnim { speed: "fast" } }
-                    color: root.val <= 0 ? Colors.outline
+                    color: root.val <= root.min ? Colors.outline
                          : minusMouse.pressed ? Colors.primary
                          : minusMouse.containsMouse ? Colors.inverseSurface
                          : Colors.surfaceVariantText
@@ -48,9 +49,9 @@ Item {
                     id: minusMouse
                     anchors.fill: parent
                     hoverEnabled: true
-                    enabled: root.val > 0
+                    enabled: root.val > root.min
                     cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: root.val = Math.max(0, root.val - root.inc)
+                    onClicked: root.val = Math.max(root.min, root.val - root.inc)
                 }
             }
 

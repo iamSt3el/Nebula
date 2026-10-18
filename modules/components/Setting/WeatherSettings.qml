@@ -129,9 +129,9 @@ Item {
                         Item { Layout.fillWidth: true }
                         CustomSpinBox {
                             color: Colors.surfaceContainerHighest
-                            inc: 5; limit: 120
-                            Component.onCompleted: val = SettingsConfig.weather.refreshInterval
-                            onValChanged: SettingsConfig.weather = Object.assign({}, SettingsConfig.weather, { refreshInterval: val })
+                            inc: 5; min: 5; limit: 120
+                            value: SettingsConfig.weather.refreshInterval ?? 15
+                            onValChanged: if (val !== value) SettingsConfig.weather = Object.assign({}, SettingsConfig.weather, { refreshInterval: val })
                         }
                     }
                 }

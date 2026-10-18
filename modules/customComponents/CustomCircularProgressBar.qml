@@ -14,6 +14,12 @@ Item{
     property string baseColor: Colors.surfaceContainerHigh
     property string lineColor: Colors.primary
     property bool showText: true
+    onBaseColorChanged: canvas.requestPaint()
+    onLineColorChanged: canvas.requestPaint()
+    onThicknessChanged: canvas.requestPaint()
+    onRadiusChanged: canvas.requestPaint()
+    onWidthChanged: canvas.requestPaint()
+    onHeightChanged: canvas.requestPaint()
     Canvas{
         id: canvas
         anchors.fill: parent

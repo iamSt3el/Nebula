@@ -172,8 +172,6 @@ Singleton{
     readonly property bool notificationCenterOpen: root.notificationCenterCount > 0
     signal panelRequested(string kind)
     signal pieRequested()
-    signal desktopClicked(string screenName, real x, real y)
-    signal desktopDragged(string screenName, real x, real y)
     function openPanel(kind) {
         root.panelRequested(kind)
     }

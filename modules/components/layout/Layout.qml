@@ -36,6 +36,8 @@ PanelWindow{
     property Item editChrome: null
     property Item drawerHost: null
     readonly property var surfaces: [surfTop, surfRight, surfBottom, surfLeft]
+    readonly property bool blobWanted: (SettingsConfig.bar?.renderer ?? "") === "blob"
+    property bool blobRenderer: false
 
     function cornerFor(side, atEnd, top, bottom) {
         if (!side.visible || side.panelDepth <= 0)
@@ -528,8 +530,12 @@ PanelWindow{
                         const pe = s.cornerPillEnd
                         if (ps)
                             along(s, surfTop.blockTop(ps) + surfTop.barH, s.blockX(first), mid(first))
+                        else
+                            along(s, Math.max(0, s.sideStart), s.blockX(first), mid(first))
                         if (pe)
                             along(s, s.blockX(last) + last.width, s.width - surfBottom.blockTop(pe) - surfBottom.barH, mid(last))
+                        else
+                            along(s, s.blockX(last) + last.width, s.width - Math.max(0, s.sideEnd), mid(last))
                     } else {
                         along(s, 0, s.blockX(first), mid(first))
                         along(s, s.blockX(last) + last.width, s.width, mid(last))
@@ -549,6 +555,19 @@ PanelWindow{
             const surf = root.surfaceAt(sx, sy) ?? root.nearestSurface(sx, sy)
             const f = surf.toFrame(sx, sy)
             const x = f.x
+            const depth = surf.far ? surf.height - f.y : f.y
+            const onto = surf.visibleBlocks.find(b => b.blockId !== barEditor.fromBlock && !b.leaving && b.width > 0
+                && x >= surf.blockX(b) + b.width * 0.2 && x <= surf.blockX(b) + b.width * 0.8
+                && depth >= surf.blockTop(b) - 6 && depth <= surf.blockTop(b) + surf.barH + 6)
+            barEditor.joinTarget = onto ? onto.blockId : ""
+            barEditor.joinAtEnd = !!onto && x > surf.blockX(onto) + onto.width / 2
+            barEditor.label = onto ? "Join" : "Block"
+            barEditor.icon = onto ? "join_inner" : "drag_indicator"
+            if (onto) {
+                barEditor.dropAnchor = ""
+                barEditor.caretX = -1
+                return
+            }
             const W = surf.rowItem.width
             const rel = x - surf.rowItem.x
             const side = rel < W / 3 ? "left" : (rel > 2 * W / 3 ? "right" : "center")
@@ -620,6 +639,9 @@ PanelWindow{
             property real caretX: -1
             property string selectedItem: ""
             property string selectedBlock: ""
+            property string joinTarget: ""
+            property string gimbalBlock: ""
+            property bool joinAtEnd: false
             property string dropEdge: "top"
             property real caretY: 0
             property real caretW: 3
@@ -643,13 +665,17 @@ PanelWindow{
             }
 
             onSelectedBlockChanged: {
-                if (barEditor.selectedBlock !== "")
+                if (barEditor.selectedBlock !== "") {
                     barEditor.selectedItem = ""
+                    barEditor.gimbalBlock = ""
+                }
             }
 
             onSelectedItemChanged: {
-                if (barEditor.selectedItem !== "")
+                if (barEditor.selectedItem !== "") {
                     barEditor.selectedBlock = ""
+                    barEditor.gimbalBlock = ""
+                }
                 if (barEditor.selectedItem === "") {
                     barEditor.panelStage = false
                     if (barEditor.drawerMode === "options" || barEditor.drawerMode === "inspector") barEditor.drawerMode = ""
@@ -719,6 +745,8 @@ PanelWindow{
                 const appId = barEditor.appId
                 const appPinned = barEditor.appPinned
                 const appIndex = barEditor.appDropIndex
+                const join = barEditor.joinTarget
+                const joinEnd = barEditor.joinAtEnd
                 if (mode === "item" && !hide && toBlock !== "")
                     dragGhost.beginLanding(id)
                 if (mode === "item")
@@ -742,6 +770,8 @@ PanelWindow{
                     } else if (toBlock !== "") {
                         Qt.callLater(() => BarLayout.moveItem(id, toBlock, toIndex))
                     }
+                } else if (mode === "block" && join !== "") {
+                    Qt.callLater(() => BarLayout.joinBlocks(from, join, joinEnd))
                 } else if (mode === "block" && side !== "") {
                     Qt.callLater(() => BarLayout.moveBlock(from, side, sideIndex, edge))
                 }
@@ -759,6 +789,7 @@ PanelWindow{
                 barEditor.appId = ""
                 barEditor.appPinned = false
                 barEditor.appDropIndex = -1
+                barEditor.joinTarget = ""
             }
         }
 
@@ -781,6 +812,10 @@ PanelWindow{
                     editKeys.forceActiveFocus()
                     if (barEditor.mode !== "")
                         return
+                    if (barEditor.gimbalBlock !== "") {
+                        barEditor.gimbalBlock = ""
+                        return
+                    }
                     if (editChrome && editChrome.closeAll())
                         return
                     if (!root.surfaceAt(mouse.x, mouse.y)) {
@@ -802,7 +837,16 @@ PanelWindow{
 
         BarSdf {
             anchors.fill: parent
-            surfaces: layout.surfaces
+            visible: !layout.blobRenderer
+            surfaces: layout.blobRenderer ? [] : layout.surfaces
+        }
+
+        Loader {
+            anchors.fill: parent
+            active: layout.blobWanted
+            source: "BarBlobLayer.qml"
+            onLoaded: item.surfaces = Qt.binding(() => layout.surfaces)
+            onStatusChanged: layout.blobRenderer = status === Loader.Ready
         }
 
         component EdgeSurface: BarSurface {
@@ -1016,10 +1060,28 @@ PanelWindow{
             color: Colors.primary
         }
 
+        BarEdgeCompass {
+            z: 205
+            anchors.centerIn: parent
+            editor: barEditor
+            drawerHost: layout.drawerHost
+            live: layout.barEditing
+        }
+
+        BarBlockGimbal {
+            z: 252
+            anchors.fill: parent
+            surfaces: layout.surfaces
+            editor: barEditor
+            live: layout.barEditing && barEditor.mode === "" && barEditor.drawerMode === "" && !barEditor.panelStage
+        }
+
         Component {
             id: editChromeComp
             BarEditChrome {
                 z: 210
+                opacity: 1 - BarLayout.gapDragT
+                visible: BarLayout.gapDragT < 0.999
                 editor: barEditor
                 surfaces: layout.surfaces
                 editing: layout.barEditing && layout.editorsLive
@@ -1320,6 +1382,7 @@ PanelWindow{
                 return
             }
             if (barEditor.mode !== "") barEditor.cancel()
+            else if (barEditor.gimbalBlock !== "") barEditor.gimbalBlock = ""
             else if (editChrome && editChrome.closeAll()) return
             else if (barEditor.selectedItem !== "") barEditor.selectedItem = ""
             else if (barEditor.selectedBlock !== "") barEditor.selectedBlock = ""

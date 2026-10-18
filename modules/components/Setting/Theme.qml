@@ -673,8 +673,9 @@ Item {
                             Layout.preferredHeight: 30
                             color: Colors.surfaceContainerHighest
                             list: Settings.transitionTypes
-                            Component.onCompleted: currentVal = Settings.transitionOrDefault(SettingsConfig.theme.transitionType)
-                            onCurrentValChanged: {
+                            currentVal: Settings.transitionOrDefault(SettingsConfig.theme.transitionType)
+                            onListChildClicked: child => {
+                                const currentVal = child.name
                                 if (currentVal && currentVal !== SettingsConfig.theme.transitionType) {
                                     SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { transitionType: currentVal })
                                 }
@@ -781,12 +782,13 @@ Item {
                             Layout.preferredHeight: 30
                             color: Colors.surfaceContainerHighest
                             list: ServiceWallpaper.gowallOptions
+                            currentVal: SettingsConfig.theme.gowallTheme ?? "off"
                             Component.onCompleted: {
                                 ServiceWallpaper.refreshGowallThemes(false)
-                                currentVal = SettingsConfig.theme.gowallTheme ?? "off"
                                 ServiceWallpaper.refreshIconPreview(currentVal)
                             }
-                            onCurrentValChanged: {
+                            onListChildClicked: child => {
+                                const currentVal = child.name
                                 if (!currentVal || currentVal === gowallGroup.palette) return
                                 const turningOff = currentVal === "off"
                                 SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, {

@@ -18,7 +18,6 @@ MouseArea {
     property real bottomRightRadius: radius
 
     onPressed: event => {
-        parent.scale = 1
         const d = (ox, oy) => ox*ox + oy*oy
         _anim.px = event.x; _anim.py = event.y
         _anim.r = Math.sqrt(Math.max(
@@ -28,14 +27,12 @@ MouseArea {
         _anim.restart()
     }
 
-    onReleased: parent.scale = 1
-
     // Ripple clipped to the rounded shape via OpacityMask
     Item {
         id: _rippleClip
         anchors.fill: parent
 
-        layer.enabled: true
+        layer.enabled: _anim.running
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width:             _rippleClip.width

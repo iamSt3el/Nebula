@@ -6,5 +6,4 @@ hl.layer_rule({ name = "nebula-noanim",     match = { namespace = "quickshell:.*
 hl.layer_rule({ name = "nebula-session",    match = { namespace = "quickshell:session"           }, blur = true,  no_anim = true, ignore_alpha = 0    })
 hl.layer_rule({ name = "nebula-widgets",    match = { namespace = "quickshell:backgroundWidgets" }, blur = true,  no_anim = true, ignore_alpha = 0.05 })
 hl.layer_rule({ name = "nebula-edgelight",  match = { namespace = "quickshell:edgelight"         }, blur = false, no_anim = true })
-hl.layer_rule({ name = "nebula-ripple",     match = { namespace = "quickshell:ripple"            }, blur = false, no_anim = true })
 hl.layer_rule({ name = "nebula-spotlight",  match = { namespace = "quickshell:spotlight"         }, blur = true,  no_anim = true, ignore_alpha = 0.3  })

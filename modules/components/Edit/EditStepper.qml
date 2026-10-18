@@ -150,9 +150,8 @@ RowLayout {
         color: Colors.surfaceContainerHigh
         opacity: st.isAuto ? 0.6 : 1
 
-        WheelHandler {
-            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-            onWheel: ev => st.nudge(ev.angleDelta.y > 0 ? 1 : -1)
+        WheelStep {
+            onStepped: dir => st.nudge(dir)
         }
 
         Nudge {

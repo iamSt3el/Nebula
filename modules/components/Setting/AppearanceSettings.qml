@@ -255,6 +255,7 @@ Item {
                         CustomSpinBox {
                             color: Colors.surfaceContainerHighest
                             inc: 1
+                            min: 1
                             limit: 20
                             value: SettingsConfig.general.workspaceCount ?? 10
                             onValChanged: {
@@ -279,82 +280,6 @@ Item {
                             isToggleOn: SettingsConfig.general.perMonitorWorkspaces ?? false
                             onToggled: function(state) {
                                 SettingsConfig.general = Object.assign({}, SettingsConfig.general, { perMonitorWorkspaces: state })
-                            }
-                        }
-                    }
-                }
-            }
-
-            CustomText { Layout.topMargin: 16; content: "Desktop"; size: 13; customColor: Colors.primary }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 6
-                spacing: 3
-
-                CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: (SettingsConfig.general.desktopRipple ?? false) ? 5 : 20
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 2
-                            CustomText { content: "Click Ripples"; size: 14 }
-                            CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Clicking the empty desktop sends a water ripple through the wallpaper"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.general.desktopRipple ?? false
-                            onToggled: function(state) {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { desktopRipple: state })
-                            }
-                        }
-                    }
-                }
-
-                CustomCard {
-                    id: rippleStrengthCard
-                    visible: SettingsConfig.general.desktopRipple ?? false
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    readonly property string current: SettingsConfig.general.desktopRippleStrength ?? "normal"
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Ripple Strength"; size: 14 }
-                            CustomText { content: "How far the wallpaper bends"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        M3ButtonGroup {
-                            model: [
-                                { value: "subtle", label: "Subtle", icon: "water_drop" },
-                                { value: "normal", label: "Normal", icon: "waves" },
-                                { value: "splash", label: "Splash", icon: "tsunami" }
-                            ]
-                            activeCheck: function(value) { return rippleStrengthCard.current === value }
-                            onSegmentClicked: function(value) {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { desktopRippleStrength: value })
-                            }
-                        }
-                    }
-                }
-
-                CustomCard {
-                    visible: SettingsConfig.general.desktopRipple ?? false
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 2
-                            CustomText { content: "Ripple Trail"; size: 14 }
-                            CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Drag across the desktop to draw ripples, like a finger through water"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.general.desktopRippleDrag ?? true
-                            onToggled: function(state) {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { desktopRippleDrag: state })
                             }
                         }
                     }

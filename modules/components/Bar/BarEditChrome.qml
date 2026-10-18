@@ -450,7 +450,6 @@ Item {
             addLit: chrome.shelfOpen
             actions: [
                 { key: "panels", icon: "view_quilt", label: "Panels", lit: chrome.stage },
-                { key: "edges", icon: "tune", label: "Edges", lit: chrome.editor !== null && chrome.editor.drawerMode === "settings" },
                 { key: "reset", icon: "restart_alt", label: chrome.resetArmed ? "Reset layout" : "",
                   tip: chrome.resetArmed ? "" : "Reset layout", danger: chrome.resetArmed, lit: chrome.resetArmed }
             ]
@@ -697,6 +696,18 @@ Item {
                 onClicked: chrome.openStage(chrome.sel)
             }
             EditKit.Pill {
+                readonly property var host: toolbar.placed ? BarLayout.blockOfItem(chrome.sel) : null
+                visible: !!host && host.items.indexOf(chrome.sel) > 0
+                icon: "call_split"
+                tip: "Split the block before this item"
+                onClicked: {
+                    const id = chrome.sel
+                    const blockId = host.id
+                    chrome.editor.selectedItem = ""
+                    Qt.callLater(() => BarLayout.splitBlockAt(blockId, id))
+                }
+            }
+            EditKit.Pill {
                 id: toolTune
                 icon: "tune"
                 onClicked: {
@@ -772,7 +783,7 @@ Item {
             }
 
             Repeater {
-                model: chrome.shapeChoices
+                model: BarLayout.gapModel ? [] : chrome.shapeChoices
 
                 EditKit.Pill {
                     required property var modelData
@@ -780,6 +791,56 @@ Item {
                     label: modelData.label
                     lit: blockBar.shape === modelData.value
                     onClicked: BarLayout.setBlockShape(chrome.selBlock, modelData.value)
+                }
+            }
+
+            RowLayout {
+                id: edgeGapCtl
+                visible: BarLayout.gapModel && chrome.selBlock !== ""
+                spacing: 2
+                readonly property string side: blockBar.blockInfo ? blockBar.blockInfo.edge : "top"
+                readonly property var own: BarLayout.blockStyle(chrome.selBlock, "edgeGap", null)
+                readonly property real barGap: BarLayout.edgeGaps(edgeGapCtl.side).edge
+                readonly property real now: chrome.selBlock !== "" ? BarLayout.blockGaps(chrome.selBlock, edgeGapCtl.side).edge : 0
+                readonly property string pos: typeof edgeGapCtl.own !== "number" ? "follow" : edgeGapCtl.own <= 0.5 ? "edge" : "lift"
+                function pick(v) {
+                    BarLayout.setBlockStyle(chrome.selBlock, "edgeGap", v === "follow" ? undefined
+                        : v === "edge" ? 0 : Math.max(0, edgeGapCtl.barGap) + 10)
+                    BarLayout.flashGap("edges", edgeGapCtl.side, chrome.selBlock)
+                }
+                function nudge(d) {
+                    BarLayout.setBlockStyle(chrome.selBlock, "edgeGap", Math.max(0, Math.min(60, Math.round(edgeGapCtl.now) + d)))
+                    BarLayout.flashGap("edges", edgeGapCtl.side, chrome.selBlock)
+                }
+                EditKit.Pill {
+                    icon: "link"
+                    label: "With bar"
+                    box: 36
+                    lit: edgeGapCtl.pos === "follow"
+                    tip: "Follow the edge's gap"
+                    onClicked: edgeGapCtl.pick("follow")
+                }
+                EditKit.Pill {
+                    icon: blockBar.side ? (chrome.blockEdge === "left" ? "align_horizontal_right" : "align_horizontal_left") : (chrome.blockEdge === "top" ? "vertical_align_bottom" : "vertical_align_top")
+                    label: edgeGapCtl.pos === "lift" ? "Lifted " + Math.round(edgeGapCtl.now) : "Lifted"
+                    box: 36
+                    lit: edgeGapCtl.pos === "lift"
+                    tip: "Float above the rest of the bar · scroll to adjust"
+                    onClicked: edgeGapCtl.pick("lift")
+                }
+                EditKit.Pill {
+                    icon: blockBar.side ? (chrome.blockEdge === "left" ? "align_horizontal_left" : "align_horizontal_right") : (chrome.blockEdge === "top" ? "vertical_align_top" : "vertical_align_bottom")
+                    label: "On edge"
+                    box: 36
+                    lit: edgeGapCtl.pos === "edge"
+                    tip: "Sit on the screen edge"
+                    onClicked: edgeGapCtl.pick("edge")
+                }
+                WheelStep {
+                    onStepped: dir => edgeGapCtl.nudge(dir)
+                }
+                HoverHandler {
+                    onHoveredChanged: BarLayout.hoverGap(hovered, "edges", edgeGapCtl.side, chrome.selBlock)
                 }
             }
 
@@ -839,8 +900,51 @@ Item {
             }
 
             RowLayout {
+                id: cornerChoice
+                visible: BarLayout.gapModel && chrome.selBlock !== "" && !blockBar.split
+                spacing: 2
+                readonly property real full: blockBar.blockInfo ? BarLayout.edge(blockBar.blockInfo.edge).height / 2 : 20
+                readonly property var own: BarLayout.blockStyle(chrome.selBlock, "radius", null)
+                readonly property bool has: typeof cornerChoice.own === "number" && cornerChoice.own >= 0
+                readonly property string pick: !cornerChoice.has ? "follow" : cornerChoice.own <= 0.5 ? "square"
+                    : cornerChoice.own >= cornerChoice.full - 0.5 ? "round" : "soft"
+                function set(v) {
+                    BarLayout.setBlockStyle(chrome.selBlock, "radius", v === "follow" ? undefined
+                        : v === "square" ? 0 : v === "round" ? Math.floor(cornerChoice.full) : Math.round(cornerChoice.full / 2))
+                }
+                function nudge(d) {
+                    const cur = cornerChoice.has ? cornerChoice.own : BarLayout.blockGaps(chrome.selBlock, blockBar.blockInfo.edge).radius
+                    const base = cur < 0 ? cornerChoice.full : cur
+                    BarLayout.setBlockStyle(chrome.selBlock, "radius", Math.max(0, Math.min(Math.floor(cornerChoice.full), Math.round(base) + d)))
+                }
+                EditKit.Divider {
+                    Layout.leftMargin: 4
+                    Layout.rightMargin: 4
+                }
+                Repeater {
+                    model: [
+                        { v: "follow", icon: "link", tip: "Corners follow the edge" },
+                        { v: "square", icon: "crop_square", tip: "Square corners" },
+                        { v: "soft", icon: "rounded_corner", tip: "Soft corners · scroll to adjust" },
+                        { v: "round", icon: "circle", tip: "Fully round" }
+                    ]
+                    EditKit.Pill {
+                        required property var modelData
+                        icon: modelData.icon
+                        box: 36
+                        lit: cornerChoice.pick === modelData.v
+                        tip: modelData.tip
+                        onClicked: cornerChoice.set(modelData.v)
+                    }
+                }
+                WheelStep {
+                    onStepped: dir => cornerChoice.nudge(dir)
+                }
+            }
+
+            RowLayout {
                 id: radiusCtl
-                visible: blockBar.shape === "pill" && !blockBar.split
+                visible: !BarLayout.gapModel && blockBar.shape === "pill" && !blockBar.split
                 spacing: 0
                 readonly property real full: blockBar.blockInfo ? BarLayout.edge(blockBar.blockInfo.edge).height / 2 : 20
                 readonly property real cur: BarLayout.blockStyle(chrome.selBlock, "radius", -1)
@@ -877,14 +981,14 @@ Item {
                     usable: radiusCtl.cur >= 0
                     onClicked: radiusCtl.nudge(1)
                 }
-                WheelHandler {
-                    onWheel: e => radiusCtl.nudge(e.angleDelta.y > 0 ? 1 : -1)
+                WheelStep {
+                    onStepped: dir => radiusCtl.nudge(dir)
                 }
             }
 
             EditKit.Pill {
                 id: cornersPill
-                visible: radiusCtl.visible
+                visible: radiusCtl.visible || cornerChoice.visible
                 icon: "rounded_corner"
                 box: 32
                 tip: "Each corner"
@@ -916,6 +1020,14 @@ Item {
                 label: "Floating"
                 lit: blockBar.panels === "floating"
                 onClicked: BarLayout.setBlockStyle(chrome.selBlock, "panels", "floating")
+            }
+
+            EditKit.Pill {
+                visible: BarLayout.ownPanels(chrome.selBlock) !== "" && !(blockBar.shape === "pill" && BarLayout.splitBlock(chrome.selBlock))
+                icon: "sync"
+                box: 32
+                tip: "Follow the edge's panel style"
+                onClicked: BarLayout.setBlockStyle(chrome.selBlock, "panels", undefined)
             }
 
             RowLayout {
@@ -964,11 +1076,11 @@ Item {
                     visible: panelGapCtl.own
                     icon: "sync"
                     box: 32
-                    tip: "Use the bar's panel gap"
+                    tip: "Follow the edge's panel gap"
                     onClicked: BarLayout.setBlockStyle(chrome.selBlock, "panelGap", null)
                 }
-                WheelHandler {
-                    onWheel: e => panelGapCtl.nudge(e.angleDelta.y > 0 ? 2 : -2)
+                WheelStep {
+                    onStepped: dir => panelGapCtl.nudge(2 * dir)
                 }
                 HoverHandler {
                     onHoveredChanged: BarLayout.hoverGap(hovered, "panelGap", "", chrome.selBlock)

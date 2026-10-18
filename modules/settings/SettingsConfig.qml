@@ -64,6 +64,7 @@ Singleton {
         id: settingsFile
         path: Quickshell.env("HOME") + "/.cache/quickshell/settings.json"
         watchChanges: true
+        blockWrites: true
         onFileChanged: {
             if (writeTimer.running || Date.now() - root.lastSavedAt < 300)
                 return
@@ -88,13 +89,10 @@ Singleton {
             readonly property var _generalDefaults: ({
                 dock: true,
                 dockAutoHide: true,
-                desktopRipple: false,
                 wallpaperGlide: true,
                 wallpaperFill: "crop",
                 wallpaperPanelMode: "dock",
                 clipboardPanelMode: "dock",
-                desktopRippleStrength: "normal",
-                desktopRippleDrag: true,
                 dockMusicPlayer: true,
                 appGrid: false,
                 pinnedApps: [],
@@ -136,13 +134,10 @@ Singleton {
             property var general: ({
                 dock: true,
                 dockAutoHide: true,
-                desktopRipple: false,
                 wallpaperGlide: true,
                 wallpaperFill: "crop",
                 wallpaperPanelMode: "dock",
                 clipboardPanelMode: "dock",
-                desktopRippleStrength: "normal",
-                desktopRippleDrag: true,
                 dockMusicPlayer: true,
                 appGrid: false,
                 pinnedApps: [],

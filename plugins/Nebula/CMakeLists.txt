@@ -30,6 +30,8 @@ qt_add_qml_module(nebulaplugin
         shapepainter.cpp
         barfield.h
         barfield.cpp
+        blobfield.h
+        blobfield.cpp
     OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Nebula
 )
 
@@ -40,6 +42,8 @@ qt_add_shaders(nebulaplugin "nebula_barfield_shaders"
     FILES
         shaders/barfield.vert
         shaders/barfield.frag
+        shaders/blobfield.vert
+        shaders/blobfield.frag
 )
 
 target_link_libraries(nebulaplugin PRIVATE

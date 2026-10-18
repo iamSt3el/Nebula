@@ -62,8 +62,9 @@ ColumnLayout {
             Layout.preferredHeight: 36
             color: Colors.surfaceContainerHighest
             list: Settings.matugen
-            Component.onCompleted: currentVal = SettingsConfig.theme.matugenScheme
-            onCurrentValChanged: {
+            currentVal: SettingsConfig.theme.matugenScheme
+            onListChildClicked: child => {
+                const currentVal = child.name
                 if (!currentVal || currentVal === SettingsConfig.theme.matugenScheme) return
                 SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { matugenScheme: currentVal })
                 if (Colors.sourceWallpaper !== "")

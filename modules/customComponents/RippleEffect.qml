@@ -49,7 +49,7 @@ Item {
         id: _rippleClip
         anchors.fill: parent
 
-        layer.enabled: true
+        layer.enabled: _anim.running
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width:              _rippleClip.width

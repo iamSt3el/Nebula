@@ -23,7 +23,6 @@ import qs.modules.components.Overview
 import qs.modules.components.PieMenu
 import qs.modules.components.EdgeLight
 import qs.modules.components.ThemeFlip
-import qs.modules.components.Ripple
 import qs.modules.components.Wallpaper
 import qs.modules.components.EdgeNotes
 import qs.modules.components.Tuck
@@ -119,9 +118,7 @@ ShellRoot{
     ThemeFlip {}
     CenterPanels {}
 
-    DesktopRipple { id: desktopRipple }
-
-    WallpaperLayer { ripple: desktopRipple }
+    WallpaperLayer {}
 
     EdgeNotes {}
 
@@ -131,6 +128,7 @@ ShellRoot{
 
     property bool screenTimeOn: ServiceScreenTime.enabled
     property bool scenesReady: ServiceScenes.loaded
+    property bool layoutsReady: ServiceLayouts.ready
 
     // Lock screen - responds to `loginctl lock-session`
     LockScreen {}

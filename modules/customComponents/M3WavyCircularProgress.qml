@@ -22,6 +22,12 @@ Item {
 
     // Dedicated phase tracker to maintain visual position when animation is paused
     property real wavePhase: 0
+    onBaseColorChanged: canvas.requestPaint()
+    onLineColorChanged: canvas.requestPaint()
+    onThicknessChanged: canvas.requestPaint()
+    onRadiusChanged: canvas.requestPaint()
+    onWidthChanged: canvas.requestPaint()
+    onHeightChanged: canvas.requestPaint()
 
     Behavior on spermAmplitudeMultiplier {
         NumberAnimation {
@@ -124,7 +130,7 @@ Item {
 
         Timer {
             interval: 1000 / root.spermFps
-            running: root.animateSperm
+            running: root.animateSperm && root.visible
             repeat: root.sperm
             onTriggered: {
                 // Manually progress the wave phase relative to frame rate

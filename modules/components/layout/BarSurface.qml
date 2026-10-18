@@ -52,21 +52,54 @@ Item {
             return surface.keepJson("pushPlan", { push: {}, shift: {}, hide: {} })
         const pos = b => b.baseX ?? b.absX
         const all = surface.visibleBlocks.slice().sort((p, q) => pos(p) - pos(q))
-        const items = all.map(b => {
+        const items = []
+        const gaps = []
+        let prev = null
+        for (const b of all) {
             const attached = b.tabOpen && !b.floating && !b.merged
             const live = attached && b.shownKind !== ""
-            return {
+            const it = {
                 id: b.blockId, x: pos(b), w: b.width, open: b.tabOpen, pill: b.isPill, run: surface.runOf(b),
                 absX: b.absX, reach: b.snapReach,
                 panel: !live ? null : { live: true, l: b.absX + b.tabPreX, w: b.tabNaturalW }
             }
-        })
-        const gaps = []
-        for (let k = 0; k + 1 < all.length; k++)
-            gaps.push(surface.naturalGap(all[k], all[k + 1]))
-        return surface.keepJson("pushPlan", BarPath.planPush(items, gaps, { spanStart: surface.spanStart, spanEnd: surface.spanEnd,
-                                               clear: surface.disX + 6, pairClear: surface.blockGapSetting >= 0,
-                                               minGap: surface.minGap }))
+            const body = surface.fused[b.blockId]?.key ?? b.blockId
+            const last = items[items.length - 1]
+            if (last && last.body === body) {
+                const r = Math.max(last.x + last.w, it.x + it.w)
+                last.x = Math.min(last.x, it.x)
+                last.w = r - last.x
+                last.absX = Math.min(last.absX, it.absX)
+                last.open = last.open || it.open
+                if (it.panel) {
+                    last.id = it.id
+                    last.panel = it.panel
+                    last.reach = it.reach
+                }
+                last.members.push(it.id)
+            } else {
+                if (prev)
+                    gaps.push(surface.naturalGap(prev, b))
+                it.body = body
+                it.members = [it.id]
+                items.push(it)
+            }
+            prev = b
+        }
+        const plan = BarPath.planPush(items, gaps, { spanStart: surface.spanStart, spanEnd: surface.spanEnd,
+                                                    clear: surface.disX + 6, pairClear: surface.blockGapSetting >= 0,
+                                                    minGap: surface.minGap })
+        for (const it of items) {
+            if (it.members.length < 2)
+                continue
+            for (const m of it.members) {
+                if (plan.push[it.id] !== undefined)
+                    plan.push[m] = plan.push[it.id]
+                if (plan.hide[it.id] !== undefined)
+                    plan.hide[m] = plan.hide[it.id]
+            }
+        }
+        return surface.keepJson("pushPlan", plan)
     }
     readonly property var pushMotion: {
         let src = null
@@ -317,7 +350,15 @@ Item {
     readonly property real baseGap: surface.vertical ? 6 : 14
     readonly property real minGap: 4
 
+    readonly property var gaps: BarLayout.gapModel ? BarLayout.edgeGaps(surface.edge) : null
+    property real fillShown: surface.gaps ? Math.max(0, Math.min(1, surface.gaps.fill)) : 0
+    Behavior on fillShown { enabled: BarLayout.settled && surface.gaps !== null && !BarLayout.gapDragging; SpatialAnim { speed: "default" } }
+    property real radiusShown: surface.gaps && surface.gaps.radius >= 0 ? surface.gaps.radius : surface.disX
+    Behavior on radiusShown { enabled: BarLayout.settled && surface.gaps !== null && !BarLayout.gapDragging; SpatialAnim { speed: "default" } }
+
     function naturalGap(a, b) {
+        if (surface.gaps)
+            return a && b && a.anchorSide === b.anchorSide && (b.gapBefore ?? -1) >= 0 ? b.gapBefore : surface.gaps.block
         a = a ?? b
         b = b ?? a
         if (!a)
@@ -590,10 +631,21 @@ Item {
     property var centerLeaving: ({})
     property var rightLeaving: ({})
 
+    function groupPad(rep) {
+        if (!surface.gaps || rep.count === 0)
+            return { lead: 0, trail: 0 }
+        const first = rep.itemAt(0)
+        const last = rep.itemAt(rep.count - 1)
+        const lead = first && first.anchorSide === "left" ? (first.offset ?? 0) * Math.min(1, first.pc) : 0
+        const trail = last && last.anchorSide === "right" ? (last.offset ?? 0) * Math.min(1, last.pc) : 0
+        return { lead: lead, trail: trail }
+    }
+
     function groupLayout(rep) {
         surface.blockItems
+        const pad = surface.groupPad(rep)
         const xs = []
-        let x = 0
+        let x = pad.lead
         let before = 0
         for (let k = 0; k < rep.count; k++) {
             const o = rep.itemAt(k)
@@ -603,7 +655,7 @@ Item {
             x += o ? o.width : 0
             before = Math.max(before, pc)
         }
-        return { xs: xs, total: x }
+        return { xs: xs, total: x + pad.trail }
     }
 
     function pivotIndex(widths) {
@@ -619,7 +671,7 @@ Item {
 
     function offsetOf(rep, idx) {
         surface.blockItems
-        let x = 0
+        let x = surface.groupPad(rep).lead
         let before = 0
         for (let k = 0; k < idx && k < rep.count; k++) {
             const o = rep.itemAt(k)
@@ -635,7 +687,8 @@ Item {
 
     function groupNatural(rep) {
         surface.blockItems
-        let n = 0
+        const pad = surface.groupPad(rep)
+        let n = pad.lead + pad.trail
         let before = 0
         for (let k = 0; k < rep.count; k++) {
             const o = rep.itemAt(k)
@@ -680,6 +733,80 @@ Item {
 
     function blockX(b) {
         return sectionsRow.x + b.parent.x + b.x
+    }
+
+    function crowds(b) {
+        const w = b.tabNaturalW
+        if (!(w > 0.5))
+            return false
+        const x0 = surface.blockX(b)
+        const x1 = x0 + b.width
+        let lo = surface.spanStart
+        let hi = surface.spanEnd
+        const own = surface.fused[b.blockId]?.key ?? b.blockId
+        for (const o of surface.visibleBlocks) {
+            if (o === b || o.leaving || o.width <= 0 || (surface.fused[o.blockId]?.key ?? o.blockId) === own)
+                continue
+            const a = surface.blockX(o)
+            const e = a + o.width
+            if (e <= x0 + 0.5)
+                lo = Math.max(lo, e)
+            else if (a >= x1 - 0.5)
+                hi = Math.min(hi, a)
+        }
+        return w > hi - lo - 2 * surface.minGap
+    }
+
+    readonly property var fused: {
+        const pos = b => b.baseX ?? b.absX
+        const map = {}
+        let cur = null
+        let prev = null
+        for (const b of surface.visibleBlocks) {
+            const ri = b.isPill ? -1 : surface.runOf(b)
+            const r = ri >= 0 ? surface.runs[ri] : null
+            let join = false
+            if (prev && cur) {
+                const gap = pos(b) - (pos(prev) + prev.width)
+                if (b.isPill && prev.isPill)
+                    join = gap <= 1 && Math.abs(surface.blockTop(b) - surface.blockTop(prev)) <= 1
+                else if (!b.isPill && !prev.isPill && ri === cur.run)
+                    join = cur.flat || gap <= 1
+            }
+            if (!join)
+                cur = { key: b.blockId, run: ri, flat: !!r && r.flat >= 0.999, ids: [] }
+            cur.ids.push(b.blockId)
+            map[b.blockId] = cur
+            prev = b
+        }
+        return surface.keepJson("fused", map)
+    }
+
+    function fusedSpan(b) {
+        const body = surface.fused[b.blockId]
+        const x = surface.blockX(b)
+        if (!body || body.ids.length < 2 && !body.flat)
+            return { L: x, R: x + b.width, n: 1 }
+        const r = body.flat ? surface.runs[body.run] : null
+        if (r)
+            return { L: r.L, R: r.R, n: body.ids.length }
+        let L = x
+        let R = x + b.width
+        for (const o of surface.visibleBlocks) {
+            if (body.ids.indexOf(o.blockId) < 0)
+                continue
+            L = Math.min(L, surface.blockX(o))
+            R = Math.max(R, surface.blockX(o) + o.width)
+        }
+        return { L: L, R: R, n: body.ids.length }
+    }
+
+    function fusedCovers(b, x, w) {
+        const s = surface.fusedSpan(b)
+        if (s.n < 2 && !(surface.fused[b.blockId]?.flat ?? false))
+            return false
+        const l = surface.blockX(b) + x
+        return l >= s.L - 1 && l + w <= s.R + 1
     }
 
     property var runs: []
@@ -916,6 +1043,8 @@ Item {
                 floating: b.floating,
                 merged: b.merged,
                 gap: b.merged ? b.floatGap : 0,
+                bodyL: b.merged ? surface.fusedSpan(b).L : bx,
+                bodyR: b.merged ? surface.fusedSpan(b).R : bx + b.width,
                 gx: bx + b.gooShape.x,
                 gw: b.gooShape.w,
                 ftop: top + b.gooShape.y,
@@ -929,6 +1058,100 @@ Item {
             })
         }
         return BarPath.sdfTabs(out, surface.pathBlocks, Object.assign({}, surface.sdfOpts, { barH: surface.barH }))
+    }
+
+    function blobShapes() {
+        const out = []
+        if (!surface.visible || !surface.present)
+            return out
+        const z = surface.sdfMap.z
+        const push = (x, top, w, bot, rad, b) => {
+            if (w < 0.5 || bot - top < 0.5)
+                return null
+            const y = surface.far ? z - bot : top - z
+            const s = surface.toScreen(x, y, w, bot - top)
+            const o = typeof rad === "object" ? { x: s.x, y: s.y, w: s.width, h: s.height, rtl: rad.tl, rtr: rad.tr, rbl: rad.bl, rbr: rad.br }
+                                              : { x: s.x, y: s.y, w: s.width, h: s.height, r: rad }
+            o.k = surface.disX
+            if (b && b.isPill && (b.clearT > 0.001 || b.pillTintT > 0.001)) {
+                o.clear = b.clearT
+                o.tint = 0.22 * b.pillTintT
+                o.tintRgb = b.pillTintRgb
+            }
+            out.push(o)
+            return o
+        }
+        if (!surface.gaps) {
+            for (const r of surface.runs) {
+                if (r.pill || r.bridge < 0.5)
+                    continue
+                const T = surface.edgeInset
+                push(r.L, T - surface.disX, r.R - r.L, T + r.bridge, 0)
+            }
+        }
+        const half = surface.barH / 2
+        const steppedR = surface.gaps ? Math.min(surface.radiusShown, half) : surface.disX
+        const items = []
+        for (const b of surface.visibleBlocks) {
+            if (b.tuckedAway)
+                continue
+            const r = surface.runs[surface.runOf(b)]
+            const top = surface.blockTop(b)
+            const bridge = surface.blockBridge(b, r)
+            const bot = b.isPill ? top + surface.barH
+                : bridge + (top + surface.barH + (b.lineUp ?? 0) - bridge) * surface.blockP(b)
+            const pr = Math.min(b.pillRadius, half)
+            const sc = b.screenCorners
+            items.push({ b: b, x: surface.blockX(b), w: b.width, top: b.isPill ? top : top - surface.disX, bot: bot,
+                         rad: !b.isPill ? steppedR
+                              : sc && sc.custom ? { tl: Math.min(sc.tl, half), tr: Math.min(sc.tr, half), bl: Math.min(sc.bl, half), br: Math.min(sc.br, half) }
+                              : pr })
+        }
+        const fill = surface.gaps ? Math.max(0, Math.min(1, surface.fillShown)) : 0
+        if (fill > 0) {
+            items.sort((p, q) => p.x - q.x)
+            for (let i = 0; i + 1 < items.length; i++) {
+                const a = items[i]
+                const c = items[i + 1]
+                if (a.b.anchorSide === c.b.anchorSide)
+                    continue
+                const span = c.x - (a.x + a.w)
+                if (span <= 0)
+                    continue
+                const reach = fill * span / 2
+                a.w += reach
+                c.x -= reach
+                c.w += reach
+            }
+        }
+        for (const it of items)
+            it.o = push(it.x, it.top, it.w, it.bot, it.rad, it.b)
+        for (const t of surface.tabShapes) {
+            const rad = Math.max(t.rtl ?? 0, t.rtr ?? 0, t.rbl ?? 0, t.rbr ?? 0, 8)
+            const top = t.merged ? (t.nb ?? t.top) + (t.conL ?? 0) : t.top
+            const tab = push(t.x, top, t.w, t.bot, rad)
+            if (tab && t.goo) {
+                const key = surface.edge + ":" + t.id
+                Object.assign(tab, { gooKey: key, gooK: t.k, solo: true })
+                const host = items.find(it => it.b.blockId === t.id)
+                if (t.k > 0.01 && host && host.b.split && t.hostR - t.hostL > 0.5) {
+                    const plate = push(t.hostL, t.hostT, t.hostR - t.hostL, t.hostB, t.hostRad)
+                    if (plate)
+                        Object.assign(plate, { gooKey: key, gooK: t.k, solo: true })
+                } else if (host && host.o) {
+                    Object.assign(host.o, { gooKey: key, gooK: t.k })
+                }
+            }
+            if (t.merged && (t.conL ?? 0) > 0.5) {
+                const l = Math.max(t.mL0, t.x)
+                const r = Math.min(t.mR0, t.x + t.w)
+                const at = out.length
+                push(l, t.nb - 0.5, r - l, top + 0.5, 0)
+                if (out.length > at)
+                    out[at].k = Math.min(surface.disX, t.conL / 2)
+            }
+        }
+        return out
     }
 
     readonly property var tabRects: {
@@ -1462,10 +1685,12 @@ Item {
         anchors.bottom: parent.bottom
         anchors.topMargin:   !surface.far ? surface.borderNear : 0
         anchors.bottomMargin: surface.far ? surface.borderNear : 0
-        anchors.leftMargin:  Math.max(surface.borderStart, surface.stripStart, (surface.cornerPillStart ? 0 : surface.cornerStart) * surface.startPill)
-                             + surface.pillStartGap * surface.startPill + surface.cornerGapStart
-        anchors.rightMargin: Math.max(surface.borderEnd, surface.stripEnd, (surface.cornerPillEnd ? 0 : surface.cornerEnd) * surface.endPill)
-                             + surface.pillEndGap * surface.endPill + surface.cornerGapEnd
+        anchors.leftMargin: surface.gaps ? Math.max(surface.borderStart, surface.stripStart) + surface.gaps.end
+                            : Math.max(surface.borderStart, surface.stripStart, (surface.cornerPillStart ? 0 : surface.cornerStart) * surface.startPill)
+                              + surface.pillStartGap * surface.startPill + surface.cornerGapStart
+        anchors.rightMargin: surface.gaps ? Math.max(surface.borderEnd, surface.stripEnd) + surface.gaps.end
+                             : Math.max(surface.borderEnd, surface.stripEnd, (surface.cornerPillEnd ? 0 : surface.cornerEnd) * surface.endPill)
+                               + surface.pillEndGap * surface.endPill + surface.cornerGapEnd
 
         Behavior on anchors.topMargin   { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }
         Behavior on anchors.bottomMargin { enabled: BarLayout.settled; SpatialAnim { speed: "default" } }

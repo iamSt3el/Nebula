@@ -106,14 +106,8 @@ Singleton {
     }
 
     Process {
-        id: saveProcess
-        command: ["bash", "-c", ""]
-        running: false
-    }
-
-    Process {
         id: mkdirProcess
-        command: ["bash", "-c", "mkdir -p " + Quickshell.env("HOME") + "/.local/share/quickshell"]
+        command: ["mkdir", "-p", Quickshell.env("HOME") + "/.local/share/quickshell"]
         running: true
     }
 
@@ -123,10 +117,7 @@ Singleton {
     function _uuid(): string  { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7) }
 
     function _saveTodos(): void {
-        const json = JSON.stringify(root.todos, null, 2)
-        const escaped = json.replace(/'/g, "'\\''")
-        saveProcess.command = ["bash", "-c", "printf '%s' '" + escaped + "' > " + root._storePath]
-        saveProcess.running = true
+        todoFile.setText(JSON.stringify(root.todos, null, 2))
         root.listChanged()
     }
 

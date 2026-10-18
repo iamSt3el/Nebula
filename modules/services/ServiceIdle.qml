@@ -78,22 +78,30 @@ Singleton {
         id: confFile
         path: root.confPath
         printErrors: true
+        onSaved: restartTimer.restart()
     }
+
+    property bool backedUp: false
 
     function apply() {
-        // cp -n never clobbers an existing backup, so the very first generated
-        // write is the only one that can create it.
-        Quickshell.execDetached(["sh", "-c",
-            "cp -n '" + root.confPath + "' '" + root.backupPath + "' 2>/dev/null || true"])
-        confFile.setText(root.buildConf())
-        restartTimer.restart()
+        if (root.backedUp)
+            confFile.setText(root.buildConf())
+        else if (!backupProc.running)
+            backupProc.running = true
     }
 
-    // hypridle re-reads its config only on start, so it has to be replaced.
-    // Delayed so the write lands first.
+    Process {
+        id: backupProc
+        command: ["sh", "-c", "cp -n \"$0\" \"$1\" 2>/dev/null || true", root.confPath, root.backupPath]
+        onExited: {
+            root.backedUp = true
+            confFile.setText(root.buildConf())
+        }
+    }
+
     Timer {
         id: restartTimer
-        interval: 250
+        interval: 50
         repeat: false
         onTriggered: Quickshell.execDetached(["sh", "-c",
             "pkill -x hypridle; sleep 0.2; hypridle & disown"])

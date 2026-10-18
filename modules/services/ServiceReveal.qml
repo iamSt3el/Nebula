@@ -74,48 +74,6 @@ Singleton {
         root.phase = 0
     }
 
-    property var _layoutCb: null
-    property var _layoutReady: null
-
-    function runLayout(args, cb) {
-        if (layoutProc.running || root._layoutReady || root.phase !== 0)
-            return false
-        root._layoutCb = cb ?? null
-        root.run(ready => {
-            root._layoutReady = ready
-            layoutProc.command = [Quickshell.shellDir + "/bin/nebula", "layout"].concat(args)
-            layoutProc.running = true
-        }, 150)
-        return true
-    }
-
-    Process {
-        id: layoutProc
-        stdout: StdioCollector { id: layoutOut }
-        stderr: StdioCollector { id: layoutErr }
-        onExited: code => {
-            let look = false
-            try {
-                const o = JSON.parse(layoutOut.text.trim().split("\n").pop())
-                look = (o.sections ?? []).indexOf("look") >= 0
-            } catch (e) {}
-            const ready = root._layoutReady
-            const cb = root._layoutCb
-            root._layoutReady = null
-            root._layoutCb = null
-            if (ready)
-                ready(code === 0 && look)
-            if (cb)
-                cb(code, layoutOut.text, layoutErr.text)
-        }
-    }
-
-    IpcHandler {
-        target: "layout"
-        function load(name: string): string { return root.runLayout(["load", name]) ? "ok" : "busy" }
-        function undo(): string { return root.runLayout(["undo"]) ? "ok" : "busy" }
-    }
-
     Process {
         id: cursorProc
         command: ["hyprctl", "cursorpos", "-j"]

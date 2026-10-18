@@ -356,7 +356,7 @@ Item {
                     StorageTreemap {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 380
-                        items: ServiceStorage.children
+                        items: ServiceStorage.entries
                         busy: ServiceStorage.mapScanning
                         scanKey: ServiceStorage.currentPath
                         itemsKey: ServiceStorage.childrenPath
@@ -365,8 +365,8 @@ Item {
 
                     CustomText {
                         Layout.fillWidth: true
-                        content: ServiceStorage.children.length > 0
-                            ? ServiceStorage.children.length + " items  ·  click a tile to go deeper"
+                        content: ServiceStorage.entries.length > 0
+                            ? ServiceStorage.entries.length + " items  ·  click a tile to go deeper"
                             : ""
                         size: 11
                         customColor: Colors.outline

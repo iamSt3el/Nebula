@@ -193,9 +193,10 @@ Item {
                             color: Colors.surfaceContainerHighest
                             inc: 1
                             limit: 30
-                            Component.onCompleted: val = SettingsConfig.notifications?.popupTimeout ?? 5
+                            min: 1
+                            value: SettingsConfig.notifications?.popupTimeout ?? 5
                             onValChanged: {
-                                if (val > 0)
+                                if (val !== value)
                                     SettingsConfig.notifications = Object.assign({}, SettingsConfig.notifications, { popupTimeout: val })
                             }
                         }
@@ -216,9 +217,10 @@ Item {
                             color: Colors.surfaceContainerHighest
                             inc: 1
                             limit: 5
-                            Component.onCompleted: val = SettingsConfig.notifications?.maxVisible ?? 3
+                            min: 1
+                            value: SettingsConfig.notifications?.maxVisible ?? 3
                             onValChanged: {
-                                if (val > 0)
+                                if (val !== value)
                                     SettingsConfig.notifications = Object.assign({}, SettingsConfig.notifications, { maxVisible: val })
                             }
                         }

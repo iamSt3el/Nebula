@@ -10,6 +10,15 @@ Rectangle{
     id: root
     property bool isListClicked: false
     property var currentVal
+    property var _picked: null
+    readonly property var shownVal: root._picked ?? root.currentVal
+    onCurrentValChanged: root._picked = null
+
+    Timer {
+        id: pickedTimer
+        interval: 1500
+        onTriggered: root._picked = null
+    }
     property var list: []
     color: Colors.surfaceContainerHighest
     radius: 10
@@ -36,7 +45,7 @@ Rectangle{
         CustomText{
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignHCenter
-            content: root.currentVal
+            content: root.shownVal
             size: 12
             weight: 600
         }
@@ -107,7 +116,7 @@ Rectangle{
                         implicitWidth: ListView.view.width
                         implicitHeight: 20
                         radius: 5
-                        color: root.currentVal === modelData.description ? Colors.primary : area.containsMouse ? Qt.alpha(Colors.primary, 0.5) : "transparent"
+                        color: root.shownVal === modelData.description ? Colors.primary : area.containsMouse ? Qt.alpha(Colors.primary, 0.5) : "transparent"
                         CustomText{
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
@@ -116,7 +125,7 @@ Rectangle{
                             width: parent.width
                             size: 12
                             weight: 600
-                            color: root.currentVal === modelData.description ? Colors.primaryText : Colors.surfaceVariantText
+                            color: root.shownVal === modelData.description ? Colors.primaryText : Colors.surfaceVariantText
                         }
 
                         MouseArea{
@@ -127,7 +136,8 @@ Rectangle{
 
                             onClicked:{
                                 morph.close()
-                                root.currentVal = modelData.description
+                                root._picked = modelData.description
+                                pickedTimer.restart()
                                 root.listChildClicked(modelData)
                             }
                         }
