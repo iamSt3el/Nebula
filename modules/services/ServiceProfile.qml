@@ -44,7 +44,7 @@ Singleton {
         return "Good night,"
     }
 
-    readonly property var segments: (ServiceScreenTime.segments ?? []).filter(s => s[2] > root.midnight)
+    readonly property var segments: ((Features.screenTime ? ServiceScreenTime.segments : []) ?? []).filter(s => s[2] > root.midnight)
 
     readonly property var appTotals: {
         const t = {}
@@ -72,14 +72,16 @@ Singleton {
         return out.map(o => ({ x: (o.a - root.midnight) / 86400000, w: Math.max(0.004, (o.b - o.a) / 86400000) }))
     }
 
-    readonly property string liveApp: ServiceScreenTime.liveApp ?? ""
+    readonly property string liveApp: Features.screenTime ? (ServiceScreenTime.liveApp ?? "") : ""
     readonly property real liveAppMs: {
         const hit = root.appTotals.find(a => a.id === root.liveApp)
         return hit ? hit.ms : 0
     }
 
-    readonly property int commitsToday: (ServicePersonal.git.days ?? {})[ServicePersonal.todayKey(0)] ?? 0
+    readonly property int commitsToday: Features.countdowns ? ((ServicePersonal.git.days ?? {})[ServicePersonal.todayKey(0)] ?? 0) : 0
     readonly property int commitsWeek: {
+        if (!Features.countdowns)
+            return 0
         const days = ServicePersonal.git.days ?? {}
         let n = 0
         for (let i = 0; i < 7; i++)

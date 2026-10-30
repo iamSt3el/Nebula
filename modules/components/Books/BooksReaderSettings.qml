@@ -216,6 +216,7 @@ Rectangle {
             }
 
             Rectangle {
+                visible: Features.reading
                 Layout.fillWidth: true
                 Layout.preferredHeight: comfort.implicitHeight + 28
                 radius: 22
@@ -255,8 +256,8 @@ Rectangle {
                         height: 34
                         fillWidth: true
                         textSize: 12
-                        model: ServiceReading.filters.map(f => ({ value: f.id, label: f.name }))
-                        activeCheck: v => ServiceReading.filter === v
+                        model: Features.reading ? ServiceReading.filters.map(f => ({ value: f.id, label: f.name })) : []
+                        activeCheck: v => Features.reading && ServiceReading.filter === v
                         onSegmentClicked: v => {
                             ServiceBooks.setCfg({ eyeComfort: true })
                             ServiceReading.choose(v)
@@ -265,7 +266,7 @@ Rectangle {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        visible: ServiceReading.filter === "warm"
+                        visible: Features.reading && ServiceReading.filter === "warm"
                         spacing: 10
                         CustomText { content: "Warmth"; size: 12; customColor: Colors.surfaceVariantText }
                         M3Slider {
@@ -273,11 +274,11 @@ Rectangle {
                             Layout.preferredHeight: 28
                             from: 0
                             to: 3100
-                            progress: (6500 - ServiceReading.value("warmTemp")) / 3100
+                            progress: Features.reading ? (6500 - ServiceReading.value("warmTemp")) / 3100 : 0
                             onMoved: v => ServiceReading.setParam("warmTemp", 6500 - v)
                         }
                         CustomText {
-                            content: Math.round(ServiceReading.value("warmTemp")) + " K"
+                            content: Features.reading ? Math.round(ServiceReading.value("warmTemp")) + " K" : ""
                             size: 12
                             customColor: Colors.surfaceVariantText
                         }

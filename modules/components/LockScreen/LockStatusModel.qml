@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Services.UPower
 import qs.modules.utils
 import qs.modules.services
+import qs.modules.settings
 
 QtObject {
     id: root
@@ -30,7 +31,7 @@ QtObject {
             return out
 
         try {
-            if (ServiceWeather.currentCondition !== null)
+            if (Features.weather && ServiceWeather.currentCondition !== null)
                 out.push({
                     icon: ServiceWeather.weatherIconPath.icon,
                     name: "Weather",

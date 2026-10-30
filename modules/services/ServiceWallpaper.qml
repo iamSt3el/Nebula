@@ -341,7 +341,7 @@ Singleton {
     onLocalSortByChanged: updateWallpapersList()
 
     // ── Favorites ──────────────────────────────────────────────────────────
-    property string favoritesPath: Quickshell.env("HOME") + "/.config/quickshell/favorites.json"
+    property string favoritesPath: Paths.configDir + "/favorites.json"
     property var favorites: ({})
     property var favoritedWallpapers: []
 

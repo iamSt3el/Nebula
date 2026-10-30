@@ -35,6 +35,8 @@ Item {
 
     property string group: ""
     property string query: ""
+    readonly property bool inputOn: Features.hyprInput
+    readonly property bool bindsOn: Features.hyprBinds
     readonly property var entries: ServiceKeybinds.entries
     readonly property var groupNames: ServiceKeybinds.groupOrder.filter(g => root.entries.some(e => e.group === g))
     readonly property var changed: root.entries.filter(e => e.changed && !e.placeholder)
@@ -306,7 +308,12 @@ Item {
         StagePage {
             stageId: "front"
 
+            HyprTargetRow { area: "input"; visible: root.inputOn }
+
+            HyprTargetRow { area: "binds"; visible: root.bindsOn }
+
             StageFieldRow {
+                visible: root.bindsOn
                 icon: "search"
                 title: "Find a shortcut"
                 subtitle: "An action, a key or part of a command"
@@ -317,13 +324,13 @@ Item {
             }
 
             StageHeading {
-                visible: root.query !== ""
+                visible: root.bindsOn && root.query !== ""
                 text: root.matches.length === 0 ? "Nothing matches" : "Matches"
                 aside: root.matches.length > 0 ? String(root.matches.length) : ""
             }
 
             Repeater {
-                model: root.matches
+                model: root.bindsOn ? root.matches : []
                 BindRow {
                     required property var modelData
                     entry: modelData
@@ -334,11 +341,13 @@ Item {
                 Layout.topMargin: 10
                 icon: "keyboard"
                 lead: true
-                title: "Keyboard"
-                subtitle: (ServiceHyprConfig.keyboardName !== "" ? ServiceHyprConfig.keyboardName + " · " : "") + root.layoutCodes.map(c => root.layoutName(c)).join(", ")
-                target: "keyboard"
+                title: root.inputOn ? "Keyboard" : "Keyboard shortcuts"
+                subtitle: !root.inputOn ? root.keyCount + " shortcuts"
+                    : (ServiceHyprConfig.keyboardName !== "" ? ServiceHyprConfig.keyboardName + " · " : "") + root.layoutCodes.map(c => root.layoutName(c)).join(", ")
+                target: root.inputOn ? "keyboard" : ""
 
                 Flow {
+                    visible: root.inputOn
                     Layout.fillWidth: true
                     spacing: 8
 
@@ -397,7 +406,7 @@ Item {
                 }
 
                 RowLayout {
-                    visible: root.layoutCodes.length > 1
+                    visible: root.inputOn && root.layoutCodes.length > 1
                     Layout.fillWidth: true
                     Layout.topMargin: 9
                     spacing: 12
@@ -428,11 +437,13 @@ Item {
                 }
 
                 StageHeading {
+                    visible: root.bindsOn
                     text: "Shortcuts on the keyboard"
                     aside: root.keyCount + (root.changed.length > 0 ? " · " + root.changed.length + " changed by you" : "")
                 }
 
                 GridLayout {
+                    visible: root.bindsOn
                     Layout.fillWidth: true
                     columns: Math.max(1, root.groupNames.length)
                     columnSpacing: 6
@@ -483,10 +494,10 @@ Item {
                     }
                 }
 
-                StageGap { visible: root.changed.length > 0 }
+                StageGap { visible: root.bindsOn && root.changed.length > 0 }
 
                 Repeater {
-                    model: root.query === "" ? root.changed : []
+                    model: root.bindsOn && root.query === "" ? root.changed : []
                     BindRow {
                         required property var modelData
                         entry: modelData
@@ -499,6 +510,7 @@ Item {
                     spacing: 8
 
                     CustomText {
+                        visible: root.inputOn
                         Layout.fillWidth: true
                         content: "Key repeat: wait " + ServiceHyprConfig.value("input.repeat_delay", 600) + " ms, then " + ServiceHyprConfig.value("input.repeat_rate", 25) + " a second"
                             + (ServiceHyprConfig.value("input.numlock_by_default", false) ? " · Num Lock on at login" : "")
@@ -507,8 +519,10 @@ Item {
                         customColor: Colors.outline
                     }
 
+                    Item { visible: !root.inputOn; Layout.fillWidth: true }
+
                     M3Button {
-                        visible: root.changed.length > 0
+                        visible: root.bindsOn && root.changed.length > 0
                         variant: "tonal"
                         icon: "restart_alt"
                         label: "Reset all"
@@ -516,6 +530,7 @@ Item {
                     }
 
                     M3Button {
+                        visible: root.bindsOn
                         variant: "tonal"
                         icon: "add"
                         label: "Add shortcut"
@@ -527,17 +542,20 @@ Item {
             DeviceCard {
                 Layout.topMargin: 10
                 icon: "mouse"
-                title: "Mouse"
-                subtitle: ServiceHyprConfig.mouseName !== "" ? ServiceHyprConfig.mouseName : "Speed, acceleration and focus"
-                target: "mouse"
+                title: root.inputOn ? "Mouse" : "Mouse shortcuts"
+                subtitle: !root.inputOn ? root.mouseBinds.length + " shortcuts"
+                    : ServiceHyprConfig.mouseName !== "" ? ServiceHyprConfig.mouseName : "Speed, acceleration and focus"
+                target: root.inputOn ? "mouse" : ""
 
                 HyprSliderRow {
+                    visible: root.inputOn
                     title: "Pointer speed"
                     path: "input.sensitivity"
                     from: -1; to: 1; step: 0.05; decimals: 2
                 }
 
                 HyprChoiceRow {
+                    visible: root.inputOn
                     title: "Acceleration"
                     subtitle: "Flat moves the same distance at any speed"
                     path: "input.accel_profile"
@@ -546,6 +564,7 @@ Item {
                 }
 
                 HyprChoiceRow {
+                    visible: root.inputOn
                     title: "Focus follows the mouse"
                     subtitle: "Hover focuses whatever is under the pointer; Click waits for a click"
                     path: "input.follow_mouse"
@@ -558,17 +577,18 @@ Item {
                 }
 
                 StageHeading {
+                    visible: root.bindsOn
                     text: "Shortcuts on the mouse"
                     aside: String(root.mouseBinds.length)
                 }
 
                 StageNote {
-                    visible: root.mouseBinds.length === 0
+                    visible: root.bindsOn && root.mouseBinds.length === 0
                     content: "No mouse shortcuts yet."
                 }
 
                 Repeater {
-                    model: root.mouseBinds
+                    model: root.bindsOn ? root.mouseBinds : []
                     BindRow {
                         required property var modelData
                         entry: modelData
@@ -577,7 +597,7 @@ Item {
             }
 
             DeviceCard {
-                visible: ServiceHyprConfig.hasTouchpad
+                visible: root.inputOn && ServiceHyprConfig.hasTouchpad
                 Layout.topMargin: 10
                 icon: "touchpad_mouse"
                 title: "Touchpad"
@@ -616,6 +636,7 @@ Item {
             StageGap {}
 
             StageNavRow {
+                visible: root.inputOn
                 icon: "arrow_selector_tool"
                 title: "Cursor"
                 subtitle: ServiceHyprConfig.cursorTheme + " · " + ServiceHyprConfig.cursorSize + " px"
@@ -623,7 +644,9 @@ Item {
             }
 
             StageNote {
-                content: "Shortcut changes are saved to ~/.config/hypr/nebula/settings.lua; your own keybind files stay as they are."
+                visible: root.bindsOn
+                content: "Shortcut changes go into " + ServiceHyprConfig.prettyPath(ServiceHyprConfig.fileOf("binds"))
+                    + ". Your own keybind lines are never rewritten; a changed shortcut is unbound and bound again there."
             }
         }
 

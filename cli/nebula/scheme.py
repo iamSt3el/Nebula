@@ -50,6 +50,7 @@ from materialyoucolor.scheme.scheme_vibrant import SchemeVibrant
 from materialyoucolor.utils.math_utils import sanitize_degrees_int
 
 from nebula import apps as theme_apps
+from nebula.paths import SETTINGS
 
 _HOME       = Path.home()
 CACHE_DIR   = Path.home() / ".cache" / "quickshell"
@@ -146,7 +147,7 @@ def _fixed_scheme(variant: str, is_dark: bool):
 
 def _kindle_setting(key: str, default: bool) -> bool:
     try:
-        theme = json.loads((Path.home() / ".cache" / "quickshell" / "settings.json").read_text()).get("theme", {})
+        theme = json.loads(SETTINGS.read_text()).get("theme", {})
     except Exception:
         return default
     return bool(theme.get(key, default))
@@ -745,7 +746,7 @@ _NF_SYMBOL_MAP = (
 )
 _NF_SYMBOL_FONT = "FiraCode Nerd Font"
 
-_QS_SETTINGS = _HOME / ".cache" / "quickshell" / "settings.json"
+_QS_SETTINGS = SETTINGS
 _KITTY_CUSTOM = _HOME / ".config" / "kitty" / "custom.conf"
 
 

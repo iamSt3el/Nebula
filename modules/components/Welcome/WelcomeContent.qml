@@ -36,6 +36,8 @@ Item {
           sub: "Nebula writes a colour file for each app you pick and rewrites it every time the wallpaper changes." },
         { label: "You",       title: "Make it yours",
           sub: "Your picture, font and weather." },
+        { label: "Features",  title: "Choose your features",
+          sub: "Anything you leave off never runs. You can change this later in Settings › Features." },
         { label: "Shortcuts", title: "Bind your shortcuts",
           sub: "Nebula registers these. Your Hyprland config stays yours." },
         { label: "Finish",    title: "", sub: "" }
@@ -332,6 +334,8 @@ Item {
                                 }
                             }
                         }
+
+                        SetupFeaturesPage {}
 
                         SetupScroll {
                             id: keysScroll

@@ -98,6 +98,8 @@ Item {
         StagePage {
             stageId: "front"
 
+            HyprTargetRow { area: "displays" }
+
             Rectangle {
                 id: arena
                 Layout.fillWidth: true

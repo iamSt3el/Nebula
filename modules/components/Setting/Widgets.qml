@@ -58,7 +58,7 @@ Item {
     readonly property int cardWidth: root.widths[root.nearest(root.widths, root.general.notesCardWidth ?? 340)]
     readonly property int offset: root.general.notesOffset ?? 200
     readonly property int gap: root.general.notesGap ?? 12
-    readonly property var notes: ServiceNotes.notes.slice().sort((a, b) => a.y - b.y)
+    readonly property var notes: (Features.notes ? ServiceNotes.notes : []).slice().sort((a, b) => a.y - b.y)
     readonly property string sideName: root.side === "R" ? "right" : "left"
 
     function set(key, value) {
@@ -110,7 +110,7 @@ Item {
                         CustomText {
                             Layout.fillWidth: true
                             content: (root.panelOn ? root.placedCount + (root.placedCount === 1 ? " widget" : " widgets") : "Widgets hidden")
-                                + " · " + root.notes.length + (root.notes.length === 1 ? " note" : " notes")
+                                + (Features.notes ? " · " + root.notes.length + (root.notes.length === 1 ? " note" : " notes") : "")
                             size: 12
                             elide: Text.ElideRight
                             customColor: Colors.outline
@@ -133,6 +133,7 @@ Item {
                     }
 
                     M3Button {
+                        visible: Features.notes
                         variant: "tonal"
                         icon: "sticky_note_2"
                         label: "Note"
@@ -184,11 +185,12 @@ Item {
 
                 CustomToogle {
                     isToggleOn: root.visOn
-                    onToggled: state => root.patchGeneral({ musicVisOn: state })
+                    onToggled: state => Features.set("visualiser", state)
                 }
             }
 
             StageNavRow {
+                visible: Features.notes
                 icon: root.side === "R" ? "align_horizontal_right" : "align_horizontal_left"
                 title: "Where notes sit"
                 subtitle: (root.side === "R" ? "Right" : "Left") + " edge · " + (root.stacked ? "stacked from the " + root.anchorAt + " · " + root.gap + " px apart" : "placed freely")
@@ -216,7 +218,7 @@ Item {
                     title: "Show the visualizer"
                     subtitle: "Audio bars along the bottom of the desktop"
                     checked: root.visOn
-                    onToggled: on => root.patchGeneral({ musicVisOn: on })
+                    onToggled: on => Features.set("visualiser", on)
                 }
 
                 StageGap {}

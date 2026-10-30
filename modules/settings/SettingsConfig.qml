@@ -25,6 +25,7 @@ Singleton {
     property alias greeter: settingsAdapter.greeter
     property alias bar: settingsAdapter.bar
     property alias hypr: settingsAdapter.hypr
+    property alias features: settingsAdapter.features
 
     property bool settingsReady: false
 
@@ -40,6 +41,42 @@ Singleton {
     }
 
     property real lastSavedAt: 0
+    property bool migrationTried: false
+    property bool freshInstall: false
+
+    function useDefaults() {
+        migrateGuard.stop()
+        if (!root.greeterMode) {
+            root.freshInstall = true
+            settingsAdapter.features = Features.freshDefaults()
+            settingsAdapter.general = Features.freshGeneral(settingsAdapter.general)
+            settingsAdapter.hypr = Object.assign({}, settingsAdapter.hypr ?? {}, { targets: {
+                displays: { mode: "off", file: "" }, windows: { mode: "off", file: "" },
+                input: { mode: "off", file: "" }, binds: { mode: "off", file: "" } } })
+        }
+        root.settingsReady = true
+        writeTimer.restart()
+    }
+
+    Process {
+        id: migrateProc
+        command: [Paths.cli, "migrate", "--quiet"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                migrateGuard.stop()
+                if (text.trim() !== "")
+                    Quickshell.reload(false)
+                else
+                    settingsFile.reload()
+            }
+        }
+    }
+
+    Timer {
+        id: migrateGuard
+        interval: 5000
+        onTriggered: root.useDefaults()
+    }
 
     Timer {
         id: writeTimer
@@ -65,7 +102,7 @@ Singleton {
 
     FileView {
         id: settingsFile
-        path: Quickshell.env("HOME") + "/.cache/quickshell/settings.json"
+        path: Paths.configDir + "/settings.json"
         watchChanges: true
         blockWrites: true
         onFileChanged: {
@@ -80,10 +117,15 @@ Singleton {
         }
         onLoaded: root.settingsReady = true
         onLoadFailed: error => {
-            if (error == FileViewError.FileNotFound) {
-                root.settingsReady = true
-                writeTimer.restart()
+            if (error != FileViewError.FileNotFound)
+                return
+            if (root.migrationTried || root.greeterMode) {
+                root.useDefaults()
+                return
             }
+            root.migrationTried = true
+            migrateGuard.restart()
+            migrateProc.running = true
         }
 
         adapter: JsonAdapter {
@@ -771,6 +813,8 @@ Singleton {
                 speed: 100,
                 recent: []
             })
+
+            property var features: ({})
 
             property var wiz: ({
                 ip: "",

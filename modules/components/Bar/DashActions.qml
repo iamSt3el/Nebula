@@ -29,12 +29,13 @@ QtObject {
         { key: "game", icon: "sports_esports", label: "Game mode",
           sub: ServiceGameMode.active ? "On" : "Off", on: ServiceGameMode.active },
         { key: "reading", icon: "menu_book", label: "Reading",
-          sub: ServiceReading.active ? ServiceReading.filterName : "Off", on: ServiceReading.active },
+          sub: Features.reading && ServiceReading.active ? ServiceReading.filterName : "Off",
+          on: Features.reading && ServiceReading.active },
         { key: "capture", icon: "screenshot_region", label: "Capture", sub: "Region", on: false }
     ]
 
     function pick(keys) {
-        return keys.map(k => root.all.find(t => t.key === k)).filter(t => !!t)
+        return keys.map(k => root.all.find(t => t.key === k)).filter(t => !!t && (t.key !== "reading" || Features.reading))
     }
 
     function fire(key) {

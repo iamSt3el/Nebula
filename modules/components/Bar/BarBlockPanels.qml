@@ -23,6 +23,8 @@ Item {
     readonly property Component tuckOsd: tuckOsdComp
 
     function forKind(kind) {
+        if (!Features.barItemOn(kind))
+            return null
         switch (kind) {
         case "calendar":  return calendarComp
         case "musicPoster": return musicPosterComp

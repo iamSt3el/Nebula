@@ -127,7 +127,8 @@ Scope {
                 GlobalStates.phoneOpen = true
                 GlobalStates.clipboardOpen = false
                 GlobalStates.wallpaperOpen = false
-                ServicePhone.refresh()
+                if (Features.phone)
+                    ServicePhone.refresh()
             }
         }
     }

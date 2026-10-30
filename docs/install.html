@@ -42,7 +42,7 @@
 <ul>
   <li>Installs <code>yay</code> if it is not already present.</li>
   <li>Installs every pacman and AUR package Nebula needs.</li>
-  <li>Clones Nebula to <code>~/.config/quickshell</code>.</li>
+  <li>Clones Nebula to <code>~/.config/quickshell/nebula</code>, moving an older install from <code>~/.config/quickshell</code>.</li>
   <li>Creates the Python virtualenv at <code>~/.local/state/quickshell/.venv</code>.</li>
   <li>Fetches the Rubik font, builds the emoji index and compiles the WfRecorder plugin.</li>
   <li>Enables the pipewire, NetworkManager, bluetooth and upower services.</li>
@@ -50,11 +50,13 @@
 </ul>
 
 <div class="callout warn">
-  <div class="hd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>The installer never touches your Hyprland config</div>
-  <p>Autostart entries and keybinds are yours to wire up. Nothing is added to
-     <code>hyprland.lua</code> on your behalf, so after installing you still need to
-     follow <a href="hyprland.html">Hyprland setup</a> before the shell starts with
-     your session. Nebula needs Hyprland 0.56+ with a <strong>Lua</strong> config;
+  <div class="hd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>Your Hyprland config stays yours</div>
+  <p>If <code>~/.config/hypr/hyprland.lua</code> exists, the installer only adds
+     <code>~/.config/hypr/nebula/</code> (autostart, layer rules, environment and the
+     shell's shortcuts) and one <code>require</code> line per file. Without one it copies a
+     starter config. The Hyprland pages in Settings stay off until you turn them on in
+     Settings › Features, and they write only to a Nebula file or a marked block in a
+     file you pick. Nebula needs Hyprland 0.56+ with a <strong>Lua</strong> config;
      <code>hyprland.conf</code> is not supported.</p>
 </div>
 
@@ -90,12 +92,13 @@
 
 <p>Nebula is a git clone, so pull in place:</p>
 
-<div class="code"><span class="lang">bash</span><pre><span class="pr">$ </span>cd ~/.config/quickshell &amp;&amp; git pull</pre></div>
+<div class="code"><span class="lang">bash</span><pre><span class="pr">$ </span>cd ~/.config/quickshell/nebula &amp;&amp; git pull</pre></div>
 
 <div class="callout">
   <div class="hd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>Settings survive updates</div>
-  <p>Your configuration lives in <code>~/.cache/quickshell/settings.json</code>, outside
-     the repo, so pulling will not overwrite it.</p>
+  <p>Your configuration lives in <code>~/.config/nebula/settings.json</code>, outside
+     the repo, so pulling will not overwrite it. Older installs kept it in
+     <code>~/.cache/quickshell</code>; <code>nebula start</code> moves it across.</p>
 </div>
 
   </main>

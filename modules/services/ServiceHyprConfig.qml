@@ -9,9 +9,10 @@ import qs.modules.settings
 Singleton {
     id: root
 
-    readonly property string hyprDir: Quickshell.env("HOME") + "/.config/hypr"
-    readonly property string settingsPath: root.hyprDir + "/nebula/settings.lua"
+    readonly property string hyprDir: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/hypr"
     readonly property string mainPath: root.hyprDir + "/hyprland.lua"
+    readonly property var areas: ["displays", "windows", "input", "binds"]
+    readonly property var areaNames: ({ displays: "Displays", windows: "Windows", input: "Keyboard & mouse", binds: "Shortcuts" })
 
     readonly property var cfg: SettingsConfig.hypr ?? ({})
     readonly property var overrides: root.cfg.options ?? ({})
@@ -22,7 +23,8 @@ Singleton {
     property var workspaceRules: ({})
     property var cursorThemes: []
     property var kbLayouts: []
-    property bool needsRequire: false
+    property var areaStatus: ({})
+    property var _dirty: ({})
     property bool hasTouchpad: false
     property string mouseName: ""
     property string keyboardName: ""
@@ -72,6 +74,66 @@ Singleton {
         return root.overrides.hasOwnProperty(path)
     }
 
+    function areaOf(path) {
+        if (/^(input|cursor|gestures)\./.test(path)) return "input"
+        if (path === "misc.vrr") return "displays"
+        return "windows"
+    }
+
+    readonly property var targets: {
+        const t = root.cfg.targets
+        const out = {}
+        for (const a of root.areas)
+            out[a] = t === undefined ? { mode: "nebula", file: "" } : (t[a] ?? { mode: "off", file: "" })
+        return out
+    }
+
+    function target(area) {
+        return root.targets[area] ?? { mode: "off", file: "" }
+    }
+
+    function fileOf(area) {
+        const t = root.target(area)
+        return t.mode === "own" ? t.file : root.hyprDir + "/nebula/" + area + ".lua"
+    }
+
+    function prettyPath(p) {
+        const home = Quickshell.env("HOME")
+        return p.indexOf(home) === 0 ? "~" + p.slice(home.length) : p
+    }
+
+    function setTarget(area, mode, file) {
+        const prev = root.target(area)
+        if (prev.mode === "own" && prev.file !== "" && (mode !== "own" || file !== prev.file))
+            root._queue(["remove", area, prev.file])
+        const all = Object.assign({}, root.cfg.targets ?? root.targets)
+        all[area] = { mode: mode, file: mode === "own" ? file : "", lastMode: mode === "off" ? prev.mode : undefined }
+        root._patch("targets", all)
+        if (mode !== "off")
+            root._markDirty(area)
+        root._scheduleWrite(true)
+    }
+
+    function removeBlock(area) {
+        const t = root.target(area)
+        if (t.mode === "own" && t.file !== "")
+            root._queue(["remove", area, t.file])
+        else
+            root._queue(["write", area, "nebula", "", ""])
+        root._scheduleWrite(true)
+    }
+
+    function requireFile(area) {
+        root._queue(["require", root.fileOf(area)])
+        root._scheduleWrite(true)
+    }
+
+    function _markDirty(area) {
+        const d = Object.assign({}, root._dirty)
+        d[area] = true
+        root._dirty = d
+    }
+
     function _patch(section, value) {
         const next = Object.assign({}, root.cfg)
         next[section] = value
@@ -95,6 +157,7 @@ Singleton {
         const d = Object.assign({}, root.drafts)
         delete d[path]
         root.drafts = d
+        root._markDirty(root.areaOf(path))
         root._scheduleWrite(false)
     }
 
@@ -103,6 +166,7 @@ Singleton {
         const o = Object.assign({}, root.overrides)
         delete o[path]
         root._patch("options", o)
+        root._markDirty(root.areaOf(path))
         root._scheduleWrite(true)
     }
 
@@ -145,6 +209,7 @@ Singleton {
         all[p.name] = p.next
         root._patch("monitors", all)
         root.pendingMonitor = null
+        root._markDirty("displays")
         root._scheduleWrite(false)
     }
 
@@ -162,6 +227,7 @@ Singleton {
         if (monitorName === "") delete w[String(ws)]
         else w[String(ws)] = monitorName
         root._patch("workspaces", w)
+        root._markDirty("displays")
         if (monitorName === "") {
             root._scheduleWrite(true)
             return
@@ -175,6 +241,7 @@ Singleton {
     }
 
     function setBind(entry, key, flags) {
+        root._markDirty("binds")
         const b = Object.assign({}, root.cfg.binds ?? {})
         if (entry.addedBind) {
             const list = (root.cfg.addedBinds ?? []).map(a => a.id === entry.id
@@ -195,6 +262,7 @@ Singleton {
     }
 
     function addCommand(key, command, name) {
+        root._markDirty("binds")
         const list = (root.cfg.addedBinds ?? []).concat([{
             id: "added|cmd|" + Date.now(), key: key, action: "exec:" + command, command: command, name: name || command
         }])
@@ -203,11 +271,13 @@ Singleton {
     }
 
     function removeAdded(id) {
+        root._markDirty("binds")
         root._patch("addedBinds", (root.cfg.addedBinds ?? []).filter(a => a.id !== id))
         root._scheduleWrite(true)
     }
 
     function resetBind(entry) {
+        root._markDirty("binds")
         if (entry.addedBind) { root.removeAdded(entry.id); return }
         const b = Object.assign({}, root.cfg.binds ?? {})
         delete b[entry.id]
@@ -216,6 +286,7 @@ Singleton {
     }
 
     function resetAllBinds() {
+        root._markDirty("binds")
         const next = Object.assign({}, root.cfg, { binds: {}, addedBinds: [] })
         SettingsConfig.hypr = next
         root._scheduleWrite(true)
@@ -224,6 +295,7 @@ Singleton {
     function setCursor(theme, size) {
         const c = { theme: theme, size: size }
         root._patch("cursor", c)
+        root._markDirty("input")
         Quickshell.execDetached(["hyprctl", "setcursor", theme, String(size)])
         root._scheduleWrite(false)
     }
@@ -290,37 +362,37 @@ Singleton {
         return "hl.bind(" + JSON.stringify(key) + ", " + disp + tail + ")"
     }
 
-    function buildLua() {
-        var out = "-- Generated by Nebula › Settings. Changes here are overwritten.\n"
-        if (Object.keys(root.overrides).length)
-            out += "\nhl.config(" + root.toLua(root._nest(root.overrides)) + ")\n"
+    function _optionsFor(area) {
+        const out = {}
+        for (const k in root.overrides)
+            if (root.areaOf(k) === area)
+                out[k] = root.overrides[k]
+        return out
+    }
 
-        const mons = root.cfg.monitors ?? {}
-        const mk = Object.keys(mons)
-        if (mk.length) {
-            out += "\n"
-            for (const n of mk) out += root._monitorLua(n, mons[n]) + "\n"
-        }
+    function _configLua(area) {
+        const o = root._optionsFor(area)
+        return Object.keys(o).length ? "hl.config(" + root.toLua(root._nest(o)) + ")\n" : ""
+    }
 
-        const ws = root.cfg.workspaces ?? {}
-        const wk = Object.keys(ws)
-        if (wk.length) {
-            out += "\n"
-            for (const w of wk) out += "hl.workspace_rule(" + root.toLua({ workspace: w, monitor: ws[w] }) + ")\n"
-        }
-
-        const c = root.cfg.cursor
-        if (c?.theme) {
-            out += "\nhl.env(\"XCURSOR_THEME\", " + JSON.stringify(c.theme) + ")\n"
-            out += "hl.env(\"XCURSOR_SIZE\", \"" + c.size + "\")\n"
-            out += "hl.env(\"HYPRCURSOR_SIZE\", \"" + c.size + "\")\n"
-            out += "hl.on(\"hyprland.start\", function() hl.exec_cmd(" + JSON.stringify("hyprctl setcursor " + c.theme + " " + c.size) + ") end)\n"
-        }
-
-        const changed = ServiceKeybinds.entries.filter(e => e.changed && !e.addedBind)
-        const added = ServiceKeybinds.entries.filter(e => e.addedBind && e.key !== "")
-        if (changed.length || added.length) {
-            out += "\n"
+    function buildArea(area) {
+        var out = root._configLua(area)
+        if (area === "displays") {
+            const mons = root.cfg.monitors ?? {}
+            for (const n of Object.keys(mons)) out += root._monitorLua(n, mons[n]) + "\n"
+            const ws = root.cfg.workspaces ?? {}
+            for (const w of Object.keys(ws)) out += "hl.workspace_rule(" + root.toLua({ workspace: w, monitor: ws[w] }) + ")\n"
+        } else if (area === "input") {
+            const c = root.cfg.cursor
+            if (c?.theme) {
+                out += "hl.env(\"XCURSOR_THEME\", " + JSON.stringify(c.theme) + ")\n"
+                out += "hl.env(\"XCURSOR_SIZE\", \"" + c.size + "\")\n"
+                out += "hl.env(\"HYPRCURSOR_SIZE\", \"" + c.size + "\")\n"
+                out += "hl.on(\"hyprland.start\", function() hl.exec_cmd(" + JSON.stringify("hyprctl setcursor " + c.theme + " " + c.size) + ") end)\n"
+            }
+        } else if (area === "binds") {
+            const changed = ServiceKeybinds.entries.filter(e => e.changed && !e.addedBind)
+            const added = ServiceKeybinds.entries.filter(e => e.addedBind && e.key !== "")
             const unbound = {}
             for (const e of changed) {
                 if (e.origKey && !unbound[e.origKey]) {
@@ -351,15 +423,56 @@ Singleton {
         writeTimer.restart()
     }
 
-    function writeNow() {
-        mkdirProc.running = true
+    readonly property string cli: Quickshell.shellDir + "/bin/nebula"
+    property var _ops: []
+
+    function _queue(op) {
+        root._ops = root._ops.concat([op])
     }
 
-    function _afterSave() {
-        if (root.needsRequire && mainFile.loaded) {
-            mainFile.setText(mainFile.text().replace(/\s*$/, "\n") + "\nrequire(\"nebula.settings\")\n")
-            root.needsRequire = false
+    function writeNow() {
+        if (writer.running) {
+            writeTimer.restart()
+            return
         }
+        const ops = []
+        for (const a of root.areas) {
+            const t = root.target(a)
+            if (root._dirty[a] && t.mode !== "off" && (t.mode === "nebula" || t.file !== ""))
+                ops.push(["write", a, t.mode, t.mode === "own" ? t.file : "", root.buildArea(a)])
+        }
+        root._dirty = {}
+        const all = root._ops.concat(ops)
+        root._ops = []
+        for (const a of root.areas)
+            if (root.target(a).mode !== "off")
+                all.push(["status", a, root.fileOf(a)])
+        writer.command = ["sh", "-c", root._script, "sh", root.cli].concat([].concat(...all))
+        writer.running = true
+    }
+
+    readonly property string _script: "cli=$1; shift; while [ $# -gt 0 ]; do case \"$1\" in "
+        + "write) printf '%s ' \"$2\"; if [ \"$3\" = own ]; then printf '%s' \"$5\" | \"$cli\" hypr write \"$2\" own \"$4\"; "
+        + "else printf '%s' \"$5\" | \"$cli\" hypr write \"$2\" nebula; fi; shift 5;; "
+        + "remove) printf '%s ' \"$2\"; \"$cli\" hypr remove \"$2\" \"$3\"; shift 3;; "
+        + "require) printf '%s ' \"$2\"; \"$cli\" hypr require \"$3\"; shift 3;; "
+        + "status) printf '%s ' \"$2\"; \"$cli\" hypr status \"$3\"; shift 3;; "
+        + "retire) printf 'legacy '; \"$cli\" hypr retire-legacy; shift 1;; "
+        + "*) shift;; esac; done"
+
+    function _afterSave(text) {
+        const st = Object.assign({}, root.areaStatus)
+        for (const line of text.split("\n")) {
+            const k = line.indexOf(" ")
+            if (k < 0) continue
+            const area = line.slice(0, k)
+            if (root.areas.indexOf(area) < 0) continue
+            try {
+                const j = JSON.parse(line.slice(k + 1))
+                if (j.file === root.fileOf(area)) st[area] = j
+            } catch (e) {}
+        }
+        root.areaStatus = st
         if (root._reloadAfterWrite) {
             root._reloadAfterWrite = false
             reloadTimer.restart()
@@ -367,12 +480,31 @@ Singleton {
     }
 
     Process {
-        id: mkdirProc
-        command: ["mkdir", "-p", root.hyprDir + "/nebula"]
-        onExited: (code) => {
-            if (code === 0) settingsFile.setText(root.buildLua())
+        id: writer
+        stdout: StdioCollector {
+            onStreamFinished: root._afterSave(text)
         }
     }
+
+    function statusOf(area) {
+        return root.areaStatus[area] ?? null
+    }
+
+    function _migrate() {
+        if (root.cfg.targets !== undefined || SettingsConfig.greeterMode)
+            return
+        const all = {}
+        for (const a of root.areas) {
+            all[a] = { mode: "nebula", file: "" }
+            root._markDirty(a)
+        }
+        root._patch("targets", all)
+        root._queue(["retire"])
+        root._scheduleWrite(false)
+    }
+
+    readonly property bool _settingsReady: SettingsConfig.settingsReady
+    on_SettingsReadyChanged: if (root._settingsReady) root._migrate()
 
     function refreshMonitors() {
         monitorReader.running = true
@@ -426,20 +558,6 @@ Singleton {
         }
     }
 
-    FileView {
-        id: settingsFile
-        path: root.settingsPath
-        blockLoading: true
-        printErrors: false
-        onSaved: root._afterSave()
-    }
-
-    FileView {
-        id: mainFile
-        path: root.mainPath
-        printErrors: false
-        onLoaded: root.needsRequire = text().indexOf("nebula.settings") === -1
-    }
 
     FileView {
         path: "/usr/share/X11/xkb/rules/evdev.lst"
@@ -530,5 +648,28 @@ Singleton {
         }
     }
 
-    Component.onCompleted: root.refresh()
+    property var _lastModes: ({})
+
+    onTargetsChanged: {
+        const prev = root._lastModes
+        const next = {}
+        for (const a of root.areas) {
+            next[a] = root.target(a).mode + "|" + root.target(a).file
+            if (prev[a] !== undefined && prev[a] !== next[a] && root.target(a).mode !== "off") {
+                root._markDirty(a)
+                root._scheduleWrite(true)
+            }
+        }
+        root._lastModes = next
+    }
+
+    Component.onCompleted: {
+        root.refresh()
+        if (root._settingsReady)
+            root._migrate()
+        for (const a of root.areas)
+            if (root.target(a).mode !== "off")
+                root._markDirty(a)
+        root._scheduleWrite(false)
+    }
 }

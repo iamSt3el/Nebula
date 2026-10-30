@@ -9,7 +9,7 @@ import qs.modules.settings
 Singleton {
     id: root
 
-    readonly property string path: Quickshell.env("HOME") + "/.cache/quickshell/notes.json"
+    readonly property string path: Paths.configDir + "/notes.json"
     readonly property var colors: ({ butter: "#f1d99a", sage: "#c9d6a3", blush: "#efb9ad", sky: "#b7cfe6", lilac: "#d3c5ea", sand: "#e4d3bd" })
     readonly property var colorKeys: ["butter", "sage", "blush", "sky", "lilac", "sand"]
     readonly property string defaultSide: SettingsConfig.general.notesSide ?? "L"

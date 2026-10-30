@@ -28,7 +28,10 @@ ShellRoot {
         function onFocusedMonitorChanged() { shellRoot.pickScreen() }
     }
 
-    Component.onCompleted: shellRoot.pickScreen()
+    Component.onCompleted: {
+        Features.manageReload = false
+        shellRoot.pickScreen()
+    }
 
     PanelWindow {
         id: panel

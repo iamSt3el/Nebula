@@ -40,13 +40,17 @@ bash <(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/master/insta
 ```
 
 The installer pulls the packages, builds the plugins, sets up Python, and compiles the
-`nebula` command and installs it to `/usr/local/bin`. It then copies Nebula's Hyprland
-config into `~/.config/hypr`, offering to back up that folder first:
+`nebula` command and installs it to `/usr/local/bin`. For Hyprland it adds
+`~/.config/hypr/nebula/` with what the shell needs (its shortcuts, layer rules, environment
+and `nebula start`) and one `require` line per file in your `hyprland.lua`. If you have
+your own `hyprland.lua`, nothing else is touched. Without one, it copies a starter config
+(`hyprland.lua` plus `lua/` with monitors, settings, animations, rules and keybinds),
+offering to back up the folder first.
 
-- `hyprland.lua` loads everything below
-- `lua/` holds the basics: monitors, settings, animations, window rules and keybinds
-- `nebula/` holds what the shell needs: its shortcuts, layer rules, environment and
-  `nebula start`
+The Displays, Windows, Keyboard & mouse and Shortcuts pages in Settings are off until you
+turn them on in Settings › Features. Each one saves either to a file Nebula owns in
+`~/.config/hypr/nebula/`, or into a marked block at the end of a file of yours that you
+pick. Nebula never rewrites anything outside that block.
 
 It also sets up kitty (`~/.config/kitty/kitty.conf`), the Starship prompt and the Nebula
 greeter, a fastfetch header in your palette that opens each new terminal, again offering
@@ -59,8 +63,8 @@ a backup first.
 > built from Hyprland's own defaults, so a `.conf` user starts from a working Lua config.
 
 Then log in again and run `nebula setup` to pick a wallpaper, your colours and which
-apps follow them. Running the installer again copies these files again, so keep your
-own changes in a backup or a file of your own.
+apps follow them. Running the installer again replaces the files in `~/.config/hypr/nebula/`
+that it ships, so keep your own changes in a file of your own.
 
 ## Command line
 

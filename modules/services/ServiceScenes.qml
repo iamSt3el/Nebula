@@ -4,11 +4,12 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import QtQuick
+import qs.modules.settings
 
 Singleton {
     id: root
 
-    readonly property string path: Quickshell.env("HOME") + "/.cache/quickshell/scenes.json"
+    readonly property string path: Paths.configDir + "/scenes.json"
     readonly property var icons: ["work", "school", "nightlight", "sports_esports", "palette", "code", "coffee", "movie"]
 
     property var scenes: []

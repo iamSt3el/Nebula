@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 from nebula import __version__
-from nebula.paths import COLORS, HOME, SH_DIR, SHELL_DIR
+from nebula.paths import COLORS, HOME, SH_DIR, SHELL_DIR, migrate
 
 PASSTHROUGH = {
     "weather":       ("nebula.weather",       "<place>", "weather for a place, wttr j1 JSON"),
@@ -24,6 +24,7 @@ PASSTHROUGH = {
     "books":         ("nebula.books",         "popular|search Q|asura|asura-search Q|local|open SRC ID", "books for reading mode, JSON"),
     "wiz":           ("nebula.wiz",           "serve|scan|state|set JSON [--ip IP]", "WiZ smart bulb on the local network"),
     "grub":          ("nebula.grub",          "build|preview|install [--dry-run]", "M3 GRUB theme from the current palette"),
+    "hypr":          ("nebula.hypr",          "write|remove|status|retire-legacy", "Hyprland files the settings pages write"),
 }
 
 SHELL_TOOLS = {
@@ -53,6 +54,7 @@ Shell
   nebula stop | restart            stop or restart the shell
   nebula setup [--close]           open the setup window (wallpaper, colours, apps, shortcuts)
   nebula doctor                    check packages Nebula needs
+  nebula migrate                   move settings from ~/.cache/quickshell to ~/.config/nebula
   nebula ipc <target> <function> [args]   call the running shell (qs ipc call)
 
 Layouts (~/.config/nebula/layouts/*.json)
@@ -395,11 +397,23 @@ def _free_notif_name() -> None:
         pass
 
 
+def cmd_migrate(a) -> int:
+    moved = migrate()
+    for src, dst in moved:
+        print(f"{str(src).replace(str(HOME), '~', 1)} → {str(dst).replace(str(HOME), '~', 1)}")
+    if not moved and not a.quiet:
+        print("Nothing to move.")
+    return 0
+
+
 def cmd_start(a) -> int:
     qs = _qs_bin()
     if not qs:
         return 1
-    if shutil.which("wl-paste") and shutil.which("cliphist") and not _running("wl-paste --watch cliphist"):
+    migrate()
+    from nebula import settings
+    clipboard_on = settings.section("features").get("clipboard", True)
+    if clipboard_on and shutil.which("wl-paste") and shutil.which("cliphist") and not _running("wl-paste --watch cliphist"):
         _spawn(["wl-paste", "--watch", "cliphist", "store"])
     _block_notif_activation()
     _free_notif_name()
@@ -600,6 +614,8 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--foreground", action="store_true", help="stay attached and print the log")
     sub.add_parser("stop", help="stop the shell")
     sub.add_parser("restart", help="restart the shell")
+    mg = sub.add_parser("migrate", help="move settings out of ~/.cache/quickshell")
+    mg.add_argument("--quiet", action="store_true")
 
     su = sub.add_parser("setup", help="open the setup window")
     su.add_argument("--close", action="store_true")
@@ -632,11 +648,12 @@ def main(argv=None) -> None:
         _shell_tool(argv[0], argv[1:])
 
     parser = build_parser()
-    if argv[0] not in ("wallpaper", "scheme", "apps", "doctor", "ipc", "setup", "start", "stop", "restart", "layout"):
+    if argv[0] not in ("wallpaper", "scheme", "apps", "doctor", "ipc", "setup", "start", "stop", "restart", "layout", "migrate"):
         print(f"nebula: unknown command '{argv[0]}'. Run `nebula help`.", file=sys.stderr)
         sys.exit(2)
     a = parser.parse_args(argv)
     handler = {"wallpaper": cmd_wallpaper, "scheme": cmd_scheme, "apps": cmd_apps,
                "doctor": cmd_doctor, "ipc": cmd_ipc, "setup": cmd_setup,
-               "start": cmd_start, "stop": cmd_stop, "restart": cmd_restart, "layout": cmd_layout}[a.command]
+               "start": cmd_start, "stop": cmd_stop, "restart": cmd_restart, "layout": cmd_layout,
+               "migrate": cmd_migrate}[a.command]
     sys.exit(handler(a) or 0)

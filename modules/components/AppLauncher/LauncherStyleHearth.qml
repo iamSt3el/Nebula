@@ -177,9 +177,9 @@ Item {
                 }
 
                 HeroChip {
-                    visible: ServiceWeather.currentCondition !== null
-                    icon: ServiceWeather.getWeatherIcon(ServiceWeather.weatherCode).icon
-                    label: ServiceWeather.temperature + " " + ServiceWeather.description.toLowerCase().trim()
+                    visible: Features.weather && ServiceWeather.currentCondition !== null
+                    icon: Features.weather ? ServiceWeather.getWeatherIcon(ServiceWeather.weatherCode).icon : ""
+                    label: !Features.weather ? "" : ServiceWeather.temperature + " " + ServiceWeather.description.toLowerCase().trim()
                         + (ServiceWeather.cityName !== "Unknown" ? " · " + ServiceWeather.cityName : "")
                 }
 

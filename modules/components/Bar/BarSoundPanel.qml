@@ -129,81 +129,90 @@ Item {
                 }
             }
 
-            SectionTitle { content: "Sound effects" }
+            Loader {
+                Layout.fillWidth: true
+                active: Features.soundFx
+                visible: active
+                sourceComponent: ColumnLayout {
+                    spacing: 3
 
-            CustomCard {
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 10
+                    SectionTitle { content: "Sound effects" }
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        MaterialIconSymbol {
-                            content: "equalizer"
-                            iconSize: 18
-                            customColor: ServiceSoundFx.enabled ? Colors.primary : Colors.outline
-                        }
-
-                        CustomText {
+                    CustomCard {
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            content: ServiceSoundFx.error !== "" ? ServiceSoundFx.error
-                                : ServiceSoundFx.enabled ? ServiceSoundFx.styleLabel + (ServiceSoundFx.detected !== "" ? " · " + ServiceSoundFx.detected : "")
-                                : "Off"
-                            size: 12
-                            weight: 600
-                            elide: Text.ElideRight
-                            customColor: ServiceSoundFx.error !== "" ? Colors.error : Colors.surfaceText
-                        }
+                            spacing: 10
 
-                        CustomToogle {
-                            isToggleOn: ServiceSoundFx.enabled
-                            onToggled: state => ServiceSoundFx.set({ soundFxOn: state })
-                        }
-                    }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
 
-                    Flow {
-                        Layout.fillWidth: true
-                        visible: ServiceSoundFx.enabled
-                        spacing: 6
-
-                        Repeater {
-                            model: ServiceSoundFx.styles
-
-                            Rectangle {
-                                id: fxChip
-                                required property var modelData
-                                readonly property bool on: ServiceSoundFx.style === fxChip.modelData.value
-                                implicitWidth: fxRow.implicitWidth + 20
-                                implicitHeight: 30
-                                radius: fxChip.on ? 15 : 8
-                                color: fxChip.on ? Colors.secondaryContainer : Colors.surfaceContainerHighest
-                                Behavior on radius { SpatialAnim { speed: "fast" } }
-                                Behavior on color { EffectsColorAnim {} }
-
-                                RowLayout {
-                                    id: fxRow
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    MaterialIconSymbol {
-                                        content: fxChip.modelData.icon
-                                        iconSize: 15
-                                        customColor: fxChip.on ? Colors.secondaryContainerText : Colors.surfaceVariantText
-                                    }
-
-                                    CustomText {
-                                        content: fxChip.modelData.label
-                                        size: 12
-                                        weight: 600
-                                        customColor: fxChip.on ? Colors.secondaryContainerText : Colors.surfaceText
-                                    }
+                                MaterialIconSymbol {
+                                    content: "equalizer"
+                                    iconSize: 18
+                                    customColor: ServiceSoundFx.enabled ? Colors.primary : Colors.outline
                                 }
 
-                                CustomMouseArea {
-                                    radius: fxChip.radius
-                                    onClicked: ServiceSoundFx.set({ soundFxStyle: fxChip.modelData.value })
+                                CustomText {
+                                    Layout.fillWidth: true
+                                    content: ServiceSoundFx.error !== "" ? ServiceSoundFx.error
+                                        : ServiceSoundFx.enabled ? ServiceSoundFx.styleLabel + (ServiceSoundFx.detected !== "" ? " · " + ServiceSoundFx.detected : "")
+                                        : "Off"
+                                    size: 12
+                                    weight: 600
+                                    elide: Text.ElideRight
+                                    customColor: ServiceSoundFx.error !== "" ? Colors.error : Colors.surfaceText
+                                }
+
+                                CustomToogle {
+                                    isToggleOn: ServiceSoundFx.enabled
+                                    onToggled: state => ServiceSoundFx.set({ soundFxOn: state })
+                                }
+                            }
+
+                            Flow {
+                                Layout.fillWidth: true
+                                visible: ServiceSoundFx.enabled
+                                spacing: 6
+
+                                Repeater {
+                                    model: ServiceSoundFx.styles
+
+                                    Rectangle {
+                                        id: fxChip
+                                        required property var modelData
+                                        readonly property bool on: ServiceSoundFx.style === fxChip.modelData.value
+                                        implicitWidth: fxRow.implicitWidth + 20
+                                        implicitHeight: 30
+                                        radius: fxChip.on ? 15 : 8
+                                        color: fxChip.on ? Colors.secondaryContainer : Colors.surfaceContainerHighest
+                                        Behavior on radius { SpatialAnim { speed: "fast" } }
+                                        Behavior on color { EffectsColorAnim {} }
+
+                                        RowLayout {
+                                            id: fxRow
+                                            anchors.centerIn: parent
+                                            spacing: 5
+
+                                            MaterialIconSymbol {
+                                                content: fxChip.modelData.icon
+                                                iconSize: 15
+                                                customColor: fxChip.on ? Colors.secondaryContainerText : Colors.surfaceVariantText
+                                            }
+
+                                            CustomText {
+                                                content: fxChip.modelData.label
+                                                size: 12
+                                                weight: 600
+                                                customColor: fxChip.on ? Colors.secondaryContainerText : Colors.surfaceText
+                                            }
+                                        }
+
+                                        CustomMouseArea {
+                                            radius: fxChip.radius
+                                            onClicked: ServiceSoundFx.set({ soundFxStyle: fxChip.modelData.value })
+                                        }
+                                    }
                                 }
                             }
                         }

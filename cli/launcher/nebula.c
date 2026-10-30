@@ -43,11 +43,17 @@ static int find_shell_dir(char *out, size_t size)
         return has_cli(out);
     }
     if (xdg) {
+        snprintf(out, size, "%s/quickshell/nebula", xdg);
+        if (has_cli(out))
+            return 1;
         snprintf(out, size, "%s/quickshell", xdg);
         if (has_cli(out))
             return 1;
     }
     if (home) {
+        snprintf(out, size, "%s/.config/quickshell/nebula", home);
+        if (has_cli(out))
+            return 1;
         snprintf(out, size, "%s/.config/quickshell", home);
         return has_cli(out);
     }
@@ -121,7 +127,7 @@ int main(int argc, char **argv)
     int i;
 
     if (!find_shell_dir(dir, sizeof dir)) {
-        fprintf(stderr, "nebula: no Nebula shell in %s\n", dir[0] ? dir : "~/.config/quickshell");
+        fprintf(stderr, "nebula: no Nebula shell in %s\n", dir[0] ? dir : "~/.config/quickshell/nebula");
         fprintf(stderr, "nebula: set NEBULA_DIR to the folder that holds shell.qml\n");
         return 1;
     }

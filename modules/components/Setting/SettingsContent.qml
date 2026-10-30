@@ -55,19 +55,32 @@ Item {
     transform: Translate { y: (1 - root.t) * 28 }
 
     // Section → page-index mapping
+    function hyprPageOn(p) {
+        switch (p) {
+        case 15: return Features.hyprDisplays
+        case 16: return Features.hyprWindows
+        case 17: return Features.hyprInput || Features.hyprBinds
+        case 18: return Features.hyprBinds
+        }
+        return true
+    }
+
     readonly property var navSections: [
         { label: "Look",    indices: [0, 3, 14] },
-        { label: "System",  indices: [1, 2, 12] },
-        { label: "Desktop", indices: [15, 16, 17] },
+        { label: "System",  indices: [1, 2, 12, 20] },
+        { label: "Desktop", indices: [15, 16, 17].filter(p => root.hyprPageOn(p)) },
         { label: "Connect", indices: [4, 5] },
         { label: "More",    indices: [6, 8] }
-    ]
+    ].filter(g => g.indices.length > 0)
 
     readonly property var merges: [
         { pages: [0, 9], name: "Appearance", icon: "palette", tabs: ["Wallpaper & colours", "Fonts & bar"] },
         { pages: [3, 13], name: "Widgets", icon: "widgets", tabs: ["Widgets", "Sticky notes"] },
         { pages: [12, 10], name: "Lock & sleep", icon: "lock", tabs: ["Lock screen", "Sleep"] },
-        { pages: [17, 18], name: "Keyboard & mouse", icon: "keyboard", tabs: ["Mouse & keyboard", "Shortcuts"] },
+        Features.hyprInput && Features.hyprBinds
+            ? { pages: [17, 18], name: "Keyboard & mouse", icon: "keyboard", tabs: ["Mouse & keyboard", "Shortcuts"] }
+            : { pages: [17], name: Features.hyprInput ? "Keyboard & mouse" : "Shortcuts", icon: "keyboard",
+                tabs: [Features.hyprInput ? "Mouse & keyboard" : "Shortcuts"] },
         { pages: [6, 7], name: "Built-in apps", icon: "apps", tabs: ["Weather", "Screenshots & recording"] },
         { pages: [8, 11], name: "About", icon: "info", tabs: ["Nebula", "Storage"] }
     ]
@@ -103,7 +116,7 @@ Item {
     readonly property var pageFiles: ["Theme", "Sound", "Notifications", "Widgets", "Networking", "Bluetooth",
         "WeatherSettings", "", "About", "", "", "", "Lockscreen",
         "", "LayoutsSettings", "DisplaysSettings", "WindowsSettings", "InputSettings", "",
-        "ProfileSettings"]
+        "ProfileSettings", "FeaturesSettings"]
 
     readonly property var railOrder: root.navSections.reduce((all, g) =>
         all.concat(g.indices.reduce((row, i) => row.concat(root.mergeOf(i)?.pages ?? [i]), [])), [])
@@ -158,7 +171,9 @@ Item {
             return on.length === 0 ? "On" : ServiceBluetooth.nameOf(on[0]) + (on.length > 1 ? " +" + (on.length - 1) : "") + " connected"
         }
         case 6:
-            return ServiceWeather.temperature !== "" ? ServiceWeather.location + " · " + ServiceWeather.temperature : ""
+            return Features.weather && ServiceWeather.temperature !== "" ? ServiceWeather.location + " · " + ServiceWeather.temperature : ""
+        case 20:
+            return Features.list.filter(f => Features.on(f.id)).length + " of " + Features.list.length + " on"
         }
         return ""
     }
@@ -263,6 +278,8 @@ Item {
             return []
         const out = []
         for (let p = 0; p < Settings.pages.length; p++) {
+            if (!root.hyprPageOn(p))
+                continue
             const m = root.mergeOf(p)
             const names = [Settings.pages[p].name].concat(m ? [m.name, m.tabs[m.pages.indexOf(p)]] : [])
             const at = names.map(n => n.toLowerCase().indexOf(q)).filter(i => i >= 0).sort((a, b) => a - b)[0] ?? -1
@@ -271,6 +288,8 @@ Item {
         }
         for (let i = 0; i < root.searchIndex.length; i++) {
             const e = root.searchIndex[i]
+            if (!root.hyprPageOn(e.page))
+                continue
             const l = e.label.toLowerCase()
             const at = l.indexOf(q)
             if (at < 0)
@@ -1144,6 +1163,7 @@ Item {
                             PageSlot { page: 16; sourceComponent: WindowsSettings {} }
                             PageSlot { page: 17; sourceComponent: InputSettings {} }
                             PageSlot { page: 19; sourceComponent: ProfileSettings {} }
+                            PageSlot { page: 20; sourceComponent: FeaturesSettings {} }
                         }
                     }
 

@@ -12,7 +12,8 @@ import termios
 import time
 
 HOME = os.path.expanduser("~")
-LOGO_SVG = os.path.join(HOME, ".config/quickshell/assets/nebula.svg")
+LOGO_SVG = next((p for p in (os.path.join(HOME, ".config/quickshell", d, "assets/nebula.svg") for d in ("nebula", ""))
+                 if os.path.isfile(p)), "")
 LOGO_CACHE = os.path.join(HOME, ".cache/quickshell/fetch-logo")
 LOGO_ROWS = 6
 LOGO_BOX = (4.5, 10.5, 91, 79)

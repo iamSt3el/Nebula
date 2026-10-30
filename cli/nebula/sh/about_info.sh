@@ -1,5 +1,5 @@
 #!/bin/bash
-DIR=${1:-$HOME/.config/quickshell}
+DIR=${1:-$(cd "$(dirname "$0")/../../.." && pwd)}
 
 json_escape() {
     printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr -d '\n'

@@ -4,209 +4,152 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Nebula</title>
-<meta name="description" content="Nebula is a Material You desktop shell for Hyprland, built with Quickshell. Your wallpaper sets the colours of the bar, widgets, launcher and lock screen.">
+<meta name="description" content="Nebula is a desktop shell for Hyprland. Put a bar on any edge, pick a style for each part, and leave out what you don't use.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script>try{var t=localStorage.getItem("nebula-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Rubik:wght@400;500;600&family=Titan+One&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
 <style>
-/* Palette = M3 tokens Nebula generated from the hero wallpaper (scheme-content). */
 :root {
-  --bg: #171210;
-  --card: #1f1b18;
-  --card-hi: #2e2926;
-  --fg: #ebe0dc;
-  --muted: #d5c3b9;
-  --faint: #9e8e85;
-  --line: #51443d;
-  --accent: #f4ba95;
-  --on-accent: #4b270d;
-  --soft: #584235;
-  --on-soft: #f2dccf;
-  --tertiary: #c9ca91;
-  --code-bg: #110d0b;
-  --shadow: rgba(0, 0, 0, .45);
-  --display: "Titan One", "Rubik", system-ui, sans-serif;
-  --body: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  --ease: cubic-bezier(.2, 0, 0, 1);
-  --page: 1180px;
-  color-scheme: dark;
+  --paper: #f2f3f7;
+  --card: #ffffff;
+  --ink: #1a1c23;
+  --muted: #4b4f5d;
+  --line: #d3d6e0;
+  --accent: #4c5877;
+  --on-accent: #ffffff;
+  --pin-bg: #1a1c23;
+  --pin-fg: #ffffff;
+  --pin-ring: rgba(255, 255, 255, .9);
+  --kbd-bg: #ffffff;
+  --kbd-line: #c9cdd9;
+  --foot-bg: #1a1c23;
+  --foot-fg: #c9cdd9;
+  --foot-link: #ffffff;
+  --shadow: rgba(26, 28, 35, .45);
+  --logo-outer: #1a1c23; --logo-middle: #4c5877; --logo-inner: #5a5e6a; --logo-core: #72556e;
+  --display: "Bricolage Grotesque", "Atkinson Hyperlegible", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
 }
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg: #fff8f5; --card: #fcf1ed; --card-hi: #ebe0dc; --fg: #1f1b18; --muted: #51443d;
-    --faint: #817269; --line: #d5c3b9; --accent: #805436; --on-accent: #ffffff; --soft: #fcdcca; --on-soft: #2c160a;
-    --tertiary: #5c5d2f; --code-bg: #f6ece7; --shadow: rgba(80, 50, 30, .16); color-scheme: light;
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #131315; --card: #1f1f21; --ink: #e4e2e4; --muted: #c5c6ce; --line: #3a3c42;
+    --accent: #bac6e6; --on-accent: #243049; --pin-bg: #e4e2e4; --pin-fg: #131315; --pin-ring: rgba(19, 19, 21, .85);
+    --kbd-bg: #2a2a2c; --kbd-line: #45474d; --foot-bg: #0e0e10; --foot-fg: #8f9098; --foot-link: #e4e2e4;
+    --shadow: rgba(0, 0, 0, .6);
+    --logo-outer: #dfe2f0; --logo-middle: #bac6e6; --logo-inner: #c3c6d4; --logo-core: #e0bcd8;
+    color-scheme: dark;
   }
 }
-:root[data-theme="light"] {
-  --bg: #fff8f5; --card: #fcf1ed; --card-hi: #ebe0dc; --fg: #1f1b18; --muted: #51443d;
-  --faint: #817269; --line: #d5c3b9; --accent: #805436; --on-accent: #ffffff; --soft: #fcdcca; --on-soft: #2c160a;
-  --tertiary: #5c5d2f; --code-bg: #f6ece7; --shadow: rgba(80, 50, 30, .16); color-scheme: light;
+:root[data-theme="dark"] {
+  --paper: #131315; --card: #1f1f21; --ink: #e4e2e4; --muted: #c5c6ce; --line: #3a3c42;
+  --accent: #bac6e6; --on-accent: #243049; --pin-bg: #e4e2e4; --pin-fg: #131315; --pin-ring: rgba(19, 19, 21, .85);
+  --kbd-bg: #2a2a2c; --kbd-line: #45474d; --foot-bg: #0e0e10; --foot-fg: #8f9098; --foot-link: #e4e2e4;
+  --shadow: rgba(0, 0, 0, .6);
+  --logo-outer: #dfe2f0; --logo-middle: #bac6e6; --logo-inner: #c3c6d4; --logo-core: #e0bcd8;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 84px; }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 400 17px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
-img { max-width: 100%; display: block; }
-a { color: inherit; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
-.wrap { max-width: var(--page); margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
-h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 400; }
-h2 { font: 400 clamp(34px, 5vw, 56px)/1.04 var(--display); letter-spacing: .005em; }
-h3 { font: 600 19px/1.3 var(--body); }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 18px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; display: block; height: auto; }
+a { color: var(--accent); }
+a:hover { color: var(--ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+h1, h2, h3 { margin: 0; font-family: var(--display); text-wrap: balance; }
 p { margin: 0; }
-.lead { color: var(--muted); font-size: 19px; max-width: 60ch; }
-code, kbd, pre { font-family: var(--mono); }
-section { padding-block: clamp(72px, 10vw, 128px) 0; }
-.head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px 56px; align-items: end; margin-bottom: 40px; }
-.head .lead { justify-self: start; }
+code { font-family: var(--mono); font-size: .85em; }
+kbd { font: 700 15px/1 var(--body); color: var(--ink); background: var(--kbd-bg); border: 1px solid var(--kbd-line); border-bottom-width: 3px; border-radius: 7px; padding: 4px 8px; white-space: nowrap; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.muted { color: var(--muted); }
+.small { font-size: 16px; }
+.note { font-size: 15px; color: var(--muted); }
 
-/* ---------- Site header ---------- */
-.site {
-  position: sticky; top: 0; z-index: 40;
-  padding-top: env(safe-area-inset-top, 0px);
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  border-bottom: 1px solid transparent;
-  transition: border-color .3s var(--ease);
-}
+.site { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--paper) 86%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-bottom: 1px solid transparent; transition: border-color .3s; }
 .site.scrolled { border-bottom-color: var(--line); }
-.site .wrap { height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.site nav { display: flex; align-items: center; gap: 4px; }
-.site a, .site button { font: 500 15px/1 var(--body); color: var(--muted); text-decoration: none; border: 0; background: none; cursor: pointer; padding: 10px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-.site a:hover, .site button:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 8%, transparent); }
-.site .logo { font: 400 20px/1 var(--display); letter-spacing: .01em; color: var(--fg); padding-left: 0; }
-.site .logo:hover { background: none; }
-.logo svg { width: 24px; height: 24px; color: var(--accent); }
-.site .gh { color: var(--on-accent); background: var(--accent); margin-left: 6px; }
-.site .gh:hover { color: var(--on-accent); background: color-mix(in srgb, var(--accent) 88%, var(--fg)); }
-.gh { background: var(--accent) !important; color: var(--on-accent) !important; }
-.icon-btn { width: 36px; height: 36px; justify-content: center; padding: 0 !important; border-radius: 18px !important; }
-.icon-btn svg, .gh svg { width: 18px; height: 18px; }
+.site .wrap { height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font: 800 24px/1 var(--display); }
+.brand svg { width: 28px; height: 28px; }
+.brand:hover { color: var(--ink); }
+.nav { display: flex; align-items: center; gap: 24px; font-size: 16px; }
+.navlinks { display: flex; gap: 24px; }
+.navlinks a { color: var(--muted); text-decoration: none; }
+.navlinks a:hover { color: var(--ink); }
+.theme { width: 40px; height: 40px; border: 1px solid var(--line); background: none; color: var(--ink); border-radius: 50%; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.theme svg { width: 18px; height: 18px; }
+.gh { background: var(--ink); color: var(--paper); text-decoration: none; padding: 11px 18px; border-radius: 999px; font-weight: 700; }
+.gh:hover { color: var(--paper); opacity: .9; }
 
-/* ---------- Hero ---------- */
-.hero { padding-top: clamp(40px, 7vw, 88px); }
-.hero-top { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 32px 64px; align-items: end; }
-.hero h1 { font: 400 clamp(40px, 5.4vw, 70px)/1 var(--display); letter-spacing: .005em; }
-.hero .lead { margin-top: 22px; }
-.install { background: var(--card); border-radius: 28px; padding: 22px; display: grid; gap: 16px; }
-.install-label { font-weight: 600; font-size: 15px; color: var(--muted); }
-.cmd { display: flex; align-items: center; gap: 10px; background: var(--code-bg); border-radius: 18px; padding: 8px 8px 8px 16px; min-width: 0; }
-.cmd code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-size: 13.5px; color: var(--muted); scrollbar-width: none; }
+.two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: start; }
+.two.flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: center; }
+.hero { padding-block: 56px 40px; }
+.hero .two { align-items: end; }
+.hero h1 { font-size: clamp(44px, 6vw, 84px); line-height: .98; font-weight: 800; letter-spacing: -.025em; }
+.hero-side { display: flex; flex-direction: column; gap: 22px; }
+.lead { font-size: 20px; color: var(--muted); max-width: 52ch; }
+.cmd { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 8px 8px 16px; min-width: 0; }
+.cmd code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; color: var(--muted); scrollbar-width: none; }
 .cmd code::-webkit-scrollbar { display: none; }
-.copy { flex: none; font: 600 14px/1 var(--body); background: var(--accent); color: var(--on-accent); border: 0; border-radius: 14px; padding: 11px 16px; cursor: pointer; }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { font-size: 14px; line-height: 1; padding: 9px 13px; border-radius: 12px; background: var(--card-hi); color: var(--muted); }
-.chip.warn { background: var(--soft); color: var(--on-soft); text-decoration: none; }
-.shot { margin: 40px 0 0; }
-.shot img { width: 100%; height: auto; border-radius: clamp(14px, 2.4vw, 28px); box-shadow: 0 30px 80px -30px var(--shadow); }
-.shot figcaption { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: center; margin-top: 16px; color: var(--faint); font-size: 15px; }
-.swatches { display: flex; gap: 6px; }
-.swatches span { width: 26px; height: 26px; border-radius: 9px; border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent); }
+.copy { flex: none; border: 0; background: var(--accent); color: var(--on-accent); font: 700 15px/1 var(--body); padding: 12px 16px; border-radius: 10px; cursor: pointer; }
 
-/* ---------- Shapes ---------- */
-.seg { display: inline-flex; gap: 2px; padding: 0; margin: 0; }
-.seg button { font: 500 15px/1 var(--body); color: var(--fg); background: var(--card-hi); border: 0; padding: 13px 20px; cursor: pointer; border-radius: 8px; transition: border-radius .3s var(--ease), background-color .2s, color .2s; }
-.seg button:first-child { border-radius: 22px 8px 8px 22px; }
-.seg button:last-child { border-radius: 8px 22px 22px 8px; }
-.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-radius: 22px; }
-.shape-panel { display: grid; gap: 20px; }
-.shape-controls { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; justify-content: space-between; }
-.spec { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0; color: var(--muted); font-size: 15px; }
-.spec div { display: flex; gap: 8px; align-items: baseline; }
-.spec dt { color: var(--faint); }
-.spec dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 500; color: var(--fg); }
-.strip { border-radius: 20px; overflow: hidden; background: var(--card); }
-.strip img { width: 100%; height: auto; aspect-ratio: 1920 / 150; object-fit: cover; object-position: right center; }
-.strip-note { color: var(--faint); font-size: 15px; }
+.shot { position: relative; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 60px -28px var(--shadow); }
+.pin { position: absolute; transform: translate(-50%, -50%); width: 30px; height: 30px; border-radius: 50%; background: var(--pin-bg); color: var(--pin-fg); font: 700 15px/30px var(--body); text-align: center; box-shadow: 0 0 0 3px var(--pin-ring); }
+.key { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px 40px; padding-top: 40px; }
+.key > div { display: flex; gap: 14px; }
+.key b { font: 800 22px/1.2 var(--display); color: var(--accent); }
+.key h3 { font-size: 20px; }
+.key p { color: var(--muted); font-size: 16px; }
 
-/* ---------- Panels ---------- */
-.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
-.trio figure { margin: 0; display: grid; gap: 14px; align-content: start; }
-.trio img { border-radius: 20px; width: 100%; height: auto; }
-.trio h3 { margin-top: 4px; }
+section { padding-top: 120px; }
+h2 { font-size: clamp(34px, 4vw, 52px); line-height: 1.02; font-weight: 800; letter-spacing: -.02em; }
+.stack { display: flex; flex-direction: column; gap: 18px; }
+
+.spec { display: grid; grid-template-columns: auto minmax(0, 1fr); border-top: 2px solid var(--ink); }
+.spec dt, .spec dd { margin: 0; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.spec dt { padding-right: 24px; font-weight: 700; }
+.spec dd { color: var(--muted); }
+
+.strips { display: flex; flex-direction: column; gap: 18px; margin-top: 56px; }
+.strips figure { margin: 0; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 20px; align-items: center; }
+.strips figcaption { font: 700 20px/1.2 var(--display); }
+.strips img { width: 100%; border-radius: 12px; }
+
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 56px; }
+.trio figure { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.trio img { width: 100%; border-radius: 14px; }
+.trio h3 { font-size: 20px; }
 .trio p { color: var(--muted); font-size: 16px; }
-.aside { margin-top: 28px; padding: 18px 22px; border-radius: 20px; background: var(--card); color: var(--muted); max-width: 70ch; }
+.round { border-radius: 16px; width: 100%; }
 
-/* ---------- Edit ---------- */
-.edit { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 40px; align-items: center; }
-.edit img { border-radius: 24px; width: 100%; height: auto; }
-.points { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
-.points li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; align-items: start; color: var(--muted); }
-.points svg { width: 34px; height: 34px; padding: 7px; border-radius: 12px; background: var(--soft); color: var(--on-soft); }
-.points b { color: var(--fg); font-weight: 600; display: block; margin-bottom: 2px; }
+.steps { list-style: none; margin: 36px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.steps li { background: var(--card); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.steps .n { font: 800 40px/1 var(--display); color: var(--accent); }
+.steps h3 { font-size: 22px; }
+.req { margin-top: 28px; max-width: 70ch; }
+#install { padding-bottom: 96px; }
 
-/* ---------- Gallery ---------- */
-.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-.tabs button { font: 500 15px/1 var(--body); color: var(--fg); background: var(--card-hi); border: 0; border-radius: 14px; padding: 11px 16px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
-.tabs button span { color: var(--faint); font-variant-numeric: tabular-nums; }
-.tabs button[aria-selected="true"] { background: var(--soft); color: var(--on-soft); }
-.tabs button[aria-selected="true"] span { color: inherit; opacity: .7; }
-.stage { margin: 0; }
-.stage img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 24px; background: var(--card); }
-.stage figcaption { margin-top: 14px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; min-height: 28px; }
-.stage figcaption b { color: var(--fg); font: 400 20px/1 var(--display); letter-spacing: .01em; }
-.thumbs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(140px, 1fr); gap: 10px; overflow-x: auto; margin-top: 16px; padding-bottom: 6px; scrollbar-width: thin; }
-.thumbs button { border: 0; padding: 0; background: none; cursor: pointer; text-align: left; color: var(--muted); font: 500 14px/1.3 var(--body); }
-.thumbs img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .2s; margin-bottom: 6px; }
-.thumbs button[aria-current="true"] img { outline-color: var(--accent); }
-.thumbs button[aria-current="true"] { color: var(--fg); }
+footer { background: var(--foot-bg); color: var(--foot-fg); padding-block: 28px; }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: 15px; }
+footer a { color: var(--foot-link); }
 
-/* ---------- Widgets ---------- */
-.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
-.filters button { font: 500 14px/1 var(--body); background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; cursor: pointer; }
-.filters button[aria-pressed="true"] { background: var(--soft); border-color: transparent; color: var(--on-soft); }
-.wall { position: relative; }
-.wall figure { position: absolute; margin: 0; transition: transform .45s var(--ease), opacity .3s; }
-.wall img { width: 100%; height: auto; border-radius: 18px; }
-.wall figcaption { font-size: 13px; color: var(--faint); margin-top: 6px; }
-
-/* ---------- Apps + CLI ---------- */
-.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
-.panel { background: var(--card); border-radius: 28px; padding: clamp(22px, 3vw, 34px); display: grid; gap: 18px; align-content: start; min-width: 0; }
-.panel h3 { font: 400 26px/1.1 var(--display); letter-spacing: .01em; }
-.panel p { color: var(--muted); }
-.apps { display: flex; flex-wrap: wrap; gap: 8px; }
-.apps span { background: var(--card-hi); border-radius: 12px; padding: 9px 13px; font-size: 15px; }
-pre.term { margin: 0; background: var(--code-bg); border-radius: 20px; padding: 18px 20px; overflow-x: auto; font-size: 14px; line-height: 1.75; color: var(--muted); }
-pre.term .c { color: var(--faint); }
-pre.term .k { color: var(--accent); }
-
-/* ---------- Install ---------- */
-.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; counter-reset: s; }
-.steps li { background: var(--card); border-radius: 28px; padding: 26px; display: grid; gap: 12px; align-content: start; counter-increment: s; min-width: 0; }
-.steps li::before { content: counter(s); font: 400 22px/1 var(--display); width: 44px; height: 44px; border-radius: 15px; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); }
-.steps p { color: var(--muted); font-size: 16px; }
-.steps code { font-size: 14px; background: var(--code-bg); padding: 2px 7px; border-radius: 7px; color: var(--fg); overflow-wrap: anywhere; }
-.req { margin-top: 20px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: start; background: var(--soft); color: var(--on-soft); border-radius: 24px; padding: 22px 24px; }
-.req svg { width: 26px; height: 26px; margin-top: 2px; }
-.req code { background: color-mix(in srgb, var(--bg) 35%, transparent); padding: 1px 6px; border-radius: 6px; font-size: 14px; }
-
-footer { margin-top: clamp(72px, 10vw, 128px); padding-block: 32px 48px; border-top: 1px solid var(--line); }
-footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; color: var(--faint); font-size: 15px; }
-footer a { color: var(--muted); }
-
-@media (max-width: 980px) {
-  .hero-top, .head, .edit, .two { grid-template-columns: minmax(0, 1fr); }
-  .trio, .steps { grid-template-columns: minmax(0, 1fr); }
-  .trio figure { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 900px) {
+  .two, .two.flip, .trio, .steps { grid-template-columns: minmax(0, 1fr); }
+  .key { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 860px) {
-  .links { display: none !important; }
-}
-@media (max-width: 700px) {
-  .strip img { aspect-ratio: 900 / 150; }
-}
-@media (max-width: 560px) {
-  body { font-size: 16px; }
-  .site .ghl { display: none; }
-  .seg button { padding: 12px 13px; font-size: 14px; }
+@media (max-width: 640px) {
+  .navlinks { display: none; }
+  .key { grid-template-columns: minmax(0, 1fr); }
+  .pin { width: 22px; height: 22px; font-size: 12px; line-height: 22px; box-shadow: 0 0 0 2px var(--pin-ring); }
+  .strips figure { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  body { font-size: 17px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  * { transition: none !important; }
 }
 </style>
 </head>
@@ -214,194 +157,145 @@ footer a { color: var(--muted); }
 
 <header class="site" id="site">
   <div class="wrap">
-    <a class="logo" href="#top" aria-label="Nebula, back to top">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2c.6 4.9 2.6 7.6 7.8 8.4-5.2.8-7.2 3.5-7.8 8.4-.6-4.9-2.6-7.6-7.8-8.4C9.4 9.6 11.4 6.9 12 2Z"/><circle cx="19" cy="19" r="2.2" fill="currentColor" opacity=".6"/></svg>
+    <a class="brand" href="#top" aria-label="Nebula, back to top">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M37.09 14.53L38.76 14.00L40.44 13.55L42.15 13.17L43.87 12.88L45.60 12.67L47.34 12.53L49.08 12.48L50.82 12.51L52.55 12.62L54.28 12.81L55.99 13.08L57.69 13.43L59.37 13.86L61.02 14.36L62.65 14.94L64.25 15.59L65.82 16.32L67.35 17.12L68.84 17.98L70.28 18.92L71.68 19.92L73.03 20.98L74.33 22.10L75.58 23.28L76.77 24.52L77.89 25.81L78.96 27.14L79.96 28.53L80.90 29.96L81.77 31.43L82.56 32.93L83.29 34.48L83.95 36.05L84.53 37.65L85.03 39.27L85.46 40.91L85.81 42.57L86.09 44.24L86.28 45.93L86.40 47.61L86.44 49.30L86.40 50.99L86.29 52.68L86.09 54.35L85.82 56.01L85.47 57.66L85.05 59.29L84.55 60.89L83.98 62.47L83.33 64.02L82.62 65.54L81.84 67.02L80.99 68.46L80.07 69.86L79.09 71.21L78.05 72.51L76.96 73.77L75.80 74.97L74.60 76.12L73.34 77.20L72.03 78.23L70.68 79.20L69.29 80.10L67.86 80.93L66.39 81.70L64.89 82.39L63.36 83.02L61.81 83.57L60.23 84.05L58.63 84.46L57.02 84.79L55.39 85.05L53.76 85.23L52.12 85.34L50.48 85.36L48.84 85.32L47.21 85.19L45.59 84.99L43.98 84.72L42.38 84.37L40.80 83.95L39.25 83.46L37.72 82.90L36.22 82.26L34.76 81.56L33.32 80.79L31.93 79.96L30.58 79.06L29.27 78.11L28.01 77.09L26.80 76.02L25.64 74.89L24.54 73.72L23.49 72.49L22.50 71.22L21.58 69.90A5.30 5.30 0 0 0 12.89 75.98L14.16 77.66L15.51 79.27L16.92 80.81L18.41 82.29L19.96 83.69L21.57 85.03L23.25 86.28L24.97 87.45L26.75 88.55L28.58 89.55L30.45 90.48L32.36 91.31L34.30 92.05L36.28 92.70L38.28 93.26L40.31 93.73L42.35 94.10L44.40 94.38L46.47 94.56L48.54 94.64L50.61 94.63L52.67 94.52L54.73 94.32L56.78 94.02L58.80 93.63L60.81 93.14L62.78 92.56L64.73 91.90L66.65 91.14L68.52 90.29L70.36 89.36L72.14 88.35L73.88 87.26L75.56 86.08L77.19 84.84L78.75 83.51L80.25 82.12L81.68 80.66L83.05 79.14L84.34 77.56L85.55 75.92L86.69 74.23L87.74 72.48L88.72 70.70L89.61 68.87L90.41 67.00L91.12 65.10L91.75 63.16L92.28 61.21L92.73 59.23L93.08 57.23L93.33 55.22L93.50 53.21L93.57 51.19L93.54 49.17L93.43 47.15L93.22 45.15L92.91 43.15L92.52 41.18L92.04 39.23L91.46 37.30L90.80 35.40L90.05 33.54L89.21 31.71L88.30 29.93L87.30 28.19L86.22 26.51L85.07 24.87L83.84 23.29L82.54 21.78L81.17 20.32L79.74 18.93L78.25 17.61L76.70 16.36L75.09 15.18L73.44 14.08L71.73 13.06L69.98 12.12L68.19 11.27L66.36 10.50L64.50 9.81L62.62 9.21L60.70 8.70L58.77 8.28L56.82 7.95L54.86 7.71L52.90 7.56L50.93 7.51L48.96 7.54L46.99 7.67L45.04 7.88L43.10 8.19L41.17 8.58L39.27 9.07L37.40 9.64L35.55 10.30A2.25 2.25 0 0 0 37.09 14.53Z" fill="var(--logo-outer)"/><path d="M74.87 54.38L74.61 55.53L74.30 56.65L73.94 57.77L73.53 58.86L73.07 59.93L72.56 60.98L72.01 62.00L71.41 62.99L70.76 63.95L70.07 64.89L69.34 65.78L68.57 66.64L67.76 67.47L66.91 68.25L66.03 69.00L65.12 69.70L64.17 70.36L63.20 70.97L62.20 71.54L61.18 72.05L60.13 72.52L59.07 72.95L57.99 73.32L56.89 73.64L55.78 73.90L54.66 74.12L53.53 74.29L52.40 74.40L51.27 74.46L50.13 74.46L49.00 74.42L47.87 74.32L46.75 74.17L45.64 73.96L44.54 73.71L43.45 73.41L42.38 73.05L41.33 72.65L40.30 72.20L39.30 71.70L38.31 71.16L37.36 70.58L36.44 69.95L35.54 69.27L34.68 68.56L33.85 67.81L33.06 67.03L32.31 66.21L31.60 65.35L30.93 64.47L30.30 63.55L29.72 62.61L29.18 61.65L28.68 60.66L28.24 59.65L27.84 58.62L27.49 57.57L27.18 56.52L26.93 55.44L26.73 54.37L26.58 53.28L26.48 52.19L26.43 51.09L26.43 50.00L26.48 48.91L26.58 47.82L26.74 46.74L26.94 45.67L27.19 44.62L27.49 43.57L27.83 42.54L28.23 41.53L28.67 40.54L29.15 39.58L29.68 38.64L30.25 37.72L30.86 36.83L31.52 35.98L32.21 35.15L32.93 34.36L33.69 33.60L34.49 32.89L35.32 32.21L36.17 31.57L37.06 30.97L37.97 30.41L38.90 29.90L39.85 29.43L40.83 29.00L41.82 28.62L42.83 28.29L43.85 28.01L44.88 27.77L45.92 27.59L46.97 27.45L48.02 27.36A4.77 4.77 0 0 0 47.19 17.85L45.70 18.04L44.23 18.30L42.78 18.63L41.34 19.02L39.92 19.48L38.52 20.01L37.16 20.60L35.82 21.25L34.52 21.96L33.25 22.73L32.02 23.55L30.82 24.44L29.68 25.37L28.58 26.36L27.52 27.40L26.52 28.48L25.57 29.61L24.67 30.78L23.83 31.99L23.04 33.24L22.32 34.52L21.65 35.83L21.05 37.17L20.51 38.53L20.04 39.92L19.63 41.33L19.28 42.75L19.01 44.19L18.80 45.63L18.65 47.09L18.58 48.54L18.57 50.00L18.63 51.46L18.76 52.91L18.95 54.35L19.21 55.78L19.54 57.19L19.93 58.59L20.38 59.96L20.90 61.32L21.48 62.64L22.12 63.94L22.82 65.20L23.58 66.43L24.39 67.62L25.25 68.77L26.17 69.88L27.14 70.95L28.15 71.97L29.21 72.94L30.31 73.86L31.45 74.72L32.64 75.53L33.85 76.29L35.10 76.99L36.38 77.62L37.68 78.20L39.01 78.72L40.36 79.17L41.73 79.56L43.12 79.89L44.51 80.15L45.92 80.34L47.33 80.47L48.75 80.54L50.17 80.54L51.58 80.47L52.99 80.34L54.39 80.14L55.77 79.88L57.15 79.55L58.50 79.17L59.84 78.72L61.15 78.21L62.43 77.63L63.69 77.01L64.91 76.32L66.10 75.58L67.25 74.78L68.37 73.94L69.44 73.04L70.47 72.09L71.45 71.10L72.39 70.07L73.27 68.99L74.11 67.88L74.89 66.73L75.61 65.54L76.28 64.33L76.89 63.08L77.45 61.81L77.94 60.52L78.37 59.20L78.74 57.87L79.05 56.52L79.30 55.17A2.25 2.25 0 0 0 74.87 54.38Z" fill="var(--logo-middle)"/><path d="M41.75 59.83L41.32 59.42L40.91 59.00L40.51 58.55L40.14 58.09L39.79 57.61L39.46 57.12L39.16 56.62L38.88 56.10L38.63 55.57L38.40 55.03L38.20 54.48L38.02 53.92L37.87 53.36L37.75 52.79L37.65 52.21L37.58 51.64L37.53 51.06L37.52 50.48L37.53 49.90L37.56 49.32L37.63 48.75L37.72 48.18L37.83 47.61L37.98 47.06L38.14 46.51L38.34 45.97L38.55 45.44L38.79 44.92L39.06 44.42L39.34 43.93L39.65 43.45L39.98 42.99L40.33 42.54L40.70 42.11L41.09 41.70L41.50 41.31L41.92 40.94L42.37 40.59L42.82 40.26L43.29 39.96L43.77 39.67L44.27 39.41L44.77 39.18L45.29 38.96L45.81 38.77L46.34 38.61L46.88 38.47L47.42 38.36L47.96 38.27L48.51 38.20L49.06 38.17L49.61 38.15L50.16 38.17L50.71 38.21L51.25 38.27L51.79 38.36L52.33 38.47L52.85 38.61L53.37 38.77L53.88 38.96L54.38 39.17L54.87 39.40L55.35 39.66L55.81 39.93L56.26 40.23L56.70 40.54L57.12 40.88L57.52 41.23L57.91 41.60L58.27 41.99L58.62 42.40L58.95 42.82L59.26 43.25L59.55 43.70L59.81 44.16L60.05 44.63L60.28 45.11L60.47 45.59L60.65 46.09L60.80 46.59L60.93 47.10L61.03 47.62L61.11 48.13L61.17 48.65L61.20 49.17L61.21 49.69L61.19 50.21L61.15 50.73L61.09 51.24L61.00 51.75L60.89 52.26L60.75 52.76L60.60 53.25L60.42 53.73L60.21 54.20L59.99 54.66A3.98 3.98 0 0 0 67.20 58.02L67.53 57.21L67.83 56.38L68.09 55.54L68.31 54.69L68.49 53.83L68.63 52.97L68.73 52.10L68.78 51.23L68.80 50.36L68.78 49.49L68.72 48.62L68.61 47.76L68.47 46.90L68.29 46.05L68.07 45.21L67.81 44.38L67.51 43.57L67.18 42.77L66.81 41.99L66.40 41.23L65.96 40.49L65.49 39.77L64.98 39.08L64.45 38.41L63.88 37.76L63.28 37.14L62.66 36.56L62.01 36.00L61.34 35.47L60.64 34.98L59.92 34.52L59.19 34.09L58.43 33.70L57.66 33.34L56.87 33.02L56.07 32.74L55.26 32.49L54.44 32.29L53.61 32.12L52.77 31.99L51.93 31.90L51.09 31.85L50.25 31.84L49.41 31.86L48.57 31.93L47.73 32.03L46.91 32.18L46.09 32.36L45.28 32.57L44.48 32.83L43.70 33.12L42.93 33.45L42.18 33.81L41.45 34.21L40.73 34.64L40.04 35.10L39.37 35.59L38.73 36.11L38.11 36.66L37.52 37.24L36.95 37.85L36.42 38.48L35.92 39.13L35.44 39.81L35.00 40.50L34.59 41.22L34.22 41.95L33.88 42.70L33.58 43.46L33.31 44.23L33.08 45.02L32.88 45.81L32.73 46.61L32.61 47.42L32.52 48.23L32.48 49.04L32.47 49.86L32.50 50.67L32.57 51.48L32.68 52.28L32.82 53.08L33.00 53.87L33.22 54.64L33.47 55.41L33.75 56.17L34.07 56.90L34.43 57.63L34.81 58.33L35.23 59.02L35.68 59.68L36.16 60.32L36.67 60.94L37.20 61.53L37.77 62.10L38.35 62.64L38.96 63.15A2.17 2.17 0 0 0 41.75 59.83Z" fill="var(--logo-inner)"/><circle cx="50" cy="50" r="7.17" fill="var(--logo-core)"/></svg>
       Nebula
     </a>
-    <nav aria-label="Site">
-      <span class="links">
-        <a href="#shapes">Shapes</a>
-        <a href="#panels">Panels</a>
-        <a href="#edit">Edit</a>
-        <a href="#gallery">Gallery</a>
-        <a href="#widgets">Widgets</a>
+    <div class="nav">
+      <nav class="navlinks" aria-label="Site">
+        <a href="#tour">Tour</a>
+        <a href="#bar">The bar</a>
+        <a href="#hypr">Your config</a>
         <a href="#install">Install</a>
-      </span>
-      <button class="icon-btn" id="theme" type="button" aria-label="Switch between light and dark">
+      </nav>
+      <button class="theme" id="theme" type="button" aria-label="Switch between light and dark">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z"/></svg>
       </button>
-      <a class="gh" href="https://github.com/iamSt3el/Nebula">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.4-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2Z"/></svg>
-        <span class="ghl">GitHub</span>
-      </a>
-    </nav>
+      <a class="gh" href="https://github.com/iamSt3el/Nebula">GitHub</a>
+    </div>
   </div>
 </header>
 
 <main id="top">
-  <header class="hero wrap" data-section="Home">
-    <div class="hero-top">
-      <div>
-        <h1>Your wallpaper picks the colours. You arrange the rest.</h1>
-        <p class="lead">Nebula is a desktop shell for Hyprland, built with Quickshell. It gives you a bar on any edge of the screen, desktop widgets, a launcher, a dashboard and a lock screen, all coloured from your wallpaper with Material You.</p>
-      </div>
-      <div class="install">
-        <div class="install-label">Install on Arch Linux</div>
+  <div class="wrap hero">
+    <div class="two">
+      <h1>A Hyprland shell you put together yourself.</h1>
+      <div class="hero-side">
+        <p class="lead">Nebula is a bar, panels, a dashboard, a launcher and desktop widgets, built with Quickshell. Most of it comes in more than one style, the bar goes on any edge, and the colours come from your wallpaper.</p>
         <div class="cmd">
           <code id="cmd">bash &lt;(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/master/install.sh)</code>
           <button class="copy" type="button" data-copy="cmd">Copy</button>
         </div>
-        <div class="chips">
-          <span class="chip">Arch Linux</span>
-          <a class="chip warn" href="#install">Hyprland 0.56+ with a Lua config</a>
-          <span class="chip">GPL-3.0</span>
-        </div>
+        <p class="note">Arch Linux, Hyprland 0.56 or newer with a Lua config. Free under GPL-3.0.</p>
       </div>
     </div>
-    <figure class="shot">
-      <img src="shots/hero.jpg" srcset="shots/hero-sm.jpg 960w, shots/hero.jpg 1920w" sizes="(max-width: 1220px) 100vw, 1180px" width="1920" height="1080" alt="The Nebula desktop: a full-width bar across the top, and clock, system, calendar, weather and music widgets over a night landscape with a full moon and cherry trees." fetchpriority="high">
-      <figcaption>
-        <span>Nebula as it runs, with no retouching. This page uses the palette Nebula made from this wallpaper.</span>
-        <span class="swatches" aria-label="Palette from the wallpaper">
-          <span style="background:#f4ba95" title="Primary #f4ba95"></span>
-          <span style="background:#dfc0af" title="Secondary #dfc0af"></span>
-          <span style="background:#c9ca91" title="Tertiary #c9ca91"></span>
-          <span style="background:#584235" title="Secondary container #584235"></span>
-          <span style="background:#231f1c" title="Surface container #231f1c"></span>
-        </span>
-      </figcaption>
-    </figure>
-  </header>
+  </div>
 
-  <section id="shapes" class="wrap" data-section="Shapes">
-    <div class="head">
-      <h2>One bar, four shapes</h2>
-      <p class="lead">Blocks on an edge can float as pills, fuse into one piece, step down from the screen edge or join into a full strip. Three numbers make the difference: how far the bar sits from the edge, the gap between blocks, and how much of the space between groups gets filled.</p>
+  <div class="wrap" id="tour">
+    <div class="shot">
+      <img src="shots/hero.jpg" srcset="shots/hero-sm.jpg 960w, shots/hero.jpg 1920w" sizes="(max-width: 1240px) 100vw, 1160px" width="1920" height="1080" fetchpriority="high" alt="The Nebula desktop: a bar along the top, a second bar of app icons down the left edge, and three widgets in the lower right, over a painted valley with a purple tree.">
+      <span class="pin" style="left:7.8%;top:6.6%" aria-hidden="true">1</span>
+      <span class="pin" style="left:19.6%;top:6.6%" aria-hidden="true">2</span>
+      <span class="pin" style="left:31.8%;top:6.6%" aria-hidden="true">3</span>
+      <span class="pin" style="left:50%;top:7.6%" aria-hidden="true">4</span>
+      <span class="pin" style="left:87%;top:7.6%" aria-hidden="true">5</span>
+      <span class="pin" style="left:4.4%;top:24%" aria-hidden="true">6</span>
+      <span class="pin" style="left:63.6%;top:58%" aria-hidden="true">7</span>
     </div>
-    <div class="shape-panel">
-      <div class="shape-controls">
-        <div class="seg" role="group" aria-label="Bar shape" id="seg">
-          <button type="button" data-shape="pill" aria-pressed="true">Pill</button>
-          <button type="button" data-shape="merged" aria-pressed="false">Merged</button>
-          <button type="button" data-shape="stepped" aria-pressed="false">Stepped</button>
-          <button type="button" data-shape="full" aria-pressed="false">Full</button>
-        </div>
-        <dl class="spec" id="spec" aria-live="polite"></dl>
-      </div>
-      <div class="strip"><img id="strip" src="shots/bar-pill.jpg" width="1920" height="150" alt="The top edge of the Nebula desktop with the bar in the Pill shape."></div>
-      <p class="strip-note" id="strip-note"></p>
+    <p class="note" style="margin-top:14px">An unedited screenshot. The numbers match the list below.</p>
+    <div class="key">
+      <div><b>1</b><div><h3>Workspaces</h3><p>Your workspaces. There are many styles to pick from.</p></div></div>
+      <div><b>2</b><div><h3>Window title</h3><p>The focused app and workspace. Click it for window details.</p></div></div>
+      <div><b>3</b><div><h3>Music</h3><p>Whatever is playing. Click for the music panel.</p></div></div>
+      <div><b>4</b><div><h3>Clock</h3><p>Opens the calendar, with public holidays for your country.</p></div></div>
+      <div><b>5</b><div><h3>Status items</h3><p>Weather, sound, brightness, network, Bluetooth, battery, notifications, power. Each opens its own panel.</p></div></div>
+      <div><b>6</b><div><h3>A second bar</h3><p>Pinned apps on the left edge. Any edge can have its own bar.</p></div></div>
+      <div><b>7</b><div><h3>Desktop widgets</h3><p>Music, a moon calendar and system load. You place and resize them in edit mode.</p></div></div>
     </div>
-  </section>
+  </div>
 
-  <section id="panels" class="wrap" data-section="Panels">
-    <div class="head">
-      <h2>Panels open the way you like</h2>
-      <p class="lead">Each bar item opens its own panel: weather, sound, Wi-Fi, Bluetooth, battery, music, the calendar and more. Pick how a panel meets the bar.</p>
-    </div>
-    <div class="trio">
-      <figure>
-        <img src="shots/panel-attached.jpg" width="500" height="340" loading="lazy" alt="The weather panel growing straight out of a full-width bar.">
-        <figcaption><h3>Attached</h3><p>Grows straight out of the bar, as if it were part of it.</p></figcaption>
-      </figure>
-      <figure>
-        <img src="shots/panel-merged.jpg" width="500" height="340" loading="lazy" alt="The weather panel joined to its pill-shaped block by a short neck.">
-        <figcaption><h3>Merged</h3><p>Sits just below the bar and joins its own block with a short neck.</p></figcaption>
-      </figure>
-      <figure>
-        <img src="shots/panel-floating.jpg" width="500" height="340" loading="lazy" alt="The weather panel floating below the bar with a gap all around.">
-        <figcaption><h3>Floating</h3><p>Hangs free, with the same gap from the bar and from the screen edge.</p></figcaption>
-      </figure>
-    </div>
-    <p class="aside">Set a style once for a whole edge, then give any single block its own. When blocks are merged or the bar is a full strip, a panel treats the joined blocks as one piece.</p>
-  </section>
-
-  <section id="edit" class="wrap" data-section="Edit">
-    <div class="head">
-      <h2>Rearrange it in place</h2>
-      <p class="lead">Edit mode opens over your real desktop. Nothing is a mock-up: you move the actual bar and see each change as you make it.</p>
-    </div>
-    <div class="edit">
-      <img src="shots/edit.jpg" srcset="shots/edit-sm.jpg 960w, shots/edit.jpg 1920w" sizes="(max-width: 980px) 100vw, 700px" width="1920" height="1080" loading="lazy" alt="Edit mode: the bar outlined, a toolbar at the top and the Top edge drawer open with its shape and size settings.">
-      <ul class="points">
-        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 8 6h3v5H6V8l-4 4 4 4v-3h5v5H8l4 4 4-4h-3v-5h5v3l4-4-4-4v3h-5V6h3z"/></svg><div><b>Any item, any edge</b>Drag items and whole blocks between the top, bottom, left and right edges.</div></li>
-        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 3h7v1h-7zm0 3h7v1h-7zm0-6h7v1h-7z"/></svg><div><b>Per-block controls</b>Right-click a block to set its gaps, lift it off the edge or round its corners.</div></li>
-        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5h18v2H3zm0 6h12v2H3zm0 6h18v2H3z"/></svg><div><b>An edge at a time</b>Each edge has a drawer for its shape, size, gaps and how its panels open.</div></li>
-        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.5 8c-2.6 0-5 1-6.9 2.6L2 7v9h9l-3.6-3.6c1.4-1.2 3.1-1.9 5.1-1.9 3.5 0 6.5 2.3 7.6 5.5l2.4-.8C21 11.9 17.1 8 12.5 8Z"/></svg><div><b>Undo with history</b>Every change is one undo step, and the whole history is a click away.</div></li>
-        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 3h11l3 3v15H5zm2 2v4h8V5zm5 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg><div><b>Saved layouts</b>Keep whole setups, with bar, widgets, panels and wallpaper, and switch between them in one click.</div></li>
-      </ul>
-    </div>
-  </section>
-
-  <section id="gallery" class="wrap" data-section="Gallery">
-    <div class="head">
-      <h2>Around the desktop</h2>
-      <p class="lead">Every picture is the shell itself on a different wallpaper. The colours change with each one; nothing was retouched.</p>
-    </div>
-    <div class="tabs" role="tablist" aria-label="Gallery" id="tabs"></div>
-    <figure class="stage" id="stage">
-      <img id="stage-img" src="shots/launcher.jpg" width="1920" height="1080" alt="">
-      <figcaption id="stage-cap"></figcaption>
-    </figure>
-    <div class="thumbs" id="thumbs"></div>
-  </section>
-
-  <section id="widgets" class="wrap" data-section="Widgets">
-    <div class="head">
-      <h2>69 widgets in 81 styles</h2>
-      <p class="lead">Clocks, calendars, music players, system meters and desk tools such as habits, countdowns and a pomodoro timer. Drop them anywhere on the desktop; they take the wallpaper's colours like everything else.</p>
-    </div>
-    <div class="filters" role="group" aria-label="Widget type" id="filters"></div>
-    <div class="wall" id="wall"></div>
-  </section>
-
-  <section id="more" class="wrap" data-section="Apps">
+  <section class="wrap" id="bar">
     <div class="two">
-      <div class="panel">
-        <h3>Your other apps follow along</h3>
-        <p>When the wallpaper changes, Nebula writes the same palette into the apps you choose, so the terminal and the browser match the shell.</p>
-        <div class="apps">
-          <span>kitty</span><span>tmux</span><span>Starship</span><span>btop</span><span>Hyprland borders</span><span>GTK 3</span><span>GTK 4</span><span>Qt5ct and Qt6ct</span><span>Papirus folders</span><span>Firefox and Zen</span><span>Obsidian</span><span>Waybar</span><span>nwg-dock</span>
-        </div>
+      <div class="stack">
+        <h2>The bar is the part you'll change most.</h2>
+        <p class="muted">Items sit in blocks, and blocks sit on an edge. Every edge has its own shape, size and gaps, so a top bar and a side bar can look nothing alike.</p>
       </div>
-      <div class="panel">
-        <h3>Run it from a terminal</h3>
-        <p>The shell does its background work through one command, and you can use it too.</p>
-<pre class="term"><span class="k">nebula</span> start              <span class="c"># or stop, restart</span>
-<span class="k">nebula</span> setup              <span class="c"># wallpaper, colours, apps</span>
-<span class="k">nebula</span> wallpaper set ~/wallpaper/forest.png
-<span class="k">nebula</span> scheme set --mode light
-<span class="k">nebula</span> layout load evening
-<span class="k">nebula</span> doctor             <span class="c"># anything missing?</span></pre>
+      <dl class="spec">
+        <dt>Edges</dt><dd>Top, bottom, left, right, or several at once</dd>
+        <dt>Items</dt><dd>60, in five groups: core, launchers, stats, toggles and layout pieces like spacers and text</dd>
+        <dt>Shapes</dt><dd>Pill, Merged, Stepped and Full to start from, then any gap and corner radius</dd>
+        <dt>Panels</dt><dd>Attached, merged or floating, per edge or per block</dd>
+        <dt>Layouts</dt><dd>Save a whole setup and switch with <kbd>Super</kbd> <kbd>Alt</kbd> <kbd>]</kbd></dd>
+      </dl>
+    </div>
+
+    <div class="strips">
+      <figure><figcaption>Pill</figcaption><img src="shots/bar-pill.jpg" width="1920" height="150" loading="lazy" alt="The bar in the Pill shape: each block floats on its own."></figure>
+      <figure><figcaption>Merged</figcaption><img src="shots/bar-merged.jpg" width="1920" height="150" loading="lazy" alt="The bar in the Merged shape: blocks in a group join into one piece."></figure>
+      <figure><figcaption>Stepped</figcaption><img src="shots/bar-stepped.jpg" width="1920" height="150" loading="lazy" alt="The bar in the Stepped shape: blocks hang from the screen edge."></figure>
+      <figure><figcaption>Full</figcaption><img src="shots/bar-full.jpg" width="1920" height="150" loading="lazy" alt="The bar in the Full shape: one strip from side to side."></figure>
+    </div>
+
+    <div class="trio">
+      <figure><img src="shots/panel-attached.jpg" width="680" height="720" loading="lazy" alt="The weather panel growing out of a full-width bar."><h3>Attached panel</h3><p>Grows out of the bar.</p></figure>
+      <figure><img src="shots/panel-merged.jpg" width="680" height="720" loading="lazy" alt="The weather panel joined to its block by a short neck."><h3>Merged panel</h3><p>Joined to its block by a short neck.</p></figure>
+      <figure><img src="shots/panel-floating.jpg" width="680" height="720" loading="lazy" alt="The weather panel floating below the bar."><h3>Floating panel</h3><p>Floats below with a gap all round.</p></figure>
+    </div>
+  </section>
+
+  <section class="wrap" id="edit">
+    <div class="two flip">
+      <img class="round" src="shots/edit.jpg" srcset="shots/edit-sm.jpg 960w, shots/edit.jpg 1920w" sizes="(max-width: 900px) 100vw, 680px" width="1920" height="1080" loading="lazy" alt="Edit mode over a picture of Earth: the bars outlined, a toolbar along the bottom and buttons for the four screen edges.">
+      <div class="stack">
+        <h2>Change it on the desktop, not in a file.</h2>
+        <p class="muted">Press <kbd>Super</kbd> <kbd>Shift</kbd> <kbd>E</kbd>. You drag the real bar and the real widgets around, and every change can be undone.</p>
+        <p class="muted">Right-click a block to change its gaps or corners. Pick an edge to change its shape, size and panel style.</p>
       </div>
     </div>
   </section>
 
-  <section id="install" class="wrap" data-section="Install">
-    <div class="head">
-      <h2>Install it</h2>
-      <p class="lead">Nebula runs on Arch Linux. The installer sets up everything it needs and backs up what it replaces.</p>
+  <section class="wrap" id="styles">
+    <h2 style="max-width:18ch">Pick a style for each part.</h2>
+    <div class="trio" style="margin-top:36px">
+      <figure><img src="shots/dash-rail-sm.jpg" width="960" height="540" loading="lazy" alt="The Rail dashboard: clock and weather on the left, music, system stats and quick toggles beside them."><h3>Dashboard, 7 styles</h3><p>Rail, Poster, Stage, Planner, Ribbon, Instruments and a narrow Sidebar for side bars.</p></figure>
+      <figure><img src="shots/music-dial-sm.jpg" width="960" height="540" loading="lazy" alt="The Dial music panel: the album cover inside a progress ring."><h3>Music panel, 3 styles</h3><p>Poster, Dial and Beads.</p></figure>
+      <figure><img src="shots/launcher-hearth-sm.jpg" width="960" height="540" loading="lazy" alt="The Hearth launcher: a greeting, pinned apps and a grid of installed apps."><h3>Launcher, 2 styles</h3><p>Palette, a search field for apps, actions and windows. Hearth, a grid with your pinned apps.</p></figure>
     </div>
+  </section>
+
+  <section class="wrap" id="hypr">
+    <div class="two">
+      <div class="stack">
+        <h2>Leave out what you don't use.</h2>
+        <p class="muted">Settings › Features lists 18 optional parts, like phone sync, clipboard history, books, the visualiser and smart lights. A part that's off doesn't load at all.</p>
+        <p class="muted">Your Hyprland config stays yours. The pages for displays, windows, keyboard and mouse, and shortcuts are off until you turn them on. Then they write either to their own file or to a marked block at the end of a file you pick, and leave the rest of it alone.</p>
+      </div>
+      <img class="round" src="shots/settings.jpg" srcset="shots/settings-sm.jpg 960w, shots/settings.jpg 1920w" sizes="(max-width: 900px) 100vw, 680px" width="1920" height="1080" loading="lazy" alt="The Features page in Nebula's settings, with switches for Phone, Clipboard history, Smart light, Weather and Calendar events.">
+    </div>
+  </section>
+
+  <section class="wrap" id="install">
+    <h2>Install</h2>
     <ol class="steps">
       <li>
+        <span class="n" aria-hidden="true">1</span>
         <h3>Run the installer</h3>
-        <p>It installs the packages, builds the plugins, installs the <code>nebula</code> command and copies Nebula's Hyprland config into <code>~/.config/hypr</code>, offering a backup first. It also sets up kitty, the Starship prompt and the Nebula login screen.</p>
+        <p class="muted small">It installs the packages and the <code>nebula</code> command. An existing <code>hyprland.lua</code> is kept as it is. Without one, you get a starter config.</p>
         <div class="cmd"><code id="cmd2">bash &lt;(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/master/install.sh)</code><button class="copy" type="button" data-copy="cmd2">Copy</button></div>
       </li>
       <li>
+        <span class="n" aria-hidden="true">2</span>
         <h3>Run <code>nebula setup</code></h3>
-        <p>Pick a wallpaper, your colours and which apps follow them. You can change all of it later in Settings.</p>
+        <p class="muted small">Pick a wallpaper, your colours, the features you want and which apps should match. You can change all of it later.</p>
       </li>
     </ol>
-    <div class="req" role="note">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 1 21h22L12 2Zm1 15h-2v-2h2v2Zm0-4h-2V9h2v4Z"/></svg>
-      <p>Nebula needs <b>Hyprland 0.56 or newer with a Lua config</b> (<code>~/.config/hypr/hyprland.lua</code>). The classic <code>hyprland.conf</code> format is not supported, because the shell sends Hyprland its commands in Lua. The installer's <code>hyprland.lua</code> is built from Hyprland's own defaults, so you start from a working config.</p>
-    </div>
+    <p class="req muted small">Needs Arch Linux and Hyprland 0.56 or newer with <code>~/.config/hypr/hyprland.lua</code>. The older <code>hyprland.conf</code> format won't work, because Nebula talks to Hyprland in Lua.</p>
   </section>
 </main>
 
 <footer>
   <div class="wrap">
-    <span>Nebula is free software under the GPL-3.0, built on Quickshell for Hyprland.</span>
+    <span>Nebula is free software under the GPL-3.0.</span>
     <a href="https://github.com/iamSt3el/Nebula">Source on GitHub</a>
   </div>
 </footer>
@@ -409,30 +303,20 @@ footer a { color: var(--muted); }
 <script>
 (() => {
   const $ = id => document.getElementById(id);
-  const store = {
-    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-  };
-
-
   const root = document.documentElement;
-  const saved = store.get("nebula-theme");
-  if (saved === "light" || saved === "dark") root.dataset.theme = saved;
   $("theme").addEventListener("click", () => {
-    const now = root.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    const now = root.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     const next = now === "dark" ? "light" : "dark";
     root.dataset.theme = next;
-    store.set("nebula-theme", next);
+    try { localStorage.setItem("nebula-theme", next); } catch (e) {}
   });
 
   document.querySelectorAll("[data-copy]").forEach(btn => {
     btn.addEventListener("click", () => {
-      const text = $(btn.dataset.copy).textContent;
+      const el = $(btn.dataset.copy);
       const done = () => { btn.textContent = "Copied"; setTimeout(() => { btn.textContent = "Copy"; }, 1600); };
-      const select = () => { const r = document.createRange(); r.selectNodeContents($(btn.dataset.copy)); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
-      try {
-        navigator.clipboard.writeText(text).then(done, select);
-      } catch (e) { select(); }
+      const select = () => { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
+      try { navigator.clipboard.writeText(el.textContent).then(done, select); } catch (e) { select(); }
     });
   });
 
@@ -440,141 +324,6 @@ footer a { color: var(--muted); }
   const onScroll = () => site.classList.toggle("scrolled", scrollY > 8);
   addEventListener("scroll", onScroll, { passive: true });
   onScroll();
-
-  const SHAPES = {
-    pill:    { edge: 8, block: 10, end: 10, fill: 0, radius: 20, note: "Pill: every block floats off the edge with its own rounded ends." },
-    merged:  { edge: 8, block: 0,  end: 10, fill: 0, radius: 20, note: "Merged: blocks in a group touch and become one rounded piece." },
-    stepped: { edge: 0, block: 10, end: 0,  fill: 0, radius: -1, note: "Stepped: blocks hang from the screen edge and curve into it." },
-    full:    { edge: 0, block: 0,  end: 0,  fill: 1, radius: -1, note: "Full: one strip from side to side, the classic bar." }
-  };
-  const spec = $("spec"), strip = $("strip"), note = $("strip-note");
-  const setShape = name => {
-    const s = SHAPES[name];
-    document.querySelectorAll("#seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.shape === name)));
-    spec.innerHTML = [
-      ["Edge gap", s.edge + " px"], ["Block gap", s.block + " px"], ["Fill", Math.round(s.fill * 100) + " %"],
-      ["Corners", s.radius < 0 ? "Follow the edge" : s.radius + " px"]
-    ].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
-    strip.src = "shots/bar-" + name + ".jpg";
-    strip.alt = "The top edge of the Nebula desktop with the bar in the " + name + " shape.";
-    note.textContent = s.note;
-  };
-  document.querySelectorAll("#seg button").forEach(b => b.addEventListener("click", () => setShape(b.dataset.shape)));
-  setShape("pill");
-  Object.keys(SHAPES).forEach(n => { const i = new Image(); i.src = "shots/bar-" + n + ".jpg"; });
-
-  const GALLERY = [
-    { name: "Everyday", items: [
-      ["shots/launcher", "Launcher", "Pinned and most used apps first, with a greeting and search.", true],
-      ["shots/dashboard", "Dashboard", "Quick toggles, volume and brightness, and your notifications.", true],
-      ["shots/music", "Music", "The music panel opened from the bar, with album art and controls.", true],
-      ["shots/settings", "Settings", "Every option in one window, searchable with Ctrl K.", true]
-    ]},
-    { name: "Lock screens", items: [
-      ["g/lock-veil-blue", "Veil", "A big clock and a frosted sign-in, with the wallpaper left sharp."],
-      ["g/lock-bloom-willow", "Bloom", "The time in Material shapes that morph as the digits change."],
-      ["g/lock-orbit-pink", "Orbit", "A watch face with the date and music on the rim."],
-      ["g/lock-darkroom-orange", "Darkroom", "The wallpaper as an instant photo, with the album art taped on."],
-      ["g/lock-deck-willow", "Deck", "Music first: the album art in a scalloped frame with its progress ring."],
-      ["g/lock-tessera-teal", "Tessera", "A mosaic of Material tiles around the wallpaper."],
-      ["g/lock-tear-blue", "Tear-off", "A desk calendar page that tears away when you unlock."]
-    ]},
-    { name: "Launcher styles", items: [
-      ["g/launcher-hearth-willow", "Hearth", "A greeting, the apps you left off with, and everything else."],
-      ["g/launcher-spotlight-blue", "Spotlight", "One search field with results underneath."],
-      ["g/launcher-bento-pink", "Bento", "Apps as tiles of different sizes."],
-      ["g/launcher-folders-orange", "Folders", "Apps grouped into folders."],
-      ["g/launcher-expressive-teal", "Expressive", "Favourites in Material shapes, with category chips."],
-      ["g/launcher-rail-teal", "Rail", "Docked to the edge with a category rail."],
-      ["g/launcher-list-teal", "List", "A compact list for keyboard use."]
-    ]}
-  ];
-  const full = it => it[0] + ".jpg";
-  const thumb = it => it[3] ? it[0] + "-sm.jpg" : it[0].replace("g/", "g/t/") + ".jpg";
-  const tabs = $("tabs"), thumbs = $("thumbs"), stageImg = $("stage-img"), stageCap = $("stage-cap");
-  let group = 0;
-  const show = (gi, ii) => {
-    const it = GALLERY[gi].items[ii];
-    stageImg.src = full(it);
-    stageImg.alt = it[1] + ": " + it[2];
-    stageCap.innerHTML = "";
-    const b = document.createElement("b"); b.textContent = it[1];
-    const t = document.createElement("span"); t.textContent = it[2];
-    stageCap.append(b, t);
-    [...thumbs.children].forEach((c, i) => c.setAttribute("aria-current", String(i === ii)));
-  };
-  const openGroup = gi => {
-    group = gi;
-    [...tabs.children].forEach((t, i) => t.setAttribute("aria-selected", String(i === gi)));
-    thumbs.innerHTML = "";
-    GALLERY[gi].items.forEach((it, ii) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.innerHTML = `<img src="${thumb(it)}" alt="" loading="lazy" width="480" height="270">`;
-      btn.append(it[1]);
-      btn.addEventListener("click", () => show(gi, ii));
-      thumbs.appendChild(btn);
-    });
-    show(gi, 0);
-  };
-  GALLERY.forEach((g, gi) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.setAttribute("role", "tab");
-    btn.innerHTML = `${g.name} <span>${g.items.length}</span>`;
-    btn.addEventListener("click", () => openGroup(gi));
-    tabs.appendChild(btn);
-  });
-  openGroup(0);
-
-  const WALL = [["time-analogClock.jpg", "Classic clock", "time", 252, 252], ["calendar-calendarYear.jpg", "Year", "calendar", 366, 366], ["music-musicPoster.jpg", "Poster", "music", 256, 366], ["calendar-calendarStamp.jpg", "Stamp", "calendar", 256, 366], ["music-musicExpressive.jpg", "Expressive", "music", 366, 256], ["system-sysVitals.jpg", "Vitals", "system", 476, 311], ["calendar-calendarWindows.jpg", "Windows", "calendar", 366, 366], ["time-sunArc.jpg", "Sun Arc", "time", 366, 256], ["music-musicTicket.jpg", "Ticket", "music", 477, 202], ["system-sysFlask.jpg", "Flask", "system", 256, 256], ["time-weatherForecast.jpg", "Forecast", "time", 366, 256], ["music-musicNeon.jpg", "Neon Sign", "music", 476, 201], ["calendar-calendarAlmanac.jpg", "Almanac", "calendar", 366, 256], ["time-worldClock.jpg", "World Clock", "time", 366, 201], ["system-sysCockpit.jpg", "Cockpit", "system", 476, 311], ["music-musicTuner.jpg", "Radio Tuner", "music", 476, 256], ["desk-pomodoro.jpg", "Pomodoro", "desk", 256, 256], ["desk-habits.jpg", "Habits", "desk", 366, 256], ["calendar-calendarMoon.jpg", "Moon calendar", "calendar", 366, 256], ["system-sysCells.jpg", "Cell Stack", "system", 256, 256], ["calendar-calendarYarn.jpg", "Yarn", "calendar", 256, 256], ["system-sysThermo.jpg", "Thermometer", "system", 256, 256], ["music-musicFlap.jpg", "Split-Flap", "music", 476, 201], ["time-moonPhase.jpg", "Moon", "time", 256, 256], ["desk-taskList.jpg", "Tasks", "desk", 366, 256], ["calendar-calendarTorn.jpg", "Torn", "calendar", 256, 252], ["system-sysShape.jpg", "Shape Shifter", "system", 256, 256], ["desk-countdowns.jpg", "Countdowns", "desk", 366, 201], ["music-musicLyrics.jpg", "Lyrics", "music", 366, 311], ["desk-mood.jpg", "Mood", "desk", 366, 201], ["desk-stickyNote.jpg", "Note", "desk", 256, 256]];
-  const CATS = [["all", "All"], ["time", "Clocks"], ["calendar", "Calendars"], ["music", "Music"], ["system", "System"], ["desk", "Desk tools"]];
-  const wall = $("wall"), filters = $("filters");
-  let cat = "all";
-  const cards = WALL.map(([f, name, c, w, h]) => {
-    const fig = document.createElement("figure");
-    fig.dataset.cat = c;
-    fig.innerHTML = `<img src="wall/${f}" width="${w}" height="${h}" loading="lazy" alt="${name} widget">`;
-    const cap = document.createElement("figcaption"); cap.textContent = name;
-    fig.appendChild(cap);
-    fig._w = w; fig._h = h;
-    wall.appendChild(fig);
-    return fig;
-  });
-  const layout = () => {
-    const W = wall.clientWidth;
-    const gap = 16;
-    const cols = W > 1000 ? 5 : W > 760 ? 4 : W > 480 ? 3 : 2;
-    const cw = (W - gap * (cols - 1)) / cols;
-    const hs = new Array(cols).fill(0);
-    cards.forEach(fig => {
-      const on = cat === "all" || fig.dataset.cat === cat;
-      fig.hidden = !on;
-      if (!on) return;
-      let k = 0;
-      for (let i = 1; i < cols; i++) if (hs[i] < hs[k] - 1) k = i;
-      const h = cw * fig._h / fig._w + 26;
-      fig.style.width = cw + "px";
-      fig.style.transform = `translate(${k * (cw + gap)}px, ${hs[k]}px)`;
-      hs[k] += h + gap;
-    });
-    wall.style.height = Math.max(...hs) + "px";
-  };
-  CATS.forEach(([key, label]) => {
-    const n = key === "all" ? WALL.length : WALL.filter(w => w[2] === key).length;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = `${label} ${n}`;
-    btn.setAttribute("aria-pressed", String(key === cat));
-    btn.addEventListener("click", () => {
-      cat = key;
-      [...filters.children].forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
-      layout();
-    });
-    filters.appendChild(btn);
-  });
-  layout();
-  addEventListener("resize", layout);
 })();
 </script>
 </body>

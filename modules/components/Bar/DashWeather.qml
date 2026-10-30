@@ -1,25 +1,28 @@
 import QtQuick
 import qs.modules.services
+import qs.modules.settings
 
 QtObject {
     id: root
 
-    readonly property var cur: ServiceWeather.currentCondition
+    readonly property bool on: Features.weather
+    readonly property var cur: root.on ? ServiceWeather.currentCondition : null
     readonly property bool ok: !!root.cur
-    readonly property bool metric: ServiceWeather.useMetric
-    readonly property bool night: { ServiceClock.hour; return ServiceWeather.isNightTime() }
-    readonly property var days: ServiceWeather.forecastDays ?? []
+    readonly property bool metric: root.on ? ServiceWeather.useMetric : true
+    readonly property bool night: { ServiceClock.hour; return root.on && ServiceWeather.isNightTime() }
+    readonly property var days: root.on ? (ServiceWeather.forecastDays ?? []) : []
     readonly property var today: root.days[0] ?? null
 
     readonly property string temp: root.ok ? ServiceWeather.temperature : "--"
     readonly property string desc: root.ok ? ServiceWeather.description : "No weather"
-    readonly property string icon: ServiceWeather.getWeatherIcon(ServiceWeather.weatherCode, root.night).icon
+    readonly property string icon: root.on ? ServiceWeather.getWeatherIcon(ServiceWeather.weatherCode, root.night).icon : "cloud_off"
     readonly property string hi: root.today ? (root.metric ? root.today.maxtempC : root.today.maxtempF) + "°" : "--"
     readonly property string lo: root.today ? (root.metric ? root.today.mintempC : root.today.mintempF) + "°" : "--"
-    readonly property string sunrise: root.clean(ServiceWeather.astronomy?.sunrise ?? "")
-    readonly property string sunset: root.clean(ServiceWeather.astronomy?.sunset ?? "")
-    readonly property real sunriseH: root.hourOf(ServiceWeather.astronomy?.sunrise ?? "")
-    readonly property real sunsetH: root.hourOf(ServiceWeather.astronomy?.sunset ?? "")
+    readonly property var astro: root.on ? (ServiceWeather.astronomy ?? null) : null
+    readonly property string sunrise: root.clean(root.astro?.sunrise ?? "")
+    readonly property string sunset: root.clean(root.astro?.sunset ?? "")
+    readonly property real sunriseH: root.hourOf(root.astro?.sunrise ?? "")
+    readonly property real sunsetH: root.hourOf(root.astro?.sunset ?? "")
 
     function clean(s) {
         return String(s).replace(/^0/, "")

@@ -220,7 +220,7 @@ Singleton{
 
     FileView {
         id: usageFile
-        path: Quickshell.env("HOME") + "/.cache/quickshell/app-usage.json"
+        path: Paths.stateDir + "/app-usage.json"
         onLoaded: {
             try {
                 root.usage = JSON.parse(text()) ?? {}

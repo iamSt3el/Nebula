@@ -14,7 +14,7 @@ Item {
     property bool filterWasOn: false
     property bool filterOwned: false
 
-    readonly property bool wantFilter: root.inReader && GlobalStates.booksOpen && (ServiceBooks.cfg.eyeComfort ?? true)
+    readonly property bool wantFilter: Features.reading && root.inReader && GlobalStates.booksOpen && (ServiceBooks.cfg.eyeComfort ?? true)
 
     onWantFilterChanged: {
         if (root.wantFilter) {

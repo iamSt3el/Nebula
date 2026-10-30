@@ -25,7 +25,7 @@ Item {
                 Layout.preferredHeight: 200
             }
 
-            StageNote { content: "Changes show up straight away and are saved to ~/.config/hypr/nebula/settings.lua." }
+            HyprTargetRow { area: "windows" }
 
             HyprChoiceRow {
                 title: "Tiling"

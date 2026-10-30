@@ -9,11 +9,21 @@ import qs.modules.settings
 Singleton {
     id: root
 
-    readonly property string hyprDir: Quickshell.env("HOME") + "/.config/hypr"
-    readonly property var sources: [
-        { file: "nebula", path: root.hyprDir + "/nebula/keybinds.lua" },
-        { file: "lua", path: root.hyprDir + "/lua/keybinds.lua" }
-    ]
+    readonly property string hyprDir: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/hypr"
+    readonly property var sources: {
+        const out = [
+            { file: "nebula", path: root.hyprDir + "/nebula/keybinds.lua" },
+            { file: "lua", path: root.hyprDir + "/lua/keybinds.lua" }
+        ]
+        const t = SettingsConfig.hypr?.targets?.binds
+        if (t && t.mode === "own" && t.file && t.file !== out[1].path)
+            out.push({ file: "own", path: t.file })
+        return out
+    }
+
+    function _withoutBlocks(text) {
+        return text.replace(/-- >>> Nebula: \w+ >>>[\s\S]*?-- <<< Nebula: \w+ <<<\n?/g, "")
+    }
 
     property var parsed: ({ nebula: [], lua: [] })
 
@@ -388,7 +398,7 @@ Singleton {
             onFileChanged: reload()
             onLoaded: {
                 const p = Object.assign({}, root.parsed)
-                p[modelData.file] = root.parse(text(), modelData.file)
+                p[modelData.file] = root.parse(root._withoutBlocks(text()), modelData.file)
                 root.parsed = p
             }
             onLoadFailed: {

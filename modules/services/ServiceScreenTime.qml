@@ -10,7 +10,7 @@ Singleton {
     id: root
 
     readonly property bool enabled: SettingsConfig.general?.screenTimeLog ?? true
-    readonly property string dir: Quickshell.env("HOME") + "/.cache/quickshell/screentime"
+    readonly property string dir: Paths.stateDir + "/screentime"
     property string dayKey: root.keyFor(new Date())
 
     property var closed: []

@@ -274,6 +274,7 @@ Item {
             Item { Layout.fillHeight: true }
 
             Rectangle {
+                visible: Features.reading
                 Layout.fillWidth: true
                 implicitHeight: eye.implicitHeight + 28
                 radius: 20
@@ -297,7 +298,7 @@ Item {
                             CustomText { content: "Eye comfort"; size: 13; weight: 600 }
                             CustomText {
                                 Layout.fillWidth: true
-                                content: (ServiceBooks.cfg.eyeComfort ?? true) ? ServiceReading.filterName + " while reading" : "Off while reading"
+                                content: Features.reading && (ServiceBooks.cfg.eyeComfort ?? true) ? ServiceReading.filterName + " while reading" : "Off while reading"
                                 elide: Text.ElideRight
                                 size: 11
                                 customColor: Colors.surfaceVariantText
@@ -315,7 +316,7 @@ Item {
                         fillWidth: true
                         textSize: 11
                         model: [{ value: "warm", label: "Warm" }, { value: "sepia", label: "Sepia" }, { value: "eink", label: "E-ink" }]
-                        activeCheck: v => (ServiceBooks.cfg.eyeComfort ?? true) && ServiceReading.filter === v
+                        activeCheck: v => Features.reading && (ServiceBooks.cfg.eyeComfort ?? true) && ServiceReading.filter === v
                         onSegmentClicked: v => {
                             ServiceBooks.setCfg({ eyeComfort: true })
                             ServiceReading._set({ filter: v })

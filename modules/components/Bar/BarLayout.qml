@@ -254,14 +254,60 @@ Singleton {
         return ""
     }
 
-    readonly property var allBlocks: {
+    readonly property var storedBlocks: {
         const saved = root._list(SettingsConfig.bar?.blocks)
         const clean = BarOps.sanitize((saved && saved.length) ? saved : root.defaultBlocks(), {
             migrated: root.edgeV2 || root.dockConfig.edgeModel === true,
             dockItems: root._list(root.dockConfig.items),
             musicOn: (SettingsConfig.general ?? {}).dockMusicPlayer ?? true
         }, id => root.entry(id), root.anchorNames)
-        return root._stable("allBlocks", BarOps.upgradeBlocks(clean, SettingsConfig.bar))
+        return root._stable("storedBlocks", BarOps.upgradeBlocks(clean, SettingsConfig.bar))
+    }
+
+    readonly property var allBlocks: root._stable("allBlocks", root.storedBlocks.map(b => ({
+        id: b.id, anchor: b.anchor, edge: b.edge, items: b.items.filter(i => Features.barItemOn(i))
+    })))
+
+    function _withHidden(list) {
+        const hidden = []
+        for (const b of root.storedBlocks) {
+            const prevs = []
+            for (const i of b.items) {
+                if (!Features.barItemOn(i))
+                    hidden.push({ id: i, block: b, prevs: prevs.slice().reverse() })
+                prevs.push(i)
+            }
+        }
+        if (hidden.length === 0)
+            return list
+        const out = list.map(b => Object.assign({}, b, { items: root._list(b.items) ?? [] }))
+        const placed = {}
+        for (const b of out)
+            for (const i of b.items)
+                placed[i] = true
+        for (const h of hidden) {
+            if (placed[h.id])
+                continue
+            let done = false
+            for (const p of h.prevs) {
+                const t = out.find(b => b.items.indexOf(p) >= 0)
+                if (t) {
+                    t.items.splice(t.items.indexOf(p) + 1, 0, h.id)
+                    done = true
+                    break
+                }
+            }
+            if (!done) {
+                let t = out.find(b => b.id === h.block.id)
+                if (!t) {
+                    t = { id: h.block.id, anchor: h.block.anchor, edge: h.block.edge, items: [] }
+                    out.push(t)
+                }
+                t.items.splice(0, 0, h.id)
+            }
+            placed[h.id] = true
+        }
+        return out
     }
 
     readonly property var sideNames: ["top", "right", "bottom", "left"]
@@ -331,6 +377,7 @@ Singleton {
         return out
     }
     readonly property var hiddenItems: BarOps.hidden(root.catalog, root.allBlocks, root.groupedIds)
+        .filter(id => Features.barItemOn(id))
 
     property QtObject editor: null
 
@@ -404,6 +451,8 @@ Singleton {
     }
 
     function _patch(patch) {
+        if (patch.blocks && patch.blocks.length > 0)
+            patch = Object.assign({}, patch, { blocks: root._withHidden(patch.blocks) })
         SettingsConfig.bar = Object.assign({}, SettingsConfig.bar ?? {}, patch)
     }
 

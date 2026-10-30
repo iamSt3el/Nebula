@@ -116,12 +116,13 @@ Item {
             StageGap {}
 
             StageNavRow {
+                visible: Features.soundFx
                 icon: "equalizer"
-                tonal: ServiceSoundFx.enabled
+                tonal: Features.soundFx && ServiceSoundFx.enabled
                 title: "Sound effects"
-                subtitle: !ServiceSoundFx.enabled ? "Off" : ServiceSoundFx.styleLabel
+                subtitle: !(Features.soundFx && ServiceSoundFx.enabled) ? "Off" : ServiceSoundFx.styleLabel
                     + (ServiceSoundFx.bass !== 0 ? " · bass " + (ServiceSoundFx.bass > 0 ? "+" : "") + ServiceSoundFx.bass + " dB" : "")
-                value: ServiceSoundFx.enabled ? "On" : ""
+                value: Features.soundFx && ServiceSoundFx.enabled ? "On" : ""
                 target: "effects"
             }
 

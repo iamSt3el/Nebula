@@ -47,7 +47,8 @@ Item {
 
     Component.onCompleted: {
         ServiceDashData.retainSystem()
-        ServiceEvents.retain()
+        if (Features.events)
+            ServiceEvents.retain()
         root.settle()
         root.remember()
     }
@@ -59,7 +60,8 @@ Item {
     }
     Component.onDestruction: {
         ServiceDashData.releaseSystem()
-        ServiceEvents.release()
+        if (Features.events)
+            ServiceEvents.release()
     }
 
     Item {
@@ -87,7 +89,7 @@ Item {
         Behavior on opacity { EffectsAnim {} }
         transform: Translate { x: sub.active ? 0 : 40; Behavior on x { SpatialAnim {} } }
         sourceComponent: root.page === "wifi" ? wifiComp : root.page === "bluetooth" ? btComp
-            : root.page === "reading" ? readingComp : null
+            : root.page === "reading" && Features.reading ? readingComp : null
     }
 
     Component {

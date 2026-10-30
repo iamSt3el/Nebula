@@ -38,7 +38,8 @@ XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 # ── constants ─────────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/iamSt3el/Nebula.git"
-INSTALL_DIR="$XDG_CONFIG_HOME/quickshell"
+LEGACY_DIR="$XDG_CONFIG_HOME/quickshell"
+INSTALL_DIR="$LEGACY_DIR/nebula"
 VENV_DIR="$XDG_STATE_HOME/quickshell/.venv"
 PLUGIN_DIR="$INSTALL_DIR/plugins/WfRecorder"
 NEBULA_PLUGIN_DIR="$INSTALL_DIR/plugins/Nebula"
@@ -108,6 +109,10 @@ x() {
   done
 }
 
+legacy_install() {
+  [[ ! -e "$INSTALL_DIR" && -d "$LEGACY_DIR/.git" && -f "$LEGACY_DIR/cli/nebula/__main__.py" ]]
+}
+
 # ── guard: no sudo / root ─────────────────────────────────────────────────────
 [[ "$(whoami)" == "root" ]] && die "Run as your normal user, NOT as root or with sudo."
 
@@ -134,19 +139,24 @@ if [[ -n "$REMOTE_SHA" ]]; then
   echo -e "  ${DIM}latest${RESET}  ${CYAN}${REMOTE_SHA:0:7}${RESET}  ${DIM}$(date -d "$REMOTE_DATE" '+%Y-%m-%d %H:%M' 2>/dev/null)${RESET}"
 fi
 LOCAL_SHA=""
-if has git && [[ -d "$INSTALL_DIR/.git" ]]; then
-  LOCAL_SHA="$(git -C "$INSTALL_DIR" rev-parse HEAD 2>/dev/null)"
-  echo -e "  ${DIM}local${RESET}   ${CYAN}${LOCAL_SHA:0:7}${RESET}  ${DIM}$(git -C "$INSTALL_DIR" log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M' 2>/dev/null)${RESET}"
+LOCAL_DIR="$INSTALL_DIR"
+legacy_install && LOCAL_DIR="$LEGACY_DIR"
+if has git && [[ -d "$LOCAL_DIR/.git" ]]; then
+  LOCAL_SHA="$(git -C "$LOCAL_DIR" rev-parse HEAD 2>/dev/null)"
+  echo -e "  ${DIM}local${RESET}   ${CYAN}${LOCAL_SHA:0:7}${RESET}  ${DIM}$(git -C "$LOCAL_DIR" log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M' 2>/dev/null)${RESET}"
+fi
+if legacy_install; then
+  echo -e "  ${DIM}moves${RESET}   ${CYAN}${LEGACY_DIR}${RESET} ${DIM}→${RESET} ${CYAN}${INSTALL_DIR}${RESET}"
 fi
 SELF="$(readlink -f "$0" 2>/dev/null)"
-if [[ -n "$REMOTE_SHA" && -n "$LOCAL_SHA" && "$LOCAL_SHA" != "$REMOTE_SHA" && "$SELF" == "$INSTALL_DIR/install.sh" ]]; then
+if [[ -n "$REMOTE_SHA" && -n "$LOCAL_SHA" && "$LOCAL_SHA" != "$REMOTE_SHA" && "$SELF" == "$LOCAL_DIR/install.sh" ]]; then
   echo ""
   echo -e "  ${YELLOW}▲ This installer is from your local copy, which is behind GitHub.${RESET}"
   echo -e "  ${DIM}  For the latest installer run:${RESET} ${CYAN}bash <(curl -fsSL https://raw.githubusercontent.com/iamSt3el/Nebula/master/install.sh)${RESET}"
 fi
 echo ""
-echo -e "  ${DIM}Nebula's Hyprland config (hyprland.lua, lua/, nebula/) is copied into ~/.config/hypr,${RESET}"
-echo -e "  ${DIM}with the option to back up the folder first.${RESET}"
+echo -e "  ${DIM}If you already have ~/.config/hypr/hyprland.lua it is kept; Nebula only adds ~/.config/hypr/nebula/${RESET}"
+echo -e "  ${DIM}and one require line per file. Without one, Nebula's starter config is copied in.${RESET}"
 echo ""
 
 # ── sanity: must be Arch ──────────────────────────────────────────────────────
@@ -209,6 +219,17 @@ ok "AUR helper: $AUR_HELPER"
 
 # ── clone / update repo ───────────────────────────────────────────────────────
 step "Nebula source"
+if legacy_install; then
+  info "Nebula now lives in $INSTALL_DIR so other Quickshell configs can sit beside it."
+  "$LEGACY_DIR/bin/nebula" stop >/dev/null 2>&1 && info "Stopped the running shell so its folder can move"
+  MOVE_TMP="$XDG_CONFIG_HOME/.quickshell-nebula-move.$$"
+  mv "$LEGACY_DIR" "$MOVE_TMP" && mkdir -p "$LEGACY_DIR" && mv "$MOVE_TMP" "$INSTALL_DIR" \
+    || die "Could not move $LEGACY_DIR to $INSTALL_DIR"
+  ok "Moved $LEGACY_DIR → $INSTALL_DIR"
+  if grep -rqsF "$LEGACY_DIR/greeter.qml" /etc/greetd; then
+    warn "Your greetd config still runs $LEGACY_DIR/greeter.qml — change it to $INSTALL_DIR/greeter.qml"
+  fi
+fi
 if [[ -d "$INSTALL_DIR/.git" ]]; then
   warn "$INSTALL_DIR already exists."
   upd=y
@@ -394,6 +415,8 @@ else
   NEBULA_CMD="~/.local/bin/nebula"
   warn "nebula was not installed to $NEBULA_BIN — linked ~/.local/bin/nebula instead"
 fi
+MIGRATED="$("$INSTALL_DIR/bin/nebula" migrate --quiet 2>/dev/null)"
+[[ -n "$MIGRATED" ]] && ok "Settings moved to $XDG_CONFIG_HOME/nebula, history to $XDG_STATE_HOME/nebula"
 
 # ── wallpaper directory ───────────────────────────────────────────────────────
 step "Wallpaper directory"
@@ -470,29 +493,42 @@ ok "Templates in $MATUGEN_DIR/templates"
 
 # ── Hyprland config ───────────────────────────────────────────────────────────
 step "Hyprland config"
-hb=y
-if $ask; then
-  echo -e "  Back up ${CYAN}$HYPR_DIR${RESET} before Nebula's Hyprland config is copied in? [Y/n]"
-  read -rp "   ❯ " hb
-fi
-if [[ -d "$HYPR_DIR" && "${hb,,}" != "n" ]]; then
-  HYPR_BAK="$HYPR_DIR.bak.$(date +%s)"
-  cp -a "$HYPR_DIR" "$HYPR_BAK"
-  ok "Backed up to $HYPR_BAK"
+HYPR_OWN=false
+[[ -f "$HYPR_DIR/hyprland.lua" ]] && HYPR_OWN=true
+if $HYPR_OWN; then
+  info "Keeping your Hyprland config. Nebula only adds its own files in $HYPR_DIR/nebula/."
+else
+  hb=y
+  if $ask && [[ -d "$HYPR_DIR" ]]; then
+    echo -e "  Back up ${CYAN}$HYPR_DIR${RESET} before Nebula's starter config is copied in? [Y/n]"
+    read -rp "   ❯ " hb
+  fi
+  if [[ -d "$HYPR_DIR" && "${hb,,}" != "n" ]]; then
+    HYPR_BAK="$HYPR_DIR.bak.$(date +%s)"
+    cp -a "$HYPR_DIR" "$HYPR_BAK"
+    ok "Backed up to $HYPR_BAK"
+  fi
+  mkdir -p "$HYPR_DIR/lua"
+  cp "$INSTALL_DIR/config/hypr/hyprland.lua" "$HYPR_DIR/"
+  for f in "$INSTALL_DIR/config/hypr/lua/"*.lua; do
+    [[ "$(basename "$f")" == "colors.lua" && -f "$HYPR_DIR/lua/colors.lua" ]] && continue
+    cp "$f" "$HYPR_DIR/lua/"
+  done
 fi
 
-mkdir -p "$HYPR_DIR/lua" "$HYPR_DIR/nebula"
-cp "$INSTALL_DIR/config/hypr/hyprland.lua" "$HYPR_DIR/"
-for f in "$INSTALL_DIR/config/hypr/lua/"*.lua; do
-  [[ "$(basename "$f")" == "colors.lua" && -f "$HYPR_DIR/lua/colors.lua" ]] && continue
-  cp "$f" "$HYPR_DIR/lua/"
-done
+mkdir -p "$HYPR_DIR/nebula"
 for f in "$INSTALL_DIR/config/hypr/nebula/"*.lua; do
-  [[ "$(basename "$f")" == "settings.lua" && -f "$HYPR_DIR/nebula/settings.lua" ]] && continue
   cp "$f" "$HYPR_DIR/nebula/"
 done
 [[ "$NEBULA_CMD" != "nebula" ]] && sed -i "s|\"nebula start\"|\"$NEBULA_CMD start\"|" "$HYPR_DIR/nebula/autostart.lua"
-ok "hyprland.lua, lua/ and nebula/ → $HYPR_DIR"
+for f in "$HYPR_DIR/nebula/"{environment,autostart,keybinds,rules}.lua; do
+  "$INSTALL_DIR/bin/nebula" hypr require "$f" >/dev/null || warn "Could not add $(basename "$f") to hyprland.lua"
+done
+if $HYPR_OWN; then
+  ok "nebula/ → $HYPR_DIR (your hyprland.lua now requires it)"
+else
+  ok "Starter hyprland.lua, lua/ and nebula/ → $HYPR_DIR"
+fi
 
 # ── terminal: kitty, starship, fastfetch greeter ─────────────────────────────
 step "Terminal: kitty, Starship, greeter"
@@ -569,7 +605,12 @@ echo -e "  ${DIM}Reload your shell (or log out and back in) to pick up NEBULA_VE
 echo -e "  ${DIM}and QML_IMPORT_PATH.${RESET}"
 echo ""
 echo -e "${DIM}  ${RULE}${RESET}"
-echo -e "  ${BOLD}Hyprland${RESET}    ${CYAN}$HYPR_DIR/${RESET}  ${DIM}(hyprland.lua, lua/, nebula/)${RESET}"
+if $HYPR_OWN; then
+  echo -e "  ${BOLD}Hyprland${RESET}    ${CYAN}$HYPR_DIR/nebula/${RESET}  ${DIM}(your hyprland.lua is unchanged apart from the require lines)${RESET}"
+else
+  echo -e "  ${BOLD}Hyprland${RESET}    ${CYAN}$HYPR_DIR/${RESET}  ${DIM}(starter hyprland.lua, lua/, nebula/)${RESET}"
+fi
+echo -e "  ${DIM}Hyprland pages in Settings are off until you turn them on in Settings › Features.${RESET}"
 echo -e "  ${DIM}Log out and back in to start Nebula with Hyprland.${RESET}"
 echo ""
 echo -e "  ${YELLOW}Nebula needs Hyprland 0.56+ with a Lua config.${RESET} ${DIM}hyprland.conf is not supported.${RESET}"

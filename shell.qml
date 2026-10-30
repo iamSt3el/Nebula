@@ -34,7 +34,7 @@ import qs.modules.services
 import qs.modules.settings
 
 ShellRoot{
-    readonly property bool soundFxOn: ServiceSoundFx.enabled
+    readonly property bool soundFxOn: Features.soundFx && ServiceSoundFx.enabled
 
     DockServices{}
 
@@ -60,17 +60,17 @@ ShellRoot{
         }
     }
 
-    BooksPanel{}
+    LazyLoader { active: Features.books; BooksPanel {} }
 
     AppLauncher{}
-    ClipboardPocket{}
+    LazyLoader { active: Features.clipboard; ClipboardPocket {} }
     SettingsPanel{}
     QuickSettings{}
     ToolsWidget{}
 
     Shutdown{}
     Loader{
-        active: SettingsConfig.general.musicVisOn && !ServiceGameMode.hideWidgets
+        active: Features.visualiser && !ServiceGameMode.hideWidgets
         sourceComponent: Vis {}
     }
     
@@ -121,16 +121,16 @@ ShellRoot{
 
     WallpaperLayer {}
 
-    EdgeNotes {}
+    LazyLoader { active: Features.notes; EdgeNotes {} }
 
-    TuckTabs {}
+    LazyLoader { active: Features.tuck; TuckTabs {} }
 
     Spotlight {}
 
-    property bool screenTimeOn: ServiceScreenTime.enabled
-    property bool scenesReady: ServiceScenes.loaded
+    property bool screenTimeOn: Features.screenTime && ServiceScreenTime.enabled
+    property bool scenesReady: Features.scenes && ServiceScenes.loaded
     property bool layoutsReady: ServiceLayouts.ready
-    property bool readingOn: ServiceReading.active
+    property bool readingOn: Features.reading && ServiceReading.active
 
     // Lock screen - responds to `loginctl lock-session`
     LockScreen {}

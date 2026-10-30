@@ -33,18 +33,18 @@ Item {
 
     readonly property var shellActions: [
         { title: "New note", sub: "Pins a note to the screen edge", symbol: "sticky_note_2", words: "sticky memo add",
-          run: () => ServiceNotes.requestOpen(ServiceNotes.add()) },
+          feature: "notes", run: () => ServiceNotes.requestOpen(ServiceNotes.add()) },
         { title: "Take a screenshot", sub: "Select an area to capture", symbol: "screenshot_region", words: "capture snip screen",
           run: () => { GlobalStates.areaSelectMode = "screenshot"; GlobalStates.areaSelectOpen = true } },
         { title: "Clipboard history", sub: "Paste something you copied", symbol: "content_paste", words: "copy paste cliphist",
-          run: () => { GlobalStates.clipboardOpen = true } },
+          feature: "clipboard", run: () => { GlobalStates.clipboardOpen = true } },
         { title: "Change wallpaper", sub: "Opens the wallpaper picker", symbol: "wallpaper", words: "background image theme",
           run: () => { GlobalStates.wallpaperOpen = true } },
         { title: ServiceNotification.dnd ? "Turn off Do not disturb" : "Turn on Do not disturb",
           sub: "Silences notification popups", symbol: "do_not_disturb_on", words: "dnd quiet notifications mute",
           run: () => ServiceNotification.setDnd(!ServiceNotification.dnd, 0) },
         { title: "Reading filter", sub: "Warm, sepia or e-ink screen", symbol: "chrome_reader_mode", words: "eye night warm sepia eink",
-          run: () => ServiceReading.toggle() },
+          feature: "reading", run: () => ServiceReading.toggle() },
         { title: "Keep awake", sub: "Stops the screen from sleeping", symbol: "coffee", words: "caffeine idle inhibit",
           run: () => ServiceIdleInhibit.toggle() },
         { title: "Open settings", sub: "Shell settings", symbol: "settings", words: "preferences config",
@@ -122,6 +122,7 @@ Item {
     function shellItems() {
         const out = []
         for (const s of root.shellActions) {
+            if (s.feature && !Features.on(s.feature)) continue
             if (root.searching && !root.matches(s.title + " " + s.words)) continue
             out.push({ kind: "shell", title: s.title, sub: s.sub, label: "Shell", symbol: s.symbol, run: s.run,
                        rank: root.searching ? root.rank(s.title) : 0 })

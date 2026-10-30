@@ -69,7 +69,7 @@ Item {
         onRejected: GlobalStates.fileDialogOpen = false
     }
 
-    readonly property var hourly: (ServiceWeather.todayHourly ?? []).slice(1, 6)
+    readonly property var hourly: Features.weather ? (ServiceWeather.todayHourly ?? []).slice(1, 6) : []
     readonly property var captures: ServiceCaptures.items ?? []
     readonly property var shots: root.captures.filter(c => c.kind !== "video")
     readonly property var clips: root.captures.filter(c => c.kind === "video")
@@ -103,8 +103,9 @@ Item {
                         Layout.preferredHeight: 32
                         icon: "refresh"
                         iconSize: 18
-                        tip: ServiceWeather.isLoading ? "Refreshing" : "Refresh the weather"
-                        enabled: !ServiceWeather.isLoading
+                        visible: Features.weather
+                        tip: Features.weather && ServiceWeather.isLoading ? "Refreshing" : "Refresh the weather"
+                        enabled: Features.weather && !ServiceWeather.isLoading
                         onClicked: ServiceWeather.refresh()
                     }
                 }
@@ -114,6 +115,7 @@ Item {
                     spacing: 8
 
                     Rectangle {
+                        visible: Features.weather
                         Layout.fillWidth: true
                         Layout.preferredWidth: 3
                         implicitHeight: 132
@@ -130,8 +132,8 @@ Item {
                                 spacing: 10
 
                                 CustomText {
-                                    visible: !ServiceWeather.hasError
-                                    content: ServiceWeather.temperature
+                                    visible: Features.weather && !ServiceWeather.hasError
+                                    content: Features.weather ? ServiceWeather.temperature : ""
                                     family: SettingsConfig.general.displayFont ?? "Rubik"
                                     renderType: Text.QtRendering
                                     size: 30
@@ -140,7 +142,7 @@ Item {
 
                                 CustomText {
                                     Layout.fillWidth: true
-                                    content: ServiceWeather.hasError ? "Couldn't load the weather" : ServiceWeather.description + " in " + ServiceWeather.cityName
+                                    content: !Features.weather ? "" : ServiceWeather.hasError ? "Couldn't load the weather" : ServiceWeather.description + " in " + ServiceWeather.cityName
                                     size: 12
                                     weight: 500
                                     elide: Text.ElideRight
@@ -317,6 +319,7 @@ Item {
             StageHeading { text: "Where"; aside: "Places the apps read from and save to" }
 
             StageNavRow {
+                visible: Features.weather
                 tag: "Weather"; tagIcon: "sunny"; tagColor: Colors.tertiaryContainer; tagInk: Colors.tertiaryContainerText; tagWidth: 118
                 title: "Location"
                 subtitle: "City name or coordinates"
@@ -343,6 +346,7 @@ Item {
             StageHeading { text: "How"; aside: "Formats and units" }
 
             StageDropdownRow {
+                visible: Features.weather
                 tag: "Weather"; tagIcon: "sunny"; tagColor: Colors.tertiaryContainer; tagInk: Colors.tertiaryContainerText; tagWidth: 118
                 title: "Units"
                 subtitle: "Temperature, wind and distance"
@@ -374,9 +378,10 @@ Item {
             StageHeading { text: "When"; aside: "Timing and feedback" }
 
             StageDropdownRow {
+                visible: Features.weather
                 tag: "Weather"; tagIcon: "sunny"; tagColor: Colors.tertiaryContainer; tagInk: Colors.tertiaryContainerText; tagWidth: 118
                 title: "Update every"
-                subtitle: ServiceWeather.lastUpdated ? "Last updated " + Qt.formatTime(ServiceWeather.lastUpdated, "h:mm AP") : "At least 5 minutes"
+                subtitle: Features.weather && ServiceWeather.lastUpdated ? "Last updated " + Qt.formatTime(ServiceWeather.lastUpdated, "h:mm AP") : "At least 5 minutes"
                 options: [5, 15, 30, 60].map(m => m + " min")
                 current: root.refresh + " min"
                 dropdownWidth: 160

@@ -6,10 +6,11 @@ import shutil
 import sys
 from pathlib import Path
 
+from nebula.paths import SETTINGS, STATE_DIR
+
 HOME = Path.home()
 TEMPLATES = HOME / ".config" / "matugen" / "templates"
-SETTINGS = HOME / ".cache" / "quickshell" / "settings.json"
-MANIFEST = HOME / ".cache" / "quickshell" / "theme-apps-written.json"
+MANIFEST = STATE_DIR / "theme-apps-written.json"
 
 TMUX_HOOK = (
     'L="$HOME/.tmux.conf.local"; C="$HOME/.config/tmux/colors.conf"; '

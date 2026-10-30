@@ -274,7 +274,7 @@ Singleton {
 
     FileView {
         id: store
-        path: root.dir + "/shelf.json"
+        path: Paths.stateDir + "/books-shelf.json"
         blockLoading: false
         printErrors: false
         onLoaded: {

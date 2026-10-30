@@ -1,5 +1,6 @@
 import QtQuick
 import qs.modules.utils
+import qs.modules.settings
 import qs.modules.customComponents
 
 Item {
@@ -8,7 +9,7 @@ Item {
     property Item host: null
     property string itemId: ""
 
-    readonly property var members: BarLayout.groupMembers(root.itemId)
+    readonly property var members: BarLayout.groupMembers(root.itemId).filter(i => Features.barItemOn(i))
     readonly property real gap: BarLayout.chipGap(root.itemId,
                                                   BarLayout.itemGap > 0 ? BarLayout.itemGap : 6)
     readonly property bool shown: root.shownCount > 0 || root.editing

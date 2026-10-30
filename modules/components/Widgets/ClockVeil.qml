@@ -90,10 +90,10 @@ WidgetHost {
                         CustomText { anchors.verticalCenter: parent.verticalCenter; content: ServiceNetwork.connectionLabel !== "" ? ServiceNetwork.connectionLabel : "Offline"; size: 15; weight: 500; customColor: t.inkVariant }
                     }
                     Row {
-                        visible: ServiceWeather.currentCondition !== null
+                        visible: Features.weather && ServiceWeather.currentCondition !== null
                         spacing: 6
-                        MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; content: ServiceWeather.weatherIconPath?.icon ?? "cloud"; iconSize: 18; customColor: t.accent }
-                        CustomText { anchors.verticalCenter: parent.verticalCenter; content: ServiceWeather.temperature; size: 15; weight: 500; customColor: t.inkVariant }
+                        MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; content: Features.weather ? (ServiceWeather.weatherIconPath?.icon ?? "cloud") : "cloud"; iconSize: 18; customColor: t.accent }
+                        CustomText { anchors.verticalCenter: parent.verticalCenter; content: Features.weather ? ServiceWeather.temperature : ""; size: 15; weight: 500; customColor: t.inkVariant }
                     }
                 }
             }

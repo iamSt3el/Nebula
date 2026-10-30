@@ -37,7 +37,7 @@ Item {
                 for (const h of c.info)
                     root.push(map, root.keyOf(root.cellDate(c)), { title: h.name, time: "", holiday: true })
         }
-        const evs = ServiceEvents.between(from, to, false)
+        const evs = Features.events ? ServiceEvents.between(from, to, false) : []
         for (const e of evs) {
             const s = Math.max(from, ServiceEvents.startMs(e))
             const end = Math.min(to, Math.max(ServiceEvents.endMs(e), s + 1))
@@ -50,9 +50,10 @@ Item {
 
     Component.onCompleted: {
         ServiceClock.ensureHolidaysForYear(root.vy)
-        ServiceEvents.retain()
+        if (Features.events)
+            ServiceEvents.retain()
     }
-    Component.onDestruction: ServiceEvents.release()
+    Component.onDestruction: if (Features.events) ServiceEvents.release()
     onVyChanged: ServiceClock.ensureHolidaysForYear(root.vy)
 
     function midnight(d) {

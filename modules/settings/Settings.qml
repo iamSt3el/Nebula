@@ -154,6 +154,10 @@ Singleton{
         {
             name: "Profile",
             icon: "account_circle"
+        },
+        {
+            name: "Features",
+            icon: "toggle_on"
         }
     ]
 

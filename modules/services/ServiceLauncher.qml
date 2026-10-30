@@ -273,7 +273,7 @@ Singleton {
 
     FileView {
         id: emojiFile
-        path: Quickshell.env("HOME") + "/.config/quickshell/assets/emoji.json"
+        path: Quickshell.shellPath("assets/emoji.json")
         onLoaded: {
             try {
                 root._emoji = JSON.parse(text())

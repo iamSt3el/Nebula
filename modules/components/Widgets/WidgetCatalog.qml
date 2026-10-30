@@ -89,7 +89,11 @@ Singleton {
     // styleKey  — the key holding which variant is active (omitted if only one)
     // style     — this card's variant value
     // def       — the family's default variant, for the ?? fallback
-    readonly property var catalog: [
+    readonly property var catalog: root.allCatalog
+        .map(sec => Object.assign({}, sec, { items: sec.items.filter(i => Features.widgetOn(i.show)) }))
+        .filter(sec => sec.items.length > 0)
+
+    readonly property var allCatalog: [
         { section: "Personal", icon: "person", items: [
             { label: "Badge", key: "profileBadge", comp: root.cProfileBadge, show: "showProfileBadge" },
             { label: "Your day", key: "profileDay", comp: root.cProfileDay, show: "showProfileDay" },

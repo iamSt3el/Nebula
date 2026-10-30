@@ -18,7 +18,7 @@ Scope {
 
     CenterPanel {
         name: "clipboardCenter"
-        open: GlobalStates.clipboardOpen && (SettingsConfig.general.clipboardPanelMode ?? "dock") === "center"
+        open: Features.clipboard && GlobalStates.clipboardOpen && (SettingsConfig.general.clipboardPanelMode ?? "dock") === "center"
         panelWidth: Appearance.size.wallpaperPanelWidth
         panelHeight: Appearance.size.wallpaperPanelHeight
         content: (SettingsConfig.general.clipboardStyle ?? "list") === "fan" ? fanComp
@@ -28,7 +28,7 @@ Scope {
 
     CenterPanel {
         name: "phone"
-        open: GlobalStates.phoneOpen
+        open: Features.phone && GlobalStates.phoneOpen
         panelWidth: 440
         panelHeight: 720
         content: Component { PhonePanel { onClosed: GlobalStates.phoneOpen = false } }
@@ -37,7 +37,7 @@ Scope {
 
     CenterPanel {
         name: "phoneFiles"
-        open: GlobalStates.phoneBrowserOpen
+        open: Features.phone && GlobalStates.phoneBrowserOpen
         panelWidth: 1040
         panelHeight: 660
         content: Component {

@@ -564,43 +564,43 @@ PanelWindow{
         Component { id: analogShape;   AnalogClockShape   {} }
 
         Loader {
-            active: SettingsConfig.widgets.showWeatherHourly ?? false
+            active: Features.widgetOn("showWeatherHourly") && (SettingsConfig.widgets.showWeatherHourly ?? false)
             visible: active
             sourceComponent: WeatherHourlyWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showWeatherPoster ?? false
+            active: Features.widgetOn("showWeatherPoster") && (SettingsConfig.widgets.showWeatherPoster ?? false)
             visible: active
             sourceComponent: WeatherPosterWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showWeatherHours ?? false
+            active: Features.widgetOn("showWeatherHours") && (SettingsConfig.widgets.showWeatherHours ?? false)
             visible: active
             sourceComponent: WeatherHoursWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showWeatherDayClock ?? false
+            active: Features.widgetOn("showWeatherDayClock") && (SettingsConfig.widgets.showWeatherDayClock ?? false)
             visible: active
             sourceComponent: WeatherDayClockWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showWeatherWind ?? false
+            active: Features.widgetOn("showWeatherWind") && (SettingsConfig.widgets.showWeatherWind ?? false)
             visible: active
             sourceComponent: WeatherWindWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showClaudeCode ?? false
+            active: Features.widgetOn("showClaudeCode") && (SettingsConfig.widgets.showClaudeCode ?? false)
             visible: active
             sourceComponent: ClaudeCodeWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showSunArc ?? false
+            active: Features.widgetOn("showSunArc") && (SettingsConfig.widgets.showSunArc ?? false)
             visible: active
             sourceComponent: SunArcWidget {}
         }
@@ -750,25 +750,25 @@ PanelWindow{
         }
 
         Loader {
-            active: SettingsConfig.widgets.showHeadlines ?? false
+            active: Features.widgetOn("showHeadlines") && (SettingsConfig.widgets.showHeadlines ?? false)
             visible: active
             sourceComponent: HeadlinesWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showYearAgo ?? false
+            active: Features.widgetOn("showYearAgo") && (SettingsConfig.widgets.showYearAgo ?? false)
             visible: active
             sourceComponent: YearAgoWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showPhone ?? false
+            active: Features.widgetOn("showPhone") && (SettingsConfig.widgets.showPhone ?? false)
             visible: active
             sourceComponent: PhoneWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showCountdowns ?? false
+            active: Features.widgetOn("showCountdowns") && (SettingsConfig.widgets.showCountdowns ?? false)
             visible: active
             sourceComponent: CountdownsWidget {}
         }

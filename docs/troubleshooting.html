@@ -36,7 +36,7 @@
    that the variable is exported and that the plugin was actually built:</p>
 
 <div class="code"><span class="lang">bash</span><pre><span class="pr">$ </span>echo $QML_IMPORT_PATH
-<span class="pr">$ </span>bash ~/.config/quickshell/plugins/WfRecorder/build.sh</pre></div>
+<span class="pr">$ </span>bash ~/.config/quickshell/nebula/plugins/WfRecorder/build.sh</pre></div>
 
 <p>It has to be set for the process that launches Quickshell, so put it in your
    Hyprland config rather than only in your shell profile — see
@@ -63,12 +63,16 @@
 
 <p>The greetd greeter runs as its own user, not as you, so it cannot read files under
    your home directory that are locked to your account. The usual blockers are
-   <code>~/.cache</code> at mode <code>700</code> and <code>colors.json</code> at <code>600</code>.</p>
+   <code>~/.cache</code> at mode <code>700</code>, <code>colors.json</code> at <code>600</code>
+   and <code>~/.config/nebula</code>, where your settings live.</p>
 
 <p>Grant the greeter user read access with an ACL:</p>
 
 <div class="code"><span class="lang">bash</span><pre><span class="pr">$ </span>setfacl -m u:greeter:rx ~/.cache/quickshell
-<span class="pr">$ </span>setfacl -m u:greeter:r  ~/.cache/quickshell/colors.json</pre></div>
+<span class="pr">$ </span>setfacl -m u:greeter:r  ~/.cache/quickshell/colors.json
+<span class="pr">$ </span>setfacl -m u:greeter:rx ~/.config/nebula
+<span class="pr">$ </span>setfacl -d -m u:greeter:r ~/.config/nebula
+<span class="pr">$ </span>setfacl -m u:greeter:r  ~/.config/nebula/settings.json</pre></div>
 
 <div class="callout">
   <div class="hd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>A default ACL on its own is not enough</div>

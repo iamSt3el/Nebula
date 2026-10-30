@@ -160,6 +160,7 @@ ColumnLayout {
                                 }
                             }
                             TileAction {
+                                visible: Features.phone
                                 icon: "smartphone"; tip: "Send to phone"
                                 onActivated: {
                                     ServicePhone.share([cell.modelData.path])
