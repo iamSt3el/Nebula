@@ -10,6 +10,11 @@ Loader {
     property bool preview: false
     property bool exiting: false
     property bool greeter: false
+    property bool handoff: false
+    property real handoffReveal: 1
+    property bool handoffDate: false
+    property var sources: ({})
+    property url desk: ""
     property var cfg: root.greeter ? LockSession.greeterCfg : LockSession.lockCfg
 
     readonly property Item authField: root.item ? root.item.authField : null
@@ -17,20 +22,18 @@ Loader {
     sourceComponent: {
         switch (LockCatalog.normalize(root.variant)) {
         case "bloom":    return cBloom
-        case "orbit":    return cOrbit
-        case "darkroom": return cDarkroom
         case "deck":     return cDeck
         case "tessera":  return cTessera
-        case "tear":     return cTear
+        case "window":   return cWindow
+        case "snapshot": return cSnapshot
         default:         return cVeil
         }
     }
 
-    Component { id: cVeil;     LockLayoutVeil     { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg } }
+    Component { id: cVeil;     LockLayoutVeil     { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg; handoff: root.handoff; handoffReveal: root.handoffReveal; handoffDate: root.handoffDate } }
     Component { id: cBloom;    LockLayoutBloom    { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg } }
-    Component { id: cOrbit;    LockLayoutOrbit    { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg } }
-    Component { id: cDarkroom; LockLayoutDarkroom { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg } }
     Component { id: cDeck;     LockLayoutDeck     { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg } }
     Component { id: cTessera;  LockLayoutTessera  { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg } }
-    Component { id: cTear;     LockLayoutTear     { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg } }
+    Component { id: cWindow;   LockLayoutWindow   { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg; handoff: root.handoff; handoffReveal: root.handoffReveal; handoffDate: root.handoffDate } }
+    Component { id: cSnapshot; LockLayoutSnapshot { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg; sources: root.sources; desk: root.desk } }
 }

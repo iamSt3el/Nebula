@@ -119,7 +119,7 @@ WidgetHost {
                         spacing: 12
                         Repeater {
                             model: 2
-                            Rectangle { width: 10; height: 10; radius: 5; color: Colors.surfaceText }
+                            Rectangle { width: 10; height: 10; radius: 5; color: t.ink }
                         }
                     }
                 }
@@ -144,6 +144,7 @@ WidgetHost {
                     content: t.weekday + ", " + t.month + " " + t.day
                     size: 17
                     weight: 600
+                    customColor: t.ink
                 }
             }
         }

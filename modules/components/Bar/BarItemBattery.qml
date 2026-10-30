@@ -24,13 +24,14 @@ Rectangle {
     readonly property real padPx: root.plate - root.iconPx
     readonly property bool low: ServiceUPower.powerLevel < 0.2 && !ServiceUPower.isCharging
     readonly property string style: BarLayout.opt(root.itemId, "style") ?? "icon"
-    readonly property bool shaped: root.style === "fill" || root.style === "shape"
+    readonly property bool shaped: root.style === "fill" || root.style === "shape" || root.style === "sweep"
     readonly property bool showPercent: BarLayout.opt(root.itemId, "showPercent") === true
         && root.style !== "pill" && !root.shaped
     readonly property bool glyph: ["cell", "pill", "ring", "tall", "bars"].indexOf(root.style) >= 0
     readonly property bool bigCookie: root.shaped && !!root.host && root.host.split === true
     readonly property string plateShape: root.bigCookie ? (BarLayout.opt(root.itemId, "shape") ?? "cookie9") : ""
     readonly property bool hoverPlate: !root.shaped
+    readonly property real plateInset: root.bigCookie && root.style === "shape" ? battMeter.ring : 0
     readonly property color plateTone: root.bigCookie ? (root.host.plateFill ?? Colors.surface) : Colors.surface
     readonly property string iconName: {
         if (ServiceUPower.isCharging) return "battery_android_bolt"
@@ -87,12 +88,15 @@ Rectangle {
         verticalItemAlignment: Grid.AlignVCenter
 
         BarShapeMeter {
+            id: battMeter
             visible: root.shaped
             width: root.bigCookie ? BarLayout.plateH(root.itemId, root.host.barH) : Math.round(root.iconPx * 1.45)
             height: width
             value: ServiceUPower.powerLevel
             shape: BarLayout.opt(root.itemId, "shape") ?? "cookie9"
+            thickness: BarLayout.opt(root.itemId, "thickness") ?? -1
             filled: root.style === "fill"
+            sweep: root.style === "sweep"
             angle: BarLayout.itemStyle(root.itemId, "rotate", 0)
             icon: root.iconName
             iconSize: BarLayout.itemStyle(root.itemId, "iconSize", 0)

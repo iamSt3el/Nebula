@@ -49,6 +49,7 @@ Singleton {
         readonly property int fastDuration:    root.expressive ? 350 : 220
         readonly property int defaultDuration: root.expressive ? 500 : 315
         readonly property int slowDuration:    root.expressive ? 650 : 480
+        readonly property int moveDuration:    450
 
         readonly property var fastCurve:    root.expressive ? [0.42, 1.67, 0.21, 0.90, 1, 1]
                                                             : [0.25, 0.35, 0.11, 1.14, 1, 1]
@@ -66,12 +67,14 @@ Singleton {
     }
 
     function spatialDuration(speed) {
+        if (speed === "move") return root.spatial.moveDuration
         if (speed === "fast") return root.spatial.fastDuration
         if (speed === "slow") return root.spatial.slowDuration
         return root.spatial.defaultDuration
     }
 
     function spatialCurve(speed) {
+        if (speed === "move") return root.emphasizedCurve
         if (speed === "fast") return root.spatial.fastCurve
         if (speed === "slow") return root.spatial.slowCurve
         return root.spatial.defaultCurve

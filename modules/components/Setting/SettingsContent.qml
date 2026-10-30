@@ -27,13 +27,21 @@ Item {
             if (GlobalStates.settingsOpen) {
                 root.currentPage = GlobalStates.settingsPage
                 rescanTimer.restart()
-            } else
+            } else {
+                root.prefetchPage = -1
                 GlobalStates.settingsPage = root.firstPage   // plain reopen lands on page one
+            }
         }
     }
 
     property real t: 0
-    Component.onCompleted: root.t = Qt.binding(() => GlobalStates.settingsOpen ? 1 : 0)
+    Component.onCompleted: {
+        if (GlobalStates.settingsOpen) {
+            root.currentPage = GlobalStates.settingsPage
+            root.shownPage = root.currentPage
+        }
+        root.t = Qt.binding(() => GlobalStates.settingsOpen ? 1 : 0)
+    }
     Behavior on t {
         NumberAnimation {
             duration: GlobalStates.settingsOpen ? M3Motion.panel.openDuration : M3Motion.panel.closeDuration
@@ -48,33 +56,63 @@ Item {
 
     // Section → page-index mapping
     readonly property var navSections: [
-        { label: "System",  indices: [9, 14, 0, 12, 1, 2, 3, 13, 10, 11] },
-        { label: "Desktop", indices: [15, 16, 17, 18] },
+        { label: "Look",    indices: [0, 3, 14] },
+        { label: "System",  indices: [1, 2, 12] },
+        { label: "Desktop", indices: [15, 16, 17] },
         { label: "Connect", indices: [4, 5] },
-        { label: "Apps",    indices: [6, 7, 8] }
+        { label: "More",    indices: [6, 8] }
     ]
+
+    readonly property var merges: [
+        { pages: [0, 9], name: "Appearance", icon: "palette", tabs: ["Wallpaper & colours", "Fonts & bar"] },
+        { pages: [3, 13], name: "Widgets", icon: "widgets", tabs: ["Widgets", "Sticky notes"] },
+        { pages: [12, 10], name: "Lock & sleep", icon: "lock", tabs: ["Lock screen", "Sleep"] },
+        { pages: [17, 18], name: "Keyboard & mouse", icon: "keyboard", tabs: ["Mouse & keyboard", "Shortcuts"] },
+        { pages: [6, 7], name: "Built-in apps", icon: "apps", tabs: ["Weather", "Screenshots & recording"] },
+        { pages: [8, 11], name: "About", icon: "info", tabs: ["Nebula", "Storage"] }
+    ]
+
+    function mergeOf(p) {
+        return root.merges.find(m => m.pages.indexOf(p) >= 0) ?? null
+    }
+
+    function leadOf(p) {
+        const m = root.mergeOf(p)
+        return m ? m.pages[0] : p
+    }
+
+    function nameOf(p) {
+        const m = root.mergeOf(p)
+        return m ? m.name : (Settings.pages[p]?.name ?? "")
+    }
+
+    function iconOf(p) {
+        const m = root.mergeOf(p)
+        return m ? m.icon : (Settings.pages[p]?.icon ?? "")
+    }
+
+    function placeOf(p) {
+        const m = root.mergeOf(p)
+        return m ? m.name + "  ›  " + m.tabs[m.pages.indexOf(p)] : (Settings.pages[p]?.name ?? "")
+    }
+
 
     // Whatever sits at the top of the sidebar — not necessarily page 0
     readonly property int firstPage: navSections[0].indices[0]
 
     readonly property var pageFiles: ["Theme", "Sound", "Notifications", "Widgets", "Networking", "Bluetooth",
-        "WeatherSettings", "MediaSettings", "About", "AppearanceSettings", "Sleep", "Storage", "Lockscreen",
-        "NotesSettings", "LayoutsSettings", "DisplaysSettings", "WindowsSettings", "InputSettings", "Keybindings",
+        "WeatherSettings", "", "About", "", "", "", "Lockscreen",
+        "", "LayoutsSettings", "DisplaysSettings", "WindowsSettings", "InputSettings", "",
         "ProfileSettings"]
 
-    readonly property var railOrder: root.navSections.reduce((all, g) => all.concat(g.indices), [])
+    readonly property var railOrder: root.navSections.reduce((all, g) =>
+        all.concat(g.indices.reduce((row, i) => row.concat(root.mergeOf(i)?.pages ?? [i]), [])), [])
     readonly property bool showSections: SettingsConfig.general.settingsSections ?? true
-    readonly property bool railWide: SettingsConfig.general.settingsRailWide ?? false
-    readonly property real railTarget: root.railWide ? 196 : 58
-    property real railW: root.railTarget
-    Behavior on railW { enabled: root.t > 0.5; SpatialAnim {} }
-    property real heldPageW: -1
     readonly property bool tocWanted: root.showSections && root.sections.length >= 2
     property real tocT: root.tocWanted ? 1 : 0
     Behavior on tocT { enabled: root.t > 0.5; SpatialAnim {} }
     readonly property bool tocSpace: root.tocWanted || root.tocT > 0.01
 
-    readonly property real titleH: 52
     property bool statusMenuOpen: false
     readonly property bool focusing: ServiceFocus.phase === "focus" || ServiceFocus.phase === "break"
     readonly property string mode: root.focusing ? "focus" : ServiceNotification.dnd ? "quiet" : "available"
@@ -95,35 +133,107 @@ Item {
             ServiceFocus.stop()
         ServiceNotification.setDnd(m === "quiet")
     }
-    readonly property real pageW: root.heldPageW >= 0 ? root.heldPageW : frame.width - root.railTarget
+    readonly property bool islandWide: SettingsConfig.general.settingsRailWide ?? false
+    property real islandW: root.islandWide ? 204 : 62
+    Behavior on islandW { enabled: root.t > 0.5; SpatialAnim {} }
+    readonly property string groupName: root.shownPage === 19 ? "You"
+        : root.navSections.find(g => g.indices.indexOf(root.leadOf(root.shownPage)) >= 0)?.label ?? ""
+    property point menuAt: Qt.point(0, 0)
+    property point searchAt: Qt.point(0, 0)
 
-    onRailWideChanged: {
-        if (root.t < 0.5)
-            return
-        root.heldPageW = frame.width - (root.railWide ? 58 : 196)
-        pageRelease.restart()
-    }
-
-    Timer {
-        id: pageRelease
-        interval: M3Motion.spatialDuration("default") + 120
-        onTriggered: root.heldPageW = -1
+    function pageStatus(i) {
+        switch (i) {
+        case 1:
+            return ServicePipewire.muted ? "Muted" : Math.round(ServicePipewire.volume * 100) + "%"
+        case 2:
+            return ServiceNotification.dnd ? "Do not disturb" : ""
+        case 4:
+            if (ServiceNetwork.connectionType === "ethernet")
+                return ServiceNetwork.currentSSID !== "" ? "Ethernet, " + ServiceNetwork.currentSSID + " as backup" : "Ethernet"
+            return ServiceNetwork.connectionType === "wifi" ? ServiceNetwork.currentSSID : "Not connected"
+        case 5: {
+            if (!ServiceBluetooth.state)
+                return "Off"
+            const on = ServiceBluetooth.connectedDevicesList
+            return on.length === 0 ? "On" : ServiceBluetooth.nameOf(on[0]) + (on.length > 1 ? " +" + (on.length - 1) : "") + " connected"
+        }
+        case 6:
+            return ServiceWeather.temperature !== "" ? ServiceWeather.location + " · " + ServiceWeather.temperature : ""
+        }
+        return ""
     }
     property int shownPage: firstPage
+    property int incomingPage: -1
+    property int retiringPage: -1
+    property int prefetchPage: -1
     property int swapDir: 1
+    property real pageOpacity: 1
+
+    function slotFor(p) {
+        for (let i = 0; i < pageHost.children.length; i++)
+            if (pageHost.children[i].page === p)
+                return pageHost.children[i]
+        return null
+    }
+
+    function prefetch(p) {
+        const lead = root.leadOf(p)
+        if (lead !== root.shownPage && lead !== root.incomingPage)
+            root.prefetchPage = lead
+    }
+
+    function finishSwap() {
+        const slot = root.slotFor(root.incomingPage)
+        if (!slot || slot.status !== Loader.Ready)
+            return
+        pageIn.stop()
+        pageOut.stop()
+        const old = root.slotFor(root.shownPage)
+        root.retiringPage = root.shownPage
+        root.shownPage = root.incomingPage
+        root.incomingPage = -1
+        if (root.prefetchPage === root.shownPage)
+            root.prefetchPage = -1
+        root.pageItem = slot.item
+        slot.opacity = 0
+        slot.shift = root.swapDir * 20
+        root.pageOpacity = 0
+        if (old) {
+            pageOut.target = old
+            pageOut.start()
+        }
+        inFade.target = slot
+        inSlide.target = slot
+        pageIn.start()
+    }
 
     onCurrentPageChanged: {
-        if (root.currentPage === root.shownPage && !pageSwap.running)
-            return
-        root.swapDir = root.railOrder.indexOf(root.currentPage) >= root.railOrder.indexOf(root.shownPage) ? 1 : -1
-        if (!GlobalStates.settingsOpen || root.t < 0.5) {
-            pageSwap.stop()
-            root.shownPage = root.currentPage
-            pageHost.opacity = 1
-            pageShift.y = 0
+        if (root.leadOf(root.currentPage) !== root.currentPage) {
+            root.currentPage = root.leadOf(root.currentPage)
             return
         }
-        pageSwap.restart()
+        if (!GlobalStates.settingsOpen || root.t < 0.5) {
+            pageIn.stop()
+            pageOut.stop()
+            root.incomingPage = -1
+            root.retiringPage = -1
+            root.prefetchPage = -1
+            root.shownPage = root.currentPage
+            const s = root.slotFor(root.shownPage)
+            if (s) {
+                s.opacity = 1
+                s.shift = 0
+            }
+            root.pageOpacity = 1
+            return
+        }
+        if (root.currentPage === root.shownPage) {
+            root.incomingPage = -1
+            return
+        }
+        root.swapDir = root.railOrder.indexOf(root.currentPage) >= root.railOrder.indexOf(root.shownPage) ? 1 : -1
+        root.incomingPage = root.currentPage
+        root.finishSwap()
     }
 
     property Item pageItem: null
@@ -141,6 +251,7 @@ Item {
 
     property Item tipItem: null
     property string tipText: ""
+    property string tipSub: ""
     property real tipX: 0
     property real tipY: 0
     property bool tipBelow: false
@@ -152,9 +263,11 @@ Item {
             return []
         const out = []
         for (let p = 0; p < Settings.pages.length; p++) {
-            const at = Settings.pages[p].name.toLowerCase().indexOf(q)
+            const m = root.mergeOf(p)
+            const names = [Settings.pages[p].name].concat(m ? [m.name, m.tabs[m.pages.indexOf(p)]] : [])
+            const at = names.map(n => n.toLowerCase().indexOf(q)).filter(i => i >= 0).sort((a, b) => a - b)[0] ?? -1
             if (at >= 0)
-                out.push({ page: p, section: "", label: Settings.pages[p].name, isPage: true, rank: at === 0 ? 0 : 1 })
+                out.push({ page: p, section: "", label: root.placeOf(p), isPage: true, rank: at === 0 ? 0 : 1 })
         }
         for (let i = 0; i < root.searchIndex.length; i++) {
             const e = root.searchIndex[i]
@@ -373,9 +486,10 @@ Item {
         })
     }
 
-    function showTip(item, label, below) {
+    function showTip(item, label, below, sub) {
         root.tipItem = item
         root.tipText = label
+        root.tipSub = sub ?? ""
         root.tipBelow = below === true
         const at = item.mapToItem(frame, item.width, root.tipBelow ? item.height : item.height / 2)
         root.tipX = at.x
@@ -432,32 +546,54 @@ Item {
         delegate: FileView {
             required property string modelData
             required property int index
-            path: Quickshell.shellDir + "/modules/components/Setting/" + modelData + ".qml"
+            path: modelData === "" ? "" : Quickshell.shellDir + "/modules/components/Setting/" + modelData + ".qml"
             onLoaded: root.indexPage(index, text())
         }
     }
 
-    SequentialAnimation {
-        id: pageSwap
+    NumberAnimation {
+        id: pageOut
+        property: "opacity"
+        to: 0
+        duration: M3Motion.effects.fastDuration
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: [0.3, 0, 0.8, 0.15, 1, 1]
+    }
 
+    SequentialAnimation {
+        id: pageIn
         ParallelAnimation {
-            NumberAnimation { target: pageHost; property: "opacity"; to: 0; duration: 90 }
+            SequentialAnimation {
+                PauseAnimation { duration: 60 }
+                ParallelAnimation {
+                    NumberAnimation {
+                        id: inFade
+                        property: "opacity"
+                        to: 1
+                        duration: M3Motion.effects.slowDuration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: [0.34, 0.88, 0.34, 1, 1, 1]
+                    }
+                    NumberAnimation {
+                        target: root
+                        property: "pageOpacity"
+                        to: 1
+                        duration: M3Motion.effects.slowDuration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: [0.34, 0.88, 0.34, 1, 1, 1]
+                    }
+                }
+            }
             NumberAnimation {
-                target: pageShift; property: "y"; to: -root.swapDir * 14
-                duration: 90; easing.type: Easing.InCubic
+                id: inSlide
+                property: "shift"
+                to: 0
+                duration: 420
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: [0.05, 0.7, 0.1, 1, 1, 1]
             }
         }
-        ScriptAction {
-            script: {
-                root.shownPage = root.currentPage
-                pageShift.y = root.swapDir * 28
-            }
-        }
-        PauseAnimation { duration: 24 }
-        ParallelAnimation {
-            EffectsAnim { target: pageHost; property: "opacity"; to: 1 }
-            SpatialAnim { target: pageShift; property: "y"; to: 0 }
-        }
+        ScriptAction { script: root.retiringPage = -1 }
     }
 
     Shortcut {
@@ -485,66 +621,105 @@ Item {
     }
 
     component PageSlot: Loader {
+        id: slot
         required property int page
+        property real shift: 0
         anchors.fill: parent
-        active: root.shownPage === page
-        visible: active
-        onLoaded: root.pageItem = item
+        asynchronous: slot.page !== root.incomingPage
+        active: slot.page === root.shownPage || slot.page === root.incomingPage
+            || slot.page === root.retiringPage || slot.page === root.prefetchPage
+        visible: slot.status === Loader.Ready
+            && (slot.page === root.shownPage || (slot.page === root.retiringPage && slot.opacity > 0.01))
+        layer.enabled: slot.visible && slot.opacity > 0.01 && slot.opacity < 0.99
+        transform: Translate { y: slot.shift }
+        onLoaded: {
+            if (slot.page === root.shownPage)
+                root.pageItem = slot.item
+            else if (slot.page === root.incomingPage)
+                Qt.callLater(root.finishSwap)
+        }
     }
 
-    component RailButton: Item {
-        id: railButton
+    component IslandButton: Item {
+        id: islandButton
         property string icon: ""
         property string label: ""
+        property int page: -1
         property bool active: false
         signal clicked()
 
-        Layout.fillWidth: true
-        implicitWidth: 38
-        implicitHeight: 34
-        clip: true
+        implicitWidth: root.islandWide ? root.islandW - 16 : 46
+        implicitHeight: 42
 
         Rectangle {
-            anchors.fill: parent
-            radius: 12
-            color: railButton.active ? Colors.primary
-                 : railMouse.containsMouse ? Colors.surfaceContainerHighest : Qt.alpha(Colors.surfaceContainerHighest, 0)
+            anchors.centerIn: parent
+            width: root.islandWide ? islandButton.width : islandButton.active ? 46 : 40
+            height: islandButton.active ? 42 : 40
+            radius: root.islandWide ? height / 2 : islandButton.active ? 15 : 20
+            color: islandButton.active ? Colors.primary
+                 : islandMouse.containsMouse ? Colors.surfaceContainerHighest : Qt.alpha(Colors.surfaceContainerHighest, 0)
+            Behavior on width { SpatialAnim { speed: "fast" } }
+            Behavior on height { SpatialAnim { speed: "fast" } }
+            Behavior on radius { SpatialAnim { speed: "fast" } }
             Behavior on color { EffectsColorAnim {} }
         }
 
         MaterialIconSymbol {
-            x: 10
+            id: islandIcon
+            x: root.islandWide ? 13 : Math.round((islandButton.width - width) / 2)
             anchors.verticalCenter: parent.verticalCenter
-            content: railButton.icon
-            iconSize: 18
-            fill: railButton.active ? 1 : 0
-            customColor: railButton.active ? Colors.primaryText
-                       : railMouse.containsMouse ? Colors.surfaceText : Colors.surfaceVariantText
-            Behavior on fill { NumberAnimation { duration: 180 } }
+            content: islandButton.icon
+            iconSize: 19
+            fill: 1
+            customColor: islandButton.active ? Colors.primaryText
+                       : islandMouse.containsMouse ? Colors.surfaceText : Colors.surfaceVariantText
         }
 
         CustomText {
-            x: 40
+            x: 44
             anchors.verticalCenter: parent.verticalCenter
-            opacity: root.railWide ? 1 : 0
-            visible: opacity > 0
+            width: islandButton.width - x - 10
+            opacity: root.islandWide ? 1 : 0
+            visible: opacity > 0.01
             Behavior on opacity { EffectsAnim {} }
-            content: railButton.label
-            size: 13
-            weight: railButton.active ? 600 : 500
-            customColor: railButton.active ? Colors.primaryText
-                       : railMouse.containsMouse ? Colors.surfaceText : Colors.surfaceVariantText
+            content: islandButton.label
+            size: 14
+            weight: islandButton.active ? 600 : 500
+            elide: Text.ElideRight
+            customColor: islandButton.active ? Colors.primaryText
+                       : islandMouse.containsMouse ? Colors.surfaceText : Colors.surfaceVariantText
         }
 
         MouseArea {
-            id: railMouse
+            id: islandMouse
             anchors.fill: parent
             cursorShape: GlobalStates.fileDialogOpen ? Qt.ArrowCursor : Qt.PointingHandCursor
             hoverEnabled: !GlobalStates.fileDialogOpen
             enabled: !GlobalStates.fileDialogOpen
-            onEntered: if (!root.railWide) root.showTip(railButton, railButton.label, false)
-            onExited: root.hideTip(railButton)
-            onClicked: railButton.clicked()
+            onEntered: {
+                const status = islandButton.page >= 0 ? root.pageStatus(islandButton.page) : ""
+                if (!root.islandWide)
+                    root.showTip(islandButton, islandButton.label, false, status)
+                else if (status !== "")
+                    root.showTip(islandButton, status, false)
+            }
+            onExited: root.hideTip(islandButton)
+            onContainsMouseChanged: if (containsMouse && islandButton.page >= 0) root.prefetch(islandButton.page)
+            onPressed: if (islandButton.page >= 0) root.prefetch(islandButton.page)
+            onClicked: islandButton.clicked()
+        }
+    }
+
+    component IslandDot: Item {
+        implicitWidth: root.islandW - 16
+        implicitHeight: 12
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: root.islandWide ? parent.width - 24 : 4
+            height: root.islandWide ? 1 : 4
+            radius: height / 2
+            color: Colors.outlineVariant
         }
     }
 
@@ -558,46 +733,54 @@ Item {
             anchors.fill: parent
             anchors.margins: 8
 
-            RowLayout {
-                id: titleBar
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.leftMargin: 2
-                anchors.rightMargin: 4
-                height: root.titleH
-                spacing: 10
+            Rectangle {
+                id: island
+                anchors.verticalCenter: parent.verticalCenter
+                width: root.islandW
+                height: Math.min(parent.height, islandColumn.implicitHeight + 20)
+                radius: 31
+                color: Colors.surfaceContainer
+                clip: true
 
-                Rectangle {
-                    id: profileChip
-                    readonly property bool current: root.currentPage === 19
-                    Layout.preferredHeight: 48
-                    Layout.preferredWidth: profileRow.implicitWidth + 20
-                    radius: 24
-                    color: profileChip.current ? Colors.primary
-                         : profileMouse.containsMouse ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0)
-                    Behavior on color { EffectsColorAnim {} }
+                ColumnLayout {
+                    id: islandColumn
+                    anchors.fill: parent
+                    anchors.topMargin: 10
+                    anchors.bottomMargin: 10
+                    spacing: 2
 
-                    RowLayout {
-                        id: profileRow
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: 5
-                        spacing: 10
+                    Item {
+                        id: profileButton
+                        readonly property bool current: root.currentPage === 19
+                        Layout.fillWidth: true
+                        Layout.bottomMargin: 6
+                        implicitHeight: 46
 
                         Item {
-                            Layout.preferredWidth: 38
-                            Layout.preferredHeight: 38
+                            id: avatar
+                            x: root.islandWide ? 12 : Math.round((profileButton.width - width) / 2)
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 42
+                            height: 42
 
                             Rectangle {
                                 anchors.fill: parent
-                                anchors.margins: -2
+                                anchors.margins: profileButton.current ? -4 : -2
                                 radius: width / 2
-                                color: root.currentMode.tone
+                                color: profileButton.current ? Colors.primary : root.currentMode.tone
                                 Behavior on color { EffectsColorAnim {} }
+                                Behavior on anchors.margins { SpatialAnim { speed: "fast" } }
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: width / 2
+                                color: Colors.surfaceContainer
                             }
 
                             LockShapeImage {
                                 anchors.fill: parent
+                                anchors.margins: 2
                                 source: SettingsConfig.general.profile ?? ""
                                 shapeName: "circle"
                                 sourceSize: 96
@@ -605,447 +788,432 @@ Item {
                         }
 
                         ColumnLayout {
+                            x: avatar.x + avatar.width + 12
+                            width: profileButton.width - x - 8
+                            anchors.verticalCenter: parent.verticalCenter
                             spacing: 0
+                            opacity: root.islandWide ? 1 : 0
+                            visible: opacity > 0.01
+                            Behavior on opacity { EffectsAnim {} }
 
                             CustomText {
-                                content: LockSession.greeting + ", " + (SettingsConfig.profileName || Quickshell.env("USER") || "you")
+                                Layout.fillWidth: true
+                                content: SettingsConfig.profileName || Quickshell.env("USER") || "You"
                                 family: SettingsConfig.general.displayFont ?? "Titan One"
                                 renderType: Text.QtRendering
-                                size: 17
-                                weight: 400
-                                customColor: profileChip.current ? Colors.primaryText : Colors.surfaceText
+                                size: 15
+                                elide: Text.ElideRight
                             }
 
                             CustomText {
-                                content: "Your profile"
+                                Layout.fillWidth: true
+                                content: root.currentMode.label
                                 size: 11
-                                customColor: profileChip.current ? Qt.alpha(Colors.primaryText, 0.75) : Colors.outline
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        id: profileMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.currentPage = 19
-                    }
-                }
-
-                Rectangle {
-                    id: statusChip
-                    Layout.preferredHeight: 32
-                    Layout.preferredWidth: statusRow.implicitWidth + 22
-                    radius: 16
-                    color: statusMouse.containsMouse || root.statusMenuOpen ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
-                    Behavior on color { EffectsColorAnim {} }
-
-                    RowLayout {
-                        id: statusRow
-                        anchors.centerIn: parent
-                        spacing: 6
-
-                        MaterialIconSymbol {
-                            content: root.currentMode.icon
-                            iconSize: 17
-                            customColor: root.currentMode.tone
-                        }
-
-                        CustomText { content: root.currentMode.label; size: 12; weight: 500 }
-
-                        MaterialIconSymbol {
-                            content: "expand_more"
-                            iconSize: 16
-                            customColor: Colors.outline
-                            rotation: root.statusMenuOpen ? 180 : 0
-                            Behavior on rotation { SpatialAnim { speed: "fast" } }
-                        }
-                    }
-
-                    MouseArea {
-                        id: statusMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.statusMenuOpen = !root.statusMenuOpen
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-
-                Rectangle {
-                    id: searchField
-                    Layout.preferredWidth: 280
-                    Layout.preferredHeight: 40
-                    radius: 20
-                    color: Colors.surfaceContainerHighest
-                    border.width: searchInput.activeFocus ? 2 : 0
-                    border.color: Colors.primary
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 10
-                        spacing: 8
-
-                        MaterialIconSymbol { content: "search"; iconSize: 18; customColor: Colors.outline }
-
-                        TextInput {
-                            id: searchInput
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            verticalAlignment: TextInput.AlignVCenter
-                            color: Colors.surfaceText
-                            font.pixelSize: 13
-                            font.weight: 500
-                            font.family: SettingsConfig.general.defaultFont ?? "Rubik"
-                            selectByMouse: true
-                            clip: true
-                            onTextChanged: {
-                                root.query = text
-                                if (text !== "")
-                                    root.searchOpen = true
-                            }
-                            onActiveFocusChanged: {
-                                if (activeFocus) {
-                                    root.indexWanted = true
-                                    root.searchOpen = true
-                                }
-                            }
-                            onAccepted: root.openResult(root.results[root.resultIndex])
-                            Keys.onDownPressed: root.resultIndex = Math.min(root.results.length - 1, root.resultIndex + 1)
-                            Keys.onUpPressed: root.resultIndex = Math.max(0, root.resultIndex - 1)
-                            Keys.onEscapePressed: {
-                                text = ""
-                                root.searchOpen = false
-                                focus = false
-                            }
-
-                            CustomText {
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible: searchInput.text === ""
-                                content: "Search settings"
-                                size: 13
-                                weight: 500
                                 customColor: Colors.outline
                             }
                         }
 
-                        Rectangle {
-                            visible: searchInput.text === "" && !searchInput.activeFocus
-                            implicitWidth: hintText.implicitWidth + 12
-                            implicitHeight: 20
-                            radius: 6
-                            color: "transparent"
-                            border.width: 1
-                            border.color: Colors.outlineVariant
-
-                            CustomText {
-                                id: hintText
-                                anchors.centerIn: parent
-                                content: "Ctrl K"
-                                size: 11
-                                weight: 500
-                                customColor: Colors.outline
-                            }
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onEntered: if (!root.islandWide) root.showTip(profileButton, LockSession.greeting + ", " + (SettingsConfig.profileName || Quickshell.env("USER") || "you"), false, "Your profile")
+                            onExited: root.hideTip(profileButton)
+                            onClicked: root.currentPage = 19
                         }
                     }
-                }
 
-                Rectangle {
-                    id: lockButton
-                    Layout.preferredWidth: 40
-                    Layout.preferredHeight: 40
-                    radius: 20
-                    color: lockMouse.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
-                    Behavior on color { EffectsColorAnim {} }
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.preferredHeight: navColumn.implicitHeight
 
-                    MaterialIconSymbol {
-                        anchors.centerIn: parent
-                        content: "lock"
-                        iconSize: 19
-                        customColor: Colors.surfaceVariantText
-                    }
+                        SmoothFlickable {
+                            id: navFlick
+                            anchors.fill: parent
+                            contentHeight: navColumn.implicitHeight
+                            contentWidth: width
+                            fadeSize: 28
+                            wheelStep: 70
+                            onContentYChanged: root.tipShown = false
 
-                    MouseArea {
-                        id: lockMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onEntered: root.showTip(lockButton, "Lock now", true)
-                        onExited: root.hideTip(lockButton)
-                        onClicked: {
-                            root.hideTip(lockButton)
-                            GlobalStates.settingsOpen = false
-                            Quickshell.execDetached(["loginctl", "lock-session"])
-                        }
-                    }
-                }
-            }
+                            Column {
+                                id: navColumn
+                                width: navFlick.width
+                                spacing: 2
 
-            Item {
-                anchors.fill: parent
-                anchors.topMargin: root.titleH + 6
-                clip: true
+                                Repeater {
+                                    model: root.navSections
 
-                Rectangle {
-                    x: root.railW
-                    width: Math.max(0, parent.width - root.railW)
-                    height: parent.height
-                    radius: 14
-                    color: Colors.surfaceContainer
-                }
+                                    delegate: Column {
+                                        id: navGroup
+                                        required property var modelData
+                                        required property int index
+                                        width: navColumn.width
+                                        spacing: 2
 
-                Rectangle {
-                    width: root.railW
-                    height: parent.height
-                    color: "transparent"
+                                        IslandDot {
+                                            visible: navGroup.index !== 0
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                        }
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.topMargin: 8
-                        anchors.bottomMargin: 8
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 10
-                        spacing: 6
+                                        Repeater {
+                                            model: navGroup.modelData.indices
 
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-
-                            Flickable {
-                                id: navFlick
-                                anchors.fill: parent
-                                contentHeight: navColumn.implicitHeight
-                                contentWidth: width
-                                clip: true
-                                boundsBehavior: Flickable.StopAtBounds
-                                onContentYChanged: root.tipShown = false
-
-                                ColumnLayout {
-                                    id: navColumn
-                                    width: navFlick.width
-                                    spacing: 0
-
-                                    Repeater {
-                                        model: root.navSections
-
-                                        delegate: ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: 2
-
-                                            Rectangle {
-                                                visible: index !== 0
-                                                Layout.alignment: Qt.AlignHCenter
-                                                Layout.preferredWidth: Math.max(26, navColumn.width - 12)
-                                                Layout.topMargin: 4
-                                                Layout.bottomMargin: 4
-                                                implicitHeight: 1
-                                                color: Colors.surfaceContainerHighest
-                                            }
-
-                                            Repeater {
-                                                model: modelData.indices
-
-                                                delegate: RailButton {
-                                                    readonly property var pageData: Settings.pages[modelData]
-                                                    icon: pageData?.icon ?? ""
-                                                    label: pageData?.name ?? ""
-                                                    active: root.currentPage === modelData
-                                                    onClicked: root.currentPage = modelData
-                                                }
+                                            delegate: IslandButton {
+                                                required property int modelData
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                icon: root.iconOf(modelData)
+                                                label: root.nameOf(modelData)
+                                                page: modelData
+                                                active: root.leadOf(root.currentPage) === modelData
+                                                onClicked: if (root.leadOf(root.currentPage) !== modelData) root.currentPage = modelData
                                             }
                                         }
                                     }
                                 }
                             }
-
-                            ScrollFade {
-                                anchors.fill: parent
-                                flickable: navFlick
-                                color: Colors.surface
-                            }
                         }
 
-                        RailButton {
-                            id: railToggle
-                            icon: root.railWide ? "left_panel_close" : "left_panel_open"
-                            label: root.railWide ? "Collapse sidebar" : "Expand sidebar"
-                            onClicked: {
-                                root.hideTip(railToggle)
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { settingsRailWide: !root.railWide })
-                            }
-                        }
+                    }
 
-                        RailButton {
-                            icon: "edit"
-                            label: "Edit Config"
-                            onClicked: Quickshell.execDetached(["kitty", "-e", "nvim",
-                                Quickshell.env("HOME") + "/.config/quickshell"])
+                    IslandDot { Layout.alignment: Qt.AlignHCenter }
+
+                    IslandButton {
+                        id: islandToggle
+                        Layout.alignment: Qt.AlignHCenter
+                        icon: root.islandWide ? "left_panel_close" : "left_panel_open"
+                        label: root.islandWide ? "Collapse" : "Expand"
+                        onClicked: {
+                            root.hideTip(islandToggle)
+                            SettingsConfig.general = Object.assign({}, SettingsConfig.general, { settingsRailWide: !root.islandWide })
                         }
                     }
-                }
 
-                RowLayout {
-                x: root.railW
-                width: root.pageW
-                height: parent.height
+                }
+            }
+
+            ColumnLayout {
+                id: pageArea
+                x: island.width + 18
+                width: frame.width - x
+                height: frame.height
                 spacing: 0
 
-                ColumnLayout {
+                RowLayout {
+                    id: header
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    spacing: 0
+                    Layout.topMargin: 8
+                    Layout.rightMargin: 4
+                    spacing: 8
 
-                    RowLayout {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.topMargin: 14
-                        Layout.leftMargin: 16
-                        Layout.rightMargin: 12
-                        spacing: 12
+                        spacing: 0
+                        opacity: root.pageOpacity
+
+                        CustomText {
+                            content: root.groupName
+                            size: 12
+                            weight: 500
+                            customColor: Colors.outline
+                        }
 
                         CustomText {
                             Layout.fillWidth: true
-                            content: Settings.pages[root.shownPage]?.name ?? ""
-                            opacity: pageHost.opacity
-                            size: 26
+                            content: root.nameOf(root.shownPage)
+                            size: 32
                             weight: 400
+                            elide: Text.ElideRight
                             family: SettingsConfig.general.displayFont ?? "Titan One"
                             renderType: Text.QtRendering
                         }
+                    }
 
-                        Rectangle {
-                            id: sectionsToggle
-                            Layout.preferredWidth: 36
-                            Layout.preferredHeight: 36
-                            radius: 18
-                            color: root.showSections ? Colors.secondaryContainer : Colors.surfaceContainerHighest
-                            Behavior on color { EffectsColorAnim {} }
+                    Rectangle {
+                        id: searchField
+                        Layout.preferredWidth: 260
+                        Layout.preferredHeight: 44
+                        radius: 22
+                        color: Colors.surfaceContainer
+                        border.width: searchInput.activeFocus ? 2 : 0
+                        border.color: Colors.primary
 
-                            MaterialIconSymbol {
-                                anchors.centerIn: parent
-                                content: "toc"
-                                iconSize: 18
-                                customColor: root.showSections ? Colors.secondaryContainerText : Colors.surfaceVariantText
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 14
+                            anchors.rightMargin: 10
+                            spacing: 8
+
+                            MaterialIconSymbol { content: "search"; iconSize: 18; customColor: Colors.outline }
+
+                            TextInput {
+                                id: searchInput
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                verticalAlignment: TextInput.AlignVCenter
+                                color: Colors.surfaceText
+                                font.pixelSize: 13
+                                font.weight: 500
+                                font.family: SettingsConfig.general.defaultFont ?? "Rubik"
+                                selectByMouse: true
+                                clip: true
+                                onTextChanged: {
+                                    root.query = text
+                                    if (text !== "")
+                                        root.searchOpen = true
+                                }
+                                onActiveFocusChanged: {
+                                    if (activeFocus) {
+                                        root.searchAt = searchField.mapToItem(frame, searchField.width, searchField.height)
+                                        root.indexWanted = true
+                                        root.searchOpen = true
+                                    }
+                                }
+                                onAccepted: root.openResult(root.results[root.resultIndex])
+                                Keys.onDownPressed: root.resultIndex = Math.min(root.results.length - 1, root.resultIndex + 1)
+                                Keys.onUpPressed: root.resultIndex = Math.max(0, root.resultIndex - 1)
+                                Keys.onEscapePressed: {
+                                    text = ""
+                                    root.searchOpen = false
+                                    focus = false
+                                }
+
+                                CustomText {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    visible: searchInput.text === ""
+                                    content: "Search settings"
+                                    size: 13
+                                    weight: 500
+                                    customColor: Colors.outline
+                                }
                             }
 
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onEntered: root.showTip(sectionsToggle, root.showSections ? "Hide sections" : "Show sections", true)
-                                onExited: root.hideTip(sectionsToggle)
-                                onClicked: {
-                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { settingsSections: !root.showSections })
-                                    root.hideTip(sectionsToggle)
+                            Rectangle {
+                                visible: searchInput.text === "" && !searchInput.activeFocus
+                                implicitWidth: hintText.implicitWidth + 12
+                                implicitHeight: 20
+                                radius: 6
+                                color: "transparent"
+                                border.width: 1
+                                border.color: Colors.outlineVariant
+
+                                CustomText {
+                                    id: hintText
+                                    anchors.centerIn: parent
+                                    content: "Ctrl K"
+                                    size: 11
+                                    weight: 500
+                                    customColor: Colors.outline
                                 }
                             }
                         }
                     }
 
+                    Rectangle {
+                        id: statusChip
+                        Layout.preferredHeight: 44
+                        Layout.preferredWidth: statusRow.implicitWidth + 28
+                        radius: 22
+                        color: statusMouse.containsMouse || root.statusMenuOpen ? Colors.surfaceContainerHigh : Colors.surfaceContainer
+                        Behavior on color { EffectsColorAnim {} }
+
+                        RowLayout {
+                            id: statusRow
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            Rectangle {
+                                implicitWidth: 8
+                                implicitHeight: 8
+                                radius: 4
+                                color: root.currentMode.tone
+                                Behavior on color { EffectsColorAnim {} }
+                            }
+
+                            CustomText { content: root.currentMode.label; size: 12; weight: 500 }
+
+                            MaterialIconSymbol {
+                                content: "expand_more"
+                                iconSize: 16
+                                customColor: Colors.outline
+                                rotation: root.statusMenuOpen ? 180 : 0
+                                Behavior on rotation { SpatialAnim { speed: "fast" } }
+                            }
+                        }
+
+                        MouseArea {
+                            id: statusMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.menuAt = statusChip.mapToItem(frame, statusChip.width, statusChip.height)
+                                root.statusMenuOpen = !root.statusMenuOpen
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        id: sectionsToggle
+                        visible: root.sections.length >= 2
+                        Layout.preferredWidth: 44
+                        Layout.preferredHeight: 44
+                        radius: 22
+                        color: root.showSections ? Colors.secondaryContainer : Colors.surfaceContainer
+                        Behavior on color { EffectsColorAnim {} }
+
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: "toc"
+                            iconSize: 19
+                            customColor: root.showSections ? Colors.secondaryContainerText : Colors.surfaceVariantText
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onEntered: root.showTip(sectionsToggle, root.showSections ? "Hide sections" : "Show sections", true)
+                            onExited: root.hideTip(sectionsToggle)
+                            onClicked: {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { settingsSections: !root.showSections })
+                                root.hideTip(sectionsToggle)
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        id: lockButton
+                        Layout.preferredWidth: 44
+                        Layout.preferredHeight: 44
+                        radius: 22
+                        color: lockMouse.containsMouse ? Colors.surfaceContainerHigh : Colors.surfaceContainer
+                        Behavior on color { EffectsColorAnim {} }
+
+                        MaterialIconSymbol {
+                            anchors.centerIn: parent
+                            content: "lock"
+                            iconSize: 19
+                            customColor: Colors.surfaceVariantText
+                        }
+
+                        MouseArea {
+                            id: lockMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onEntered: root.showTip(lockButton, "Lock now", true)
+                            onExited: root.hideTip(lockButton)
+                            onClicked: {
+                                root.hideTip(lockButton)
+                                GlobalStates.settingsOpen = false
+                                Quickshell.execDetached(["loginctl", "lock-session"])
+                            }
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.topMargin: 12
+                    spacing: 0
+
                     Item {
                         Layout.fillHeight: true
                         Layout.fillWidth: true
-                        Layout.topMargin: 4
                         clip: true
 
                         Item {
                             id: pageHost
                             width: parent.width
                             height: parent.height
-                            transform: Translate { id: pageShift }
 
-                        PageSlot { page: 0; sourceComponent: Theme {} }
-                        PageSlot { page: 1; sourceComponent: Sound {} }
-                        PageSlot { page: 2; sourceComponent: Notifications {} }
-                        PageSlot { page: 3; sourceComponent: Widgets {} }
-                        PageSlot { page: 4; sourceComponent: Networking {} }
-                        PageSlot { page: 5; sourceComponent: Bluetooth {} }
-                        PageSlot { page: 6; sourceComponent: WeatherSettings {} }
-                        PageSlot { page: 7; sourceComponent: MediaSettings {} }
-                        PageSlot { page: 8; sourceComponent: About {} }
-                        PageSlot { page: 9; sourceComponent: AppearanceSettings {} }
-                        PageSlot { page: 10; sourceComponent: Sleep {} }
-                        PageSlot { page: 11; sourceComponent: Storage {} }
-                        PageSlot { page: 12; sourceComponent: Lockscreen {} }
-                        PageSlot { page: 13; sourceComponent: NotesSettings {} }
-                        PageSlot { page: 14; sourceComponent: LayoutsSettings {} }
-                        PageSlot { page: 15; sourceComponent: DisplaysSettings {} }
-                        PageSlot { page: 16; sourceComponent: WindowsSettings {} }
-                        PageSlot { page: 17; sourceComponent: InputSettings {} }
-                        PageSlot { page: 18; sourceComponent: Keybindings {} }
-                        PageSlot { page: 19; sourceComponent: ProfileSettings {} }
-                        }
-                    }
-                }
-
-                ColumnLayout {
-                    id: tocColumn
-                    visible: root.tocSpace
-                    opacity: pageHost.opacity * Math.max(0, Math.min(1, root.tocT))
-                    transform: Translate { x: (1 - root.tocT) * 28 }
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: 168
-                    Layout.maximumWidth: 168
-                    Layout.topMargin: 66
-                    Layout.rightMargin: 12
-                    Layout.leftMargin: 2
-                    spacing: 2
-
-                    CustomText {
-                        Layout.leftMargin: 12
-                        Layout.bottomMargin: 6
-                        content: "ON THIS PAGE"
-                        size: 11
-                        weight: 700
-                        customColor: Colors.outline
-                        font.letterSpacing: 0.9
-                    }
-
-                    Repeater {
-                        model: root.sections
-
-                        delegate: Rectangle {
-                            id: tocItem
-                            required property var modelData
-                            required property int index
-                            readonly property bool current: root.activeSection === index
-
-                            Layout.fillWidth: true
-                            implicitHeight: 30
-                            radius: 10
-                            color: tocItem.current ? Colors.secondaryContainer
-                                 : tocMouse.containsMouse ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0)
-                            Behavior on color { EffectsColorAnim {} }
-
-                            CustomText {
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 8
-                                content: tocItem.modelData.title
-                                size: 13
-                                weight: tocItem.current ? 700 : 500
-                                customColor: tocItem.current ? Colors.secondaryContainerText : Colors.surfaceVariantText
-                            }
-
-                            MouseArea {
-                                id: tocMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.openSection(tocItem.index)
-                            }
+                            PageSlot { page: 0; sourceComponent: Theme {} }
+                            PageSlot { page: 1; sourceComponent: Sound {} }
+                            PageSlot { page: 2; sourceComponent: Notifications {} }
+                            PageSlot { page: 3; sourceComponent: Widgets {} }
+                            PageSlot { page: 4; sourceComponent: Networking {} }
+                            PageSlot { page: 5; sourceComponent: Bluetooth {} }
+                            PageSlot { page: 6; sourceComponent: WeatherSettings {} }
+                            PageSlot { page: 8; sourceComponent: About {} }
+                            PageSlot { page: 12; sourceComponent: Lockscreen {} }
+                            PageSlot { page: 14; sourceComponent: LayoutsSettings {} }
+                            PageSlot { page: 15; sourceComponent: DisplaysSettings {} }
+                            PageSlot { page: 16; sourceComponent: WindowsSettings {} }
+                            PageSlot { page: 17; sourceComponent: InputSettings {} }
+                            PageSlot { page: 19; sourceComponent: ProfileSettings {} }
                         }
                     }
 
-                    Item { Layout.fillHeight: true }
-                }
+                    ColumnLayout {
+                        id: tocColumn
+                        visible: root.tocSpace
+                        opacity: root.pageOpacity * Math.max(0, Math.min(1, root.tocT))
+                        transform: Translate { x: (1 - root.tocT) * 28 }
+                        Layout.fillHeight: true
+                        Layout.preferredWidth: 168
+                        Layout.maximumWidth: 168
+                        Layout.topMargin: 6
+                        Layout.rightMargin: 12
+                        Layout.leftMargin: 2
+                        spacing: 2
+
+                        CustomText {
+                            Layout.leftMargin: 12
+                            Layout.bottomMargin: 6
+                            content: "ON THIS PAGE"
+                            size: 11
+                            weight: 700
+                            customColor: Colors.outline
+                            font.letterSpacing: 0.9
+                        }
+
+                        Repeater {
+                            model: root.sections
+
+                            delegate: Rectangle {
+                                id: tocItem
+                                required property var modelData
+                                required property int index
+                                readonly property bool current: root.activeSection === index
+
+                                Layout.fillWidth: true
+                                implicitHeight: 30
+                                radius: 10
+                                color: tocItem.current ? Colors.secondaryContainer
+                                     : tocMouse.containsMouse ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0)
+                                Behavior on color { EffectsColorAnim {} }
+
+                                CustomText {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 12
+                                    anchors.rightMargin: 8
+                                    content: tocItem.modelData.title
+                                    size: 13
+                                    weight: tocItem.current ? 700 : 500
+                                    customColor: tocItem.current ? Colors.secondaryContainerText : Colors.surfaceVariantText
+                                }
+
+                                MouseArea {
+                                    id: tocMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.openSection(tocItem.index)
+                                }
+                            }
+                        }
+
+                        Item { Layout.fillHeight: true }
+                    }
                 }
             }
 
             MouseArea {
                 anchors.fill: parent
+                visible: resultsPanel.visible
                 enabled: resultsPanel.visible
                 onPressed: mouse => {
                     root.searchOpen = false
@@ -1057,6 +1225,7 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 z: 20
+                visible: root.statusMenuOpen
                 enabled: root.statusMenuOpen
                 onPressed: root.statusMenuOpen = false
             }
@@ -1064,8 +1233,8 @@ Item {
             Rectangle {
                 id: statusMenu
                 z: 21
-                x: titleBar.x + statusChip.x
-                y: titleBar.y + statusChip.y + statusChip.height + 6
+                x: root.menuAt.x - width
+                y: root.menuAt.y + 6
                 width: 236
                 height: statusMenuColumn.implicitHeight + 12
                 radius: 18
@@ -1075,7 +1244,7 @@ Item {
                 visible: opacity > 0.01
                 opacity: root.statusMenuOpen ? 1 : 0
                 scale: root.statusMenuOpen ? 1 : 0.92
-                transformOrigin: Item.TopLeft
+                transformOrigin: Item.TopRight
                 Behavior on opacity { EffectsAnim { speed: "fast" } }
                 Behavior on scale { SpatialAnim { speed: "fast" } }
 
@@ -1158,8 +1327,8 @@ Item {
             Rectangle {
                 id: resultsPanel
                 visible: root.searchOpen && root.query.trim().length >= 2
-                x: titleBar.x + searchField.x + searchField.width - width
-                y: titleBar.y + root.titleH - 2
+                x: root.searchAt.x - width
+                y: root.searchAt.y + 6
                 width: 340
                 height: resultsColumn.implicitHeight + 12
                 radius: 18
@@ -1206,7 +1375,7 @@ Item {
                                 spacing: 10
 
                                 MaterialIconSymbol {
-                                    content: Settings.pages[resultRow.modelData.page]?.icon ?? ""
+                                    content: root.iconOf(resultRow.modelData.page)
                                     iconSize: 18
                                     customColor: resultRow.current ? Colors.secondaryContainerText : Colors.surfaceVariantText
                                 }
@@ -1225,7 +1394,7 @@ Item {
                                     CustomText {
                                         Layout.fillWidth: true
                                         visible: !resultRow.modelData.isPage
-                                        content: (Settings.pages[resultRow.modelData.page]?.name ?? "")
+                                        content: root.placeOf(resultRow.modelData.page)
                                                + (resultRow.modelData.section !== "" ? "  ›  " + resultRow.modelData.section : "")
                                         size: 11
                                         weight: 500
@@ -1252,20 +1421,31 @@ Item {
                 opacity: root.tipShown && root.tipText !== "" ? 1 : 0
                 x: root.tipBelow ? root.tipX - width : root.tipX + 18
                 y: root.tipBelow ? root.tipY + 6 : root.tipY - height / 2
-                width: tipLabel.implicitWidth + 24
+                width: tipRow.implicitWidth + 24
                 height: 30
                 radius: 10
                 color: Colors.inverseSurface
                 Behavior on opacity { EffectsAnim { speed: "fast" } }
                 Behavior on y { enabled: railTip.visible; EffectsAnim { speed: "fast" } }
 
-                CustomText {
-                    id: tipLabel
+                RowLayout {
+                    id: tipRow
                     anchors.centerIn: parent
-                    content: root.tipText
-                    size: 12
-                    weight: 600
-                    customColor: Colors.inverseSurfaceText
+                    spacing: 6
+
+                    CustomText {
+                        content: root.tipText
+                        size: 12
+                        weight: 600
+                        customColor: Colors.inverseSurfaceText
+                    }
+
+                    CustomText {
+                        visible: root.tipSub !== ""
+                        content: "· " + root.tipSub
+                        size: 12
+                        customColor: Qt.alpha(Colors.inverseSurfaceText, 0.75)
+                    }
                 }
             }
         }

@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
 import qs.modules.utils
 import qs.modules.services
 import qs.modules.settings
@@ -14,7 +13,7 @@ WidgetHost {
     defaultPos: Qt.point(660, 300)
     tile: WidgetSizes.small
 
-    readonly property string _serif: "Noto Serif Display"
+    readonly property string display: SettingsConfig.general?.displayFont || "Titan One"
 
     readonly property int startDay: (SettingsConfig.widgets.calendarYarnMonday ?? true) ? 1 : 0
     readonly property bool showFooter: SettingsConfig.widgets.calendarYarnFooter ?? true
@@ -37,6 +36,16 @@ WidgetHost {
         for (let i = 0; i < root.cells.length; i++)
             if (root.cells[i].isToday && root.cells[i].isHoliday)
                 return root.cells[i].info ?? ""
+        return ""
+    }
+
+    readonly property string nextHoliday: {
+        const now = new Date()
+        for (let i = 0; i < root.cells.length; i++) {
+            const c = root.cells[i]
+            if (c.isCurrentMonth && c.isHoliday && c.day > root.today)
+                return "holiday " + Qt.formatDate(new Date(now.getFullYear(), now.getMonth(), c.day), "ddd d")
+        }
         return ""
     }
 
@@ -103,29 +112,27 @@ WidgetHost {
 
                 CustomText {
                     content: String(root.today)
-                    size: 40
-                    weight: 700
-                    customColor: Colors.primary
-                    family: root._serif
+                    size: 32
+                    weight: 400
+                    family: root.display
                     renderType: Text.QtRendering
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: -2
+                    spacing: 0
 
                     CustomText {
                         content: ServiceClock.day
                         size: 12
-                        weight: 700
+                        weight: 800
                     }
 
                     CustomText {
-                        content: ServiceClock.month.substring(0, 3).toUpperCase() + " " + ServiceClock.year
-                        size: 10
+                        content: ServiceClock.month
+                        size: 11
                         weight: 600
-                        customColor: Colors.outline
-                        font.letterSpacing: 1.2
+                        customColor: Colors.surfaceVariantText
                     }
                 }
             }
@@ -155,24 +162,15 @@ WidgetHost {
 
                         Rectangle {
                             anchors.centerIn: parent
-                            visible: cell.isToday
-                            width: Math.min(19, cell.side)
-                            height: width
-                            radius: width / 2
-                            color: Qt.alpha(Colors.primary, 0.22)
-                        }
-
-                        Rectangle {
-                            anchors.centerIn: parent
                             visible: cell.inMonth
-                            width: cell.isToday ? 10 : 7
+                            width: Math.min(cell.side, cell.isToday ? 14 : cell.holiday && !cell.knitted ? 9 : 8)
                             height: width
                             radius: width / 2
-                            color: cell.isToday ? Colors.primary
-                                : cell.holiday ? Colors.tertiary
+                            color: cell.isToday ? Colors.tertiaryContainer
                                 : cell.knitted ? Colors.outline
+                                : cell.holiday ? Colors.primary
                                 : "transparent"
-                            border.width: cell.isToday || cell.holiday || cell.knitted ? 0 : 1
+                            border.width: cell.isToday || cell.holiday || cell.knitted ? 0 : 1.5
                             border.color: Colors.outlineVariant
                         }
 
@@ -192,51 +190,16 @@ WidgetHost {
                 }
             }
 
-            ColumnLayout {
+            CustomText {
                 Layout.fillWidth: true
                 visible: root.showFooter
-                spacing: 6
-
-                Shape {
-                    id: stitch
-                    Layout.fillWidth: true
-                    implicitHeight: 1
-                    preferredRendererType: Shape.CurveRenderer
-
-                    ShapePath {
-                        strokeColor: Colors.outlineVariant
-                        strokeWidth: 1
-                        strokeStyle: ShapePath.DashLine
-                        dashPattern: [2, 3]
-                        fillColor: "transparent"
-                        startX: 0
-                        startY: 0.5
-
-                        PathLine { x: stitch.width; y: 0.5 }
-                    }
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-
-                    Rectangle {
-                        implicitWidth: 5
-                        implicitHeight: 5
-                        radius: 3
-                        color: root.todayInfo !== "" ? Colors.tertiary : Colors.primary
-                    }
-
-                    CustomText {
-                        Layout.fillWidth: true
-                        content: root.todayInfo !== "" ? root.todayInfo
-                            : root.daysLeft === 0 ? "Last day of the month"
-                            : root.daysLeft + " days left"
-                        size: 10
-                        weight: 600
-                        customColor: Colors.outline
-                    }
-                }
+                content: root.todayInfo !== "" ? root.todayInfo
+                    : (root.daysLeft === 0 ? "Last day of the month" : root.daysLeft + " days left")
+                      + (root.nextHoliday !== "" ? " · " + root.nextHoliday : "")
+                size: 11
+                weight: 600
+                elide: Text.ElideRight
+                customColor: Colors.surfaceVariantText
             }
         }
     }

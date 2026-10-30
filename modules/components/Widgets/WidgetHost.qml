@@ -4,6 +4,7 @@ import Quickshell.Widgets
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
+import qs.modules.services
 
 // Shared chrome for every desktop widget.
 //
@@ -29,7 +30,7 @@ Item {
 
     // ── API ───────────────────────────────────────────────────────────
     // Prefix for the persisted position: "<configKey>X" / "<configKey>Y".
-    // Variants of one family share a key (all date styles use "dateWidget"),
+    // Variants of one family share a key (all digital clock styles use "clock"),
     // so switching style keeps the position.
     property string configKey: ""
 
@@ -48,18 +49,27 @@ Item {
     property size minSpan: defaultSpan
     property size maxSpan: defaultSpan
 
+    property bool turnable: false
+    property size turnedMin: Qt.size(Math.max(1, Math.round(minSpan.height)), minSpan.width)
+    property size turnedMax: Qt.size(Math.max(1, Math.round(maxSpan.height)), maxSpan.width)
+    property bool previewTurned: false
+    readonly property bool turned: turnable && (_persists ? (SettingsConfig.widgets[configKey + "Turned"] ?? false) : previewTurned)
+    readonly property size spanMin: turned ? turnedMin : minSpan
+    readonly property size spanMax: turned ? turnedMax : maxSpan
+    readonly property size homeSpan: turned ? Qt.size(Math.round(defaultSpan.height), defaultSpan.width) : defaultSpan
+
     property bool resizing: false
     property int _dragCols: 0
     property real _dragRows: 0
 
-    readonly property bool _loadsSpan: _persists && resizable
-    readonly property int _savedCols: _loadsSpan ? (SettingsConfig.widgets[configKey + "W"] ?? defaultSpan.width) : defaultSpan.width
-    readonly property real _savedRows: _loadsSpan ? (SettingsConfig.widgets[configKey + "H"] ?? defaultSpan.height) : defaultSpan.height
+    readonly property bool _loadsSpan: _persists && (resizable || turnable)
+    readonly property int _savedCols: _loadsSpan ? (SettingsConfig.widgets[configKey + "W"] ?? homeSpan.width) : homeSpan.width
+    readonly property real _savedRows: _loadsSpan ? (SettingsConfig.widgets[configKey + "H"] ?? homeSpan.height) : homeSpan.height
 
-    readonly property int cols: Math.max(minSpan.width,
-                                         Math.min(maxSpan.width, resizing ? _dragCols : _savedCols))
-    readonly property real rows: Math.max(minSpan.height,
-                                          Math.min(maxSpan.height, resizing ? _dragRows : _savedRows))
+    readonly property int cols: Math.max(spanMin.width,
+                                         Math.min(spanMax.width, resizing ? _dragCols : _savedCols))
+    readonly property real rows: Math.max(spanMin.height,
+                                          Math.min(spanMax.height, resizing ? _dragRows : _savedRows))
 
     implicitWidth: WidgetSizes.span(cols)
     implicitHeight: WidgetSizes.span(rows)
@@ -159,6 +169,16 @@ Item {
     property bool dragging: false
     readonly property bool locked: _persists && (SettingsConfig.widgets[configKey + "Locked"] ?? false)
     readonly property bool selected: _persists && GlobalStates.widgetSettingsKey === configKey
+    readonly property bool hoverLift: root.lifted && root._persists && liftHover.hovered && !root.dragging && !root.resizing
+    readonly property string displayName: {
+        const n = EditSession.namers.widget
+        return root.configKey !== "" && typeof n === "function" ? n(root.configKey) : ""
+    }
+
+    HoverHandler {
+        id: liftHover
+        enabled: root.lifted
+    }
 
     readonly property real homeX: WidgetSizes.snapX(SettingsConfig.widgets[root.configKey + "X"] ?? root.defaultPos.x, root.width)
     readonly property real homeY: WidgetSizes.snapY(SettingsConfig.widgets[root.configKey + "Y"] ?? root.defaultPos.y, root.height)
@@ -192,13 +212,45 @@ Item {
     }
 
     Behavior on x {
-        enabled: root.lifted && !root.dragging
-        SpatialAnim {}
+        enabled: (root.lifted || ServiceLayouts.moving) && !root.dragging
+        NumberAnimation {
+            duration: root.lifted ? M3Motion.spatialDuration("default") : 650
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: root.lifted ? M3Motion.spatialCurve("default") : [0.3, 0, 0.1, 1, 1, 1]
+        }
     }
 
     Behavior on y {
-        enabled: root.lifted && !root.dragging
-        SpatialAnim {}
+        enabled: (root.lifted || ServiceLayouts.moving) && !root.dragging
+        NumberAnimation {
+            duration: root.lifted ? M3Motion.spatialDuration("default") : 650
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: root.lifted ? M3Motion.spatialCurve("default") : [0.6, 0, 0.3, 1, 1, 1]
+        }
+    }
+
+    property real enterT: 1
+    opacity: Math.min(1, root.enterT)
+    transform: Translate { y: (1 - root.enterT) * 10 }
+
+    SequentialAnimation {
+        id: enterAnim
+        PauseAnimation { duration: 180 }
+        NumberAnimation {
+            target: root
+            property: "enterT"
+            to: 1
+            duration: M3Motion.spatialDuration("default")
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: [0.05, 0.7, 0.1, 1, 1, 1]
+        }
+    }
+
+    QtObject {
+        Component.onCompleted: if (!root.preview && ServiceLayouts.moving) {
+            root.enterT = 0
+            enterAnim.start()
+        }
     }
 
     function savePosition() {
@@ -212,8 +264,29 @@ Item {
     function saveSpan() {
         if (!_persists) return
         var patch = {}
-        if (minSpan.width < maxSpan.width) patch[configKey + "W"] = root.cols
-        if (minSpan.height < maxSpan.height) patch[configKey + "H"] = root.rows
+        if (turnable || spanMin.width < spanMax.width) patch[configKey + "W"] = root.cols
+        if (turnable || spanMin.height < spanMax.height) patch[configKey + "H"] = root.rows
+        SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, patch)
+    }
+
+    function turn() {
+        if (!_persists || !turnable) return
+        const next = !root.turned
+        const lo = next ? turnedMin : minSpan
+        const hi = next ? turnedMax : maxSpan
+        const c = Math.max(lo.width, Math.min(hi.width, Math.round(root.rows)))
+        const r = Math.max(lo.height, Math.min(hi.height, root.cols))
+        const w = WidgetSizes.span(c)
+        const h = WidgetSizes.span(r)
+        const x = WidgetSizes.snapX(root.homeX, w)
+        const y = WidgetSizes.snapY(root.homeY, h)
+        const spot = WidgetLayout.nearestFree(root, x, y, w, h)
+        const patch = {}
+        patch[configKey + "Turned"] = next
+        patch[configKey + "W"] = c
+        patch[configKey + "H"] = r
+        patch[configKey + "X"] = spot.x
+        patch[configKey + "Y"] = spot.y
         SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, patch)
     }
 
@@ -250,14 +323,16 @@ Item {
         opacity: root.revealT
         color: active ? Qt.alpha(Colors.primary, 0.08) : "transparent"
         radius: WidgetSizes.radius
-        border.width: active || root.selected ? 2.5 : 1
+        border.width: active || root.selected ? 2.5 : root.hoverLift ? 2 : 1.5
         border.color: active || root.selected ? Colors.primary
-            : Qt.alpha(Colors.surfaceText, 0.16 + 0.5 * (1 - settle))
+            : root.hoverLift ? Qt.alpha(Colors.primary, 0.85)
+            : Qt.alpha(Colors.surfaceText, 0.34 + 0.4 * (1 - settle))
+        Behavior on border.color { EffectsColorAnim { speed: "fast" } }
     }
 
     Repeater {
-        model: !(root.selected && root.lifted && !root.dragging) ? []
-            : root.resizable && !root.locked ? [Qt.point(0, 0), Qt.point(1, 0), Qt.point(0, 1)]
+        model: !((root.selected || root.hoverLift) && root.lifted && !root.dragging) ? []
+            : root.selected && root.resizable && !root.locked ? [Qt.point(0, 0), Qt.point(1, 0), Qt.point(0, 1)]
             : [Qt.point(0, 0), Qt.point(1, 0), Qt.point(0, 1), Qt.point(1, 1)]
 
         Rectangle {
@@ -271,6 +346,38 @@ Item {
             color: Colors.primary
             border.width: 3
             border.color: Colors.surface
+        }
+    }
+
+    Rectangle {
+        z: 101
+        y: root.height + 8
+        opacity: root.hoverLift && !root.selected && root.knobsIn ? 1 : 0
+        visible: opacity > 0.01 && root.displayName !== ""
+        Behavior on opacity { EffectsAnim { speed: "fast" } }
+        width: nameRow.implicitWidth + 20
+        height: 26
+        radius: 13
+        color: Colors.primary
+
+        Row {
+            id: nameRow
+            anchors.centerIn: parent
+            spacing: 6
+
+            MaterialIconSymbol {
+                anchors.verticalCenter: parent.verticalCenter
+                content: root.locked ? "lock" : "open_with"
+                iconSize: 14
+                customColor: Colors.primaryText
+            }
+            CustomText {
+                anchors.verticalCenter: parent.verticalCenter
+                content: root.displayName + (root.locked ? " · locked" : " · click for options, drag to move")
+                size: 11
+                weight: 600
+                customColor: Colors.primaryText
+            }
         }
     }
 
@@ -399,12 +506,12 @@ Item {
                 const s = Math.max(0.01, GlobalStates.widgetStageScale)
                 const roomC = WidgetSizes.gridCols - WidgetSizes.colAt(root.x)
                 const roomR = WidgetSizes.gridRows - WidgetSizes.rowAt(root.y)
-                const c = Math.max(root.minSpan.width, Math.min(root.maxSpan.width, roomC,
+                const c = Math.max(root.spanMin.width, Math.min(root.spanMax.width, roomC,
                                    WidgetSizes.cellsFor(startW + (p.x - start.x) / s)))
-                const r = Math.max(root.minSpan.height, Math.min(root.maxSpan.height, roomR,
+                const r = Math.max(root.spanMin.height, Math.min(root.spanMax.height, roomR,
                                    WidgetSizes.rowsFor(startH + (p.y - start.y) / s)))
                 const fit = WidgetLayout.fitSpan(root, root.x, root.y, c, r,
-                                                 root.minSpan.width, root.minSpan.height)
+                                                 root.spanMin.width, root.spanMin.height)
                 root._dragCols = fit ? fit.c : c
                 root._dragRows = fit ? fit.r : r
             }

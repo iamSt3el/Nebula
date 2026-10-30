@@ -28,12 +28,13 @@ Item {
     readonly property real _position: root._music ? (ServiceMusic.activePlayer?.position ?? 0) : 0
     readonly property real progress: root._length > 0 ? Math.max(0, Math.min(1, root._position / root._length)) : 0
 
-    property real ringIn: root._animated ? 0 : 1
-    SequentialAnimation {
-        running: root._animated
-        PauseAnimation { duration: 500 }
-        NumberAnimation { target: root; property: "ringIn"; to: 1; duration: 1200; easing.type: Easing.OutCubic }
+    LockTimeline {
+        id: tl
+        animated: root._animated
+        exiting: root.exiting
     }
+
+    readonly property real ringIn: tl.span(320, 620, tl.standard, 0, 320)
 
     Timer {
         interval: 1000
@@ -49,17 +50,20 @@ Item {
 
     LockStatusModel { id: status }
 
-    component Transport: MotionEnter {
+    component Transport: LockPart {
         id: tb
         property string icon: ""
         property int order: 0
         signal activated
+        line: tl
         anchors.verticalCenter: parent.verticalCenter
-        dy: 0
-        fromScale: 0.3
-        delay: 600 + tb.order * 80
-        animated: root._animated
-        exiting: root.exiting
+        fromScale: 0.6
+        exitScale: 0.7
+        at: 440 + tb.order * 60
+        dur: 420
+        curve: tl.spring
+        fade: 3
+        outAt: tb.order * 30
 
         M3IconButton {
             implicitWidth: 84 * root.u
@@ -72,17 +76,21 @@ Item {
     }
 
 
-    MotionEnter {
+    LockPart {
+        line: tl
         x: 120 * root.u
         y: 120 * root.u
         width: 640 * root.u
         height: width
-        dy: 0
-        fromScale: 0.55
-        fromRotation: -70
-        delay: 80
-        animated: root._animated
-        exiting: root.exiting
+        at: 80
+        dur: 780
+        curve: tl.decel
+        fromScale: 0.84
+        fromRotation: -60
+        fade: 3
+        outDur: 440
+        exitScale: 0.86
+        exitRotation: 50
 
         Item {
             id: disc
@@ -127,11 +135,11 @@ Item {
         width: 580 * root.u
         spacing: 0
 
-        MotionEnter {
-            delay: 300
-            dy: 30 * root.u
-            animated: root._animated
-            exiting: root.exiting
+        LockPart {
+            line: tl
+            at: 300
+            dur: 460
+            dx: 48 * root.u
 
             CustomText {
                 content: root._music ? "NOW PLAYING" + ((ServiceMusic.activePlayer?.identity ?? "") !== "" ? " · " + ServiceMusic.activePlayer.identity.toUpperCase() : "")
@@ -143,13 +151,13 @@ Item {
             }
         }
 
-        MotionEnter {
+        LockPart {
+            line: tl
             Layout.topMargin: 10 * root.u
             Layout.fillWidth: true
-            delay: 380
-            dy: 50 * root.u
-            animated: root._animated
-            exiting: root.exiting
+            at: 360
+            dur: 460
+            dx: 48 * root.u
 
             Text {
                 width: 580 * root.u
@@ -163,34 +171,34 @@ Item {
                 wrapMode: Text.WordWrap
                 maximumLineCount: 2
                 elide: Text.ElideRight
-                renderType: Text.QtRendering
+                renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
             }
         }
 
-        MotionEnter {
+        LockPart {
+            line: tl
             Layout.topMargin: 14 * root.u
-            delay: 460
-            dy: 30 * root.u
-            animated: root._animated
-            exiting: root.exiting
+            at: 420
+            dur: 460
+            dx: 48 * root.u
 
             CustomText {
                 width: Math.min(implicitWidth, 580 * root.u)
                 content: root._music ? (ServiceMusic.activeTrack?.artist ?? "") : LockSession.user
                 size: Math.round(36 * root.u)
-                renderType: Text.QtRendering
+                renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
                 weight: 400
                 customColor: Colors.surfaceVariantText
             }
         }
 
-        MotionEnter {
+        LockPart {
+            line: tl
             visible: root._music && root._length > 0
             Layout.topMargin: 30 * root.u
-            delay: 520
-            dy: 20 * root.u
-            animated: root._animated
-            exiting: root.exiting
+            at: 480
+            dur: 460
+            dx: 48 * root.u
 
             CustomText {
                 content: root.fmt(root._position) + " / " + root.fmt(root._length)
@@ -210,14 +218,16 @@ Item {
 
         Transport { icon: "skip_previous"; order: 0; onActivated: ServiceMusic.previous() }
 
-        MotionEnter {
+        LockPart {
+            line: tl
             anchors.verticalCenter: parent.verticalCenter
-            dy: 0
-            fromScale: 0.2
-            fromRotation: -90
-            delay: 680
-            animated: root._animated
-            exiting: root.exiting
+            fromScale: 0.6
+            exitScale: 0.7
+            at: 500
+            dur: 420
+            curve: tl.spring
+            fade: 3
+            outAt: 30
 
             MaterialShapes.ShapeCanvas {
                 width: 128 * root.u
@@ -244,14 +254,13 @@ Item {
         Transport { icon: "skip_next"; order: 2; onActivated: ServiceMusic.next() }
     }
 
-    MotionEnter {
+    LockPart {
+        line: tl
         x: root.width - width - 110 * root.u
         y: 110 * root.u
-        delay: 200
+        at: 240
+        dur: 500
         dx: 40 * root.u
-        dy: 0
-        animated: root._animated
-        exiting: root.exiting
 
         Column {
             spacing: 0
@@ -265,7 +274,7 @@ Item {
                 font.weight: 700
                 font.letterSpacing: -8 * root.u
                 lineHeight: 0.84
-                renderType: Text.QtRendering
+                renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
             }
             Text {
                 anchors.right: parent.right
@@ -276,7 +285,7 @@ Item {
                 font.weight: 700
                 font.letterSpacing: -8 * root.u
                 lineHeight: 0.84
-                renderType: Text.QtRendering
+                renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
             }
             CustomText {
                 visible: root.cfg.showDate !== false
@@ -290,14 +299,14 @@ Item {
         }
     }
 
-    MotionEnter {
+    LockPart {
+        line: tl
         visible: root.cfg.showStatus !== false && !root.greeter
         x: 120 * root.u
         y: root.height - height - 96 * root.u
-        delay: 760
-        dy: 30 * root.u
-        animated: root._animated
-        exiting: root.exiting
+        at: 600
+        dur: 460
+        dy: 24 * root.u
 
         Row {
             spacing: 28 * root.u
@@ -324,13 +333,13 @@ Item {
         }
     }
 
-    MotionEnter {
+    LockPart {
+        line: tl
         x: root.width - width - 110 * root.u
         y: root.height - height - 84 * root.u
-        delay: 700
-        dy: 30 * root.u
-        animated: root._animated
-        exiting: root.exiting
+        at: 560
+        dur: 460
+        dy: 24 * root.u
 
         RowLayout {
             spacing: 16 * root.u

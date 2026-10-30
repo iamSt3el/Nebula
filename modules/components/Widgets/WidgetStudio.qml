@@ -178,8 +178,8 @@ Item {
         if (!t)
             return
         const patch = {}
-        patch[t.configKey + "W"] = Math.max(t.minSpan.width, Math.min(t.maxSpan.width, c))
-        patch[t.configKey + "H"] = Math.max(t.minSpan.height, Math.min(t.maxSpan.height, r))
+        patch[t.configKey + "W"] = Math.max(t.spanMin.width, Math.min(t.spanMax.width, c))
+        patch[t.configKey + "H"] = Math.max(t.spanMin.height, Math.min(t.spanMax.height, r))
         SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, patch)
     }
 
@@ -215,62 +215,6 @@ Item {
     function undo() { EditSession.undo() }
     function redo() { EditSession.redo() }
 
-    component Pill: Rectangle {
-        id: pill
-        property string icon: ""
-        property string label: ""
-        property bool lit: false
-        property bool danger: false
-        property bool filled: false
-        property bool usable: true
-        property int box: 40
-        signal clicked
-
-        implicitHeight: pill.box
-        implicitWidth: pill.label !== "" ? pillRow.implicitWidth + (pill.icon !== "" ? 30 : 32) : pill.box
-        radius: pillArea.pressed ? 12 : pill.box / 2
-        opacity: pill.usable ? 1 : 0.38
-        color: pill.filled ? Colors.primary
-            : pill.lit ? Colors.secondaryContainer
-            : pillArea.containsMouse && pill.usable ? Qt.alpha(Colors.surfaceText, 0.08) : "transparent"
-        Behavior on radius { SpatialAnim { speed: "fast" } }
-        Behavior on color { EffectsColorAnim { speed: "fast" } }
-
-        RowLayout {
-            id: pillRow
-            anchors.centerIn: parent
-            spacing: 7
-
-            MaterialIconSymbol {
-                visible: pill.icon !== ""
-                content: pill.icon
-                iconSize: 19
-                customColor: pill.filled ? Colors.primaryText
-                    : pill.danger ? Colors.error
-                    : pill.lit ? Colors.secondaryContainerText : Colors.surfaceText
-            }
-
-            CustomText {
-                visible: pill.label !== ""
-                content: pill.label
-                size: 13
-                weight: 600
-                customColor: pill.filled ? Colors.primaryText
-                    : pill.danger ? Colors.error
-                    : pill.lit ? Colors.secondaryContainerText : Colors.surfaceText
-            }
-        }
-
-        MouseArea {
-            id: pillArea
-            anchors.fill: parent
-            hoverEnabled: true
-            enabled: pill.usable
-            cursorShape: Qt.PointingHandCursor
-            onClicked: pill.clicked()
-        }
-    }
-
     component Divider: Rectangle {
         implicitWidth: 1
         implicitHeight: 24
@@ -291,8 +235,11 @@ Item {
 
     MouseArea {
         anchors.fill: parent
-        visible: root.pop !== ""
-        onClicked: root.pop = ""
+        visible: root.pop !== "" || capRow.moreOpen
+        onClicked: {
+            root.pop = ""
+            capRow.moreOpen = false
+        }
     }
 
     Item {
@@ -397,8 +344,12 @@ Item {
     Glass {
         id: capsule
         anchors.horizontalCenter: parent.horizontalCenter
-        y: GlobalStates.editTopInset + 16 - 30 * (1 - root.capsuleT)
-        opacity: root.capsuleT
+        readonly property real restY: root.height - GlobalStates.editBottomInset - 56 - 52
+        property real addFactor: root.pop === "add" ? 0 : 1
+        Behavior on addFactor { EffectsAnim { speed: "fast" } }
+        y: capsule.restY + 30 * (1 - root.capsuleT)
+        opacity: root.capsuleT * capsule.addFactor
+        visible: opacity > 0.01
         height: 56
         width: capRow.implicitWidth + 12
         radius: 28
@@ -412,11 +363,6 @@ Item {
                 { key: "tidy", icon: "auto_awesome_motion", label: "Tidy" },
                 { key: "look", icon: "palette", label: "Look", lit: root.pop === "look" }
             ]
-            onLogo: {
-                GlobalStates.closeEdit()
-                GlobalStates.settingsPage = 9
-                GlobalStates.settingsOpen = true
-            }
             onAdd: {
                 if (root.pop === "add") {
                     root.pop = ""
@@ -438,16 +384,46 @@ Item {
         z: 5
         open: capRow.historyOpen && GlobalStates.widgetEditMode
         x: Math.max(12, Math.min(root.width - width - 12, capsule.x + capsule.width / 2 - width / 2))
-        y: capsule.y + capsule.height + 10
+        y: capsule.y - height - 10
         onPicked: capRow.historyOpen = false
+    }
+
+    EditMoreMenu {
+        z: 6
+        open: capRow.moreOpen && GlobalStates.widgetEditMode
+        x: Math.max(12, Math.min(root.width - width - 12, capsule.x + capRow.x + capRow.moreX - width / 2))
+        y: capsule.y - height - 10
+        entries: [
+            { key: "keys", icon: "keyboard", label: "Keys and shortcuts", keys: "?" },
+            { key: "peek", icon: "visibility", label: "Peek at the result", keys: "hold Space", hold: true },
+            { key: "settings", icon: "tune", label: "Widget settings", external: true }
+        ]
+        onPicked: key => {
+            capRow.moreOpen = false
+            if (key === "keys") {
+                GlobalStates.editKeysOpen = !GlobalStates.editKeysOpen
+            } else if (key === "settings") {
+                GlobalStates.closeEdit()
+                GlobalStates.settingsPage = 3
+                GlobalStates.settingsOpen = true
+            }
+        }
+    }
+
+    EditFirstTip {
+        z: 4
+        desktop: true
+        allowed: GlobalStates.widgetEditMode && GlobalStates.widgetSettingsKey === "" && root.pop === "" && !capRow.historyOpen && !capRow.moreOpen
+        x: Math.max(12, Math.min(root.width - width - 12, root.width / 2 - width / 2))
+        y: capsule.restY - height - 14
     }
 
     Glass {
         id: lookCard
         visible: root.pop === "look"
         anchors.horizontalCenter: capsule.horizontalCenter
-        anchors.top: capsule.bottom
-        anchors.topMargin: 10
+        anchors.bottom: capsule.top
+        anchors.bottomMargin: 10
         width: 340
         height: lookBody.implicitHeight + 36
         radius: 26
@@ -595,14 +571,16 @@ Item {
                 id: sizeGroup
                 readonly property var t: root.target
                 readonly property bool sizable: t !== null && t.resizable
-                    && (t.minSpan.width !== t.maxSpan.width || t.minSpan.height !== t.maxSpan.height)
+                    && (t.spanMin.width !== t.spanMax.width || t.spanMin.height !== t.spanMax.height)
                 readonly property var presets: {
                     if (!sizable)
                         return []
-                    const m = { label: "M", c: t.defaultSpan.width, r: t.defaultSpan.height }
-                    const sm = { label: "S", c: t.minSpan.width, r: t.minSpan.height }
-                    const lg = { label: "L", c: Math.min(t.maxSpan.width, t.defaultSpan.width + 1),
-                                 r: Math.min(t.maxSpan.height, t.defaultSpan.height + 1) }
+                    const home = Qt.size(Math.max(t.spanMin.width, Math.min(t.spanMax.width, t.homeSpan.width)),
+                                         Math.max(t.spanMin.height, Math.min(t.spanMax.height, t.homeSpan.height)))
+                    const m = { label: "M", c: home.width, r: home.height }
+                    const sm = { label: "S", c: t.spanMin.width, r: t.spanMin.height }
+                    const lg = { label: "L", c: Math.min(t.spanMax.width, home.width + 1),
+                                 r: Math.min(t.spanMax.height, home.height + 1) }
                     const out = []
                     if (sm.c !== m.c || sm.r !== m.r) out.push(sm)
                     out.push(m)
@@ -650,6 +628,11 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.setSpan(preset.modelData.c, preset.modelData.r)
                             }
+
+                            CustomToolTip {
+                                content: ({ S: "Small", M: "Medium", L: "Large" })[preset.modelData.label] + " · " + preset.modelData.c + "×" + preset.modelData.r + " cells"
+                                visible: presetArea.containsMouse
+                            }
                         }
                     }
 
@@ -666,24 +649,41 @@ Item {
 
             Divider { Layout.leftMargin: 6; Layout.rightMargin: 4 }
 
-            Pill {
+            EditPill {
+                box: 40
+                icon: root.target !== null && root.target.turned ? "crop_landscape" : "crop_portrait"
+                visible: root.target !== null && root.target.turnable
+                lit: root.target !== null && root.target.turned
+                usable: !root.locked
+                tip: root.target !== null && root.target.turned ? "Turn back to landscape · T" : "Turn to portrait · T"
+                onClicked: if (root.target) root.target.turn()
+            }
+            EditPill {
+                box: 40
                 icon: "tune"
                 visible: root.target !== null && root.target.optionsComponent !== null
                 lit: root.pop === "options"
+                tip: "Options · Enter"
                 onClicked: root.pop = root.pop === "options" ? "" : "options"
             }
-            Pill {
+            EditPill {
+                box: 40
                 icon: "restart_alt"
+                tip: "Back to its default size and spot"
                 onClicked: if (root.target) WidgetCatalog.resetLayout(root.target.configKey)
             }
-            Pill {
+            EditPill {
+                box: 40
                 icon: root.locked ? "lock" : "lock_open"
                 lit: root.locked
+                tip: root.locked ? "Unlock so it can move · L" : "Lock in place · L"
                 onClicked: root.toggleLock()
             }
-            Pill {
+            EditPill {
+                box: 40
                 icon: "delete"
                 danger: true
+                tip: "Remove · Del"
                 onClicked: root.removeSelected()
             }
         }
@@ -761,7 +761,7 @@ Item {
         visible: root.pop === "options" && toolbar.visible
         readonly property real underY: toolbar.y + toolbar.height + 8
         readonly property real overY: toolbar.y - height - 8
-        readonly property bool fitsUnder: optionsCard.underY + height <= root.height - 12
+        readonly property bool fitsUnder: optionsCard.underY + height <= capsule.restY - 12
         readonly property bool fitsOver: optionsCard.overY >= 12
         readonly property real leftX: toolbar.tx - width - 16
         readonly property real rightX: toolbar.tx + toolbar.tw + 16
@@ -771,7 +771,7 @@ Item {
             : optionsCard.leftX >= 12 ? optionsCard.leftX
             : Math.min(root.width - width - 12, optionsCard.rightX)
         y: optionsCard.fitsUnder ? optionsCard.underY
-            : optionsCard.side ? Math.max(12, Math.min(root.height - height - 12, toolbar.ty))
+            : optionsCard.side ? Math.max(12, Math.min(capsule.restY - height - 12, toolbar.ty))
             : optionsCard.overY
         width: 340
         height: Math.min(root.height * 0.6, optFlick.contentHeight + 36)
@@ -897,8 +897,10 @@ Item {
                     }
                 }
 
-                Pill {
+                EditPill {
+                    box: 40
                     icon: "close"
+                    tip: "Close · Esc"
                     onClicked: root.pop = ""
                 }
             }

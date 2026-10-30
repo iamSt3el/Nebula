@@ -12,8 +12,6 @@ Singleton {
     property var stats: ({})
     readonly property bool loaded: root.stats.generated !== undefined
     readonly property var git: root.stats.git ?? ({ days: {}, repos: [], total: 0 })
-    readonly property var shell: root.stats.shell ?? ({ total: 0, top: [], timed: false })
-    readonly property var vaults: root.stats.vaults ?? []
     readonly property var photos: root.stats.photos ?? ({ total: 0, pick: null, since: 0 })
 
     readonly property var _w: SettingsConfig.widgets ?? ({})
@@ -50,54 +48,8 @@ Singleton {
         onTriggered: root.refresh()
     }
 
-    readonly property var activeVault: {
-        const want = root._w.notebookVault ?? ""
-        return root.vaults.find(v => v.name === want) ?? root.vaults[0] ?? null
-    }
-
-    function dailyNotePath() {
-        const v = root.activeVault
-        if (!v) return ""
-        const folder = (v.dailyFolder ?? "").replace(/^\/+|\/+$/g, "")
-        return v.path + (folder !== "" ? "/" + folder : "") + "/" + root.todayKey(0) + ".md"
-    }
-
-    function jot(text) {
-        const t = (text ?? "").trim()
-        const path = root.dailyNotePath()
-        if (t === "" || path === "") return false
-        Quickshell.execDetached(["bash", "-c",
-            "mkdir -p \"$(dirname \"$1\")\" && printf -- '- %s %s\\n' \"$2\" \"$3\" >> \"$1\"",
-            "jot", path, Qt.formatTime(new Date(), "HH:mm"), t])
-        return true
-    }
-
-    function openNote(path) {
-        Quickshell.execDetached(["xdg-open", "obsidian://open?path=" + encodeURIComponent(path)])
-    }
-
     function openFile(path) {
         Quickshell.execDetached(["xdg-open", path])
-    }
-
-    readonly property var habits: root._w.habits ?? []
-
-    function addHabit(name) {
-        const n = (name ?? "").trim()
-        if (n === "") return
-        root._save({ habits: root.habits.concat([{ name: n, done: {} }]) })
-    }
-
-    function removeHabit(i) {
-        root._save({ habits: root.habits.filter((_, k) => k !== i) })
-    }
-
-    function toggleHabit(i, day) {
-        const list = root.habits.map(h => ({ name: h.name, done: Object.assign({}, h.done ?? {}) }))
-        if (!list[i]) return
-        if (list[i].done[day]) delete list[i].done[day]
-        else list[i].done[day] = true
-        root._save({ habits: list })
     }
 
     readonly property var countdowns: root._w.countdowns ?? []
@@ -146,17 +98,5 @@ Singleton {
             if (d < today) d = new Date(now.getFullYear() + 1, d.getMonth(), d.getDate())
         }
         return Math.round((d - today) / 86400000)
-    }
-
-    readonly property var moods: root._w.moods ?? ({})
-
-    function setMood(v) {
-        const next = Object.assign({}, root.moods)
-        const k = root.todayKey(0)
-        if (next[k] === v) delete next[k]
-        else next[k] = v
-        const keys = Object.keys(next).sort()
-        while (keys.length > 400) delete next[keys.shift()]
-        root._save({ moods: next })
     }
 }

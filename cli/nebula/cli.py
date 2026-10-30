@@ -21,6 +21,9 @@ PASSTHROUGH = {
     "gowall-icons":  ("nebula.gowall_icons",  "<theme> [--apply|--preview|--restore]", "recolour the icon theme"),
     "phone-thumbs":  ("nebula.phonethumbs",   "<file>...", "cached thumbnails for files on the phone"),
     "kindle":        ("nebula.kindle",        "render|serve|assets|frame IMG", "Kindle e-ink dashboard PNG (port 8777)"),
+    "books":         ("nebula.books",         "popular|search Q|asura|asura-search Q|local|open SRC ID", "books for reading mode, JSON"),
+    "wiz":           ("nebula.wiz",           "serve|scan|state|set JSON [--ip IP]", "WiZ smart bulb on the local network"),
+    "grub":          ("nebula.grub",          "build|preview|install [--dry-run]", "M3 GRUB theme from the current palette"),
 }
 
 SHELL_TOOLS = {
@@ -605,7 +608,7 @@ def build_parser() -> argparse.ArgumentParser:
     lo.add_argument("action", nargs="?", choices=["list", "save", "load", "update", "undo", "delete", "import", "export"])
     lo.add_argument("name", nargs="?", default="")
     lo.add_argument("dest", nargs="?", default=".")
-    lo.add_argument("--only", help="comma-separated: bar,widgets,dashboard,panels,lockscreen,look")
+    lo.add_argument("--only", help="comma-separated: bar,widgets,dashboard,panels,lockscreen")
     lo.add_argument("--rename")
     lo.add_argument("--json", action="store_true")
     lo.add_argument("--emit", action="store_true", help=argparse.SUPPRESS)

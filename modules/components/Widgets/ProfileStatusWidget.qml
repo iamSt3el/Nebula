@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.services
+import qs.modules.settings
 import qs.modules.customComponents
 
 WidgetHost {
@@ -64,102 +65,90 @@ WidgetHost {
                 spacing: 12
 
                 Item {
-                    implicitWidth: 56
-                    implicitHeight: 56
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 28
-                        color: "transparent"
-                        border.width: 3
-                        border.color: root.tone
-                        Behavior on border.color { EffectsColorAnim {} }
-                    }
+                    implicitWidth: 48
+                    implicitHeight: 48
 
                     ProfileAvatar {
-                        anchors.centerIn: parent
-                        width: 44
-                        height: 44
-                        radius: 22
+                        anchors.fill: parent
+                        radius: 24
                     }
 
                     Rectangle {
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
                         anchors.margins: -2
-                        width: 20
-                        height: 20
-                        radius: 10
-                        color: root.tone
+                        width: 18
+                        height: 18
+                        radius: 9
+                        color: root.mode === "focus" ? Colors.primary
+                             : root.mode === "quiet" ? Colors.outline : Colors.tertiary
                         border.width: 3
-                        border.color: Colors.surface
+                        border.color: WidgetSizes.cardColor
                         Behavior on color { EffectsColorAnim {} }
                     }
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 3
+                    spacing: 1
 
-                    RowLayout {
+                    CustomText {
                         Layout.fillWidth: true
-                        spacing: 8
-
-                        CustomText {
-                            Layout.maximumWidth: 150
-                            content: ServiceProfile.name
-                            size: 18
-                            weight: 700
-                            elide: Text.ElideRight
-                        }
-
-                        CustomText {
-                            Layout.fillWidth: true
-                            content: root.label
-                            size: 12
-                            weight: 600
-                            customColor: root.mode === "quiet" ? Colors.outline : root.tone
-                            elide: Text.ElideRight
-                        }
+                        content: ServiceProfile.name
+                        size: 20
+                        weight: 400
+                        family: SettingsConfig.general?.displayFont || "Titan One"
+                        renderType: Text.QtRendering
+                        elide: Text.ElideRight
                     }
 
                     CustomText {
                         Layout.fillWidth: true
-                        content: root.detail
-                        size: 12
-                        weight: 400
+                        content: root.label + " · " + root.detail
+                        size: 11
+                        weight: 600
                         customColor: Colors.surfaceVariantText
                         elide: Text.ElideRight
                     }
                 }
             }
 
-            Rectangle {
+            Item { Layout.fillHeight: true }
+
+            Item {
                 Layout.fillWidth: true
-                implicitHeight: 36
-                radius: 18
-                color: Colors.surfaceContainerHigh
+                implicitHeight: 38
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 3
-                    spacing: 4
+                    spacing: 2
 
                     Repeater {
-                        model: [{ id: "available", icon: "circle", text: "Available" },
+                        model: [{ id: "available", icon: "check", text: "Available" },
                                 { id: "focus", icon: "timer", text: "Focus" },
                                 { id: "quiet", icon: "do_not_disturb_on", text: "Quiet" }]
 
                         delegate: Rectangle {
                             id: seg
                             required property var modelData
+                            required property int index
                             readonly property bool on: root.mode === seg.modelData.id
+                            readonly property real full: height / 2
+                            readonly property real startR: seg.on || seg.index === 0 ? seg.full : 6
+                            readonly property real endR: seg.on || seg.index === 2 ? seg.full : 6
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             Layout.preferredWidth: 1
-                            radius: height / 2
-                            color: seg.on ? root.tone : segMouse.containsMouse ? Colors.surfaceContainerHighest : Qt.alpha(Colors.surfaceContainerHighest, 0)
+                            topLeftRadius: seg.startR
+                            bottomLeftRadius: seg.startR
+                            topRightRadius: seg.endR
+                            bottomRightRadius: seg.endR
+                            color: seg.on ? root.tone : segMouse.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
                             Behavior on color { EffectsColorAnim {} }
+                            Behavior on topLeftRadius { SpatialAnim { speed: "fast" } }
+                            Behavior on topRightRadius { SpatialAnim { speed: "fast" } }
+                            Behavior on bottomLeftRadius { SpatialAnim { speed: "fast" } }
+                            Behavior on bottomRightRadius { SpatialAnim { speed: "fast" } }
 
                             RowLayout {
                                 anchors.centerIn: parent
@@ -175,7 +164,7 @@ WidgetHost {
                                 CustomText {
                                     content: seg.modelData.text
                                     size: 12
-                                    weight: seg.on ? 600 : 500
+                                    weight: seg.on ? 800 : 700
                                     customColor: seg.on ? root.onTone : Colors.surfaceVariantText
                                 }
                             }

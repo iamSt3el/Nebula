@@ -27,6 +27,7 @@ Item {
             { keys: ["Enter"], text: "Options" },
             { keys: ["Del"], text: "Remove (undo brings it back)" },
             { keys: ["L"], text: "Lock or unlock" },
+            { keys: ["T"], text: "Turn portrait or landscape" },
             { keys: ["A"], text: "Add sheet" }
         ] },
         { title: "Session", rows: [
@@ -52,6 +53,7 @@ Item {
         { title: "Session", rows: [
             { keys: ["Ctrl", "Z"], text: "Undo · with ⇧ redo" },
             { keys: ["Space"], text: "Hold to peek" },
+            { keys: ["Alt"], text: "Hold to see every gap" },
             { keys: ["Esc"], text: "Close card → deselect → leave" },
             { keys: ["Ctrl", "S"], text: "Done" }
         ] }
@@ -110,6 +112,7 @@ Item {
                 }
                 M3IconButton {
                     icon: "close"
+                    tip: "Close · ? or Esc"
                     onClicked: GlobalStates.editKeysOpen = false
                 }
             }

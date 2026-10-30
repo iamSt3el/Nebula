@@ -8,6 +8,7 @@ import qs.modules.utils
 import qs.modules.customComponents
 import qs.modules.services
 import qs.modules.settings
+import "../../MatrialShapes/" as MaterialShapes
 
 Item {
     id: root
@@ -27,35 +28,32 @@ Item {
     readonly property color onTint: root.low ? Colors.errorText : root.plugged ? Colors.primaryText
         : root.saver ? Colors.tertiaryText : Colors.secondaryText
 
-    readonly property string title: root.charging ? "Charging"
-        : root.full ? "Fully charged"
-        : root.plugged ? "Plugged in, not charging"
-        : root.low ? "Battery low" : "On battery"
+    readonly property real secondsLeft: root.cell.timeToEmpty > 0 ? root.cell.timeToEmpty
+        : root.rate > 0 ? root.cell.energy / root.rate * 3600 : 0
 
-    function span(seconds) {
-        if (!seconds || seconds <= 0)
-            return root.plugged ? "Unplug to see" : "–"
-        const h = Math.floor(seconds / 3600)
-        const m = Math.round((seconds % 3600) / 60)
-        return h > 0 ? h + " h " + m + " min" : m + " min"
+    readonly property string status: {
+        if (root.charging)
+            return root.dev.timeToFull > 0 ? "Charging, full in " + root.duration(root.dev.timeToFull) : "Charging"
+        if (root.full)
+            return "Fully charged, on AC"
+        if (root.plugged)
+            return "Plugged in, not charging"
+        const left = root.secondsLeft > 0 ? ", " + root.duration(root.secondsLeft) + " left" : ""
+        return (root.low ? "Battery low" : "On battery") + left
     }
 
-    readonly property var stats: [
-        { icon: "schedule", tint: Colors.primary,
-          label: root.charging ? "Full in" : root.plugged ? "On battery" : "Left",
-          value: root.charging ? root.span(root.dev.timeToFull)
-               : root.span(root.cell.timeToEmpty > 0 ? root.cell.timeToEmpty
-                           : root.rate > 0 ? root.cell.energy / root.rate * 3600 : 0) },
-        { icon: "bolt", tint: Colors.tertiary, label: root.charging ? "Charging at" : "Draw",
-          value: root.rate > 0.05 ? root.rate.toFixed(1) + " W" : root.plugged ? "Idle on AC" : "–" },
-        { icon: "favorite", tint: Colors.secondary, label: "Health",
-          value: ServiceUPower.health > 0 ? Math.round(ServiceUPower.health * 100) + "%" : "–" },
-        { icon: "battery_full_alt", tint: Colors.primary, label: "Capacity",
-          value: root.cell.energyCapacity > 0 ? root.cell.energyCapacity.toFixed(1) + " Wh" : "–" }
-    ]
+    readonly property var chips: {
+        const out = []
+        if (ServiceUPower.health > 0)
+            out.push({ k: "Health", v: Math.round(ServiceUPower.health * 100) + "%", accent: true })
+        if (root.cell.energyCapacity > 0)
+            out.push({ k: "", v: root.cell.energyCapacity.toFixed(1) + " Wh", accent: false })
+        if (root.rate > 0.05)
+            out.push({ k: root.charging ? "In" : "Draw", v: root.rate.toFixed(1) + " W", accent: false })
+        return out
+    }
 
     function iconFor(d) {
-        if (d.isLaptopBattery) return "laptop"
         switch (d.type) {
         case UPowerDeviceType.Keyboard: return "keyboard"
         case UPowerDeviceType.Mouse: return "mouse"
@@ -71,8 +69,26 @@ Item {
         return "battery_full"
     }
 
+    function shapeFor(d) {
+        switch (d.type) {
+        case UPowerDeviceType.Keyboard: return "squircle"
+        case UPowerDeviceType.Mouse: return "pill"
+        case UPowerDeviceType.Headset:
+        case UPowerDeviceType.Headphones: return "cookie6"
+        case UPowerDeviceType.Speakers: return "cookie9"
+        case UPowerDeviceType.Phone: return "gem"
+        case UPowerDeviceType.GamingInput: return "clover4"
+        case UPowerDeviceType.Tablet: return "arch"
+        }
+        return "cookie4"
+    }
+
     readonly property var devices: UPower.devices.values.filter(d => d && !d.isLaptopBattery
         && d.type !== UPowerDeviceType.LinePower && d.isPresent !== false && d.percentage > 0)
+
+    readonly property var lowest: root.devices.find(d => root.lowDevice(d)) ?? null
+
+    readonly property int columns: Math.max(1, Math.min(3, root.devices.length))
 
     function nameOf(d) {
         return d.model || UPowerDeviceType.toString(d.type)
@@ -108,180 +124,129 @@ Item {
         return ""
     }
 
-    function factsOf(d) {
-        const out = []
-        const link = root.connectionOf(d)
-        if (link !== "")
-            out.push({ k: "Connection", v: link, tone: "" })
-        if (d.state === UPowerDeviceState.Charging)
-            out.push({ k: "Status", v: "Charging", tone: "primary" })
-        else if (d.state === UPowerDeviceState.FullyCharged)
-            out.push({ k: "Status", v: "Full", tone: "" })
-        else if (root.lowDevice(d))
-            out.push({ k: "Status", v: "Charge soon", tone: "error" })
-        else if (d.state === UPowerDeviceState.Discharging)
-            out.push({ k: "Status", v: "On battery", tone: "" })
-        if (d.state === UPowerDeviceState.Charging && d.timeToFull > 0)
-            out.push({ k: "Full in", v: root.duration(d.timeToFull), tone: "" })
-        else if (d.timeToEmpty > 0)
-            out.push({ k: "Time left", v: "About " + root.duration(d.timeToEmpty), tone: "" })
-        if (d.healthSupported && d.healthPercentage > 0)
-            out.push({ k: "Health", v: Math.round(d.healthPercentage > 1 ? d.healthPercentage : d.healthPercentage * 100) + "%", tone: "" })
-        return out
+    function statusOf(d) {
+        if (d.state === UPowerDeviceState.Charging) return "Charging"
+        if (d.state === UPowerDeviceState.FullyCharged) return "Full"
+        if (root.lowDevice(d)) return "Charge soon"
+        if (d.state === UPowerDeviceState.Discharging) return "On battery"
+        return root.kindOf(d)
     }
 
-    readonly property real devicesMax: 344
+    function detailOf(d) {
+        const out = [root.kindOf(d)]
+        const link = root.connectionOf(d)
+        if (link !== "")
+            out.push(link)
+        if (d.state === UPowerDeviceState.Charging && d.timeToFull > 0)
+            out.push("full in " + root.duration(d.timeToFull))
+        else if (d.timeToEmpty > 0)
+            out.push("about " + root.duration(d.timeToEmpty) + " left")
+        if (d.healthSupported && d.healthPercentage > 0)
+            out.push("health " + Math.round(d.healthPercentage > 1 ? d.healthPercentage : d.healthPercentage * 100) + "%")
+        return out.join(", ")
+    }
+
+    readonly property real devicesMax: 332
 
     implicitWidth: 400
-    implicitHeight: col.implicitHeight + 36
+    implicitHeight: col.implicitHeight + 40
 
     ColumnLayout {
         id: col
-        x: 18
-        y: 18
-        width: root.width - 36
+        x: 20
+        y: 20
+        width: root.width - 40
         spacing: 14
 
-        RowLayout {
+        ColumnLayout {
             Layout.fillWidth: true
-            spacing: 16
-
-            Item {
-                id: cell
-                Layout.preferredWidth: 136
-                Layout.preferredHeight: 232
-
-                Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    width: 42
-                    height: 14
-                    topLeftRadius: 8
-                    topRightRadius: 8
-                    bottomLeftRadius: 3
-                    bottomRightRadius: 3
-                    color: Colors.surfaceContainerHighest
-                }
-
-                Rectangle {
-                    id: body
-                    y: 10
-                    width: parent.width
-                    height: parent.height - 10
-                    radius: 32
-                    color: Colors.surfaceContainerHighest
-                    clip: true
-
-                    Canvas {
-                        id: liquid
-                        anchors.fill: parent
-                        property real phase: 0
-                        readonly property real surfaceY: body.height * (1 - root.level)
-                        onSurfaceYChanged: requestPaint()
-                        onWidthChanged: requestPaint()
-                        onHeightChanged: requestPaint()
-
-                        Connections {
-                            target: root
-                            function onTintChanged() { liquid.requestPaint() }
-                        }
-
-                        onPaint: {
-                            const ctx = getContext("2d")
-                            ctx.reset()
-                            ctx.beginPath()
-                            ctx.roundedRect(0, 0, width, height, body.radius, body.radius)
-                            ctx.clip()
-                            const amp = root.level >= 0.995 ? 0 : 6
-                            const wl = width / 1.5
-                            ctx.beginPath()
-                            ctx.moveTo(0, height)
-                            for (let x = 0; x <= width; x += 2)
-                                ctx.lineTo(x, liquid.surfaceY + amp * Math.sin((x / wl) * Math.PI * 2 + liquid.phase))
-                            ctx.lineTo(width, height)
-                            ctx.closePath()
-                            ctx.fillStyle = root.tint
-                            ctx.fill()
-                        }
-
-                        NumberAnimation on phase {
-                            running: root.charging && root.visible
-                            from: 0
-                            to: Math.PI * 2
-                            duration: 2400
-                            loops: Animation.Infinite
-                        }
-                        onPhaseChanged: requestPaint()
-                    }
-
-                    Column {
-                        anchors.centerIn: parent
-                        spacing: 2
-
-                        CustomText {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            content: Math.round(root.level * 100)
-                            family: SettingsConfig.general?.displayFont || "Titan One"
-                            renderType: Text.QtRendering
-                            size: 40
-                            weight: 400
-                            customColor: root.level > 0.55 ? root.onTint : Colors.surfaceText
-                        }
-                        MaterialIconSymbol {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            visible: root.plugged
-                            content: "bolt"
-                            iconSize: 22
-                            customColor: root.level > 0.45 ? root.onTint : Colors.primary
-                        }
-                    }
-                }
-            }
-
-            ColumnLayout {
+            Layout.leftMargin: 4
+            spacing: 2
+            CustomText { Layout.fillWidth: true; content: "Battery"; size: 20; weight: 600 }
+            CustomText {
                 Layout.fillWidth: true
-                Layout.alignment: Qt.AlignTop
-                spacing: 8
+                readonly property int count: root.devices.length + 1
+                content: count + (count === 1 ? " device" : " devices") + " with a battery"
+                size: 13
+                weight: 400
+                customColor: Colors.surfaceVariantText
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: heroRow.implicitHeight + 32
+            radius: 28
+            color: Colors.surfaceContainer
+
+            RowLayout {
+                id: heroRow
+                x: 16
+                y: 16
+                width: parent.width - 32
+                spacing: 16
+
+                LiquidShape {
+                    Layout.preferredWidth: 112
+                    Layout.preferredHeight: 112
+                    shape: "cookie12"
+                    level: root.level
+                    fill: root.tint
+                    onInk: root.onTint
+                    label: Math.round(root.level * 100)
+                    icon: root.plugged ? "bolt" : ""
+                }
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 0
-                    CustomText { Layout.fillWidth: true; content: root.title; size: 17; weight: 600 }
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 4
+
+                    CustomText { Layout.fillWidth: true; content: "This laptop"; size: 17; weight: 600 }
                     CustomText {
                         Layout.fillWidth: true
-                        content: root.plugged ? "Plugged in" : "Unplugged"
-                        size: 12
+                        content: root.status
+                        size: 13
                         weight: 400
-                        customColor: Colors.surfaceVariantText
+                        wrapMode: Text.WordWrap
+                        customColor: root.low ? Colors.error : Colors.surfaceVariantText
                     }
-                }
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 3
+                    Flow {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 6
+                        visible: root.chips.length > 0
+                        spacing: 6
 
-                    Repeater {
-                        model: root.stats
+                        Repeater {
+                            model: root.chips
 
-                        delegate: CustomCard {
-                            id: statRow
-                            required property var modelData
-                            required property int index
-                            autoRadius: false
-                            topRadius: statRow.index === 0 ? 20 : 5
-                            bottomRadius: statRow.index === root.stats.length - 1 ? 20 : 5
+                            delegate: Rectangle {
+                                id: chip
+                                required property var modelData
+                                width: chipRow.implicitWidth + 20
+                                height: 28
+                                radius: 10
+                                color: Colors.surfaceContainerHighest
 
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 10
-                                MaterialIconSymbol { content: statRow.modelData.icon; iconSize: 18; customColor: statRow.modelData.tint }
-                                CustomText {
-                                    Layout.fillWidth: true
-                                    content: statRow.modelData.label
-                                    size: 12
-                                    weight: 400
-                                    customColor: Colors.surfaceVariantText
+                                Row {
+                                    id: chipRow
+                                    anchors.centerIn: parent
+                                    spacing: 4
+                                    CustomText {
+                                        visible: chip.modelData.k !== ""
+                                        content: chip.modelData.k
+                                        size: 12
+                                        weight: 400
+                                        customColor: Colors.surfaceVariantText
+                                    }
+                                    CustomText {
+                                        content: chip.modelData.v
+                                        size: 12
+                                        weight: 600
+                                        customColor: chip.modelData.accent ? Colors.tertiary : Colors.surfaceText
+                                    }
                                 }
-                                CustomText { content: statRow.modelData.value; size: 13; weight: 700 }
                             }
                         }
                     }
@@ -289,176 +254,103 @@ Item {
             }
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            Repeater {
-                model: ServiceUPower.availableProfiles
-
-                delegate: Rectangle {
-                    id: mode
-                    required property var modelData
-                    required property int index
-                    readonly property bool on: ServiceUPower.powerProfile === mode.modelData.id
-                    Layout.fillWidth: true
-                    implicitHeight: 64
-                    radius: modeArea.pressed ? 14 : mode.on ? 22 : 32
-                    color: mode.on ? Colors.primary : modeArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
-                    Behavior on radius { SpatialAnim { speed: "fast" } }
-                    Behavior on color { EffectsColorAnim { speed: "fast" } }
-
-                    Column {
-                        anchors.centerIn: parent
-                        spacing: 3
-                        MaterialIconSymbol {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            content: mode.modelData.icon
-                            iconSize: 22
-                            customColor: mode.on ? Colors.primaryText : Colors.surfaceText
-                        }
-                        CustomText {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            content: mode.modelData.name
-                            size: 11
-                            weight: 600
-                            customColor: mode.on ? Colors.primaryText : Colors.surfaceText
-                        }
-                    }
-
-                    MouseArea {
-                        id: modeArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: ServiceUPower.setPowerProfile(mode.modelData.id)
-                    }
-                }
-            }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.topMargin: 2
-            Layout.leftMargin: 4
-            Layout.rightMargin: 4
-            visible: root.devices.length > 0
-            CustomText { Layout.fillWidth: true; content: "Your devices"; size: 14; weight: 600 }
-            CustomText {
-                content: root.devices.length + " connected"
-                size: 12
-                weight: 400
-                customColor: Colors.surfaceVariantText
-            }
-        }
-
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(devCol.implicitHeight, root.devicesMax)
+            Layout.preferredHeight: Math.min(grid.implicitHeight, root.devicesMax)
             visible: root.devices.length > 0
 
             Flickable {
                 id: devFlick
                 anchors.fill: parent
                 contentWidth: width
-                contentHeight: devCol.implicitHeight
+                contentHeight: grid.implicitHeight
                 interactive: devFlick.contentHeight > devFlick.height + 1
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
                 ScrollBar.vertical: CustomScrollBar {}
 
-                ColumnLayout {
-                    id: devCol
+                GridLayout {
+                    id: grid
                     width: devFlick.width
-                    spacing: 3
+                    columns: root.columns
+                    columnSpacing: 8
+                    rowSpacing: 8
 
                     Repeater {
                         model: root.devices
 
-                        delegate: CustomCard {
-                            id: devCard
+                        delegate: Rectangle {
+                            id: tile
                             required property var modelData
-                            required property int index
-                            readonly property bool low: root.lowDevice(devCard.modelData)
-                            readonly property var facts: root.factsOf(devCard.modelData)
-                            autoRadius: false
-                            topRadius: devCard.index === 0 ? 20 : 5
-                            bottomRadius: devCard.index === root.devices.length - 1 ? 20 : 5
+                            readonly property bool low: root.lowDevice(tile.modelData)
+                            readonly property bool wide: root.columns < 3
+                            readonly property real pct: Math.max(0, Math.min(1, tile.modelData.percentage))
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: (grid.width - (root.columns - 1) * grid.columnSpacing) / root.columns
+                            implicitHeight: tileBody.implicitHeight + (tile.wide ? 28 : 26)
+                            radius: 24
+                            color: Colors.surfaceContainer
 
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 12
+                            GridLayout {
+                                id: tileBody
+                                x: tile.wide ? 14 : 10
+                                y: tile.wide ? 14 : 14
+                                width: tile.width - 2 * x
+                                columns: tile.wide ? 2 : 1
+                                columnSpacing: 14
+                                rowSpacing: 8
 
-                                Rectangle {
-                                    implicitWidth: 38
-                                    implicitHeight: 38
-                                    radius: 19
-                                    color: Colors.surfaceContainerHighest
-                                    MaterialIconSymbol {
-                                        anchors.centerIn: parent
-                                        content: root.iconFor(devCard.modelData)
-                                        iconSize: 20
-                                        customColor: Colors.surfaceText
-                                    }
+                                LiquidShape {
+                                    Layout.preferredWidth: tile.wide ? 64 : 76
+                                    Layout.preferredHeight: tile.wide ? 64 : 76
+                                    Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+                                    shape: root.shapeFor(tile.modelData)
+                                    level: tile.pct
+                                    fill: tile.low ? Colors.error : Colors.secondary
+                                    onInk: tile.low ? Colors.errorText : Colors.secondaryText
+                                    icon: root.iconFor(tile.modelData)
+                                    iconSize: 26
                                 }
 
                                 ColumnLayout {
                                     Layout.fillWidth: true
-                                    spacing: 0
-                                    CustomText { Layout.fillWidth: true; content: root.nameOf(devCard.modelData); size: 14; weight: 600 }
+                                    Layout.alignment: Qt.AlignVCenter
+                                    spacing: 1
+
                                     CustomText {
                                         Layout.fillWidth: true
-                                        content: root.kindOf(devCard.modelData)
-                                        size: 12
-                                        weight: 400
-                                        customColor: Colors.surfaceVariantText
+                                        horizontalAlignment: tile.wide ? Text.AlignLeft : Text.AlignHCenter
+                                        content: Math.round(tile.pct * 100) + "%"
+                                        size: 18
+                                        weight: 600
+                                        customColor: tile.low ? Colors.error : Colors.surfaceText
                                     }
-                                }
-
-                                CustomText {
-                                    content: Math.round(Math.max(0, Math.min(1, devCard.modelData.percentage)) * 100) + "%"
-                                    size: 20
-                                    weight: 600
-                                    customColor: devCard.low ? Colors.error : Colors.surfaceText
+                                    CustomText {
+                                        Layout.fillWidth: true
+                                        horizontalAlignment: tile.wide ? Text.AlignLeft : Text.AlignHCenter
+                                        content: root.nameOf(tile.modelData)
+                                        size: 12
+                                        weight: 500
+                                        elide: Text.ElideRight
+                                    }
+                                    CustomText {
+                                        Layout.fillWidth: true
+                                        horizontalAlignment: tile.wide ? Text.AlignLeft : Text.AlignHCenter
+                                        content: root.statusOf(tile.modelData)
+                                        size: 11
+                                        weight: 400
+                                        elide: Text.ElideRight
+                                        customColor: tile.low ? Colors.error : Colors.surfaceVariantText
+                                    }
                                 }
                             }
 
-                            Flow {
-                                Layout.fillWidth: true
-                                visible: devCard.facts.length > 0
-                                spacing: 6
+                            HoverHandler { id: tileHover }
 
-                                Repeater {
-                                    model: devCard.facts
-
-                                    delegate: Rectangle {
-                                        id: fact
-                                        required property var modelData
-                                        width: factRow.implicitWidth + 20
-                                        height: 28
-                                        radius: 10
-                                        color: Colors.surfaceContainer
-
-                                        Row {
-                                            id: factRow
-                                            anchors.centerIn: parent
-                                            spacing: 6
-                                            CustomText {
-                                                content: fact.modelData.k
-                                                size: 11
-                                                weight: 400
-                                                customColor: Colors.surfaceVariantText
-                                            }
-                                            CustomText {
-                                                content: fact.modelData.v
-                                                size: 11
-                                                weight: 600
-                                                customColor: fact.modelData.tone === "error" ? Colors.error
-                                                    : fact.modelData.tone === "primary" ? Colors.primary : Colors.surfaceText
-                                            }
-                                        }
-                                    }
-                                }
+                            CustomToolTip {
+                                content: root.nameOf(tile.modelData)
+                                detail: root.detailOf(tile.modelData)
+                                visible: tileHover.hovered
                             }
                         }
                     }
@@ -491,6 +383,67 @@ Item {
                 anchors.fill: parent
                 flickable: devFlick
                 color: Colors.surface
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            visible: root.lowest !== null
+            implicitHeight: alertRow.implicitHeight + 24
+            radius: 20
+            color: Colors.errorContainer
+
+            RowLayout {
+                id: alertRow
+                x: 16
+                y: 12
+                width: parent.width - 32
+                spacing: 12
+
+                MaterialIconSymbol {
+                    content: "battery_alert"
+                    iconSize: 22
+                    fill: 1
+                    customColor: Colors.errorContainerText
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+                    CustomText {
+                        Layout.fillWidth: true
+                        content: root.lowest ? root.nameOf(root.lowest) + " at " + Math.round(root.lowest.percentage * 100) + "%" : ""
+                        size: 14
+                        weight: 600
+                        elide: Text.ElideRight
+                        customColor: Colors.errorContainerText
+                    }
+                    CustomText {
+                        Layout.fillWidth: true
+                        content: "Charge it soon to keep using it"
+                        size: 12
+                        weight: 400
+                        customColor: Colors.errorContainerText
+                    }
+                }
+            }
+        }
+
+        Item {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 52
+
+            M3ButtonGroup {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 52
+                fillWidth: true
+                iconSize: 20
+                textSize: 14
+                inactiveColor: Colors.surfaceContainerHigh
+                model: ServiceUPower.availableProfiles.map(p => ({ value: p.id, label: p.name, icon: p.icon }))
+                activeCheck: value => ServiceUPower.powerProfile === value
+                onSegmentClicked: value => ServiceUPower.setPowerProfile(value)
             }
         }
     }

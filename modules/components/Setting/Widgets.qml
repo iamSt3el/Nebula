@@ -1,48 +1,31 @@
-import Quickshell
-import Quickshell.Widgets
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
-import "../Widgets" as W
-import QtQuick.Controls
 import qs.modules.components.Widgets as WM
+import qs.modules.services
 
 Item {
     id: root
     anchors.fill: parent
-    anchors.margins: 5
 
-    readonly property bool panelOn: SettingsConfig.widgets.showWidgets ?? true
-
-    // ── Reusable section header ───────────────────────────────────────────
-    component SectionLabel: CustomText {
-        Layout.topMargin: 20
-        size: 13
-        customColor: Colors.primary
+    readonly property var widgets: SettingsConfig.widgets ?? ({})
+    readonly property var general: SettingsConfig.general ?? ({})
+    readonly property bool panelOn: root.widgets.showWidgets ?? true
+    readonly property bool visOn: root.general.musicVisOn ?? false
+    readonly property var opacitySteps: [
+        { value: 0.30, label: "Clear" }, { value: 0.45, label: "Frosted" }, { value: 0.60, label: "Hazy" },
+        { value: 0.75, label: "Light" }, { value: 0.90, label: "Solid" }
+    ]
+    readonly property real cardOpacity: {
+        const cur = root.widgets.cardOpacity ?? 0.60
+        let best = root.opacitySteps[0].value
+        for (const s of root.opacitySteps)
+            if (Math.abs(s.value - cur) < Math.abs(best - cur))
+                best = s.value
+        return best
     }
-
-    readonly property var networkWindows: [
-        { name: "1 min" }, { name: "3 min" }, { name: "5 min" },
-        { name: "10 min" }, { name: "15 min" }, { name: "30 min" }
-    ]
-    readonly property var networkIntervals: [
-        { name: "1 s" }, { name: "2 s" }, { name: "5 s" }, { name: "10 s" }, { name: "30 s" }
-    ]
-
-    readonly property var visualizerStyles: [
-        { name: "Wave" }, { name: "Chart" }
-    ]
-    readonly property var visualizerColors: [
-        { name: "Primary" }, { name: "Secondary" }, { name: "Tertiary" },
-        { name: "Two-tone" }, { name: "Deep" }, { name: "Warm" }
-    ]
-    readonly property var visualizerFps: [
-        { name: "15 fps" }, { name: "30 fps" }, { name: "60 fps" },
-        { name: "90 fps" }, { name: "120 fps" }
-    ]
-
     readonly property int placedCount: {
         let n = 0
         const cat = WM.WidgetCatalog.catalog
@@ -53,403 +36,420 @@ Item {
         return n
     }
 
+    function patchWidgets(p) {
+        SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, p)
+    }
+
+    function patchGeneral(p) {
+        SettingsConfig.general = Object.assign({}, SettingsConfig.general, p)
+    }
+
     function openStudio(add) {
         GlobalStates.settingsOpen = false
         GlobalStates.widgetOpenAdd = add
         GlobalStates.openEdit("desktop")
     }
 
-    component StudioButton: Rectangle {
-        id: sb
-        property string icon: ""
-        property string label: ""
-        property bool filled: true
-        signal clicked()
-        implicitWidth: sbRow.implicitWidth + 32
-        implicitHeight: 40
-        radius: 20
-        opacity: root.panelOn ? 1 : 0.4
-        color: sb.filled ? Colors.primary : Colors.surfaceContainerHighest
-        Behavior on opacity { EffectsAnim { speed: "fast" } }
+    readonly property string side: root.general.notesSide ?? "L"
+    readonly property bool stacked: (root.general.notesLayout ?? "stack") === "stack"
+    readonly property string anchorAt: root.general.notesAnchor ?? "top"
+    readonly property var widths: [300, 340, 400]
+    readonly property var noteWidths: [{ value: 300, label: "Compact" }, { value: 340, label: "Regular" }, { value: 400, label: "Wide" }]
+    readonly property int cardWidth: root.widths[root.nearest(root.widths, root.general.notesCardWidth ?? 340)]
+    readonly property int offset: root.general.notesOffset ?? 200
+    readonly property int gap: root.general.notesGap ?? 12
+    readonly property var notes: ServiceNotes.notes.slice().sort((a, b) => a.y - b.y)
+    readonly property string sideName: root.side === "R" ? "right" : "left"
 
-        RowLayout {
-            id: sbRow
-            anchors.centerIn: parent
-            spacing: 8
-            MaterialIconSymbol { content: sb.icon; iconSize: 18; customColor: sb.filled ? Colors.primaryText : Colors.surfaceText }
-            CustomText { content: sb.label; size: 13; weight: 700; customColor: sb.filled ? Colors.primaryText : Colors.surfaceText }
-        }
-
-        RippleEffect {
-            anchors.fill: parent
-            radius: 20
-            enabled: root.panelOn
-            onClicked: sb.clicked()
-        }
+    function set(key, value) {
+        const o = {}
+        o[key] = value
+        SettingsConfig.general = Object.assign({}, SettingsConfig.general, o)
     }
 
-    Flickable {
-        ScrollBar.vertical: CustomScrollBar {}
-        id: flick
-        anchors.fill: parent
-        contentHeight: column.implicitHeight
-        contentWidth: width
-        clip: true
+    function nearest(list, v) {
+        let best = 0
+        for (let i = 1; i < list.length; i++)
+            if (Math.abs(list[i] - v) < Math.abs(list[best] - v))
+                best = i
+        return best
+    }
 
-        ColumnLayout {
-            id: column
-            width: parent.width
-            anchors { top: parent.top; left: parent.left; right: parent.right }
-            anchors { leftMargin: 5; rightMargin: 5; topMargin: 5 }
-            spacing: 0
+    function openNote(id) {
+        GlobalStates.settingsOpen = false
+        ServiceNotes.openId = id
+    }
 
-            // ── Page header ──────────────────────────────────────────────
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 10
+    StageView {
+        StagePage {
+            stageId: "front"
 
-                Item { Layout.fillWidth: true }
-
-                CustomToogle {
-                    isToggleOn: root.panelOn
-                    onToggled: function(state) {
-                        SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { showWidgets: state })
-                    }
-                }
-            }
-
-            CustomText {
-                Layout.topMargin: 6
-                content: root.panelOn
-                    ? "Widgets are added, arranged and styled on the desktop itself, in the widget studio."
-                    : "The desktop panel is off. Switch it on to add and arrange widgets."
-                size: 12
-                customColor: Colors.outline
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.topMargin: 14
-                Layout.preferredHeight: studioRow.implicitHeight + 28
-                radius: 20
-                color: Colors.surfaceContainer
+            CustomCard {
+                autoRadius: false; topRadius: 28; bottomRadius: 28
 
                 RowLayout {
-                    id: studioRow
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 18
-                    anchors.rightMargin: 14
-                    spacing: 14
+                    Layout.fillWidth: true
+                    spacing: 10
 
-                    Rectangle {
-                        implicitWidth: 48
-                        implicitHeight: 48
-                        radius: 16
-                        color: Colors.primaryContainer
-                        MaterialIconSymbol { anchors.centerIn: parent; content: "dashboard_customize"; iconSize: 24; customColor: Colors.primaryContainerText }
+                    CustomToogle {
+                        isToggleOn: root.panelOn
+                        onToggled: state => root.patchWidgets({ showWidgets: state })
                     }
 
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 2
-                        CustomText {
-                            content: root.placedCount === 0 ? "No widgets on the desktop"
-                                : root.placedCount === 1 ? "1 widget on the desktop"
-                                : root.placedCount + " widgets on the desktop"
-                            size: 16
-                            weight: 700
-                            customColor: Colors.primary
-                        }
+
                         CustomText {
                             Layout.fillWidth: true
-                            content: "Browse every widget with live previews, drop it where you want it, then resize and style it in place."
+                            content: "Desktop widgets"
+                            size: 14
+                            elide: Text.ElideRight
+                        }
+
+                        CustomText {
+                            Layout.fillWidth: true
+                            content: (root.panelOn ? root.placedCount + (root.placedCount === 1 ? " widget" : " widgets") : "Widgets hidden")
+                                + " · " + root.notes.length + (root.notes.length === 1 ? " note" : " notes")
                             size: 12
+                            elide: Text.ElideRight
                             customColor: Colors.outline
-                            wrapMode: Text.WordWrap
-                            elide: Text.ElideNone
                         }
                     }
 
-                    StudioButton {
-                        icon: "drag_pan"
+                    M3Button {
+                        visible: root.panelOn
+                        icon: "open_with"
                         label: "Arrange"
-                        filled: false
                         onClicked: root.openStudio(false)
                     }
 
-                    StudioButton {
-                        icon: "add"
-                        label: "Add widgets"
+                    M3Button {
+                        visible: root.panelOn
+                        variant: "tonal"
+                        icon: "add_circle"
+                        label: "Widget"
                         onClicked: root.openStudio(true)
                     }
-                }
-            }
 
-            SectionLabel { content: "Appearance" }
-
-            ColumnLayout {
-                Layout.topMargin: 6
-                Layout.fillWidth: true
-                spacing: 3
-
-                CustomCard {
-                    autoRadius: false
-                    topRadius: 20
-                    bottomRadius: WidgetSizes.cardStyle !== "flat" ? 5 : 20
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Card Surface"; size: 14 }
-                            CustomText {
-                                content: "How widget backgrounds treat the wallpaper"
-                                size: 12
-                                customColor: Colors.outline
-                            }
-                        }
-                        Item { Layout.fillWidth: true }
-                        M3ButtonGroup {
-                            model: [
-                                { value: "flat",    label: "Solid",  icon: "square" },
-                                { value: "frosted", label: "Frost",  icon: "blur_on" }
-                            ]
-                            activeCheck: function(v) { return WidgetSizes.cardStyle === v }
-                            onSegmentClicked: function(v) {
-                                SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { cardStyle: v })
-                            }
-                        }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false
-                    topRadius: 5
-                    bottomRadius: 20
-                    visible: WidgetSizes.cardStyle !== "flat"
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Card Opacity"; size: 14 }
-                            CustomText {
-                                content: "How much wallpaper shows through"
-                                size: 12
-                                customColor: Colors.outline
-                            }
-                        }
-                        Item { Layout.fillWidth: true }
-                        M3Slider {
-                            Layout.preferredWidth: 160
-                            Layout.preferredHeight: 30
-                            stepCount: 5
-                            stepLabels: ["clear", "frosted", "hazy", "light", "solid"]
-                            currentStep: {
-                                const vals = [0.30, 0.45, 0.60, 0.75, 0.90]
-                                const cur = SettingsConfig.widgets.cardOpacity ?? 0.60
-                                let best = 0
-                                for (var i = 1; i < vals.length; i++)
-                                    if (Math.abs(vals[i] - cur) < Math.abs(vals[best] - cur)) best = i
-                                return best
-                            }
-                            onStepChanged: step => {
-                                const vals = [0.30, 0.45, 0.60, 0.75, 0.90]
-                                SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets, { cardOpacity: vals[step] })
-                            }
-                        }
+                    M3Button {
+                        variant: "tonal"
+                        icon: "sticky_note_2"
+                        label: "Note"
+                        onClicked: root.openNote(ServiceNotes.add())
                     }
                 }
             }
 
-            // ── Visualizer options (not widgets) ─────────────────────────
-            SectionLabel { content: "Visualizer" }
+            StageHeading { text: "Card look" }
 
-            ColumnLayout {
-                Layout.fillWidth: true; Layout.topMargin: 6; spacing: 3
+            StageDropdownRow {
+                icon: "blur_on"
+                title: "Widget cards"
+                subtitle: "Frost lets the wallpaper through"
+                options: ["Solid", "Frost"]
+                current: WidgetSizes.cardStyle === "flat" ? "Solid" : "Frost"
+                dropdownWidth: 160
+                onPicked: name => root.patchWidgets({ cardStyle: name === "Solid" ? "flat" : "frosted" })
+            }
 
-                CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Cava Visualizer"; size: 14 }
-                            CustomText { content: "Audio bar overlay alongside the circular player"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.general.musicVisOn
-                            onToggled: function(state) {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { musicVisOn: state })
-                            }
-                        }
-                    }
-                }
+            StageDropdownRow {
+                visible: WidgetSizes.cardStyle !== "flat"
+                icon: "opacity"
+                title: "How clear"
+                subtitle: "How much wallpaper shows through widget cards"
+                options: root.opacitySteps.map(o => o.label)
+                current: root.opacitySteps.find(o => o.value === root.cardOpacity)?.label ?? ""
+                dropdownWidth: 160
+                onPicked: name => root.patchWidgets({ cardOpacity: root.opacitySteps.find(o => o.label === name).value })
+            }
 
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Visualizer Style"; size: 14 }
-                            CustomText { content: "Smooth wave or segmented trapezoid chart"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.general.musicVisStyle ?? "Wave"
-                            list: root.visualizerStyles
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== SettingsConfig.general.musicVisStyle)
-                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general,
-                                                                           { musicVisStyle: currentVal })
-                            }
-                        }
-                    }
-                }
+            StageDropdownRow {
+                icon: "width"
+                title: "Note width"
+                subtitle: root.cardWidth + " px"
+                options: root.noteWidths.map(o => o.label)
+                current: root.noteWidths.find(o => o.value === root.cardWidth)?.label ?? ""
+                dropdownWidth: 160
+                onPicked: name => root.set("notesCardWidth", root.noteWidths.find(o => o.label === name).value)
+            }
 
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Visualizer Color"; size: 14 }
-                            CustomText { content: "Theme role for the bars and their ghost cap"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.general.musicVisColor ?? "Primary"
-                            list: root.visualizerColors
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== SettingsConfig.general.musicVisColor)
-                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general,
-                                                                           { musicVisColor: currentVal })
-                            }
-                        }
-                    }
-                }
+            StageHeading { text: "Also on the desktop" }
 
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Visualizer Frame Rate"; size: 14 }
-                            CustomText { content: "Higher is smoother and costs more CPU"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.general.musicVisFps ?? "30 fps"
-                            list: root.visualizerFps
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== SettingsConfig.general.musicVisFps)
-                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general,
-                                                                           { musicVisFps: currentVal })
-                            }
-                        }
-                    }
-                }
+            StageRow {
+                icon: "graphic_eq"
+                title: "Music visualizer"
+                subtitle: (root.general.musicVisStyle ?? "Wave") + " · " + (root.general.musicVisColor ?? "Primary") + " · " + (root.general.musicVisFps ?? "30 fps") + " · " + (root.general.musicVisBars ?? 60) + " bars · " + (root.general.musicVisEdge ?? "bottom")
+                target: "visualizer"
 
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Visualizer Bars"; size: 14 }
-                            CustomText { content: "Number of frequency bands to render"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomSpinBox {
-                            color: Colors.surfaceContainerHighest
-                            min: 10
-                            value: SettingsConfig.general.musicVisBars ?? 60
-                            onValChanged: {
-                                if (val !== value)
-                                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { musicVisBars: val })
-                            }
-                        }
-                    }
+                CustomToogle {
+                    isToggleOn: root.visOn
+                    onToggled: state => root.patchGeneral({ musicVisOn: state })
                 }
             }
 
-            // ── Network options (not widgets) ────────────────────────────
-            SectionLabel { content: "Network" }
-
-            ColumnLayout {
-                Layout.fillWidth: true; Layout.topMargin: 6; spacing: 3
-
-                CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Stats Duration"; size: 14 }
-                            CustomText {
-                                content: "How much history the network graph spans"
-                                size: 12
-                                customColor: Colors.outline
-                            }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.widgets.networkGraphWindow ?? "3 min"
-                            list: root.networkWindows
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== SettingsConfig.widgets.networkGraphWindow)
-                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets,
-                                                                           { networkGraphWindow: currentVal })
-                            }
-                        }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Update Interval"; size: 14 }
-                            CustomText {
-                                content: "How often the speeds are re-read"
-                                size: 12
-                                customColor: Colors.outline
-                            }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredHeight: 30; Layout.preferredWidth: 160
-                            color: Colors.surfaceContainerHighest
-                            currentVal: SettingsConfig.widgets.networkGraphInterval ?? "2 s"
-                            list: root.networkIntervals
-                            onCurrentValChanged: {
-                                if (currentVal && currentVal !== SettingsConfig.widgets.networkGraphInterval)
-                                    SettingsConfig.widgets = Object.assign({}, SettingsConfig.widgets,
-                                                                           { networkGraphInterval: currentVal })
-                            }
-                        }
-                    }
-                }
+            StageNavRow {
+                icon: root.side === "R" ? "align_horizontal_right" : "align_horizontal_left"
+                title: "Where notes sit"
+                subtitle: (root.side === "R" ? "Right" : "Left") + " edge · " + (root.stacked ? "stacked from the " + root.anchorAt + " · " + root.gap + " px apart" : "placed freely")
+                target: "notesPlacement"
             }
 
-            Item { Layout.preferredHeight: 20 }
+            StageNavRow {
+                icon: "network_check"
+                title: "Network speeds"
+                subtitle: "How often widgets re-read upload and download"
+                value: root.widgets.networkGraphInterval ?? "2 s"
+                target: "network"
+            }
         }
-    }
-    ScrollFade {
-        anchors.fill: parent
-        flickable: flick
+
+        StageLazy {
+            stageId: "visualizer"
+
+            StagePage {
+                stageId: "visualizer"
+                title: "Music visualizer"
+
+                StageSwitchRow {
+                    icon: "graphic_eq"
+                    title: "Show the visualizer"
+                    subtitle: "Audio bars along the bottom of the desktop"
+                    checked: root.visOn
+                    onToggled: on => root.patchGeneral({ musicVisOn: on })
+                }
+
+                StageGap {}
+
+                StageChoiceRow {
+                    enabled: root.visOn
+                    title: "Style"
+                    subtitle: "Smooth wave, glowing line, LED blocks, bar chart or a vibrating string"
+                    options: [
+                        { value: "Wave", label: "Wave", icon: "waves" },
+                        { value: "Neon", label: "Neon line", icon: "show_chart" },
+                        { value: "LED", label: "LED blocks", icon: "grid_view" },
+                        { value: "Chart", label: "Chart", icon: "bar_chart" },
+                        { value: "String", label: "String", icon: "airwave" }
+                    ]
+                    current: (root.general.musicVisStyle ?? "Wave") === "Mirror" ? "Wave" : (root.general.musicVisStyle ?? "Wave")
+                    onPicked: v => root.patchGeneral({ musicVisStyle: v })
+                }
+
+                StageChoiceRow {
+                    enabled: root.visOn
+                    title: "Edge"
+                    subtitle: "All sides runs one wave round the whole screen, bass at the bottom, treble at the top"
+                    options: [
+                        { value: "bottom", label: "Bottom", icon: "align_vertical_bottom" },
+                        { value: "top", label: "Top", icon: "align_vertical_top" },
+                        { value: "left", label: "Left", icon: "align_horizontal_left" },
+                        { value: "right", label: "Right", icon: "align_horizontal_right" },
+                        { value: "all", label: "All sides", icon: "crop_free" }
+                    ]
+                    current: root.general.musicVisEdge ?? "bottom"
+                    onPicked: v => root.patchGeneral({ musicVisEdge: v })
+                }
+
+                StageChoiceRow {
+                    enabled: root.visOn
+                    title: "Layer"
+                    subtitle: "Draw it behind your desktop widgets or in front of them"
+                    options: [
+                        { value: "behind", label: "Behind widgets", icon: "flip_to_back" },
+                        { value: "front", label: "In front", icon: "flip_to_front" }
+                    ]
+                    current: root.general.musicVisLayer ?? "behind"
+                    onPicked: v => root.patchGeneral({ musicVisLayer: v })
+                }
+
+                StageSliderRow {
+                    enabled: root.visOn
+                    title: "Height"
+                    subtitle: "How far it reaches in from the edge, in pixels"
+                    from: 60
+                    to: 500
+                    step: 10
+                    current: root.general.musicVisHeight ?? 200
+                    onCommitted: v => root.patchGeneral({ musicVisHeight: Math.round(v) })
+                }
+
+                StageSliderRow {
+                    enabled: root.visOn && (root.general.musicVisStyle ?? "Wave") === "String"
+                    title: "String spacing"
+                    subtitle: "Distance between the zig-zag strokes of the String style, in pixels"
+                    from: 4
+                    to: 60
+                    step: 1
+                    current: root.general.musicVisStringGap ?? 12
+                    onCommitted: v => root.patchGeneral({ musicVisStringGap: Math.round(v) })
+                }
+
+                StageSliderRow {
+                    enabled: root.visOn
+                    title: "Brightness"
+                    subtitle: "How strongly it shows over the wallpaper, in percent"
+                    from: 15
+                    to: 100
+                    step: 5
+                    current: root.general.musicVisBrightness ?? 75
+                    onCommitted: v => root.patchGeneral({ musicVisBrightness: Math.round(v) })
+                }
+
+                StageDropdownRow {
+                    enabled: root.visOn
+                    title: "Colour"
+                    subtitle: "Theme role for the bars and their ghost cap"
+                    options: ["Primary", "Secondary", "Tertiary", "Two-tone", "Deep", "Warm"]
+                    current: root.general.musicVisColor ?? "Primary"
+                    onPicked: name => root.patchGeneral({ musicVisColor: name })
+                }
+
+                StageDropdownRow {
+                    enabled: root.visOn
+                    title: "Frame rate"
+                    subtitle: "Higher is smoother and costs more CPU"
+                    options: ["15 fps", "30 fps", "60 fps", "90 fps", "120 fps"]
+                    current: root.general.musicVisFps ?? "30 fps"
+                    onPicked: name => root.patchGeneral({ musicVisFps: name })
+                }
+
+                StageSliderRow {
+                    enabled: root.visOn
+                    title: "Bars"
+                    subtitle: "Number of frequency bands to render"
+                    from: 10
+                    to: 256
+                    step: 2
+                    current: root.general.musicVisBars ?? 60
+                    onCommitted: v => root.patchGeneral({ musicVisBars: Math.round(v) })
+                }
+
+                StageGap {}
+
+                StageSwitchRow {
+                    enabled: root.visOn && (root.general.musicVisEdge ?? "bottom") !== "all"
+                    icon: "flip"
+                    title: "Mirror"
+                    subtitle: (root.general.musicVisEdge ?? "bottom") === "all"
+                        ? "All sides is already mirrored: bass at the bottom, treble at the top"
+                        : "Bass in the centre, treble out to both ends"
+                    checked: root.general.musicVisMirror === true || root.general.musicVisStyle === "Mirror"
+                    onToggled: on => root.patchGeneral(root.general.musicVisStyle === "Mirror"
+                        ? { musicVisMirror: on, musicVisStyle: "Wave" } : { musicVisMirror: on })
+                }
+
+                StageSwitchRow {
+                    enabled: root.visOn
+                    icon: "bolt"
+                    title: "Beat pulse"
+                    subtitle: "Flashes brighter and jumps a little on each bass hit"
+                    checked: root.general.musicVisBeat ?? true
+                    onToggled: on => root.patchGeneral({ musicVisBeat: on })
+                }
+
+                StageSwitchRow {
+                    enabled: root.visOn
+                    icon: "gradient"
+                    title: "Colour by frequency"
+                    subtitle: "Bass in your colour, fading to a second accent towards the treble"
+                    checked: root.general.musicVisFreqColors ?? true
+                    onToggled: on => root.patchGeneral({ musicVisFreqColors: on })
+                }
+
+                StageSwitchRow {
+                    enabled: root.visOn
+                    icon: "volume_off"
+                    title: "Fade when quiet"
+                    subtitle: "Sinks away after two seconds of silence and rises when sound comes back"
+                    checked: root.general.musicVisFade ?? true
+                    onToggled: on => root.patchGeneral({ musicVisFade: on })
+                }
+            }
+        }
+
+        StageLazy {
+            stageId: "network"
+
+            StagePage {
+                stageId: "network"
+                title: "Network speeds"
+
+                StageDropdownRow {
+                    title: "Update every"
+                    subtitle: "How often the speeds are re-read"
+                    options: ["1 s", "2 s", "5 s", "10 s", "30 s"]
+                    current: root.widgets.networkGraphInterval ?? "2 s"
+                    onPicked: name => root.patchWidgets({ networkGraphInterval: name })
+                }
+            }
+        }
+
+        StageLazy {
+            stageId: "notesPlacement"
+
+            StagePage {
+                stageId: "notesPlacement"
+                title: "Placement"
+
+                StageDropdownRow {
+                    icon: root.side === "R" ? "align_horizontal_right" : "align_horizontal_left"
+                    title: "Screen edge"
+                    options: ["Left", "Right"]
+                    current: root.side === "R" ? "Right" : "Left"
+                    dropdownWidth: 160
+                    onPicked: name => {
+                        const v = name === "Right" ? "R" : "L"
+                        root.set("notesSide", v)
+                        ServiceNotes.moveAll(v)
+                    }
+                }
+
+                StageDropdownRow {
+                    icon: root.stacked ? "view_agenda" : "open_with"
+                    title: "Arrangement"
+                    options: ["Stacked", "Free"]
+                    current: root.stacked ? "Stacked" : "Free"
+                    dropdownWidth: 160
+                    onPicked: name => root.set("notesLayout", name === "Stacked" ? "stack" : "free")
+                }
+
+                StageDropdownRow {
+                    visible: root.stacked
+                    icon: root.anchorAt === "bottom" ? "vertical_align_bottom" : root.anchorAt === "middle" ? "vertical_align_center" : "vertical_align_top"
+                    title: "Position"
+                    options: ["Top", "Middle", "Bottom"]
+                    current: root.anchorAt.charAt(0).toUpperCase() + root.anchorAt.slice(1)
+                    dropdownWidth: 160
+                    onPicked: name => root.set("notesAnchor", name.toLowerCase())
+                }
+
+                StageSpinRow {
+                    visible: root.stacked && root.anchorAt !== "middle"
+                    icon: "height"
+                    title: "Distance from the " + root.anchorAt
+                    subtitle: "From the screen " + root.anchorAt
+                    from: 0
+                    to: 800
+                    step: 20
+                    suffix: " px"
+                    current: root.offset
+                    onStepped: v => root.set("notesOffset", v)
+                }
+
+                StageSpinRow {
+                    visible: root.stacked
+                    icon: "density_medium"
+                    title: "Gap between notes"
+                    subtitle: "Space between stacked notes"
+                    from: 0
+                    to: 48
+                    step: 2
+                    suffix: " px"
+                    current: root.gap
+                    onStepped: v => root.set("notesGap", v)
+                }
+            }
+        }
     }
 }

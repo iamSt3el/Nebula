@@ -190,7 +190,6 @@ Scope{
                             preview: root.preview
                             enabled: !root.preview
                             entranceDelay: 170
-                            entranceScale: 1
                             entranceRise: 14
                             onClosed:{
                                 GlobalStates.appLauncherOpen = false

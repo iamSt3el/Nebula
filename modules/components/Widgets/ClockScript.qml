@@ -46,6 +46,7 @@ WidgetHost {
 
                 RollText {
                     text: t.time + (t.ampm !== "" ? " " + t.ampm.toLowerCase() : "")
+                    color: t.ink
                     family: root._hand
                     pixelSize: 118
                     weight: 400
@@ -59,7 +60,7 @@ WidgetHost {
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 6
                     text: (t.weekday.slice(0, 3) + " " + t.day + " " + t.month.slice(0, 3)).toLowerCase()
-                    color: Colors.tertiary
+                    color: t.accentTertiary
                     font.family: root._hand
                     font.pixelSize: 44
                     renderType: Text.QtRendering
@@ -77,7 +78,7 @@ WidgetHost {
 
             ShapePath {
                 fillColor: "transparent"
-                strokeColor: Colors.tertiary
+                strokeColor: t.accentTertiary
                 strokeWidth: 5
                 capStyle: ShapePath.RoundCap
                 strokeStyle: ShapePath.DashLine

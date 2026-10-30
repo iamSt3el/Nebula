@@ -24,6 +24,15 @@ Singleton {
     property var kbLayouts: []
     property bool needsRequire: false
     property bool hasTouchpad: false
+    property string mouseName: ""
+    property string keyboardName: ""
+    property string touchpadName: ""
+
+    function prettyDevice(name) {
+        const words = String(name).replace(/-(keyboard|mouse|touchpad)(-\d+)?$/i, "").replace(/-\d+$/, "").split("-")
+        return words.filter((w, i) => w !== "" && w !== words[i - 1] && w.toLowerCase() !== "kb")
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+    }
 
     readonly property string cursorTheme: root.cfg.cursor?.theme ?? (Quickshell.env("XCURSOR_THEME") || "Adwaita")
     readonly property int cursorSize: root.cfg.cursor?.size ?? (parseInt(Quickshell.env("XCURSOR_SIZE")) || 24)
@@ -506,7 +515,17 @@ Singleton {
         command: ["hyprctl", "-j", "devices"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { root.hasTouchpad = (JSON.parse(text).mice ?? []).some(m => /touchpad|trackpad/i.test(m.name)) } catch (e) {}
+                try {
+                    const d = JSON.parse(text)
+                    const mice = (d.mice ?? []).map(m => m.name)
+                    const pad = mice.find(n => /touchpad|trackpad/i.test(n))
+                    const mouse = mice.find(n => !/touchpad|trackpad|keyboard|:|-kb-/i.test(n))
+                    const kb = (d.keyboards ?? []).find(k => k.main) ?? null
+                    root.hasTouchpad = pad !== undefined
+                    root.touchpadName = pad === undefined ? "" : /^syna/i.test(pad) ? "Synaptics" : /^elan/i.test(pad) ? "ELAN" : root.prettyDevice(pad)
+                    root.mouseName = mouse === undefined ? "" : root.prettyDevice(mouse)
+                    root.keyboardName = kb ? root.prettyDevice(kb.name) : ""
+                } catch (e) {}
             }
         }
     }

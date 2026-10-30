@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import QtQuick
 import qs.modules.settings
+import qs.modules.services
 
 Scope {
     id: root
@@ -13,14 +14,33 @@ Scope {
     property bool startAnimation: false
     property bool capturing: false
     property var deskShots: ({})
+    property var barShot: null
+    property bool barPending: false
     onScreenLockedChanged: GlobalStates.sessionLocked = root.screenLocked
 
     function requestLock() {
         if (root.screenLocked || root.capturing)
             return
         root.deskShots = ({})
+        root.barShot = null
+        Hyprland.refreshToplevels()
         root.capturing = true
+        root.grabBar()
         deskGuard.restart()
+    }
+
+    function grabBar() {
+        const bar = ServiceGaps.barItem
+        root.barPending = !!bar && bar.visible && bar.width > 0 && bar.grabToImage(result => {
+            root.barShot = result
+            root.barPending = false
+            root.tryEngage()
+        })
+    }
+
+    function tryEngage() {
+        if (!root.barPending && Object.keys(root.deskShots).length >= Quickshell.screens.length)
+            root.engage()
     }
 
     function deskTaken(name, result) {
@@ -29,14 +49,14 @@ Scope {
         const shots = Object.assign({}, root.deskShots)
         shots[name] = result
         root.deskShots = shots
-        if (Object.keys(shots).length >= Quickshell.screens.length)
-            root.engage()
+        root.tryEngage()
     }
 
     function engage() {
         if (!root.capturing)
             return
         deskGuard.stop()
+        root.barPending = false
         root.startAnimation = false
         root.screenLocked = true
         root.capturing = false
@@ -113,11 +133,12 @@ Scope {
 
     Timer {
         id: timer
-        interval: 900
+        interval: 1000
         onTriggered: {
             root.screenLocked = false
             root.startAnimation = false
             root.deskShots = ({})
+            root.barShot = null
         }
     }
 
@@ -152,11 +173,18 @@ Scope {
                         context: lockContext
                         exiting: root.startAnimation
                         desk: root.deskUrl(lockSurface.screen.name)
+                        bar: root.barShot && root.isPrimary(lockSurface.screen) ? root.barShot.url : ""
                         primary: root.isPrimary(lockSurface.screen)
+                        shellScreen: lockSurface.screen
                     }
                 }
             }
         }
+    }
+
+    Connections {
+        target: GlobalStates
+        function onLockRequested() { root.requestLock() }
     }
 
     GlobalShortcut {

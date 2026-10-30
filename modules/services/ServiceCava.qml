@@ -81,6 +81,8 @@ raw_target = /dev/stdout
 data_format = ascii
 ascii_max_range = 1000
 bar_delimiter = 59
+channels = mono
+mono_option = average
 
 [smoothing]
 monstercat = 1.5

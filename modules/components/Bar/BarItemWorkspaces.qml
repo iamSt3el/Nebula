@@ -54,6 +54,7 @@ Item {
     readonly property var cozyStyles: ["lanterns", "house", "stars", "map", "dial"]
     readonly property var quietStyles: ["ring", "viewfinder"]
     readonly property var motionStyles: ["goo", "bounce"]
+    readonly property var expressiveStyles: ["connected", "slider", "wavy", "morph"]
     readonly property var wsIds: Array.from({ length: root.wsCount }, (_, i) => i + 1)
     readonly property var shapeCycle: ["cookie4", "clover4", "sunny", "cookie6", "softBurst", "cookie9", "flower", "cookie7"]
 
@@ -90,6 +91,8 @@ Item {
         id: face
         anchors.centerIn: parent
         sourceComponent: {
+            if (root.expressiveStyles.indexOf(root.style) >= 0)
+                return expressiveComp
             if (root.verticalReady)
                 return columnComp
             if (root.cozyStyles.indexOf(root.style) >= 0)
@@ -182,6 +185,14 @@ Item {
     Component {
         id: motionComp
         BarWsMotion {
+            owner: root
+            style: root.style
+        }
+    }
+
+    Component {
+        id: expressiveComp
+        BarWsExpressive {
             owner: root
             style: root.style
         }

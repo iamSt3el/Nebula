@@ -9,6 +9,10 @@ Rectangle {
 
     property string kind: "shuffle"
     property real side: 34
+    property color accent: Colors.primary
+    property color idle: Colors.outline
+    property color hoverInk: Colors.surfaceText
+    property color hoverFill: Colors.surfaceContainerHigh
 
     readonly property bool isShuffle: root.kind === "shuffle"
     readonly property bool on: root.isShuffle ? ServiceMusic.hasShuffle : ServiceMusic.loopState !== MprisLoopState.None
@@ -18,7 +22,7 @@ Rectangle {
     implicitHeight: root.side
     radius: root.side / 2
     opacity: root.usable ? 1 : 0.3
-    color: root.on ? Qt.alpha(Colors.primary, 0.16) : area.containsMouse ? Colors.surfaceContainerHigh : Qt.alpha(Colors.surfaceContainerHigh, 0)
+    color: root.on ? Qt.alpha(root.accent, 0.16) : area.containsMouse ? root.hoverFill : Qt.alpha(root.hoverFill, 0)
     Behavior on color { EffectsColorAnim {} }
 
     MaterialIconSymbol {
@@ -26,7 +30,7 @@ Rectangle {
         content: root.isShuffle ? "shuffle"
             : ServiceMusic.loopState === MprisLoopState.Track ? "repeat_one" : "repeat"
         iconSize: Math.round(root.side * 0.55)
-        customColor: root.on ? Colors.primary : area.containsMouse ? Colors.surfaceText : Colors.outline
+        customColor: root.on ? root.accent : area.containsMouse ? root.hoverInk : root.idle
     }
 
     MouseArea {

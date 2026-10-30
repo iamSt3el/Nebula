@@ -1,7 +1,6 @@
 import Quickshell
 import Quickshell.Widgets
 import QtQuick
-import QtQuick.Effects
 import QtQuick.Layouts
 import Qt.labs.platform
 import qs.modules.utils
@@ -9,25 +8,72 @@ import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
 import qs.modules.components.WallpaperSelector
-import QtQuick.Controls
 
 Item {
     id: root
     anchors.fill: parent
-    anchors.margins: 5
+
+    readonly property var theme: SettingsConfig.theme ?? ({})
+    readonly property string scheme: root.theme.matugenScheme ?? "scheme-content"
+    readonly property string schemeLabel: root.prettyScheme(root.scheme)
+    readonly property string palette: root.theme.gowallTheme ?? "off"
+    readonly property bool gowallOn: root.palette !== "off"
+    readonly property bool iconsOn: root.theme.gowallIcons ?? false
+    readonly property bool inverted: root.theme.gowallInvert ?? false
+    readonly property bool shellOn: root.theme.gowallShell ?? false
+    readonly property string wallpaperDir: SettingsConfig.general.wallpaperDir ?? (Quickshell.env("HOME") + "/wallpaper")
+    readonly property string fill: Settings.wallpaperFillOrDefault(SettingsConfig.general.wallpaperFill)
+    readonly property var appNames: ({
+        kitty: "kitty", tmux: "tmux", starship: "Starship", btop: "btop", hyprland: "Hyprland borders",
+        gtk3: "GTK 3", gtk4: "GTK 4", qt: "Qt", papirus: "Papirus folders", firefox: "Firefox and Zen",
+        obsidian: "Obsidian", waybar: "Waybar", nwgdock: "nwg-dock"
+    })
+    readonly property var followers: {
+        const ids = root.theme.themeApps
+        return Array.isArray(ids) ? ids.map(id => root.appNames[id] ?? id) : ["Every installed app"]
+    }
+
+    function prettyScheme(s) {
+        const t = String(s).replace("scheme-", "").replace(/-/g, " ")
+        return t.charAt(0).toUpperCase() + t.slice(1)
+    }
+
+    function patchTheme(p) {
+        SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, p)
+    }
+
+    function patchGeneral(p) {
+        SettingsConfig.general = Object.assign({}, SettingsConfig.general, p)
+    }
+
+    function setKindle(on) {
+        if (on === KindleMode.active)
+            return
+        const t = SettingsConfig.theme
+        root.patchTheme(on ? { matugenScheme: "scheme-kindle", kindlePrevScheme: t.matugenScheme }
+                           : { matugenScheme: t.kindlePrevScheme ?? "scheme-content" })
+        ServiceWallpaper.reapply()
+    }
+
+    function setPalette(name) {
+        if (!name || name === root.palette)
+            return
+        const turningOff = name === "off"
+        root.patchTheme({ gowallTheme: name, gowallIcons: turningOff ? false : root.iconsOn })
+        if (turningOff && root.iconsOn)
+            ServiceWallpaper.restoreIconTheme()
+        ServiceWallpaper.refreshIconPreview(name)
+        ServiceWallpaper.reapply()
+    }
 
     component SchemeChip: Rectangle {
         id: chip
         required property var modelData
         readonly property string value: chip.modelData.name
-        readonly property bool active: (SettingsConfig.theme.matugenScheme ?? "scheme-content") === chip.value
+        readonly property bool active: root.scheme === chip.value
         readonly property bool kindle: chip.value === "scheme-kindle"
         readonly property var dots: chip.kindle ? ["#000000", "#eeeeee", "#ffffff"]
             : chip.active ? [Colors.primary, Colors.secondaryContainer, Colors.tertiary] : []
-        readonly property string label: {
-            const t = chip.value.replace("scheme-", "").replace(/-/g, " ")
-            return t.charAt(0).toUpperCase() + t.slice(1)
-        }
         Layout.fillWidth: true
         implicitHeight: 44
         radius: 14
@@ -55,7 +101,7 @@ Item {
             }
             CustomText {
                 anchors.verticalCenter: parent.verticalCenter
-                content: chip.label
+                content: root.prettyScheme(chip.value)
                 size: 13
                 customColor: chip.active ? Colors.primaryText : Colors.surfaceText
             }
@@ -70,561 +116,473 @@ Item {
                 if (chip.active)
                     return
                 const t = SettingsConfig.theme
-                const patch = chip.kindle ? { matugenScheme: chip.value, kindlePrevScheme: t.matugenScheme }
-                                          : { matugenScheme: chip.value }
-                SettingsConfig.theme = Object.assign({}, t, patch)
+                root.patchTheme(chip.kindle ? { matugenScheme: chip.value, kindlePrevScheme: t.matugenScheme }
+                                            : { matugenScheme: chip.value })
                 ServiceWallpaper.reapply()
             }
         }
     }
 
-    component PageThumb: Item {
-        id: thumb
-        property string mode: "light"
-        readonly property bool dark: thumb.mode === "dark"
-        readonly property bool active: (SettingsConfig.theme.matugenTheme ?? "dark") === thumb.mode
-        readonly property bool kindle: KindleMode.active
-        readonly property color page: thumb.kindle ? (thumb.dark ? "#000000" : "#ffffff")
-            : Qt.tint(thumb.dark ? "#14120f" : "#fbf8f5", Qt.alpha(Colors.primary, 0.05))
-        readonly property color card: thumb.kindle ? (thumb.dark ? "#222222" : "#eeeeee")
-            : Qt.tint(thumb.dark ? "#2a2622" : "#ece6e0", Qt.alpha(Colors.primary, 0.1))
-        readonly property color track: thumb.kindle ? (thumb.dark ? "#444444" : "#dddddd")
-            : Qt.tint(thumb.dark ? "#3d3833" : "#dcd5ce", Qt.alpha(Colors.primary, 0.1))
-        readonly property color ink: thumb.kindle ? (thumb.dark ? "#ffffff" : "#000000")
-            : (thumb.dark ? "#ece4dc" : "#1e1b18")
-        readonly property color accent: thumb.kindle ? thumb.ink : Colors.primary
-        Layout.fillWidth: true
-        Layout.maximumWidth: 260
-        implicitHeight: 140
+    component Pin: Rectangle {
+        id: pin
+        property string number: ""
+        property string label: ""
+        property string target: ""
+        implicitWidth: pinRow.implicitWidth + 16
+        implicitHeight: 30
+        radius: 15
+        color: pinArea.containsMouse ? Qt.alpha(Colors.surfaceContainerHighest, 0.95) : Qt.alpha(Colors.surface, 0.86)
 
-        Rectangle {
-            id: thumbPage
-            width: parent.width
-            height: 110
-            radius: 18
-            color: thumb.page
-            border.width: thumb.active ? 3 : 2
-            border.color: thumb.active ? Colors.primary : Colors.outlineVariant
-            clip: true
-
-            Rectangle { x: 10; y: 8; width: 40; height: 10; radius: 5; color: thumb.card }
-            Rectangle { x: (parent.width - width) / 2; y: 8; width: 30; height: 10; radius: 5; color: thumb.accent }
-            Rectangle { x: parent.width - width - 10; y: 8; width: 60; height: 10; radius: 5; color: thumb.card }
+        Row {
+            id: pinRow
+            x: 4
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 7
 
             Rectangle {
-                x: 10; y: 26
-                width: 92; height: parent.height - 36
-                radius: 10
-                color: "transparent"
-                border.width: 1.5
-                border.color: thumb.ink
-                Column {
-                    anchors.fill: parent
-                    anchors.margins: 6
-                    spacing: 4
-                    Rectangle { width: parent.width; height: 22; radius: 6; color: thumb.accent }
-                    Rectangle { width: parent.width; height: 14; radius: 5; color: thumb.card }
-                    Rectangle { width: parent.width; height: 10; radius: 5; color: thumb.track }
+                anchors.verticalCenter: parent.verticalCenter
+                width: 22
+                height: 22
+                radius: 11
+                color: Colors.primary
+
+                CustomText {
+                    anchors.centerIn: parent
+                    content: pin.number
+                    size: 11
+                    weight: 600
+                    customColor: Colors.primaryText
                 }
             }
 
-            Column {
-                x: parent.width - 58; y: 34
-                spacing: 3
-                Rectangle { width: 46; height: 28; radius: 8; color: thumb.ink }
-                Rectangle { width: 46; height: 28; radius: 8; color: thumb.card }
+            CustomText {
+                anchors.verticalCenter: parent.verticalCenter
+                content: pin.label
+                size: 12
+                weight: 500
             }
         }
 
-        Row {
-            anchors.top: thumbPage.bottom
-            anchors.topMargin: 8
-            anchors.horizontalCenter: parent.horizontalCenter
-            spacing: 6
-            MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; visible: thumb.active; content: "check"; iconSize: 16 }
-            CustomText { anchors.verticalCenter: parent.verticalCenter; content: thumb.kindle ? (thumb.dark ? "Dark page" : "Light page") : (thumb.dark ? "Dark" : "Light"); size: 13 }
-        }
-
         MouseArea {
+            id: pinArea
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: ServiceWallpaper.flipMode(thumb.mode)
+            onClicked: stages.push(pin.target)
         }
     }
 
+    SystemClock {
+        id: clock
+        precision: SystemClock.Minutes
+    }
 
     FolderDialog {
         id: folderPicker
         title: "Select wallpaper directory"
         onAccepted: {
-            const path = folder.toString().replace(/^file:\/\//, "")
-            SettingsConfig.general = Object.assign({}, SettingsConfig.general, { wallpaperDir: path })
+            root.patchGeneral({ wallpaperDir: folderPicker.folder.toString().replace(/^file:\/\//, "") })
             GlobalStates.fileDialogOpen = false
         }
         onRejected: GlobalStates.fileDialogOpen = false
     }
 
-    Flickable {
-        id: pageFlick
-        ScrollBar.vertical: CustomScrollBar {}
-        anchors.fill: parent
-        contentHeight: column.implicitHeight
-        contentWidth: width
-        clip: true
+    Timer {
+        id: kindleAnsiApply
+        interval: 400
+        onTriggered: ServiceWallpaper.applyTheme()
+    }
 
-        ColumnLayout {
-            id: column
-            width: parent.width
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.leftMargin: 5
-            anchors.rightMargin: 5
-            anchors.topMargin: 5
-            spacing: 0
+    readonly property var general: SettingsConfig.general ?? ({})
+    readonly property string primary: root.general.primaryMonitor ?? ""
+    readonly property var scales: [
+        { value: "compact", label: "Compact" }, { value: "normal", label: "Normal" },
+        { value: "large", label: "Large" }, { value: "xlarge", label: "X-Large" }
+    ]
+    readonly property var weights: [
+        { value: "thin", label: "Thin" }, { value: "regular", label: "Regular" }, { value: "medium", label: "Medium" },
+        { value: "semibold", label: "Semibold" }, { value: "bold", label: "Bold" }, { value: "extrabold", label: "Extrabold" }
+    ]
+    readonly property string fontWeight: root.general.fontWeight ?? "extrabold"
 
-            // ── Page header ──────────────────────────────────────────────
-            // ── Current theme reference ──────────────────────────────────
-            // Read-only summary of what the shell is actually rendering with:
-            // the wallpaper the palette came from, and the key roles it
-            // produced. Bound to Colors rather than WallpaperTheme so the card
-            // follows whichever theme is active — DarkTheme and LightTheme both
-            // report an empty wallpaper, which is the empty state below.
+    function patch(p) {
+        SettingsConfig.general = Object.assign({}, SettingsConfig.general, p)
+    }
+
+    function editBar() {
+        GlobalStates.settingsOpen = false
+        GlobalStates.openEdit("edges")
+    }
+
+    StageView {
+        id: stages
+        StagePage {
+            stageId: "front"
+
             CustomCard {
-                id: themeRefCard
-                Layout.topMargin: 16
-                autoRadius: false; topRadius: 20; bottomRadius: 20
+                id: preview
+                autoRadius: false; topRadius: 28; bottomRadius: 28
 
                 readonly property string wpPath: Colors.wallpaper ?? ""
                 readonly property bool hasWallpaper: wpPath.length > 0
-                readonly property string wpName: hasWallpaper
-                    ? wpPath.substring(wpPath.lastIndexOf("/") + 1)
-                    : "No wallpaper"
+                readonly property string wpName: hasWallpaper ? wpPath.substring(wpPath.lastIndexOf("/") + 1) : "No wallpaper"
+                readonly property int wsCount: Math.max(1, Math.min(6, root.general.workspaceCount ?? 10))
+                readonly property string greeting: clock.hours < 12 ? "Good morning" : clock.hours < 18 ? "Good afternoon" : "Good evening"
 
-                readonly property string mode:   SettingsConfig.theme.matugenTheme  ?? "dark"
-                readonly property string scheme: SettingsConfig.theme.matugenScheme ?? "scheme-content"
-
-                readonly property var swatchRoles: [
-                    "primary",  "secondary",        "tertiary",    "error",
-                    "surface",  "surfaceContainer", "surfaceText", "outline"
-                ]
-
-                // Wallpaper as a full-width hero. Rounded clip rather than a
-                // Rectangle with clip:true — that clips to the bounding box and
-                // leaves square corners on the image.
                 ClippingRectangle {
+                    id: desk
                     Layout.fillWidth: true
-                    implicitHeight: 150
-                    radius: 16
+                    implicitHeight: 340
+                    radius: 20
                     color: Colors.surfaceContainerHighest
 
                     Image {
                         anchors.fill: parent
-                        visible: themeRefCard.hasWallpaper
-                        source: !themeRefCard.hasWallpaper ? ""
+                        visible: preview.hasWallpaper
+                        source: !preview.hasWallpaper ? ""
                             : KindleMode.wallpaper !== "keep" && WallpaperTheme.wallpaperScreen !== "" ? "file://" + WallpaperTheme.wallpaperScreen
-                            : "file://" + themeRefCard.wpPath
+                            : "file://" + preview.wpPath
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
-                        // Decoded at roughly display size; wallpapers are
-                        // routinely 4K and this card shows a 150px-tall banner.
-                        sourceSize: Qt.size(960, 360)
+                        sourceSize: Qt.size(1280, 680)
                     }
 
-                    // Darkens the lower third only, so the name and chips stay
-                    // legible over a bright wallpaper without dimming the image.
+                    MaterialIconSymbol {
+                        anchors.centerIn: parent
+                        visible: !preview.hasWallpaper
+                        content: "image"
+                        iconSize: 32
+                        customColor: Colors.outline
+                    }
+
                     Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: 78
-                        visible: themeRefCard.hasWallpaper
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: "transparent" }
-                            GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.75) }
+                        x: 12
+                        y: 10
+                        width: parent.width - 24
+                        height: 30
+                        radius: 15
+                        color: Qt.alpha(Colors.surface, 0.9)
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            spacing: 10
+
+                            MaterialIconSymbol { content: "apps"; iconSize: 15; fill: 1; customColor: Colors.primary }
+
+                            Row {
+                                spacing: 4
+                                Repeater {
+                                    model: preview.wsCount
+                                    Rectangle {
+                                        required property int index
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: index === 0 ? 18 : 8
+                                        height: 8
+                                        radius: 4
+                                        color: index === 0 ? Colors.primary : index < 3 ? Colors.outline : Colors.outlineVariant
+                                    }
+                                }
+                            }
+
+                            Item { Layout.fillWidth: true }
+
+                            CustomText {
+                                content: Qt.formatDateTime(clock.date, "ddd d MMM · hh:mm")
+                                size: 11
+                                weight: 500
+                            }
+
+                            Item { Layout.fillWidth: true }
+
+                            MaterialIconSymbol { content: "lan"; iconSize: 14; fill: 1 }
+                            MaterialIconSymbol { content: "volume_up"; iconSize: 14; fill: 1 }
+                            MaterialIconSymbol { content: "battery_5_bar"; iconSize: 14; fill: 1 }
                         }
                     }
 
-                    ColumnLayout {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        anchors.leftMargin: 14
-                        anchors.rightMargin: 14
-                        anchors.bottomMargin: 12
-                        visible: themeRefCard.hasWallpaper
-                        spacing: 7
+                    Rectangle {
+                        id: deskPanel
+                        x: 22
+                        y: parent.height - height - 22
+                        width: 236
+                        height: deskPanelCol.implicitHeight + 28
+                        radius: 20
+                        color: Qt.alpha(Colors.surfaceContainer, 0.93)
 
-                        CustomText {
-                            Layout.fillWidth: true
-                            content: themeRefCard.wpName
-                            size: 16; weight: 700
-                            customColor: "#ffffff"
-                            elide: Text.ElideMiddle
-                        }
-
-                        // Chips instead of a dot-separated run: the three values
-                        // are independent facts, not one sentence.
-                        RowLayout {
+                        ColumnLayout {
+                            id: deskPanelCol
+                            x: 16
+                            y: 14
+                            width: parent.width - 32
                             spacing: 6
 
-                            Repeater {
-                                model: [
-                                    { text: Settings.activeTheme, icon: "" },
-                                    { text: themeRefCard.mode, icon: themeRefCard.mode === "light" ? "light_mode" : "dark_mode" },
-                                    { text: themeRefCard.scheme, icon: "" }
-                                ]
+                            CustomText {
+                                Layout.fillWidth: true
+                                content: preview.greeting
+                                family: root.general.displayFont ?? "Rubik"
+                                renderType: Text.QtRendering
+                                size: 22
+                                elide: Text.ElideRight
+                            }
 
-                                delegate: Rectangle {
-                                    id: chip
-                                    required property var modelData
-                                    implicitWidth: chipRow.implicitWidth + 18
-                                    implicitHeight: 22
-                                    radius: 11
-                                    color: Qt.rgba(1, 1, 1, 0.18)
-
-                                    RowLayout {
-                                        id: chipRow
-                                        anchors.centerIn: parent
-                                        spacing: 4
-
-                                        MaterialIconSymbol {
-                                            visible: chip.modelData.icon.length > 0
-                                            content: chip.modelData.icon
-                                            iconSize: 13
-                                            customColor: "#ffffff"
-                                        }
-                                        CustomText {
-                                            content: chip.modelData.text
-                                            size: 11
-                                            customColor: "#ffffff"
-                                        }
-                                    }
-                                }
+                            CustomText {
+                                Layout.fillWidth: true
+                                content: (root.general.defaultFont ?? "Rubik") + " sets every label. " + (root.general.displayFont ?? "Titan One") + " sets the big titles and numbers."
+                                size: 12
+                                wrapMode: Text.WordWrap
+                                customColor: Colors.outline
                             }
                         }
                     }
 
-                    ColumnLayout {
-                        anchors.centerIn: parent
-                        visible: !themeRefCard.hasWallpaper
-                        spacing: 8
-
-                        MaterialIconSymbol {
-                            Layout.alignment: Qt.AlignHCenter
-                            content: "image"
-                            iconSize: 28
-                            customColor: Colors.outline
-                        }
-                        CustomText {
-                            Layout.alignment: Qt.AlignHCenter
-                            content: Settings.activeTheme + " theme  ·  not wallpaper-derived"
-                            size: 12
-                            customColor: Colors.outline
-                        }
-                    }
+                    Pin { x: Math.round(parent.width * 0.55); y: 150; number: "1"; label: "Wallpaper"; target: "wallpaper" }
+                    Pin { x: parent.width - width - 22; y: 50; number: "2"; label: "Bar"; target: "bar" }
+                    Pin { x: 40; y: 50; number: "3"; label: "Workspaces"; target: "workspaces" }
+                    Pin { x: deskPanel.x + deskPanel.width - 30; y: deskPanel.y - height / 2; number: "4"; label: "Fonts"; target: "fonts" }
                 }
 
-                // One connected bar rather than labelled tiles: the point of the
-                // card is seeing the palette, and role names made the grid ragged
-                // without telling you anything the colour didn't.
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 0
-
-                    Repeater {
-                        model: themeRefCard.swatchRoles
-
-                        delegate: Rectangle {
-                            id: swatch
-                            required property string modelData
-                            required property int index
-
-                            readonly property bool isFirst: index === 0
-                            readonly property bool isLast: index === themeRefCard.swatchRoles.length - 1
-
-                            Layout.fillWidth: true
-                            implicitHeight: 40
-                            color: Colors[swatch.modelData]
-
-                            topLeftRadius:     isFirst ? 16 : 0
-                            bottomLeftRadius:  isFirst ? 16 : 0
-                            topRightRadius:    isLast  ? 16 : 0
-                            bottomRightRadius: isLast  ? 16 : 0
-                        }
-                    }
-                }
-            }
-
-            // ── Appearance ───────────────────────────────────────────────
-            ColumnLayout {
-                id: kindleSection
-                Layout.fillWidth: true
-                visible: KindleMode.active
-                spacing: 0
-
-                readonly property var appNames: ({
-                    kitty: "kitty", tmux: "tmux", starship: "Starship", btop: "btop", hyprland: "Hyprland borders",
-                    gtk3: "GTK 3", gtk4: "GTK 4", qt: "Qt", papirus: "Papirus folders", firefox: "Firefox and Zen",
-                    obsidian: "Obsidian", waybar: "Waybar", nwgdock: "nwg-dock"
-                })
-                readonly property var followers: {
-                    const ids = SettingsConfig.theme.themeApps
-                    return Array.isArray(ids) ? ids.map(id => kindleSection.appNames[id] ?? id) : ["Every installed app"]
-                }
-
-                function setKindle(patch) {
-                    SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, patch)
-                }
-
-                Timer {
-                    id: kindleAnsiApply
-                    interval: 400
-                    onTriggered: ServiceWallpaper.applyTheme()
-                }
-
-                CustomText { Layout.topMargin: 16; content: "Kindle mode"; size: 13; customColor: Colors.primary }
-                CustomText {
                     Layout.topMargin: 2
-                    content: "Fixed e-ink greys for the shell and your apps"
-                    size: 12
-                    customColor: Colors.outline
-                }
+                    spacing: 14
 
-                GridLayout {
-                    Layout.topMargin: 6
-                    Layout.fillWidth: true
-                    columns: kindleSection.width > 760 ? 2 : 1
-                    columnSpacing: 12
-                    rowSpacing: 3
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Layout.preferredWidth: 1
-                        Layout.alignment: Qt.AlignTop
-                        spacing: 3
-
-                        CustomCard {
-                            autoRadius: false; topRadius: 20; bottomRadius: 20
-                            ColumnLayout {
-                                spacing: 2
-                                CustomText { content: "Apps that follow"; size: 14 }
-                                CustomText { content: "The same list as the theme's app colours"; size: 12; customColor: Colors.outline }
-                            }
-                            Flow {
-                                Layout.fillWidth: true
-                                Layout.topMargin: 6
-                                spacing: 6
-                                Repeater {
-                                    model: kindleSection.followers
-                                    Rectangle {
-                                        required property var modelData
-                                        width: appRow.implicitWidth + 24
-                                        height: 30
-                                        radius: 15
-                                        color: Colors.surfaceContainer
-                                        Row {
-                                            id: appRow
-                                            anchors.centerIn: parent
-                                            spacing: 5
-                                            MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; content: "check"; iconSize: 15 }
-                                            CustomText { anchors.verticalCenter: parent.verticalCenter; content: modelData; size: 12 }
-                                        }
-                                    }
-                                }
+                    Row {
+                        spacing: -8
+                        Repeater {
+                            model: KindleMode.active ? ["#000000", "#555555", "#999999", "#dddddd", "#ffffff"]
+                                : [Colors.primary, Colors.secondary, Colors.tertiaryContainer, Colors.primaryContainer, Colors.surfaceContainerHighest]
+                            Rectangle {
+                                required property var modelData
+                                width: 30
+                                height: 30
+                                radius: 15
+                                color: modelData
+                                border.width: 3
+                                border.color: Colors.surfaceContainerHigh
                             }
                         }
                     }
 
-                    ColumnLayout {
+                    Rectangle {
+                        Layout.preferredWidth: 22
+                        Layout.preferredHeight: 22
+                        radius: 11
+                        color: Colors.primary
+
+                        CustomText {
+                            anchors.centerIn: parent
+                            content: "5"
+                            size: 11
+                            weight: 600
+                            customColor: Colors.primaryText
+                        }
+                    }
+
+                    Item {
                         Layout.fillWidth: true
-                        Layout.preferredWidth: 1
-                        Layout.alignment: Qt.AlignTop
-                        spacing: 3
+                        implicitHeight: schemeCol.implicitHeight
 
-                        CustomCard {
-                            autoRadius: false; topRadius: 20; bottomRadius: 5
-                            RowLayout {
+                        ColumnLayout {
+                            id: schemeCol
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 2
+
+                            CustomText {
                                 Layout.fillWidth: true
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 2
-                                    CustomText { content: "Outlines instead of shadows"; size: 14 }
-                                    CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "The bar, dock and panels get a 2 px edge and panel shadows switch off"; size: 12; customColor: Colors.outline }
-                                }
-                                CustomToogle {
-                                    isToggleOn: SettingsConfig.theme.kindleOutlines ?? true
-                                    onToggled: state => kindleSection.setKindle({ kindleOutlines: state })
-                                }
+                                content: KindleMode.active ? "Kindle greys" : root.schemeLabel + " colours"
+                                size: 14
+                                elide: Text.ElideRight
+                            }
+
+                            CustomText {
+                                Layout.fillWidth: true
+                                content: preview.hasWallpaper ? "Picked from the wallpaper" : Settings.activeTheme + " theme"
+                                size: 12
+                                elide: Text.ElideRight
+                                customColor: Colors.outline
                             }
                         }
 
-                        CustomCard {
-                            autoRadius: false; topRadius: 5; bottomRadius: 5
-                            ColumnLayout {
-                                spacing: 2
-                                CustomText { content: "Wallpaper"; size: 14 }
-                                CustomText {
-                                    Layout.fillWidth: true
-                                    wrapMode: Text.WordWrap
-                                    content: {
-                                        const w = SettingsConfig.theme.kindleWallpaper ?? "blank"
-                                        if (w === "eink") return ServiceWallpaper.gowallAvailable
-                                            ? "Your wallpaper in the Kindle's 16 greys, through gowall"
-                                            : "gowall isn't installed, so this falls back to greyscale"
-                                        if (w === "grey") return "Your wallpaper, in greys"
-                                        if (w === "keep") return "Your wallpaper, unchanged"
-                                        return "A plain page behind the windows"
-                                    }
-                                    size: 12; customColor: Colors.outline
-                                }
-                            }
-                            M3ButtonGroup {
-                                Layout.fillWidth: true
-                                Layout.topMargin: 6
-                                fillWidth: true
-                                model: [
-                                    { value: "blank", label: "Blank page", icon: "description" },
-                                    { value: "eink", label: "E-ink", icon: "gradient" },
-                                    { value: "grey", label: "Greyscale", icon: "filter_b_and_w" },
-                                    { value: "keep", label: "Keep mine", icon: "wallpaper" }
-                                ]
-                                activeCheck: v => (SettingsConfig.theme.kindleWallpaper ?? "blank") === v
-                                onSegmentClicked: v => kindleSection.setKindle({ kindleWallpaper: v })
-                            }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: stages.push("colours")
                         }
+                    }
 
-                        CustomCard {
-                            autoRadius: false; topRadius: 5; bottomRadius: 5
-                            RowLayout {
-                                Layout.fillWidth: true
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 2
-                                    CustomText { content: "Grey app icons"; size: 14 }
-                                    CustomText { Layout.fillWidth: true; wrapMode: Text.WordWrap; content: "Dock, launcher, tray, window title and notification icons lose their colour"; size: 12; customColor: Colors.outline }
-                                }
-                                CustomToogle {
-                                    isToggleOn: SettingsConfig.theme.kindleGreyIcons ?? true
-                                    onToggled: state => kindleSection.setKindle({ kindleGreyIcons: state })
-                                }
-                            }
-                        }
+                    M3ButtonGroup {
+                        Layout.preferredHeight: 36
+                        height: 36
+                        textSize: 13
+                        iconSize: 16
+                        model: [{ value: "light", label: "Light", icon: "light_mode" }, { value: "dark", label: "Dark", icon: "dark_mode" }]
+                        activeCheck: v => (root.theme.matugenTheme ?? "dark") === v
+                        onSegmentClicked: v => ServiceWallpaper.flipMode(v)
+                    }
 
-                        CustomCard {
-                            autoRadius: false; topRadius: 5; bottomRadius: 20
-                            RowLayout {
-                                Layout.fillWidth: true
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 2
-                                    CustomText { content: "Grey terminal colours"; size: 14 }
-                                    CustomText {
-                                        Layout.fillWidth: true
-                                        wrapMode: Text.WordWrap
-                                        content: (SettingsConfig.theme.kindleGreyAnsi ?? false)
-                                            ? "Terminal colours become grey tones"
-                                            : "Terminals keep their normal colours"
-                                        size: 12; customColor: Colors.outline
-                                    }
-                                }
-                                CustomToogle {
-                                    isToggleOn: SettingsConfig.theme.kindleGreyAnsi ?? false
-                                    onToggled: state => {
-                                        kindleSection.setKindle({ kindleGreyAnsi: state })
-                                        kindleAnsiApply.restart()
-                                    }
-                                }
-                            }
-                        }
+                    M3Button {
+                        variant: "tonal"
+                        icon: "edit"
+                        label: "Edit the bar"
+                        onClicked: root.editBar()
                     }
                 }
             }
 
-            CustomText { Layout.topMargin: 24; content: "Appearance"; size: 13; customColor: Colors.primary }
+            StageHeading { text: "Picture" }
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 6
-                spacing: 3
+            StageNavRow {
+                icon: "wallpaper"
+                badge: "1"
+                title: "Wallpaper"
+                subtitle: preview.wpName + " · " + root.fill + " · " + Settings.transitionOrDefault(root.theme.transitionType)
+                target: "wallpaper"
+            }
 
-                // Wallpaper Directory
+            StageNavRow {
+                icon: "travel_explore"
+                title: "Wallhaven"
+                subtitle: "Search and download wallpapers online"
+                value: (SettingsConfig.wallhaven.apiKey ?? "") !== "" ? "Key set" : "No key"
+                target: "wallhaven"
+            }
+
+            StageNavRow {
+                icon: "format_paint"
+                title: "Gowall"
+                subtitle: "Repaint the wallpaper and icons with a fixed palette"
+                value: root.gowallOn ? root.palette : "Off"
+                target: "gowall"
+            }
+
+            StageHeading { text: "Colour" }
+
+            StageNavRow {
+                icon: "palette"
+                badge: "5"
+                title: "Colours"
+                subtitle: KindleMode.active ? "Kindle greys"
+                    : root.schemeLabel + " scheme · " + (Array.isArray(root.theme.themeApps) ? root.followers.length + " apps follow it" : "every app follows it")
+                target: "colours"
+            }
+
+            StageRow {
+                icon: "menu_book"
+                title: "Kindle mode"
+                subtitle: "Fixed e-ink greys for the shell and your apps"
+                target: "kindle"
+
+                CustomToogle {
+                    isToggleOn: KindleMode.active
+                    onToggled: state => root.setKindle(state)
+                }
+            }
+
+            StageHeading { text: "Text and bar" }
+
+            StageNavRow {
+                icon: "text_fields"
+                badge: "4"
+                title: "Fonts"
+                subtitle: (root.general.defaultFont ?? "Rubik") + " · " + (root.general.displayFont ?? "Titan One")
+                target: "fonts"
+            }
+
+            StageNavRow {
+                icon: "toolbar"
+                badge: "2"
+                title: "Bar"
+                subtitle: root.primary === "" ? "Full bar on every screen" : "Full bar on " + root.primary
+                target: "bar"
+            }
+
+            StageNavRow {
+                icon: "view_week"
+                badge: "3"
+                title: "Workspaces"
+                subtitle: (root.general.workspaceCount ?? 10) + ((root.general.perMonitorWorkspaces ?? false) ? " · each screen has its own" : " · shared by every screen")
+                target: "workspaces"
+            }
+        }
+
+        StageLazy {
+            stageId: "wallpaper"
+
+            StagePage {
+                stageId: "wallpaper"
+                title: "Wallpaper"
+
+                StageNavRow {
+                    icon: "folder"
+                    title: "Folder"
+                    subtitle: "New wallpapers are picked at random from here"
+                    value: root.wallpaperDir
+                    onClicked: {
+                        GlobalStates.fileDialogOpen = true
+                        folderPicker.open()
+                    }
+                }
+
+                StageDropdownRow {
+                    icon: "animation"
+                    title: "Transition"
+                    subtitle: "Animation when the wallpaper changes"
+                    options: Settings.transitionTypes
+                    current: Settings.transitionOrDefault(root.theme.transitionType)
+                    onPicked: name => root.patchTheme({ transitionType: name })
+                }
+
+                StageGap {}
+
+                StageChoiceRow {
+                    title: "Fit"
+                    subtitle: root.fill === "fill" ? "Stretched to the screen edges"
+                        : root.fill === "full" ? "The whole image, with bars where it doesn't reach"
+                        : "Covers the screen, trimming what doesn't fit"
+                    options: Settings.wallpaperFills
+                    current: root.fill
+                    onPicked: v => root.patchGeneral({ wallpaperFill: v })
+                }
+
+                StageSwitchRow {
+                    title: "Workspace glide"
+                    subtitle: root.fill === "full" ? "Off while the whole wallpaper is shown" : "The wallpaper slides a little when you switch workspace"
+                    checked: SettingsConfig.general.wallpaperGlide ?? true
+                    onToggled: on => root.patchGeneral({ wallpaperGlide: on })
+                }
+            }
+        }
+
+        StageLazy {
+            stageId: "colours"
+
+            StagePage {
+                stageId: "colours"
+                title: "Colours"
+
                 CustomCard {
                     autoRadius: false; topRadius: 20; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Wallpaper Directory"; size: 14 }
-                            CustomText { content: "Wallpapers are picked randomly from this folder"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        RowLayout {
-                            spacing: 4
-                            Rectangle {
-                                implicitHeight: 32; implicitWidth: 180
-                                topLeftRadius: 16; bottomLeftRadius: 16
-                                topRightRadius: 6;  bottomRightRadius: 6
-                                color: Colors.surfaceContainerHighest
-                                clip: true
-                                CustomText {
-                                    anchors.left: parent.left; anchors.leftMargin: 12
-                                    anchors.right: parent.right; anchors.rightMargin: 8
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    content: SettingsConfig.general.wallpaperDir ?? (Quickshell.env("HOME") + "/wallpaper")
-                                    size: 11
-                                    elide: Text.ElideLeft
-                                }
-                            }
-                            M3IconButton {
-                                implicitHeight: 32; implicitWidth: 40
-                                topLeftRadius: 6;   bottomLeftRadius: 6
-                                topRightRadius: 16; bottomRightRadius: 16
-                                icon: "folder_open"; iconSize: 18
-                                onClicked: {
-                                    GlobalStates.fileDialogOpen = true
-                                    folderPicker.open()
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Theme Mode
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    ColumnLayout {
-                        spacing: 2
-                        CustomText { content: "Theme Mode"; size: 14 }
-                        CustomText { content: "Click a page to switch between light and dark"; size: 12; customColor: Colors.outline }
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.topMargin: 6
-                        spacing: 14
-                        Item { Layout.fillWidth: true }
-                        PageThumb { mode: "light" }
-                        PageThumb { mode: "dark" }
-                        Item { Layout.fillWidth: true }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     visible: !ServiceWallpaper.gowallActive && !KindleMode.active
+
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
+                            Layout.fillWidth: true
                             spacing: 2
-                            CustomText { content: "Wallpaper Colours"; size: 14 }
+                            CustomText { content: "Wallpaper colours"; size: 14 }
                             CustomText {
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
                                 content: themeSeeds.seeds.length > 1
-                                    ? "Other themes hiding in this wallpaper — the first is picked automatically"
+                                    ? "Other themes hiding in this wallpaper; the first is picked automatically"
                                     : "This wallpaper has one clear colour"
                                 size: 12; customColor: Colors.outline
                             }
                         }
-                        Item { Layout.fillWidth: true }
                         SeedSwatches {
                             id: themeSeeds
                             path: ServiceWallpaper.currentSource
@@ -634,16 +592,19 @@ Item {
                 }
 
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
+                    autoRadius: false
+                    topRadius: !ServiceWallpaper.gowallActive && !KindleMode.active ? 5 : 20
+                    bottomRadius: 20
+
                     ColumnLayout {
                         spacing: 2
                         CustomText { content: "Colour scheme"; size: 14 }
                         CustomText {
-                            content: KindleMode.active ? "Kindle ignores the wallpaper and uses fixed greys"
-                                                       : "How colours are pulled from your wallpaper"
+                            content: KindleMode.active ? "Kindle ignores the wallpaper and uses fixed greys" : "How colours are pulled from your wallpaper"
                             size: 12; customColor: Colors.outline
                         }
                     }
+
                     GridLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: 6
@@ -656,270 +617,185 @@ Item {
                         }
                     }
                 }
+            }
+        }
 
-                // Transition Type
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Transition Type"; size: 14 }
-                            CustomText { content: "Animation style when swapping wallpapers"; size: 12; customColor: Colors.outline }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredWidth: 200
-                            Layout.preferredHeight: 30
-                            color: Colors.surfaceContainerHighest
-                            list: Settings.transitionTypes
-                            currentVal: Settings.transitionOrDefault(SettingsConfig.theme.transitionType)
-                            onListChildClicked: child => {
-                                const currentVal = child.name
-                                if (currentVal && currentVal !== SettingsConfig.theme.transitionType) {
-                                    SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { transitionType: currentVal })
-                                }
-                            }
-                        }
+        StageLazy {
+            stageId: "kindle"
+
+            StagePage {
+                stageId: "kindle"
+                title: "Kindle mode"
+
+                StageSwitchRow {
+                    icon: "menu_book"
+                    title: "Kindle mode"
+                    subtitle: "Fixed e-ink greys for the shell and your apps"
+                    checked: KindleMode.active
+                    onToggled: on => root.setKindle(on)
+                }
+
+                StageGap {}
+
+                StageSwitchRow {
+                    enabled: KindleMode.active
+                    title: "Outlines instead of shadows"
+                    subtitle: "The bar, dock and panels get a 2 px edge and panel shadows switch off"
+                    checked: root.theme.kindleOutlines ?? true
+                    onToggled: on => root.patchTheme({ kindleOutlines: on })
+                }
+
+                StageChoiceRow {
+                    enabled: KindleMode.active
+                    title: "Wallpaper"
+                    subtitle: {
+                        const w = root.theme.kindleWallpaper ?? "blank"
+                        if (w === "eink")
+                            return ServiceWallpaper.gowallAvailable ? "Your wallpaper in the Kindle's 16 greys, through gowall"
+                                                                    : "gowall isn't installed, so this falls back to greyscale"
+                        if (w === "grey")
+                            return "Your wallpaper, in greys"
+                        if (w === "keep")
+                            return "Your wallpaper, unchanged"
+                        return "A plain page behind the windows"
+                    }
+                    options: [
+                        { value: "blank", label: "Blank page", icon: "description" },
+                        { value: "eink", label: "E-ink", icon: "gradient" },
+                        { value: "grey", label: "Greyscale", icon: "filter_b_and_w" },
+                        { value: "keep", label: "Keep mine", icon: "wallpaper" }
+                    ]
+                    current: root.theme.kindleWallpaper ?? "blank"
+                    onPicked: v => root.patchTheme({ kindleWallpaper: v })
+                }
+
+                StageSwitchRow {
+                    enabled: KindleMode.active
+                    title: "Grey app icons"
+                    subtitle: "Dock, launcher, tray, window title and notification icons lose their colour"
+                    checked: root.theme.kindleGreyIcons ?? true
+                    onToggled: on => root.patchTheme({ kindleGreyIcons: on })
+                }
+
+                StageSwitchRow {
+                    enabled: KindleMode.active
+                    title: "Grey terminal colours"
+                    subtitle: (root.theme.kindleGreyAnsi ?? false) ? "Terminal colours become grey tones" : "Terminals keep their normal colours"
+                    checked: root.theme.kindleGreyAnsi ?? false
+                    onToggled: on => {
+                        root.patchTheme({ kindleGreyAnsi: on })
+                        kindleAnsiApply.restart()
                     }
                 }
 
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Workspace glide"; size: 14 }
-                            CustomText {
-                                content: SettingsConfig.general.wallpaperFill === "full"
-                                    ? "Off while the whole wallpaper is shown"
-                                    : "The wallpaper slides a little when you switch workspace"
-                                size: 12; customColor: Colors.outline
-                            }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: SettingsConfig.general.wallpaperGlide ?? true
-                            onToggled: state => {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { wallpaperGlide: state })
-                            }
-                        }
-                    }
-                }
+                StageHeading { text: "Apps that follow" }
 
                 CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-                    RowLayout {
+                    autoRadius: false; topRadius: 20; bottomRadius: 20
+
+                    Flow {
                         Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Wallpaper fit"; size: 14 }
-                            CustomText {
-                                content: {
-                                    const f = Settings.wallpaperFillOrDefault(SettingsConfig.general.wallpaperFill)
-                                    if (f === "fill") return "Stretched to the screen edges"
-                                    if (f === "full") return "The whole image, with bars where it doesn't reach"
-                                    return "Covers the screen, trimming what doesn't fit"
+                        spacing: 6
+                        Repeater {
+                            model: root.followers
+                            Rectangle {
+                                required property var modelData
+                                width: appRow.implicitWidth + 24
+                                height: 30
+                                radius: 15
+                                color: Colors.surfaceContainer
+                                Row {
+                                    id: appRow
+                                    anchors.centerIn: parent
+                                    spacing: 5
+                                    MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; content: "check"; iconSize: 15 }
+                                    CustomText { anchors.verticalCenter: parent.verticalCenter; content: modelData; size: 12 }
                                 }
-                                size: 12; customColor: Colors.outline
-                            }
-                        }
-                        Item { Layout.fillWidth: true }
-                        M3ButtonGroup {
-                            model: Settings.wallpaperFills
-                            activeCheck: v => Settings.wallpaperFillOrDefault(SettingsConfig.general.wallpaperFill) === v
-                            onSegmentClicked: v => {
-                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, { wallpaperFill: v })
                             }
                         }
                     }
                 }
             }
+        }
 
-            // ── Gowall ───────────────────────────────────────────────────
-            CustomText { Layout.topMargin: 16; content: "Gowall"; size: 13; customColor: Colors.primary }
-            CustomText {
-                Layout.topMargin: 2
-                content: "Repaint the wallpaper — and your icons — with a fixed color palette"
-                size: 12
-                customColor: Colors.outline
-            }
+        StageLazy {
+            stageId: "gowall"
 
-            ColumnLayout {
-                id: gowallGroup
-                Layout.topMargin: 6; Layout.fillWidth: true; spacing: 3
+            StagePage {
+                stageId: "gowall"
+                title: "Gowall"
 
-                readonly property string palette: SettingsConfig.theme.gowallTheme ?? "off"
-                readonly property bool on: gowallGroup.palette !== "off"
-                readonly property bool iconsOn: SettingsConfig.theme.gowallIcons ?? false
-                readonly property bool inverted: SettingsConfig.theme.gowallInvert ?? false
-                readonly property bool shellOn: SettingsConfig.theme.gowallShell ?? false
+                StageDropdownRow {
+                    icon: "format_paint"
+                    title: "Palette"
+                    subtitle: {
+                        if (!ServiceWallpaper.gowallChecked)
+                            return "Checking for gowall…"
+                        if (!ServiceWallpaper.gowallAvailable)
+                            return "gowall is not installed"
+                        if (root.palette === "match")
+                            return "Follows the colours the shell already uses"
+                        if (root.gowallOn)
+                            return "Wallpaper and colours follow the " + root.palette + " palette"
+                        return "Off; the wallpaper keeps its own colours"
+                    }
+                    options: ServiceWallpaper.gowallOptions
+                    current: root.palette
+                    Component.onCompleted: {
+                        ServiceWallpaper.refreshGowallThemes(false)
+                        ServiceWallpaper.refreshIconPreview(root.palette)
+                    }
+                    onPicked: name => root.setPalette(name)
+                }
 
-                CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Palette"; size: 14 }
-                            CustomText {
-                                size: 12
-                                customColor: Colors.outline
-                                content: {
-                                    if (!ServiceWallpaper.gowallChecked) return "Checking for gowall…"
-                                    if (!ServiceWallpaper.gowallAvailable) return "gowall is not installed"
-                                    if (gowallGroup.palette === "match") return "Follows the colors the shell already uses"
-                                    if (gowallGroup.on) return "Wallpaper and colors follow the " + gowallGroup.palette + " palette"
-                                    return "Off — the wallpaper keeps its own colors"
-                                }
-                            }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomListNew {
-                            Layout.preferredWidth: 200
-                            Layout.preferredHeight: 30
-                            color: Colors.surfaceContainerHighest
-                            list: ServiceWallpaper.gowallOptions
-                            currentVal: SettingsConfig.theme.gowallTheme ?? "off"
-                            Component.onCompleted: {
-                                ServiceWallpaper.refreshGowallThemes(false)
-                                ServiceWallpaper.refreshIconPreview(currentVal)
-                            }
-                            onListChildClicked: child => {
-                                const currentVal = child.name
-                                if (!currentVal || currentVal === gowallGroup.palette) return
-                                const turningOff = currentVal === "off"
-                                SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, {
-                                    gowallTheme: currentVal,
-                                    gowallIcons: turningOff ? false : gowallGroup.iconsOn
-                                })
-                                if (turningOff && gowallGroup.iconsOn)
-                                    ServiceWallpaper.restoreIconTheme()
-                                ServiceWallpaper.refreshIconPreview(currentVal)
-                                ServiceWallpaper.reapply()
-                            }
-                        }
+                StageSwitchRow {
+                    title: "Invert colours"
+                    subtitle: root.inverted ? (root.gowallOn ? "Wallpaper is flipped, then repainted" : "Wallpaper is flipped, so daylight reads as night")
+                                            : "Flip the wallpaper's colours; a day scene becomes night"
+                    checked: root.inverted
+                    onToggled: on => {
+                        root.patchTheme({ gowallInvert: on })
+                        ServiceWallpaper.reapply()
                     }
                 }
 
-                // Invert stands on its own — a wallpaper can be flipped with no
-                // palette at all, and with one it is flipped before the recolor.
-                CustomCard {
-                    autoRadius: false; topRadius: 5
-                    bottomRadius: gowallGroup.on ? 5 : 20
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Invert colors"; size: 14 }
-                            CustomText {
-                                size: 12
-                                customColor: Colors.outline
-                                content: gowallGroup.inverted
-                                    ? (gowallGroup.on ? "Wallpaper is flipped, then repainted" : "Wallpaper is flipped — daylight reads as night")
-                                    : "Flip the wallpaper's colors — a day scene becomes night"
-                            }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: gowallGroup.inverted
-                            onToggled: state => {
-                                SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { gowallInvert: state })
-                                ServiceWallpaper.reapply()
-                            }
-                        }
+                StageSwitchRow {
+                    visible: root.gowallOn
+                    title: "Use the palette for the shell"
+                    subtitle: root.palette === "match" ? "match already is the shell's palette"
+                        : root.shellOn ? "Interface colours come from " + root.palette + ", not the wallpaper"
+                        : "Colour the interface from the palette instead of the wallpaper"
+                    checked: root.shellOn
+                    onToggled: on => {
+                        root.patchTheme({ gowallShell: on })
+                        ServiceWallpaper.reapply()
                     }
                 }
 
-                // Shell colors — the palette replaces Material You as the source
-                // of the interface's own colors.
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    visible: gowallGroup.on
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            spacing: 2
-                            CustomText { content: "Use palette for the shell"; size: 14 }
-                            CustomText {
-                                size: 12
-                                customColor: Colors.outline
-                                content: {
-                                    if (gowallGroup.palette === "match")
-                                        return "match already is the shell's palette"
-                                    if (gowallGroup.shellOn)
-                                        return "Interface colors come from " + gowallGroup.palette + ", not the wallpaper"
-                                    return "Colors the interface from the palette instead of the wallpaper"
-                                }
-                            }
-                        }
-                        Item { Layout.fillWidth: true }
-                        CustomToogle {
-                            isToggleOn: gowallGroup.shellOn
-                            onToggled: state => {
-                                SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { gowallShell: state })
-                                ServiceWallpaper.reapply()
-                            }
-                        }
+                StageSwitchRow {
+                    visible: root.gowallOn
+                    title: "Recolour icons"
+                    subtitle: ServiceWallpaper.iconBusy ? ServiceWallpaper.iconStatus
+                        : !root.iconsOn ? "Rebuild your icon theme in this palette (takes about 10 s)"
+                        : ServiceWallpaper.iconThemeName.length > 0 ? "Using " + ServiceWallpaper.iconThemeName
+                        : "Icon theme follows the palette"
+                    checked: root.iconsOn
+                    onToggled: on => {
+                        root.patchTheme({ gowallIcons: on })
+                        if (on)
+                            ServiceWallpaper.buildGowallIcons(false)
+                        else
+                            ServiceWallpaper.restoreIconTheme()
                     }
-                }
 
-                // Icons — only meaningful once a palette is chosen, so it stays
-                // out of the way until then.
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-                    visible: gowallGroup.on
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            ColumnLayout {
-                                spacing: 2
-                                CustomText { content: "Recolor icons"; size: 14 }
-                                CustomText {
-                                    size: 12
-                                    customColor: Colors.outline
-                                    content: {
-                                        if (ServiceWallpaper.iconBusy)
-                                            return ServiceWallpaper.iconStatus
-                                        if (!gowallGroup.iconsOn)
-                                            return "Rebuild your icon theme in this palette (takes ~10s)"
-                                        if (ServiceWallpaper.iconThemeName.length > 0)
-                                            return "Using " + ServiceWallpaper.iconThemeName
-                                        return "Icon theme follows the palette"
-                                    }
-                                }
-                            }
-                            Item { Layout.fillWidth: true }
-                            CustomToogle {
-                                isToggleOn: gowallGroup.iconsOn
-                                onToggled: state => {
-                                    SettingsConfig.theme = Object.assign({}, SettingsConfig.theme, { gowallIcons: state })
-                                    if (state) ServiceWallpaper.buildGowallIcons(false)
-                                    else ServiceWallpaper.restoreIconTheme()
-                                }
-                            }
-                        }
-
-                        // Before / after on real icons from the theme in use.
+                    below: [
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Layout.topMargin: 2
                             spacing: 6
                             visible: ServiceWallpaper.iconPreview.length > 0
 
                             Repeater {
-                                model: [
-                                    { label: "Original", key: "before" },
-                                    { label: gowallGroup.palette, key: "after" }
-                                ]
+                                model: [{ label: "Original", key: "before" }, { label: root.palette, key: "after" }]
 
                                 RowLayout {
                                     id: previewRow
@@ -953,8 +829,7 @@ Item {
                                     Item { Layout.fillWidth: true }
                                 }
                             }
-                        }
-
+                        },
                         M3WavyProgressBar {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 12
@@ -962,75 +837,135 @@ Item {
                             progress: ServiceWallpaper.iconProgress
                             indeterminate: ServiceWallpaper.iconProgress <= 0
                         }
-                    }
+                    ]
                 }
             }
-
-
-
-            // ── Wallhaven ─────────────────────────────────────────────────
-            CustomText { Layout.topMargin: 16; content: "Wallhaven"; size: 13; customColor: Colors.primary }
-
-            CustomCard {
-                Layout.topMargin: 6
-                autoRadius: false; topRadius: 20; bottomRadius: 20
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    ColumnLayout {
-                        spacing: 2
-                        CustomText { content: "API Key"; size: 14 }
-                        CustomText { content: "Optional — needed for adult content and faster searches"; size: 12; customColor: Colors.outline }
-                    }
-                    Item { Layout.fillWidth: true }
-                    Rectangle {
-                        implicitWidth: 220; implicitHeight: 32
-                        radius: 10
-                        color: Colors.surfaceContainerHighest
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 10; anchors.rightMargin: 8
-                            spacing: 6
-
-                            MaterialIconSymbol { content: "key"; iconSize: 16; customColor: Colors.outline }
-
-                            TextInput {
-                                id: apiKeyInput
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                text: SettingsConfig.wallhaven.apiKey
-                                color: Colors.inverseSurface
-                                font.pixelSize: 13
-                                clip: true
-                                verticalAlignment: TextInput.AlignVCenter
-                                echoMode: TextInput.Password
-                                onEditingFinished: {
-                                    SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, { apiKey: text })
-                                }
-                            }
-
-                            MaterialIconSymbol {
-                                content: apiKeyInput.echoMode === TextInput.Password ? "visibility_off" : "visibility"
-                                iconSize: 16
-                                customColor: Colors.outline
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: apiKeyInput.echoMode = apiKeyInput.echoMode === TextInput.Password
-                                               ? TextInput.Normal : TextInput.Password
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Item { Layout.preferredHeight: 20 }
         }
-    }
-    ScrollFade {
-        anchors.fill: parent
-        flickable: pageFlick
+
+        StageLazy {
+            stageId: "wallhaven"
+
+            StagePage {
+                stageId: "wallhaven"
+                title: "Wallhaven"
+
+                StageFieldRow {
+                    icon: "key"
+                    title: "API key"
+                    subtitle: "Optional. Needed for adult content and faster searches"
+                    fieldIcon: "key"
+                    secret: true
+                    allowEmpty: true
+                    text: SettingsConfig.wallhaven.apiKey ?? ""
+                    placeholder: "Paste your key"
+                    onSubmitted: t => SettingsConfig.wallhaven = Object.assign({}, SettingsConfig.wallhaven, { apiKey: t })
+                }
+            }
+        }
+
+        StageLazy {
+            stageId: "fonts"
+
+            StagePage {
+                stageId: "fonts"
+                title: "Fonts"
+
+                StageDropdownRow {
+                    icon: "text_fields"
+                    title: "Body font"
+                    subtitle: "Applied to all UI text"
+                    options: Settings.fonts
+                    current: root.general.defaultFont ?? "Rubik"
+                    onPicked: name => root.patch({ defaultFont: name })
+                }
+
+                StageDropdownRow {
+                    icon: "format_size"
+                    title: "Display font"
+                    subtitle: "Clocks, dates and headings"
+                    options: Settings.displayFonts
+                    current: root.general.displayFont ?? "Titan One"
+                    onPicked: name => root.patch({ displayFont: name })
+                }
+
+                StageGap {}
+
+                StageChoiceRow {
+                    title: "Font size"
+                    subtitle: "Scale applied to all text"
+                    options: root.scales
+                    current: root.general.fontScale ?? "normal"
+                    onPicked: v => root.patch({ fontScale: v })
+                }
+
+                StageDropdownRow {
+                    title: "Font weight"
+                    subtitle: "Default weight for body text"
+                    options: root.weights.map(w => w.label)
+                    current: root.weights.find(w => w.value === root.fontWeight)?.label ?? ""
+                    onPicked: name => root.patch({ fontWeight: root.weights.find(w => w.label === name).value })
+                }
+            }
+        }
+
+        StageLazy {
+            stageId: "bar"
+
+            StagePage {
+                stageId: "bar"
+                title: "Bar"
+
+                StageNavRow {
+                    icon: "edit"
+                    title: "Bar layout"
+                    subtitle: "Move, add and style bar items in edit mode"
+                    onClicked: root.editBar()
+                }
+
+                StageSwitchRow {
+                    icon: "partly_cloudy_day"
+                    title: "Weather panel"
+                    subtitle: "Clicking the temperature opens the weather panel"
+                    checked: root.general.barWeatherPanel ?? true
+                    onToggled: on => root.patch({ barWeatherPanel: on })
+                }
+
+                StageGap {}
+
+                StageChoiceRow {
+                    title: "Main screen"
+                    subtitle: root.primary === "" ? "Every screen shows the full bar" : root.primary + " shows the full bar; the others show a minimal one"
+                    options: [{ value: "", label: "All", icon: "devices" }].concat(ServiceDisplay.monitorList.map(m => ({ value: m.name, label: m.name })))
+                    current: root.primary
+                    onPicked: v => root.patch({ primaryMonitor: v })
+                }
+            }
+        }
+
+        StageLazy {
+            stageId: "workspaces"
+
+            StagePage {
+                stageId: "workspaces"
+                title: "Workspaces"
+
+                StageSliderRow {
+                    title: "Workspace count"
+                    subtitle: "How many the bar shows"
+                    from: 1
+                    to: 20
+                    step: 1
+                    current: root.general.workspaceCount ?? 10
+                    onCommitted: v => root.patch({ workspaceCount: Math.round(v) })
+                }
+
+                StageSwitchRow {
+                    title: "Each screen has its own"
+                    subtitle: "A monitor shows only its own workspaces"
+                    checked: root.general.perMonitorWorkspaces ?? false
+                    onToggled: on => root.patch({ perMonitorWorkspaces: on })
+                }
+            }
+        }
     }
 }

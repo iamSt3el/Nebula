@@ -181,8 +181,10 @@ Singleton {
             root.setEdgeGaps(d.side, g)
         }
         if (d.block && d.style)
-            for (const k in d.style)
-                root.setBlockStyle(d.block, k, round(k, d.style[k]))
+            for (const k in d.style) {
+                const v = d.style[k]
+                root.setBlockStyle(d.block, k, v === null ? undefined : typeof v === "number" ? round(k, v) : v)
+            }
         if (extra)
             extra()
         root.gapDraft = null
@@ -195,8 +197,47 @@ Singleton {
         full:    { edge: 0, block: 0,  end: 0,  fill: 1, radius: -1 }
     })
 
-    function setRenderer(value) {
-        root._patch({ renderer: value })
+    readonly property var gapPresetInfo: [
+        { value: "pill",    label: "Pill",    desc: "Each block floats on its own" },
+        { value: "stepped", label: "Stepped", desc: "Blocks hang from the screen edge" },
+        { value: "merged",  label: "Merged",  desc: "Blocks in a group join into one piece" },
+        { value: "full",    label: "Full",    desc: "One strip from side to side" }
+    ]
+
+    readonly property var panelStyleInfo: [
+        { value: "attached", label: "Attached", desc: "Grows out of the bar" },
+        { value: "merged",   label: "Joined",   desc: "Joined to its block by a short neck" },
+        { value: "floating", label: "Floating", desc: "Hangs free with a gap" }
+    ]
+
+    function applyGapPreset(side, name) {
+        const p = root.gapPresets[name]
+        if (p)
+            root.setEdgeGaps(side, p)
+    }
+
+    readonly property var edgeFollowKeys: ["edgeGap", "radius", "corners", "panels", "panelGap", "gapBefore"]
+
+    function matchEdge(blockId) {
+        const all = Object.assign({}, root.blockStyles)
+        const cur = Object.assign({}, all[blockId] ?? {})
+        for (const k of root.edgeFollowKeys)
+            delete cur[k]
+        all[blockId] = cur
+        root._patch({ blockStyles: all })
+    }
+
+    function blockName(blockId) {
+        const blk = root.blockById(blockId)
+        const names = (blk ? blk.items : []).map(i => root.entry(i)).filter(e => !!e).map(e => e.label)
+        if (!names.length)
+            return root.blockLabel(blockId) + " block"
+        return names.length > 2 ? names.slice(0, 2).join(" · ") + " +" + (names.length - 2) : names.join(" · ")
+    }
+
+    function blockHasOwnStyle(blockId) {
+        const st = root.blockStyles[blockId] ?? {}
+        return root.edgeFollowKeys.some(k => st[k] !== undefined && st[k] !== null)
     }
 
     function setEdgeGaps(side, patch) {
@@ -447,6 +488,34 @@ Singleton {
         return block.id
     }
 
+    function placeInNewBlock(itemId, anchor, index, edge) {
+        const e = root.entry(itemId)
+        if (!e)
+            return ""
+        const id = (e.multi && itemId.indexOf("#") < 0) ? root.newInstanceId(itemId) : itemId
+        const side = root.sideNames.indexOf(edge) >= 0 ? edge : "top"
+        const list = root._clone()
+        const from = list.find(b => b.items.indexOf(id) >= 0)
+        BarOps.strip(list, id)
+        const emptied = from && from.items.length === 0 && list.length > 1 ? from.id : ""
+        const kept = emptied !== "" ? list.filter(b => b.id !== emptied) : list
+        const blk = { id: root.newBlockId(), anchor: anchor, edge: side, items: [id] }
+        const same = []
+        kept.forEach((b, i) => { if (b.anchor === anchor && b.edge === side) same.push(i) })
+        let at = kept.length
+        if (index < same.length) at = same[index]
+        else if (same.length) at = same[same.length - 1] + 1
+        kept.splice(at, 0, blk)
+        const patch = root._statePatch(kept)
+        if (emptied !== "" && root.blockStyles[emptied] !== undefined) {
+            const st = Object.assign({}, root.blockStyles)
+            delete st[emptied]
+            patch.blockStyles = st
+        }
+        root._patch(patch)
+        return blk.id
+    }
+
     function removeBlock(id) {
         const b = root.blockById(id)
         if (!b || root.allBlocks.length <= 1)
@@ -668,39 +737,6 @@ Singleton {
         return root.shapes.edges[root.sideNames.indexOf(edge) >= 0 ? edge : "top"]
     }
 
-    function _setShapes(edge, pick) {
-        const e = root.sideNames.indexOf(edge) >= 0 ? edge : "top"
-        const all = Object.assign({}, root.blockStyles)
-        for (const b of root.allBlocks) {
-            if (b.edge !== e)
-                continue
-            const s = pick(b.id) ?? root.blockShape(b.id, e)
-            all[b.id] = Object.assign({}, all[b.id] ?? {}, { shape: s })
-        }
-        root._patch({ blockStyles: all })
-    }
-
-    function setBlockShape(blockId, shape) {
-        const b = root.blockById(blockId)
-        if (!b || !BarOps.isShape(shape))
-            return
-        root._setShapes(b.edge, id => id === blockId ? shape : undefined)
-    }
-
-    function setEdgeShape(edge, shape) {
-        if (!BarOps.isShape(shape))
-            return
-        root.setEdge(edge, "shape", shape)
-        root._setShapes(edge, () => shape)
-    }
-
-    function addShapedBlock(anchor, edge, shape) {
-        const id = root.addBlock(anchor, edge)
-        if (BarOps.isShape(shape))
-            root.setBlockShape(id, shape)
-        return id
-    }
-
     function isAnchorItem(id) {
         const e = root.entry(id)
         return !!e && e.anchor === true
@@ -793,6 +829,25 @@ Singleton {
         else
             all[id] = cur
         root._patch({ itemStyles: all })
+    }
+
+    readonly property var itemLookKeys: ["tint", "iconSize", "shape", "rotate", "radius", "pad", "gap", "minW", "minH"]
+
+    function resetItemLook(id) {
+        const all = Object.assign({}, root.itemStyles)
+        const cur = Object.assign({}, all[id] ?? {})
+        for (const k of root.itemLookKeys)
+            delete cur[k]
+        if (Object.keys(cur).length === 0)
+            delete all[id]
+        else
+            all[id] = cur
+        root._patch({ itemStyles: all })
+    }
+
+    function itemLookChanged(id) {
+        const cur = root.itemStyles[id] ?? {}
+        return root.itemLookKeys.some(k => cur[k] !== undefined)
     }
 
     function iconPx(id, def) {
@@ -969,6 +1024,7 @@ Singleton {
     readonly property var panelSpecs: ({
         "calendar":  { "label": "Calendar",  "minW": 320, "maxW": 640, "defW": 400, "minH": 300, "maxH": 560,  "defH": 400 },
         "weather":   { "label": "Weather",   "minW": 300, "maxW": 720, "defW": 340, "minH": 360, "maxH": 1600, "defH": -1 },
+        "dashboard": { "label": "Dashboard", "minW": 360, "maxW": 980, "defW": 460, "minH": 400, "maxH": 1600, "defH": -1, "fitOnly": true },
         "launcher":  { "label": "Launcher", "minW": ServiceLauncher.minWidth, "maxW": ServiceLauncher.maxWidth,
                        "defW": ServiceLauncher.defaultWidth, "minH": ServiceLauncher.minHeight,
                        "maxH": ServiceLauncher.maxHeight, "defH": ServiceLauncher.defaultHeight }
@@ -1015,7 +1071,8 @@ Singleton {
         return ids.find(id => root.baseId(id) === "notifications") ?? ""
     }
     readonly property string osdHostItem: root.shownItemIds().find(i => root.baseId(i) === "osd") ?? ""
-    readonly property string popupMode: root.popupHostItem !== "" ? "item"
+    readonly property string popupMode: (SettingsConfig.notifications?.popupLook ?? "cards") === "island" ? "island"
+        : root.popupHostItem !== "" ? "item"
         : (SettingsConfig.general?.notifPopupStyle ?? "item") === "icon" ? "icon" : "corner"
 
     function panelHostItem(kind) {
@@ -1034,12 +1091,12 @@ Singleton {
     }
 
     readonly property var followKinds: ({
-        "battery": "battery", "bluetooth": "bluetooth", "brightness": "brightness", "claudeCode": "claudeCode",
+        "battery": "battery", "cpu": "cpu", "memory": "memory", "bluetooth": "bluetooth", "brightness": "brightness", "claudeCode": "claudeCode",
         "kindle": "kindle", "dashboard": "dashboard", "nextEvent": "calendar", "clock": "calendar", "notifications": "notifications",
         "volume": "sound", "phoneCall": "phoneCall",
         "phoneNotifs": "phoneNotifs", "phoneStatus": "phoneStatus", "powerMode": "powerMode", "power": "power",
         "scenes": "scenes", "soundscape": "soundscape", "weather": "weather", "wifi": "network",
-        "windowTitle": "windowInfo"
+        "windowTitle": "windowInfo", "wiz": "wiz"
     })
 
     readonly property var hoverOpeners: ({ "clock": true, "music": true, "tray": true })
@@ -1082,13 +1139,17 @@ Singleton {
         const d = root.panelDraft
         if (d && d.kind === kind) return d.w
         const own = root.panelSizes[kind]
-        return own && typeof own.w === "number" ? root.clampPanelW(kind, own.w) : s.defW
+        const w = own && typeof own.w === "number" ? root.clampPanelW(kind, own.w) : s.defW
+        if (!s.fitOnly)
+            return w
+        return [s.minW, s.defW, s.maxW].reduce((best, c) => Math.abs(c - w) < Math.abs(best - w) ? c : best, s.defW)
     }
 
     function panelH(kind) {
         if (kind === "launcher") return ServiceLauncher.panelHeight
         const s = root.panelSpecs[kind]
         if (!s) return -1
+        if (s.fitOnly) return -1
         const d = root.panelDraft
         if (d && d.kind === kind) return d.h
         const own = root.panelSizes[kind]
@@ -1111,7 +1172,7 @@ Singleton {
         return [
             { value: "snug", label: "Snug", w: s.minW, h: s.defH < 0 ? -1 : s.minH },
             { value: "roomy", label: "Roomy", w: s.defW, h: s.defH, reset: true },
-            { value: "wide", label: "Wide", w: mid(s.defW, s.maxW), h: s.defH < 0 ? -1 : mid(s.defH, s.maxH) }
+            { value: "wide", label: "Wide", w: s.fitOnly ? s.maxW : mid(s.defW, s.maxW), h: s.defH < 0 ? -1 : mid(s.defH, s.maxH) }
         ]
     }
 
@@ -1223,9 +1284,34 @@ Singleton {
         root._patch({ border: Object.assign({}, root.screenBorder, patch) })
     }
 
-    readonly property var barShadow: Object.assign({ on: false, size: 16, strength: 35 }, SettingsConfig.bar?.shadow ?? {})
+    readonly property var barShadow: Object.assign({ on: false, size: 16, strength: 35, offset: 0, contact: 0, tint: false },
+                                                   SettingsConfig.bar?.shadow ?? {})
     readonly property real shadowReach: root.barShadow.on === true ? Number(root.barShadow.size) * 1.7 : 0
     readonly property real shadowAlpha: root.barShadow.on === true ? Number(root.barShadow.strength) / 100 * 0.7 : 0
+    readonly property real shadowLift: root.barShadow.on === true ? Number(root.barShadow.offset) : 0
+    readonly property real shadowContact: root.barShadow.on === true ? Number(root.barShadow.contact) / 100 * 0.6 : 0
+    readonly property color shadowTone: root.barShadow.tint === true
+        ? Qt.rgba(Colors.primary.r * 0.32, Colors.primary.g * 0.32, Colors.primary.b * 0.32, 1)
+        : Colors.shadow
+    readonly property var shadowPresets: [
+        { value: "soft",  label: "Soft",  size: 8,  strength: 20, offset: 0, contact: 0 },
+        { value: "lift",  label: "Lifted", size: 10, strength: 30, offset: 3, contact: 50 },
+        { value: "float", label: "Float", size: 20, strength: 40, offset: 8, contact: 0 },
+        { value: "crisp", label: "Crisp", size: 14, strength: 15, offset: 0, contact: 80 },
+        { value: "halo",  label: "Halo",  size: 9,  strength: 50, offset: 0, contact: 0 }
+    ]
+    readonly property string shadowPreset: {
+        const s = root.barShadow
+        const hit = root.shadowPresets.find(p => p.size === Number(s.size) && p.strength === Number(s.strength)
+                                                 && p.offset === Number(s.offset) && p.contact === Number(s.contact))
+        return hit ? hit.value : ""
+    }
+
+    function applyShadowPreset(id) {
+        const p = root.shadowPresets.find(q => q.value === id)
+        if (p)
+            root.setShadow({ size: p.size, strength: p.strength, offset: p.offset, contact: p.contact })
+    }
 
     function setShadow(patch) {
         root._patch({ shadow: Object.assign({}, root.barShadow, patch) })
@@ -1270,7 +1356,9 @@ Singleton {
     }
 
     function blockCorners(blockId) {
-        const c = root.blockStyle(blockId, "corners", null)
+        const d = root.gapDraft
+        const c = d && d.block === blockId && d.style && "corners" in d.style ? d.style.corners
+            : root.blockStyle(blockId, "corners", null)
         const pick = k => c && c[k] !== undefined && c[k] !== null ? Math.max(0, Number(c[k]) || 0) : null
         return { tl: pick("tl"), tr: pick("tr"), br: pick("br"), bl: pick("bl") }
     }

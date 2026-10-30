@@ -31,18 +31,13 @@ Singleton {
     readonly property var _g: SettingsConfig.general ?? ({})
     readonly property string position: (root._g.launcherPosition ?? "item") === "center" ? "center" : "item"
     readonly property var styles: [
-        { value: "spotlight",  label: "Spotlight",  icon: "search",            w: 680, h: 560 },
-        { value: "rail",       label: "Rail",       icon: "view_sidebar",      w: 560, h: 720 },
-        { value: "bento",      label: "Bento",      icon: "dashboard",         w: 900, h: 660 },
-        { value: "folders",    label: "Folders",    icon: "folder",            w: 460, h: 720 },
-        { value: "list",       label: "List",       icon: "lists",             w: 440, h: 720 },
-        { value: "expressive", label: "Expressive", icon: "interests",         w: 460, h: 760 },
+        { value: "palette",    label: "Palette",    icon: "bolt",              w: 560, h: 560 },
         { value: "hearth",     label: "Hearth",     icon: "fireplace",         w: 660, h: 720 }
     ]
 
     readonly property string style: {
-        const s = root._g.launcherStyle ?? "list"
-        return root.styles.some(x => x.value === s) ? s : "list"
+        const s = root._g.launcherStyle ?? "palette"
+        return root.styles.some(x => x.value === s) ? s : "palette"
     }
     readonly property var styleSpec: root.styles.find(x => x.value === root.style)
     readonly property int defaultWidth: root.styleSpec.w
@@ -89,8 +84,7 @@ Singleton {
     readonly property int iconSize: root._g.launcherIconSize ?? 30
 
     readonly property var _styleIconSizes: ({
-        spotlight: [60, 32], rail: [root.iconSize + 12, 28], bento: [40, 32, 28], folders: [34],
-        list: [root.iconSize], expressive: [48, root.iconSize + 10], hearth: [root.iconSize + 2, 42]
+        hearth: [root.iconSize + 2, 42], palette: [48, 36]
     })
     property var _iconSizes: []
     property var _iconQueue: []

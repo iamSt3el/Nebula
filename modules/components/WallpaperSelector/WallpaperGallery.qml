@@ -125,7 +125,7 @@ Item {
 
     function thumbOf(it) {
         if (!it) return ""
-        if (root.online) return typeof it === "object" && it.thumbUrl ? it.thumbUrl : ""
+        if (root.online) return ServiceWallpaper.onlineThumbUrl(it)
         return typeof it === "string" ? "file://" + it : ""
     }
 
@@ -2059,7 +2059,7 @@ Item {
                                 color: pal.container
                                 Image {
                                     anchors.fill: parent
-                                    source: qrow.modelData.thumbUrl || ""
+                                    source: ServiceWallpaper.onlineThumbUrl(qrow.modelData)
                                     sourceSize.width: 160
                                     sourceSize.height: 160
                                     asynchronous: true

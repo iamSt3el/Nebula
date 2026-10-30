@@ -25,12 +25,11 @@ Item {
     function forKind(kind) {
         switch (kind) {
         case "calendar":  return calendarComp
-        case "music":     return musicComp
+        case "musicPoster": return musicPosterComp
+        case "musicDial": return musicDialComp
+        case "musicSources": return musicSourcesComp
+        case "musicBeads": return musicBeadsComp
         case "musicDevelop": return musicDevelopComp
-        case "musicDrop": return musicDropComp
-        case "musicButtons": return musicButtonsComp
-        case "musicShelf": return musicShelfComp
-        case "musicCounter": return musicCounterComp
         case "musicShape": return musicShapeComp
         case "tray":      return trayComp
         case "trayMenu":  return trayMenuComp
@@ -48,6 +47,9 @@ Item {
         case "notifications": return notificationsComp
         case "battery":   return batteryComp
         case "claudeCode": return claudeCodeComp
+        case "cpu":       return cpuComp
+        case "memory":    return memoryComp
+        case "wiz":       return wizComp
         case "kindle":    return kindleComp
         case "dashboard": return dashboardComp
         case "phoneStatus": return phoneStatusComp
@@ -79,12 +81,19 @@ Item {
             Component { id: calAltComp; CalendarPanelAlt { style: calHost.calStyle } }
         }
     }
-    Component { id: musicComp;     BarMusicPanel {} }
+    Component {
+        id: musicPosterComp
+        BarMusicPanelPoster {
+            topLeftRadius: panels.block.contentCorner("tl", 28)
+            topRightRadius: panels.block.contentCorner("tr", 28)
+            bottomLeftRadius: panels.block.contentCorner("bl", 28)
+            bottomRightRadius: panels.block.contentCorner("br", 28)
+        }
+    }
+    Component { id: musicDialComp; BarMusicPanelDial {} }
+    Component { id: musicSourcesComp; BarMusicPanelSources {} }
+    Component { id: musicBeadsComp; BarMusicPanelBeads {} }
     Component { id: musicDevelopComp; BarMusicPanelDevelop {} }
-    Component { id: musicDropComp; BarMusicPanelDrop {} }
-    Component { id: musicButtonsComp; BarMusicPanelButtons {} }
-    Component { id: musicShelfComp; BarMusicPanelShelf {} }
-    Component { id: musicCounterComp; BarMusicPanelCounter {} }
     Component { id: musicShapeComp; BarMusicPanelShape {} }
     Component {
         id: trayComp
@@ -116,10 +125,17 @@ Item {
             onClose: panels.block.closePanel()
         }
     }
+    Component { id: cpuComp; BarCpuPanel {} }
+    Component { id: memoryComp; BarMemoryPanel {} }
+    Component {
+        id: wizComp
+        BarWizPanel {
+            maxHeight: Math.max(320, panels.block.openHeight - panels.block.barH - 40)
+        }
+    }
     Component {
         id: networkComp
-        Wifi {
-            showBack: false
+        BarNetworkPanel {
             onBackClicked: panels.block.closePanel()
         }
     }
@@ -132,7 +148,7 @@ Item {
     }
     Component { id: brightnessComp; BarBrightnessPanel {} }
     Component { id: powerModeComp; ModesPanel { onBackClicked: panels.block.closePanel() } }
-    Component { id: powerComp;     BarPowerPanel {} }
+    Component { id: powerComp;     BarPowerPanel { onCloseRequested: panels.block.closePanel() } }
     Component { id: windowInfoComp; BarWindowPanel { onClosed: panels.block.closePanel() } }
     Component {
         id: notifPopupComp
@@ -163,7 +179,14 @@ Item {
     Component { id: batteryComp;   BarBatteryPanel {} }
     Component { id: claudeCodeComp; BarClaudePanel {} }
     Component { id: kindleComp; BarKindlePanel {} }
-    Component { id: dashboardComp; DashboardPanel { closer: () => panels.block.closePanel() } }
+    Component {
+        id: dashboardComp
+        DashboardPanel {
+            closer: () => panels.block.closePanel()
+            room: panels.block.heightRoom
+            fixedH: BarLayout.panelH("dashboard")
+        }
+    }
     Component { id: phoneStatusComp; BarPhoneStatusPanel { onClosed: panels.block.closePanel() } }
     Component {
         id: phoneNotifsComp
@@ -205,7 +228,16 @@ Item {
             onDone: panels.block.closePanel()
         }
     }
-    Component { id: weatherComp;   WeatherPanel { onClosed: panels.block.closePanel() } }
+    Component {
+        id: weatherComp
+        WeatherPanel {
+            topLeftRadius: panels.block.contentCorner("tl", 20)
+            topRightRadius: panels.block.contentCorner("tr", 20)
+            bottomLeftRadius: panels.block.contentCorner("bl", 20)
+            bottomRightRadius: panels.block.contentCorner("br", 20)
+            onClosed: panels.block.closePanel()
+        }
+    }
     Component {
         id: clipComp
         ClipboardContent {

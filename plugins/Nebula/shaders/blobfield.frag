@@ -13,6 +13,7 @@ layout(std140, binding = 0) uniform buf {
     vec4 edgeColor;
     vec4 shadowColor;
     vec4 shadowInfo;
+    vec4 shadowMore;
     vec4 frameHole;
     vec4 frameRad;
     vec4 rect[16];
@@ -84,16 +85,31 @@ float pairK(int i, int j) {
     return mergeK(boxGap(rect[i], rect[j]), min(extra[i].x, extra[j].x));
 }
 
-float pocket(vec2 p, vec4 a, vec4 b) {
+float pairBox(vec2 p, vec4 a, vec4 b) {
     vec2 lo = min(a.xy - a.zw, b.xy - b.zw);
     vec2 hi = max(a.xy + a.zw, b.xy + b.zw);
-    vec2 q = max(lo - p, p - hi);
-    return clamp(0.5 - max(q.x, q.y), 0.0, 1.0);
+    vec2 q = abs(p - (lo + hi) * 0.5) - (hi - lo) * 0.5;
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
 }
 
 float frameGap(vec4 a) {
     return min(min(a.x - a.z - frameHole.x, frameHole.z - (a.x + a.z)),
                min(a.y - a.w - frameHole.y, frameHole.w - (a.y + a.w)));
+}
+
+vec2 inwardOf(vec4 r) {
+    vec2 lo = r.xy - r.zw;
+    vec2 hi = r.xy + r.zw;
+    float t = lo.y;
+    float b = shadowMore.w - hi.y;
+    float l = lo.x;
+    float rr = shadowMore.z - hi.x;
+    float across = min(t, b);
+    float along = min(l, rr);
+    bool sideways = along < across - 0.5 || (abs(along - across) <= 0.5 && r.w > r.z);
+    if (sideways)
+        return l <= rr ? vec2(1.0, 0.0) : vec2(-1.0, 0.0);
+    return t <= b ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
 }
 
 void main() {
@@ -105,9 +121,16 @@ void main() {
     float dF = -fg.x;
     vec2 nF = -fg.yz;
 
+    float lift = shadowMore.x;
+    bool lifted = lift > 0.0 && shadowInfo.x > 0.0;
+    float dFs = dF - lift;
+
     float d[16];
+    float ds[16];
     vec2 n[16];
+    vec2 o[16];
     float m = dF;
+    float mS = dFs;
     for (int i = 0; i < 16; i++) {
         if (i >= count)
             break;
@@ -115,22 +138,40 @@ void main() {
         d[i] = g.x;
         n[i] = g.yz;
         m = min(m, d[i]);
+        o[i] = vec2(0.0);
+        ds[i] = d[i];
+        if (lifted) {
+            o[i] = lift * inwardOf(rect[i]);
+            ds[i] = sdCorners(p - o[i], rect[i].xy, rect[i].zw, radii[i]);
+            mS = min(mS, ds[i]);
+        }
     }
     for (int i = 0; i < 16; i++) {
         if (i >= count)
             break;
-        if (d[i] >= max(smoothing, gooK(extra[i].w)))
+        float di = lifted ? min(d[i], ds[i]) : d[i];
+        if (di >= max(smoothing, gooK(extra[i].w)))
             continue;
-        if (nearFrame && dF < smoothing && extra[i].w >= 0.0)
-            m = min(m, unionRound(d[i], dF, mergeK(frameGap(rect[i]), extra[i].y) * facing(n[i], nF)));
+        if (nearFrame && dF < smoothing && extra[i].w >= 0.0) {
+            float kf = mergeK(frameGap(rect[i]), extra[i].y) * facing(n[i], nF);
+            m = min(m, unionRound(d[i], dF, kf));
+            if (lifted)
+                mS = min(mS, unionRound(ds[i], dFs, kf));
+        }
         for (int j = i + 1; j < 16; j++) {
             if (j >= count)
                 break;
-            if (d[j] >= max(smoothing, max(gooK(extra[i].w), gooK(extra[j].w))))
+            float dj = lifted ? min(d[j], ds[j]) : d[j];
+            if (dj >= max(smoothing, max(gooK(extra[i].w), gooK(extra[j].w))))
                 continue;
-            m = min(m, unionRound(d[i], d[j], pairK(i, j) * pocket(p, rect[i], rect[j]) * (1.0 - max(extra[i].z, extra[j].z))));
+            float kp = pairK(i, j) * (1.0 - max(extra[i].z, extra[j].z));
+            m = min(m, max(unionRound(d[i], d[j], kp), pairBox(p, rect[i], rect[j])));
+            if (lifted)
+                mS = min(mS, max(unionRound(ds[i], ds[j], kp), pairBox(p - 0.5 * (o[i] + o[j]), rect[i], rect[j])));
         }
     }
+    if (!lifted)
+        mS = m;
 
     float w = clamp(length(vec2(dFdx(m), dFdy(m))), 1.0e-4, 1.0);
 
@@ -170,9 +211,14 @@ void main() {
         float lineA = band * edgeColor.a * (1.0 - lineK);
         col += vec4(edgeColor.rgb * lineA, lineA) * (1.0 - col.a);
     }
-    if (shadowInfo.x > 0.0 && shadowInfo.y > 0.0 && col.a < 1.0) {
-        float s = (1.0 - smoothstep(0.0, 1.0, clamp(m / shadowInfo.x, 0.0, 1.0))) * (1.0 - shadeK);
-        float sa = s * s * shadowInfo.y * shadowColor.a;
+    if (shadowInfo.x > 0.0 && (shadowInfo.y > 0.0 || shadowMore.y > 0.0) && col.a < 1.0) {
+        float s = (1.0 - smoothstep(0.0, 1.0, clamp(mS / shadowInfo.x, 0.0, 1.0))) * (1.0 - shadeK);
+        float sa = s * s * shadowInfo.y;
+        if (shadowMore.y > 0.0) {
+            float c = (1.0 - smoothstep(0.0, 2.5 + 0.25 * lift, mix(m, mS, 0.3))) * (1.0 - shadeK);
+            sa = 1.0 - (1.0 - sa) * (1.0 - c * c * shadowMore.y);
+        }
+        sa *= shadowColor.a;
         col += vec4(shadowColor.rgb * sa, sa) * (1.0 - col.a);
     }
     fragColor = col * qt_Opacity;

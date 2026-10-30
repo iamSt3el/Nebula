@@ -61,7 +61,7 @@ WidgetHost {
         property string text: ""
         property real radius: 0
         property bool lower: false
-        property color color: Colors.surfaceVariantText
+        property color color: t.inkVariant
         property real px: 11
         readonly property real step: arc.px * 0.6 + arc.px * 0.3
 
@@ -105,14 +105,14 @@ WidgetHost {
 
                 ShapePath {
                     fillColor: "transparent"
-                    strokeColor: Qt.alpha(Colors.surfaceText, 0.14)
+                    strokeColor: Qt.alpha(t.ink, 0.14)
                     strokeWidth: 5
                     PathAngleArc { centerX: root.cx; centerY: root.cy; radiusX: root.rad + 12; radiusY: root.rad + 12; startAngle: 0; sweepAngle: 360 }
                 }
 
                 ShapePath {
                     fillColor: "transparent"
-                    strokeColor: Colors.primary
+                    strokeColor: t.accent
                     strokeWidth: 5
                     capStyle: ShapePath.RoundCap
                     PathAngleArc {
@@ -145,13 +145,13 @@ WidgetHost {
                         width: tick.hour ? 3.5 : 2
                         height: tick.hour ? 12 : 6
                         radius: width / 2
-                        color: tick.hour ? Qt.alpha(Colors.surfaceText, 0.9) : Qt.alpha(Colors.surfaceText, 0.4)
+                        color: tick.hour ? Qt.alpha(t.ink, 0.9) : Qt.alpha(t.ink, 0.4)
                     }
                 }
             }
 
             ArcText { text: root.dateLine; radius: root.rad - 30 }
-            ArcText { text: root.musicLine; radius: root.rad - 24; lower: true; color: Colors.primary }
+            ArcText { text: root.musicLine; radius: root.rad - 24; lower: true; color: t.accent }
 
             Column {
                 anchors.centerIn: parent
@@ -160,6 +160,7 @@ WidgetHost {
                 RollText {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: t.time
+                    color: t.ink
                     family: "Fira Sans Condensed"
                     pixelSize: 80
                     weight: 700
@@ -171,7 +172,7 @@ WidgetHost {
                     anchors.horizontalCenter: parent.horizontalCenter
                     visible: t.ampm !== ""
                     text: t.ampm
-                    color: Colors.surfaceVariantText
+                    color: t.inkVariant
                     font.family: root._mono
                     font.pixelSize: 12
                     font.letterSpacing: 3.6

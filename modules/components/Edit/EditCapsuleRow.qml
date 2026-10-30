@@ -14,10 +14,10 @@ RowLayout {
     property string addLabel: "Add"
     property bool addLit: false
     property bool historyOpen: false
+    property bool moreOpen: false
     property bool discardArmed: false
     signal add
     signal action(string key)
-    signal logo
 
     readonly property var layers: [
         { value: "edges",     label: "Edges",     icon: "dock_to_left" },
@@ -25,6 +25,10 @@ RowLayout {
     ]
 
     function closeAll() {
+        if (row.moreOpen) {
+            row.moreOpen = false
+            return true
+        }
         if (row.historyOpen) {
             row.historyOpen = false
             return true
@@ -47,43 +51,15 @@ RowLayout {
         function onEditModeChanged() {
             row.discardArmed = false
             row.historyOpen = false
+            row.moreOpen = false
         }
         function onEditLayerChanged() {
             row.historyOpen = false
+            row.moreOpen = false
         }
     }
 
     Rectangle {
-        id: logoBtn
-        implicitWidth: 44
-        implicitHeight: 44
-        radius: logoArea.pressed ? 12 : 22
-        color: logoArea.containsMouse ? Colors.primary : Colors.primaryContainer
-        Behavior on radius { SpatialAnim { speed: "fast" } }
-        Behavior on color { EffectsColorAnim { speed: "fast" } }
-
-        NebulaLogo {
-            anchors.centerIn: parent
-            width: 26
-            height: 26
-            color: logoArea.containsMouse ? Colors.primaryText : Colors.primaryContainerText
-            rotation: logoArea.containsMouse ? -8 : 0
-            Behavior on rotation { SpatialAnim { speed: "fast" } }
-        }
-
-        MouseArea {
-            id: logoArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: row.logo()
-        }
-
-        CustomToolTip { content: "Nebula settings"; visible: logoArea.containsMouse }
-    }
-
-    Rectangle {
-        Layout.leftMargin: 2
         implicitHeight: 44
         implicitWidth: layerRow.implicitWidth + 6
         radius: 22
@@ -138,7 +114,7 @@ RowLayout {
                     }
 
                     CustomToolTip {
-                        content: "Key " + (seg.index + 1)
+                        content: (seg.index === 0 ? "Edit the bar and dock" : "Edit desktop widgets") + " · key " + (seg.index + 1)
                         visible: segArea.containsMouse && !seg.on
                     }
                 }
@@ -159,7 +135,7 @@ RowLayout {
         label: row.addLabel
         tonal: !row.addLit
         lit: row.addLit
-        tip: "A"
+        tip: GlobalStates.editLayer === "desktop" ? "Add a widget · A" : "Add items and blocks · A"
         onClicked: row.add()
     }
 
@@ -194,20 +170,18 @@ RowLayout {
         }
     }
 
-    Rectangle {
-        Layout.leftMargin: 2
-        Layout.rightMargin: 2
-        implicitWidth: 1
-        implicitHeight: 24
-        color: Colors.outlineVariant
-    }
+    readonly property real moreX: morePill.x + morePill.width / 2
 
     EditPill {
-        id: peekPill
-        icon: "visibility"
-        lit: EditSession.peek
-        tip: "Hold to peek · or hold Space"
-        onPressedChanged: EditSession.peek = peekPill.pressed
+        id: morePill
+        icon: "more_horiz"
+        lit: row.moreOpen
+        tonal: row.moreOpen
+        tip: "More: keys, peek, settings"
+        onClicked: {
+            row.historyOpen = false
+            row.moreOpen = !row.moreOpen
+        }
     }
 
     EditPill {

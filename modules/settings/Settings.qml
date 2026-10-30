@@ -185,6 +185,7 @@ Singleton{
 
     property var displayFonts: [
         { name: "Titan One" },
+        { name: "Google Sans Flex Clock" },
         { name: "Orbitron" },
         { name: "Michroma" },
         { name: "Just Another Hand" },

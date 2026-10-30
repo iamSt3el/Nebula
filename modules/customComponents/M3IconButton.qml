@@ -13,6 +13,7 @@ Rectangle {
     property color  iconHoverColor: Colors.primaryText
     property int    iconFill:       0
     property bool   enabledButton:  true
+    property string tip: ""
 
     // false: pill (CornerFull).  true: square-ish, morphing on press.
     property bool square: false
@@ -61,4 +62,6 @@ Rectangle {
         onClicked: if (root.enabledButton) root.clicked()
         onRightClicked: if (root.enabledButton) root.rightClicked()
     }
+
+    CustomToolTip { content: root.tip; visible: root.tip !== "" && ripple.containsMouse && !ripple.pressed }
 }

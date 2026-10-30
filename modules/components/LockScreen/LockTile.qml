@@ -3,7 +3,7 @@ import Quickshell.Widgets
 import qs.modules.utils
 import qs.modules.customComponents
 
-MotionEnter {
+LockPart {
     id: tile
 
     property var r: ({ x: 0, y: 0, w: 0, h: 0 })
@@ -19,7 +19,12 @@ MotionEnter {
     y: tile.r.y
     width: tile.r.w
     height: tile.r.h
-    fromScale: 0.86
+    fromScale: 0.92
+    exitScale: 0.95
+    exitDy: 0
+    dur: 480
+    outDur: 260
+    fade: 1.6
 
     Behavior on x { enabled: !tile.preview; SpatialAnim {} }
     Behavior on y { enabled: !tile.preview; SpatialAnim {} }

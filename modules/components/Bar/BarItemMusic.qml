@@ -13,7 +13,7 @@ Item {
     property string itemId: ""
     property string fallbackStyle: "pill"
 
-    readonly property var styles: ["pill", "develop", "drop", "buttons", "shelf", "counter", "shape"]
+    readonly property var styles: ["pill", "develop", "shape"]
     readonly property string style: {
         const s = BarLayout.opt(root.itemId, "style") ?? root.fallbackStyle
         return root.styles.indexOf(s) >= 0 ? s : "pill"
@@ -33,14 +33,14 @@ Item {
         return Math.max(0, Math.min(1, root.elapsed / len))
     }
 
-    readonly property var panelKinds: ({ side: "music", develop: "musicDevelop", drop: "musicDrop",
-                                         buttons: "musicButtons", shelf: "musicShelf",
-                                         counter: "musicCounter", shape: "musicShape" })
+    readonly property var panelKinds: ({ pill: "musicPoster", poster: "musicPoster", dial: "musicDial",
+                                         sources: "musicSources", beads: "musicBeads",
+                                         develop: "musicDevelop", shape: "musicShape" })
     readonly property string panelKind: {
         const p = BarLayout.opt(root.itemId, "panel") ?? "match"
         if (root.panelKinds[p] !== undefined)
             return root.panelKinds[p]
-        return root.panelKinds[root.style] ?? "music"
+        return root.panelKinds[root.style] ?? "musicPoster"
     }
 
     readonly property bool inDock: root.host && root.host.iconSize ? true : false
@@ -62,10 +62,6 @@ Item {
                 return idleComp
             switch (root.style) {
             case "develop": return developComp
-            case "drop":    return dropComp
-            case "buttons": return buttonsComp
-            case "shelf":   return shelfComp
-            case "counter": return counterComp
             case "shape":   return shapeComp
             }
             return pillComp
@@ -219,56 +215,6 @@ Item {
 
     readonly property string displayFamily: SettingsConfig.general?.displayFont || "Titan One"
 
-    component Seg: Rectangle {
-        id: seg
-        property string icon: ""
-        property bool first: false
-        property bool last: false
-        property bool accent: false
-        property bool round: false
-        property bool usable: true
-        signal tapped
-
-        readonly property real hh: root.h - 10
-        readonly property bool down: segArea.pressed
-        readonly property real inner: seg.down || seg.round ? seg.hh / 2 : 6
-
-        implicitWidth: (seg.accent || seg.round ? 34 : 30) + (seg.down ? 10 : 0)
-        implicitHeight: seg.hh
-        topLeftRadius: seg.first ? seg.hh / 2 : seg.inner
-        bottomLeftRadius: seg.first ? seg.hh / 2 : seg.inner
-        topRightRadius: seg.last ? seg.hh / 2 : seg.inner
-        bottomRightRadius: seg.last ? seg.hh / 2 : seg.inner
-        opacity: seg.usable ? 1 : 0.4
-        color: seg.accent ? (segArea.containsMouse ? Qt.lighter(Colors.primary, 1.08) : Colors.primary)
-             : seg.round ? Colors.surfaceContainerHighest
-             : segArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
-
-        Behavior on implicitWidth { SpatialAnim { speed: "fast" } }
-        Behavior on topLeftRadius { SpatialAnim { speed: "fast" } }
-        Behavior on bottomLeftRadius { SpatialAnim { speed: "fast" } }
-        Behavior on topRightRadius { SpatialAnim { speed: "fast" } }
-        Behavior on bottomRightRadius { SpatialAnim { speed: "fast" } }
-        Behavior on color { EffectsColorAnim {} }
-
-        MaterialIconSymbol {
-            anchors.centerIn: parent
-            content: seg.icon
-            iconSize: Math.round(seg.hh * 0.6)
-            fill: 1
-            customColor: seg.accent ? Colors.primaryText : seg.round ? Colors.primary : Colors.surfaceText
-        }
-
-        MouseArea {
-            id: segArea
-            anchors.fill: parent
-            hoverEnabled: true
-            enabled: seg.usable
-            cursorShape: Qt.PointingHandCursor
-            onClicked: seg.tapped()
-        }
-    }
-
     Component {
         id: developComp
         Rectangle {
@@ -315,234 +261,6 @@ Item {
                     size: 12
                     weight: 400
                     customColor: Colors.outline
-                }
-            }
-        }
-    }
-
-    Component {
-        id: dropComp
-        RowLayout {
-            id: dropRow
-            spacing: 8
-            readonly property bool hosted: !root.inDock && !!root.host && typeof root.host.registerDrop === "function"
-            property Item hostRef: null
-
-            Item {
-                id: dropSlot
-                Layout.preferredWidth: root.h - 18
-                Layout.preferredHeight: root.h - 18
-
-                Art {
-                    anchors.fill: parent
-                    side: root.h - 18
-                    radius: (root.h - 18) / 2
-                    visible: !dropRow.hosted || (!!root.host && root.host.editing === true)
-                }
-            }
-            CustomText {
-                Layout.maximumWidth: 140
-                content: root.title
-                size: 12
-                weight: 600
-                customColor: root.playing ? Colors.surfaceText : Colors.outline
-            }
-            CustomText {
-                Layout.maximumWidth: 100
-                visible: !root.inDock && root.artist !== "" && root.playing
-                content: root.artist
-                size: 12
-                weight: 400
-                customColor: Colors.outline
-            }
-            MaterialIconSymbol {
-                visible: !root.playing
-                content: "pause"
-                iconSize: 14
-                fill: 1
-                customColor: Colors.outline
-            }
-
-            Component.onCompleted: {
-                if (!dropRow.hosted)
-                    return
-                dropRow.hostRef = root.host
-                root.host.registerDrop(dropSlot, root)
-            }
-            Component.onDestruction: {
-                const h = dropRow.hostRef
-                if (h && h.dropSource === dropSlot)
-                    h.releaseDrop(dropSlot)
-            }
-        }
-    }
-
-    Component {
-        id: buttonsComp
-        RowLayout {
-            spacing: 2
-
-            Seg {
-                icon: "skip_previous"
-                first: true
-                usable: ServiceMusic.canGoPrevious
-                onTapped: ServiceMusic.previous()
-            }
-            Seg {
-                icon: root.playing ? "pause" : "play_arrow"
-                accent: root.playing
-                round: !root.playing
-                onTapped: ServiceMusic.togglePlaying()
-            }
-            Rectangle {
-                implicitWidth: midRow.implicitWidth + 16
-                implicitHeight: root.h - 10
-                radius: 6
-                color: root.playing ? Colors.secondaryContainer : Colors.surfaceContainer
-                Behavior on color { EffectsColorAnim {} }
-
-                RowLayout {
-                    id: midRow
-                    anchors.verticalCenter: parent.verticalCenter
-                    x: 4
-                    spacing: 8
-
-                    Art {
-                        side: root.h - 18
-                        radius: 5
-                    }
-                    CustomText {
-                        Layout.maximumWidth: 130
-                        content: root.title
-                        size: 12
-                        weight: 600
-                        customColor: root.playing ? Colors.secondaryContainerText : Colors.outline
-                    }
-                    CustomText {
-                        Layout.maximumWidth: 100
-                        visible: !root.inDock && root.artist !== ""
-                        content: root.artist
-                        size: 12
-                        weight: 400
-                        customColor: Colors.outline
-                    }
-                }
-            }
-            Seg {
-                icon: "skip_next"
-                last: true
-                usable: ServiceMusic.canGoNext
-                onTapped: ServiceMusic.next()
-            }
-        }
-    }
-
-    Component {
-        id: shelfComp
-        Rectangle {
-            implicitWidth: shelfRow.implicitWidth + 18
-            implicitHeight: root.h - 8
-            radius: implicitHeight / 2
-            color: Colors.surfaceContainer
-
-            RowLayout {
-                id: shelfRow
-                anchors.verticalCenter: parent.verticalCenter
-                x: 4
-                spacing: 9
-
-                Rectangle {
-                    Layout.preferredWidth: root.h - 16
-                    Layout.preferredHeight: root.h - 16
-                    radius: width / 2
-                    color: root.playing ? Colors.primary : Qt.alpha(Colors.primary, 0)
-                    border.width: root.playing ? 0 : 1.5
-                    border.color: Colors.outline
-                    Behavior on color { EffectsColorAnim {} }
-
-                    MaterialIconSymbol {
-                        anchors.centerIn: parent
-                        content: root.playing ? "pause" : "play_arrow"
-                        iconSize: Math.round(parent.width * 0.62)
-                        fill: 1
-                        customColor: root.playing ? Colors.primaryText : Colors.surfaceText
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: ServiceMusic.togglePlaying()
-                    }
-                }
-                ColumnLayout {
-                    spacing: -1
-                    CustomText {
-                        Layout.maximumWidth: 140
-                        content: root.title
-                        size: 11
-                        weight: 600
-                        customColor: root.playing ? Colors.surfaceText : Colors.surfaceVariantText
-                    }
-                    CustomText {
-                        Layout.maximumWidth: 140
-                        content: root.playing ? root.artist : "Paused at " + ServiceMusic.formatTime(root.elapsed)
-                        visible: content !== ""
-                        size: 10
-                        weight: 400
-                        customColor: Colors.outline
-                    }
-                }
-            }
-        }
-    }
-
-    Component {
-        id: counterComp
-        Rectangle {
-            id: counter
-            implicitWidth: counterRow.implicitWidth + 18
-            implicitHeight: root.h - 10
-            radius: implicitHeight / 2
-            color: Colors.surfaceContainerHigh
-
-            HoverHandler { id: counterHover }
-
-            RowLayout {
-                id: counterRow
-                anchors.verticalCenter: parent.verticalCenter
-                x: 4
-                spacing: 8
-
-                Art {
-                    side: root.h - 18
-                    radius: (root.h - 18) / 2
-                    opacity: root.playing ? 1 : 0.6
-                }
-                Text {
-                    id: counterTime
-                    Layout.preferredWidth: Math.ceil(counterSlot.advanceWidth) + 2
-                    text: counterHover.hovered
-                        ? "−" + ServiceMusic.formatTime(Math.max(0, ServiceMusic.trackLength - root.elapsed))
-                        : ServiceMusic.formatTime(root.elapsed)
-                    font.family: root.displayFamily
-                    font.pixelSize: 15
-                    font.features: { "tnum": 1 }
-                    renderType: Text.QtRendering
-                    color: !root.playing ? Colors.outline : counterHover.hovered ? Colors.surfaceText : Colors.primary
-                    Behavior on color { EffectsColorAnim {} }
-
-                    TextMetrics {
-                        id: counterSlot
-                        font: counterTime.font
-                        text: "−" + ServiceMusic.formatTime(ServiceMusic.trackLength).replace(/[0-9]/g, "0")
-                    }
-                }
-                CustomText {
-                    Layout.maximumWidth: 130
-                    content: root.title
-                    size: 12
-                    weight: 500
-                    customColor: root.playing ? Colors.surfaceVariantText : Colors.outline
                 }
             }
         }

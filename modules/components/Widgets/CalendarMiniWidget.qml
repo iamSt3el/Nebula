@@ -6,6 +6,8 @@ import qs.modules.utils
 import qs.modules.services
 import qs.modules.settings
 import qs.modules.customComponents
+import "../../MatrialShapes/" as MaterialShapes
+import "../../MatrialShapes/shape-library.js" as ShapeLibrary
 
 WidgetHost {
     id: root
@@ -15,6 +17,7 @@ WidgetHost {
 
     readonly property int startDay: (SettingsConfig.widgets.calendarMiniMonday ?? true) ? 1 : 0
     readonly property bool dimOther: SettingsConfig.widgets.calendarMiniDimOther ?? true
+    readonly property int today: parseInt(ServiceClock.date)
 
     readonly property var cells: {
         ServiceClock.date
@@ -87,13 +90,20 @@ WidgetHost {
             anchors.margins: parent.pad
             spacing: 6
 
-            CustomText {
+            RowLayout {
                 Layout.fillWidth: true
-                content: ServiceClock.month.substring(0, 3).toUpperCase() + " " + ServiceClock.year
-                size: 12
-                weight: 700
-                customColor: Colors.outline
-                font.letterSpacing: 0.6
+                CustomText {
+                    Layout.fillWidth: true
+                    content: ServiceClock.month
+                    size: 13
+                    weight: 800
+                }
+                CustomText {
+                    content: ServiceClock.year
+                    size: 11
+                    weight: 600
+                    customColor: Colors.surfaceVariantText
+                }
             }
 
             GridLayout {
@@ -132,26 +142,39 @@ WidgetHost {
                         Layout.fillHeight: true
 
                         readonly property bool today: cell.modelData.isToday
-                        readonly property real side: Math.min(cell.width, cell.height)
+                        readonly property bool inMonth: cell.modelData.isCurrentMonth
+                        readonly property bool past: cell.inMonth && !cell.today && cell.modelData.day < root.today
+                        readonly property bool holiday: cell.inMonth && cell.modelData.isHoliday && !cell.today
+                        readonly property real side: Math.min(cell.width, cell.height) + 2
 
-                        Rectangle {
+                        MaterialShapes.ShapeCanvas {
                             anchors.centerIn: parent
                             width: cell.side
                             height: cell.side
-                            radius: cell.side / 2
                             visible: cell.today
-                            color: Colors.primary
+                            roundedPolygon: ShapeLibrary.get("cookie9")
+                            color: Colors.tertiaryContainer
                         }
 
                         CustomText {
                             anchors.centerIn: parent
                             content: cell.modelData.day
-                            size: 10
-                            weight: cell.today ? 700 : 500
-                            customColor: cell.today ? Colors.primaryText
-                                : !cell.modelData.isCurrentMonth ? (root.dimOther ? Colors.outlineVariant : "transparent")
-                                : cell.modelData.isHoliday ? Colors.tertiary
+                            size: 11
+                            weight: cell.today ? 800 : 600
+                            customColor: cell.today ? Colors.tertiaryContainerText
+                                : !cell.inMonth ? (root.dimOther ? Colors.outlineVariant : "transparent")
+                                : cell.past ? Colors.outline
                                 : Colors.surfaceText
+                        }
+
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            width: 4
+                            height: 4
+                            radius: 2
+                            visible: cell.holiday
+                            color: cell.past ? Colors.outlineVariant : Colors.primary
                         }
 
                         CustomToolTip {

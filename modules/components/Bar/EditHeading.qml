@@ -11,18 +11,20 @@ ColumnLayout {
     property color customColor: Colors.primary
     readonly property bool isHeading: true
 
-    readonly property bool hasAbove: {
-        const p = head.parent
+    readonly property bool hasAbove: head.above(head)
+
+    function above(item) {
+        const p = item.parent
         if (!p)
             return false
         const ch = p.children
         for (let i = 0; i < ch.length; i++) {
-            if (ch[i] === head)
-                return false
+            if (ch[i] === item)
+                break
             if (ch[i].visible && ch[i].implicitHeight > 0)
                 return true
         }
-        return false
+        return p.isSection === true && head.above(p)
     }
 
     spacing: 12

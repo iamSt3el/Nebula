@@ -11,7 +11,6 @@ import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
 
-
 PanelWindow{
     id: widgetScreen
     anchors.left: true
@@ -156,6 +155,40 @@ PanelWindow{
             Rectangle {
                 anchors.fill: parent
                 color: Qt.alpha(Colors.scrim, 0.16)
+            }
+
+            readonly property bool holes: canvasFace.visible && studio.stageScale > 0.999 && GlobalStates.editEdgeRects.length > 0
+                && (GlobalStates.editEdgeScreen === "" || (widgetScreen.screen?.name ?? "") === GlobalStates.editEdgeScreen)
+            layer.enabled: canvasFace.holes
+            layer.effect: MultiEffect {
+                maskEnabled: true
+                maskInverted: true
+                maskSource: edgeHoles
+                maskThresholdMin: 0.5
+                maskSpreadAtMin: 1.0
+            }
+        }
+
+        Item {
+            id: edgeHoles
+            x: canvasFace.x
+            y: canvasFace.y
+            width: canvasFace.width
+            height: canvasFace.height
+            visible: false
+            layer.enabled: canvasFace.holes
+
+            Repeater {
+                model: canvasFace.holes ? GlobalStates.editEdgeRects : []
+
+                Rectangle {
+                    required property rect modelData
+                    x: modelData.x
+                    y: modelData.y
+                    width: modelData.width
+                    height: modelData.height
+                    color: "white"
+                }
             }
         }
 
@@ -453,6 +486,9 @@ PanelWindow{
                 if (GlobalStates.widgetSettingsKey !== "") studio.pop = studio.pop === "options" ? "" : "options"
             } else if (k === Qt.Key_L) {
                 widgetScreen.toggleLock()
+            } else if (k === Qt.Key_T) {
+                const t = studio.target
+                if (t && t.turnable && !t.locked) t.turn()
             } else if (k === Qt.Key_A) {
                 GlobalStates.widgetSettingsKey = ""
                 studio.pop = "add"
@@ -486,7 +522,6 @@ PanelWindow{
             }
         ]
 
-
         Loader {
             active: SettingsConfig.widgets.showClock ?? false
             visible: active
@@ -499,6 +534,7 @@ PanelWindow{
                 case "stack":
                 case "stacked":   return clockStack
                 case "condensed": return clockCondensed
+                case "display":   return clockDisplay
                 default:          return clockVeil
                 }
             }
@@ -510,21 +546,7 @@ PanelWindow{
         Component { id: clockScript;    ClockScript    {} }
         Component { id: clockStack;     ClockStack     {} }
         Component { id: clockCondensed; ClockCondensed {} }
-
-        Loader {
-            active: SettingsConfig.widgets.showDateWidget ?? false
-            visible: active
-            sourceComponent: {
-                var style = SettingsConfig.widgets.dateWidgetStyle ?? "bold"
-                if (style === "accent") return dateAccent
-                if (style === "shape")  return dateShape
-                return dateBold
-            }
-        }
-
-        Component { id: dateShape;  DateWidgetShape  {} }
-        Component { id: dateBold;   DateWidgetBold   {} }
-        Component { id: dateAccent; DateWidgetAccent {} }
+        Component { id: clockDisplay;   ClockDisplay   {} }
 
         Loader {
             active: SettingsConfig.widgets.showAnalogClock ?? false
@@ -542,15 +564,33 @@ PanelWindow{
         Component { id: analogShape;   AnalogClockShape   {} }
 
         Loader {
-            active: SettingsConfig.widgets.showWeatherForecast ?? false
-            visible: active
-            sourceComponent: WeatherWidgetForecast {}
-        }
-
-        Loader {
             active: SettingsConfig.widgets.showWeatherHourly ?? false
             visible: active
             sourceComponent: WeatherHourlyWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showWeatherPoster ?? false
+            visible: active
+            sourceComponent: WeatherPosterWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showWeatherHours ?? false
+            visible: active
+            sourceComponent: WeatherHoursWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showWeatherDayClock ?? false
+            visible: active
+            sourceComponent: WeatherDayClockWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showWeatherWind ?? false
+            visible: active
+            sourceComponent: WeatherWindWidget {}
         }
 
         Loader {
@@ -584,33 +624,15 @@ PanelWindow{
         }
 
         Loader {
-            active: SettingsConfig.widgets.showCalendarTorn ?? false
-            visible: active
-            sourceComponent: CalendarTornWidget {}
-        }
-
-        Loader {
             active: SettingsConfig.widgets.showCalendarWindows ?? false
             visible: active
             sourceComponent: CalendarWindowsWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showCalendarDaylight ?? false
-            visible: active
-            sourceComponent: CalendarDaylightWidget {}
-        }
-
-        Loader {
             active: SettingsConfig.widgets.showCalendarYear ?? false
             visible: active
             sourceComponent: CalendarYearWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showCalendarStamp ?? false
-            visible: active
-            sourceComponent: CalendarStampWidget {}
         }
 
         Loader {
@@ -628,27 +650,62 @@ PanelWindow{
         Loader {
             active: SettingsConfig.widgets.showSystemMonitor ?? false
             visible: active
-            sourceComponent: {
-                var style = SettingsConfig.widgets.systemMonitorStyle ?? "default"
-                if (style === "compact") return sysCompact
-                if (style === "pulse")   return sysPulse
-                return sysDefault
-            }
+            sourceComponent: SystemMonitorPulse {}
         }
-
-        Component { id: sysDefault; SystemMonitorWidget  {} }
-        Component { id: sysCompact; SystemMonitorCompact {} }
-        Component { id: sysPulse;   SystemMonitorPulse   {} }
 
         Loader {
-            active: SettingsConfig.widgets.showBattery ?? false
+            active: SettingsConfig.widgets.showSysCores ?? false
             visible: active
-            sourceComponent: (SettingsConfig.widgets.batteryStyle ?? "ring") === "shape"
-                ? battShape : battRing
+            sourceComponent: SysCoresWidget {}
         }
 
-        Component { id: battShape; BatteryWidgetShape {} }
-        Component { id: battRing;  BatteryWidgetRing  {} }
+        Loader {
+            active: SettingsConfig.widgets.showSysQuad ?? false
+            visible: active
+            sourceComponent: SysQuadWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showSysChrono ?? false
+            visible: active
+            sourceComponent: SysChronoWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showSysSilhouette ?? false
+            visible: active
+            sourceComponent: SysSilhouetteWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showSysMemory ?? false
+            visible: active
+            sourceComponent: SysMemoryWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showSysBattery ?? false
+            visible: active
+            sourceComponent: SysBatteryWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showSysThermals ?? false
+            visible: active
+            sourceComponent: SysThermalsWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showSysNet ?? false
+            visible: active
+            sourceComponent: SysNetWidget {}
+        }
+
+        Loader {
+            active: SettingsConfig.widgets.showSysOrbit ?? false
+            visible: active
+            sourceComponent: SysOrbitWidget {}
+        }
 
         Loader {
             active: SettingsConfig.widgets.showProfileBadge ?? false
@@ -687,12 +744,6 @@ PanelWindow{
         }
 
         Loader {
-            active: SettingsConfig.widgets.showMoonPhase ?? false
-            visible: active
-            sourceComponent: MoonPhaseWidget {}
-        }
-
-        Loader {
             active: SettingsConfig.widgets.showStickyNote ?? false
             visible: active
             sourceComponent: StickyNoteWidget {}
@@ -702,36 +753,6 @@ PanelWindow{
             active: SettingsConfig.widgets.showHeadlines ?? false
             visible: active
             sourceComponent: HeadlinesWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showTaskList ?? false
-            visible: active
-            sourceComponent: TaskListWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showCommitGarden ?? false
-            visible: active
-            sourceComponent: CommitGardenWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showNotebook ?? false
-            visible: active
-            sourceComponent: NotebookWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showTerminalStats ?? false
-            visible: active
-            sourceComponent: TerminalStatsWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showMostOpened ?? false
-            visible: active
-            sourceComponent: MostOpenedWidget {}
         }
 
         Loader {
@@ -747,105 +768,9 @@ PanelWindow{
         }
 
         Loader {
-            active: SettingsConfig.widgets.showHabits ?? false
-            visible: active
-            sourceComponent: HabitsWidget {}
-        }
-
-        Loader {
             active: SettingsConfig.widgets.showCountdowns ?? false
             visible: active
             sourceComponent: CountdownsWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showMood ?? false
-            visible: active
-            sourceComponent: MoodWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showNetworkGraph ?? false
-            visible: active
-            sourceComponent: NetworkGraphWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showSysCockpit ?? false
-            visible: active
-            sourceComponent: SysCockpitWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showSysBlueprint ?? false
-            visible: active
-            sourceComponent: SysBlueprintWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showSysVitals ?? false
-            visible: active
-            sourceComponent: SysVitalsWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showSysForecast ?? false
-            visible: active
-            sourceComponent: SysForecastWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showSysFlask ?? false
-            visible: active
-            sourceComponent: SysFlaskWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showLavaLamp ?? false
-            visible: active
-            sourceComponent: LavaLampWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showSysThermo ?? false
-            visible: active
-            sourceComponent: SysThermoWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showSysCreature ?? false
-            visible: active
-            sourceComponent: SysCreatureWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showDayRibbon ?? false
-            visible: active
-            sourceComponent: DayRibbonWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showSysCells ?? false
-            visible: active
-            sourceComponent: SysCellsWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showSysShape ?? false
-            visible: active
-            sourceComponent: SysShapeWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showSysHourglass ?? false
-            visible: active
-            sourceComponent: SysHourglassWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showSysFillNumber ?? false
-            visible: active
-            sourceComponent: SysFillNumberWidget {}
         }
 
         Loader {
@@ -861,84 +786,27 @@ PanelWindow{
         }
 
         Loader {
-            active: SettingsConfig.widgets.showMusicPoster ?? false
+            active: SettingsConfig.widgets.showMusicDisc ?? false
             visible: active
-            sourceComponent: MusicPosterWidget {}
+            sourceComponent: MusicDiscWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showMusicTuner ?? false
+            active: SettingsConfig.widgets.showMusicDeck ?? false
             visible: active
-            sourceComponent: MusicTunerWidget {}
+            sourceComponent: MusicDeckWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showMusicWaveform ?? false
+            active: SettingsConfig.widgets.showMusicRail ?? false
             visible: active
-            sourceComponent: MusicWaveformWidget {}
+            sourceComponent: MusicRailWidget {}
         }
 
         Loader {
-            active: SettingsConfig.widgets.showMusicSpectrum ?? false
+            active: SettingsConfig.widgets.showMusicPulse ?? false
             visible: active
-            sourceComponent: MusicSpectrumWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showMusicLyrics ?? false
-            visible: active
-            sourceComponent: MusicLyricsWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showMusicCapsule ?? false
-            visible: active
-            sourceComponent: MusicCapsuleWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showMusicGlance ?? false
-            visible: active
-            sourceComponent: MusicGlanceWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showMusicFlap ?? false
-            visible: active
-            sourceComponent: MusicFlapWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showMusicBento ?? false
-            visible: active
-            sourceComponent: MusicBentoWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showMusicRibbon ?? false
-            visible: active
-            sourceComponent: MusicRibbonWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showMusicNeon ?? false
-            visible: active
-            sourceComponent: MusicNeonWidget {}
-        }
-
-        Loader {
-            active: SettingsConfig.widgets.showMusicTerminal ?? false
-            visible: active
-            sourceComponent: MusicTerminalWidget {}
-        }
-
-
-
-
-        Loader {
-            active: SettingsConfig.widgets.showWeatherShape ?? false
-            visible: active
-            sourceComponent: WeatherShapeWidget {}
+            sourceComponent: MusicPulseWidget {}
         }
 
         Loader {
@@ -947,12 +815,16 @@ PanelWindow{
             sourceComponent: WorldClockWidget {}
         }
 
-
         Loader {
             active: SettingsConfig.widgets.showPhotoFrame ?? false
             visible: active
             sourceComponent: PhotoFrameWidget {}
         }
+    }
+
+    WidgetFlight {
+        anchors.fill: stage
+        stageItem: stage
     }
 
     readonly property var studio: studioLoader.item ?? studioIdle

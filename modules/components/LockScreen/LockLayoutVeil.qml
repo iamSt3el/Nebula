@@ -15,8 +15,20 @@ Item {
     property bool exiting: false
     property bool greeter: false
     property var cfg: LockSession.cfg
+    property bool handoff: false
+    property real handoffReveal: 1
+    property bool handoffDate: false
 
     readonly property Item authField: auth
+    readonly property var handoffTargets: ({
+        restyle: true,
+        ink: clockText,
+        hours: clockText.hourItem,
+        colon: clockText.colonItem,
+        minutes: clockText.minuteItem,
+        date: root.handoffDate && root.cfg.showDate !== false ? dateText : null
+    })
+    readonly property int _lead: root.handoff ? 580 : 0
     readonly property bool _animated: !root.preview
     readonly property real u: Math.min(root.width / 1920, root.height / 1080)
     readonly property string _family: SettingsConfig.general.defaultFont ?? "Rubik"
@@ -24,14 +36,47 @@ Item {
 
     LockStatusModel { id: status }
 
-    MotionEnter {
+    LockTimeline {
+        id: tl
+        animated: root._animated
+        exiting: root.exiting
+    }
+
+    component Line: Item {
+        id: line
+        default property alias content: lift.data
+        property int at: 0
+        property int dur: 600
+        property int outDur: 300
+        property bool still: false
+        implicitWidth: lift.childrenRect.width
+        implicitHeight: lift.childrenRect.height
+
+        Item {
+            id: win
+            x: -line.height * 0.3
+            width: line.width + line.height * 0.6
+            height: line.height
+            clip: !line.still && (tl.t < line.at + line.dur || tl.leaving)
+
+            Item {
+                id: lift
+                x: -win.x
+                width: line.width
+                height: line.height
+                y: line.still ? 0 : line.height * (1 - tl.span(line.at, line.dur, tl.standard, 0, line.outDur))
+            }
+        }
+    }
+
+    LockPart {
+        line: tl
         visible: root._music
         x: root.width - width - 72 * root.u
         y: 64 * root.u
-        dy: -30 * root.u
-        delay: 520
-        animated: root._animated
-        exiting: root.exiting
+        dy: -16 * root.u
+        at: 420 + root._lead
+        dur: 440
 
         Rectangle {
             width: musicRow.implicitWidth + 40 * root.u
@@ -92,52 +137,54 @@ Item {
         y: root.height - implicitHeight - 104 * root.u
         spacing: 0
 
-        MotionEnter {
+        Line {
             visible: root.cfg.showDate !== false
-            delay: 260
-            dy: 26 * root.u
-            animated: root._animated
-            exiting: root.exiting
+            at: 100
+            dur: 540
+            outDur: 260
+            still: root.handoff && root.handoffDate
+            opacity: still ? root.handoffReveal : 1
 
             CustomText {
+                id: dateText
                 content: (LockSession.weekday + ", " + LockSession.dayNum + " " + LockSession.month).toUpperCase()
                 size: Math.round(30 * root.u)
-                renderType: Text.QtRendering
+                renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
                 weight: 500
                 font.letterSpacing: 4 * root.u
                 customColor: Colors.surfaceVariantText
             }
         }
 
-        MotionEnter {
+        Line {
             Layout.topMargin: 6 * root.u
             Layout.leftMargin: -10 * root.u
-            delay: 120
-            dy: 60 * root.u
-            fromScale: 0.96
-            animated: root._animated
-            exiting: root.exiting
+            at: 160
+            dur: 660
+            outDur: 340
+            still: root.handoff
+            opacity: still ? root.handoffReveal : 1
 
-            Text {
-                text: LockSession.hour + ":" + LockSession.minute
+            LockTimeText {
+                id: clockText
                 color: Colors.surfaceText
-                font.family: root._family
-                font.pixelSize: Math.round(300 * root.u)
-                font.weight: 600
-                font.letterSpacing: -13 * root.u
-                font.features: { "tnum": 1 }
-                renderType: Text.QtRendering
+                family: root._family
+                pixelSize: Math.round(300 * root.u)
+                weight: 600
+                letterSpacing: -13 * root.u
+                features: { "tnum": 1 }
+                renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
                 lineHeight: 0.86
             }
         }
 
-        MotionEnter {
+        LockPart {
+            line: tl
             visible: root.cfg.showStatus !== false && !root.greeter
             Layout.topMargin: 22 * root.u
-            delay: 380
-            dy: 26 * root.u
-            animated: root._animated
-            exiting: root.exiting
+            at: 320 + root._lead
+            dur: 480
+            dy: 20 * root.u
 
             Row {
                 spacing: 34 * root.u
@@ -175,14 +222,13 @@ Item {
         width: 520 * root.u
         spacing: 22 * root.u
 
-        MotionEnter {
+        LockPart {
+            line: tl
             visible: root.cfg.showPower !== false
             Layout.alignment: Qt.AlignRight
-            delay: 560
-            dx: 30 * root.u
-            dy: 0
-            animated: root._animated
-            exiting: root.exiting
+            at: 440 + root._lead
+            dur: 460
+            dx: 40 * root.u
 
             LockPowerActions {
                 variant: "icons"
@@ -194,13 +240,12 @@ Item {
             }
         }
 
-        MotionEnter {
+        LockPart {
+            line: tl
             Layout.alignment: Qt.AlignRight
-            delay: 420
-            dx: 40 * root.u
-            dy: 0
-            animated: root._animated
-            exiting: root.exiting
+            at: 320 + root._lead
+            dur: 460
+            dx: 48 * root.u
 
             RowLayout {
                 spacing: 18 * root.u
@@ -211,7 +256,7 @@ Item {
                         Layout.alignment: Qt.AlignRight
                         content: LockSession.user
                         size: Math.round(32 * root.u)
-                        renderType: Text.QtRendering
+                        renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
                         weight: 600
                     }
                     CustomText {
@@ -243,13 +288,12 @@ Item {
             }
         }
 
-        MotionEnter {
+        LockPart {
+            line: tl
             Layout.fillWidth: true
-            delay: 480
-            dx: 40 * root.u
-            dy: 0
-            animated: root._animated
-            exiting: root.exiting
+            at: 400 + root._lead
+            dur: 460
+            dx: 48 * root.u
 
             LockAuthField {
                 id: auth

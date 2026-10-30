@@ -15,7 +15,6 @@ WidgetHost {
     defaultPos: Qt.point(760, 100)
     tile: WidgetSizes.wide
 
-    readonly property string _serif: "Noto Serif Display"
     readonly property int startDay: (SettingsConfig.widgets.calendarMoonMonday ?? true) ? 1 : 0
 
     readonly property var now: {
@@ -39,7 +38,7 @@ WidgetHost {
         const e = root.nextEvent
         const what = e.full ? "full" : "new"
         if (e.days < 0.75) return what + " moon tonight"
-        return what + " on " + Qt.formatDate(e.date, "ddd d")
+        return what + " " + Qt.formatDate(e.date, "ddd d")
     }
 
     readonly property var cells: {
@@ -86,13 +85,6 @@ WidgetHost {
 
                     Rectangle {
                         anchors.centerIn: parent
-                        width: (moon.r + 8) * 2
-                        height: width
-                        radius: width / 2
-                        color: Qt.alpha(Colors.primary, 0.08)
-                    }
-                    Rectangle {
-                        anchors.centerIn: parent
                         width: moon.r * 2
                         height: width
                         radius: moon.r
@@ -121,31 +113,24 @@ WidgetHost {
                     }
                 }
 
+                Item { Layout.fillHeight: true }
                 CustomText {
                     Layout.fillWidth: true
-                    Layout.topMargin: 6
                     content: root.phase
-                    size: 16
-                    weight: 600
-                    family: root._serif
-                    renderType: Text.QtRendering
+                    size: 14
+                    weight: 800
                     wrapMode: Text.WordWrap
                     elide: Text.ElideNone
                     maximumLineCount: 2
                 }
                 CustomText {
-                    content: Math.round(root.illum * 100) + "% lit"
+                    Layout.fillWidth: true
+                    content: Math.round(root.illum * 100) + "% · " + root.nextLine
                     size: 11
-                    weight: 400
+                    weight: 600
+                    elide: Text.ElideRight
                     customColor: Colors.surfaceVariantText
                 }
-                CustomText {
-                    content: root.nextLine
-                    size: 11
-                    weight: 500
-                    customColor: Colors.primary
-                }
-                Item { Layout.fillHeight: true }
             }
 
             ColumnLayout {
@@ -157,17 +142,8 @@ WidgetHost {
                     Layout.fillWidth: true
                     CustomText {
                         content: ServiceClock.month
-                        size: 12
-                        weight: 600
-                    }
-                    Item { Layout.fillWidth: true }
-                    CustomText {
-                        content: (root.moonDays.fresh.length ? "● new " + root.moonDays.fresh.join(",") : "")
-                            + (root.moonDays.fresh.length && root.moonDays.full.length ? " · " : "")
-                            + (root.moonDays.full.length ? "○ full " + root.moonDays.full.join(",") : "")
-                        size: 10
-                        weight: 400
-                        customColor: Colors.outline
+                        size: 13
+                        weight: 800
                     }
                 }
 
@@ -182,9 +158,9 @@ WidgetHost {
                             Layout.preferredWidth: 1
                             horizontalAlignment: Text.AlignHCenter
                             content: modelData
-                            size: 9
-                            weight: 600
-                            customColor: Colors.outline
+                            size: 10
+                            weight: 700
+                            customColor: Colors.surfaceVariantText
                         }
                     }
                 }
@@ -216,24 +192,23 @@ WidgetHost {
 
                             Rectangle {
                                 anchors.centerIn: parent
-                                width: Math.min(parent.width, 26)
-                                height: Math.min(parent.height, 18)
-                                radius: height / 2
-                                color: cell.isToday ? Colors.primary
+                                width: Math.min(parent.width, parent.height, 22)
+                                height: width
+                                radius: width / 2
+                                color: cell.isToday ? Colors.tertiaryContainer
                                     : cell.isNew ? Colors.surfaceContainerHighest : "transparent"
-                                border.width: cell.isFull && !cell.isToday ? 1.5 : 0
-                                border.color: Colors.primary
+                                border.width: cell.isFull && !cell.isToday ? 2 : 0
+                                border.color: Colors.tertiary
                             }
 
                             CustomText {
                                 anchors.centerIn: parent
                                 content: String(cell.day)
-                                size: 10
-                                weight: cell.isToday ? 700 : cell.isFull ? 600 : 400
-                                customColor: cell.isToday ? Colors.primaryText
-                                    : cell.isFull ? Colors.primary
-                                    : cell.day > root.today ? Colors.surfaceVariantText
-                                    : Qt.alpha(Colors.surfaceVariantText, 0.55)
+                                size: 11
+                                weight: cell.isToday || cell.isFull ? 800 : 600
+                                customColor: cell.isToday ? Colors.tertiaryContainerText
+                                    : cell.day < root.today ? Colors.outline
+                                    : Colors.surfaceText
                             }
                         }
                     }

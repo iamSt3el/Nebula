@@ -8,6 +8,7 @@ pragma ComponentBehavior: Bound
 Singleton{
     id: root
     property bool appLauncherOpen: false
+    property real dashboardHeight: 0
     property bool launcherHosted: false
     property bool launcherPreview: false
     property string panelPreview: ""
@@ -43,7 +44,16 @@ Singleton{
         return list.find(i => i && i.visible && (!win || i.Window.window === win)) ?? null
     }
     property bool settingsOpen: false
-    property int  settingsPage: 9
+    property bool booksOpen: false
+    property int  settingsPage: 0
+    property int quickSettingsPage: -1
+    property rect quickSettingsFrom: Qt.rect(0, 0, 0, 0)
+    property string quickSettingsScreen: ""
+    function openQuickSettings(page, from) {
+        root.quickSettingsFrom = from ? from.mapToItem(null, 0, 0, from.width, from.height) : Qt.rect(0, 0, 0, 0)
+        root.quickSettingsScreen = Hyprland.focusedMonitor?.name ?? ""
+        root.quickSettingsPage = page
+    }
     property bool editMode: false
     property string editLayer: "edges"
     readonly property bool widgetEditMode: root.editMode && root.editLayer === "desktop"
@@ -53,6 +63,7 @@ Singleton{
     property var editEdgeRects: []
     property string editEdgeScreen: ""
     property real editTopInset: 0
+    property real editBottomInset: 0
 
     function openEdit(layer) {
         if (layer)
@@ -172,6 +183,7 @@ Singleton{
     readonly property bool notificationCenterOpen: root.notificationCenterCount > 0
     signal panelRequested(string kind)
     signal pieRequested()
+    signal lockRequested()
     function openPanel(kind) {
         root.panelRequested(kind)
     }

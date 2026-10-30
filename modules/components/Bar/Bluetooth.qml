@@ -5,13 +5,11 @@ import Quickshell.Bluetooth
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Shapes
 import qs.modules.utils
 import qs.modules.customComponents
 import qs.modules.services
 import qs.modules.settings
 import "../../MatrialShapes/" as MaterialShapes
-import "../../MatrialShapes/material-shapes.js" as MatrialShapeFn
 
 Item {
     id: root
@@ -22,61 +20,41 @@ Item {
 
     property bool scanning: false
     property var pendingPair: null
+    property string openAddress: ""
 
     readonly property var adapter: Bluetooth.defaultAdapter
     readonly property bool bluetoothOn: root.adapter?.enabled ?? false
     readonly property string displayFamily: SettingsConfig.general?.displayFont || "Titan One"
+    readonly property string adapterName: root.adapter?.name || "this laptop"
 
     readonly property var connected: root.bluetoothOn ? ServiceBluetooth.connectedDevicesList : []
     readonly property var paired: root.bluetoothOn ? ServiceBluetooth.pairedDevices : []
+    readonly property var mine: root.connected.concat(root.paired)
     readonly property var knownNames: ServiceBluetooth.connectedAndPairedDevices.map(d => d.name).filter(n => !!n)
     readonly property var fresh: root.bluetoothOn
         ? ServiceBluetooth.unpairedDevices.filter(d => d.state !== BluetoothDeviceState.Connected
             && root.knownNames.indexOf(d.name) < 0) : []
 
-    function deviceIcon(icon) {
-        switch (icon) {
-        case "audio-headset":
-        case "audio-headphones":
-            return "headphones"
-        case "audio-card":
-        case "audio-speakers":
-            return "speaker"
-        case "input-keyboard":
-            return "keyboard"
-        case "input-mouse":
-            return "mouse"
-        case "input-gaming":
-            return "stadia_controller"
-        case "input-tablet":
-            return "stylus"
-        case "phone":
-            return "smartphone"
+    function deviceIcon(icon) { return ServiceBluetooth.deviceIcon(icon) }
+
+    function deviceShape(icon) {
+        switch (root.deviceIcon(icon)) {
+        case "keyboard":   return "squircle"
+        case "mouse":      return "pill"
+        case "headphones": return "cookie6"
+        case "speaker":    return "cookie9"
+        case "smartphone": return "gem"
+        case "stadia_controller": return "clover4"
         case "computer":
-            return "computer"
-        case "video-display":
-            return "tv"
-        case "printer":
-            return "print"
-        default:
-            return "bluetooth"
+        case "tv":         return "arch"
         }
+        return "cookie4"
     }
 
-    function nameOf(device) {
-        return device?.name || device?.address || "Unknown device"
-    }
-
-    function isOutput(device) {
-        const addr = (device?.address ?? "").replace(/:/g, "_")
-        return addr !== "" && (ServicePipewire.sink?.name ?? "").indexOf(addr) >= 0
-    }
-
-    function busy(device) {
-        return device?.state === BluetoothDeviceState.Connecting
-            || device?.state === BluetoothDeviceState.Disconnecting
-            || (device?.pairing ?? false)
-    }
+    function nameOf(device) { return ServiceBluetooth.nameOf(device) }
+    function isOutput(device) { return ServiceBluetooth.isOutput(device) }
+    function busy(device) { return ServiceBluetooth.busy(device) }
+    function stateText(device) { return ServiceBluetooth.stateText(device) }
 
     function startScan() {
         if (!root.adapter || !root.bluetoothOn) return
@@ -85,16 +63,20 @@ Item {
         scanTimer.restart()
     }
 
+    function stopScan() {
+        scanTimer.stop()
+        root.scanning = false
+        if (root.adapter) root.adapter.discovering = false
+    }
+
     function pair(device) {
         if (!device) return
         root.pendingPair = device
         device.pair()
     }
 
-    function openSettings() {
-        root.backClicked()
-        GlobalStates.settingsPage = 5
-        GlobalStates.settingsOpen = true
+    function openSettings(from) {
+        GlobalStates.openQuickSettings(5, from)
     }
 
     Connections {
@@ -112,10 +94,7 @@ Item {
     Timer {
         id: scanTimer
         interval: 10000
-        onTriggered: {
-            root.scanning = false
-            if (root.adapter) root.adapter.discovering = false
-        }
+        onTriggered: root.stopScan()
     }
 
     Component.onDestruction: {
@@ -135,209 +114,140 @@ Item {
     component SectionLabel: RowLayout {
         id: sl
         property string text: ""
+        property string note: ""
         property bool busy: false
-        property string busyText: ""
 
         Layout.fillWidth: true
         Layout.leftMargin: 8
         Layout.rightMargin: 8
-        Layout.topMargin: 6
-        Layout.bottomMargin: 3
+        Layout.topMargin: 12
+        Layout.bottomMargin: 4
         spacing: 8
 
         CustomText {
             Layout.fillWidth: true
             content: sl.text
-            size: 13
-            weight: 600
-            customColor: Colors.primary
+            size: 14
+            weight: 800
+        }
+
+        MaterialShapes.ShapeCanvas {
+            visible: sl.busy
+            Layout.preferredWidth: 16
+            Layout.preferredHeight: 16
+            roundedPolygon: "softBurst"
+            color: Colors.primary
+            angle: spin.angle
+
+            QtObject {
+                id: spin
+                property real angle: 0
+                NumberAnimation on angle {
+                    from: 0; to: 360
+                    duration: 2400
+                    loops: Animation.Infinite
+                    running: sl.busy && sl.visible
+                }
+            }
         }
 
         CustomText {
-            visible: sl.busy
-            content: sl.busyText
+            visible: sl.note !== ""
+            content: sl.note
             size: 12
-            weight: 400
+            weight: 500
             customColor: Colors.surfaceVariantText
-        }
-
-        CustomCircularLoader {
-            visible: sl.busy
-            size: 14
-            trackWidth: 2
-            waveAmplitude: 0
-            highlightColor: Colors.primary
-            trackColor: Colors.surfaceContainerHighest
         }
     }
 
-    component DeviceTile: Rectangle {
-        id: tile
-        property var device: null
-        readonly property bool hasBattery: tile.device?.batteryAvailable ?? false
-        readonly property real level: Math.max(0, Math.min(1, tile.device?.battery ?? 0))
-        readonly property bool low: tile.hasBattery && tile.level < 0.2
-        readonly property bool output: root.isOutput(tile.device)
-        readonly property bool busy: root.busy(tile.device)
-        readonly property color ringColor: tile.low ? Colors.error : Colors.primary
+    component GroupRow: Rectangle {
+        id: gr
+        property bool first: false
+        property bool last: false
 
-        implicitHeight: 152
-        radius: 24
-        color: tileHover.hovered ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
+        Layout.fillWidth: true
+        implicitHeight: 60
+        topLeftRadius: gr.first ? 24 : 6
+        topRightRadius: gr.first ? 24 : 6
+        bottomLeftRadius: gr.last ? 24 : 6
+        bottomRightRadius: gr.last ? 24 : 6
+        color: Colors.surfaceContainer
         Behavior on color { EffectsColorAnim {} }
+    }
 
-        HoverHandler { id: tileHover }
+    component SplitButton: RowLayout {
+        id: sb
+        property string label: ""
+        property bool strong: false
+        property bool open: false
+        signal pressed()
+        signal toggled()
 
-        Item {
-            x: 14
-            y: 14
-            width: 68
-            height: 68
+        readonly property color fill: sb.strong ? Colors.primary : Colors.secondaryContainer
+        readonly property color ink: sb.strong ? Colors.primaryText : Colors.secondaryContainerText
 
-            Shape {
-                anchors.fill: parent
-                preferredRendererType: Shape.CurveRenderer
+        spacing: 2
 
-                ShapePath {
-                    fillColor: "transparent"
-                    strokeColor: Colors.outlineVariant
-                    strokeWidth: 5
-                    PathAngleArc {
-                        centerX: 34; centerY: 34
-                        radiusX: 30; radiusY: 30
-                        startAngle: 0
-                        sweepAngle: 360
-                    }
-                }
+        Rectangle {
+            Layout.preferredHeight: 40
+            Layout.preferredWidth: sbText.implicitWidth + 28
+            topLeftRadius: 20
+            bottomLeftRadius: 20
+            topRightRadius: 4
+            bottomRightRadius: 4
+            color: sb.fill
 
-                ShapePath {
-                    fillColor: "transparent"
-                    strokeColor: tile.hasBattery ? tile.ringColor : "transparent"
-                    strokeWidth: 5
-                    capStyle: ShapePath.RoundCap
-                    PathAngleArc {
-                        centerX: 34; centerY: 34
-                        radiusX: 30; radiusY: 30
-                        startAngle: -90
-                        sweepAngle: Math.max(0.5, 360 * tile.level)
-                        Behavior on sweepAngle { SpatialAnim {} }
-                    }
-                }
+            CustomText {
+                id: sbText
+                anchors.centerIn: parent
+                anchors.horizontalCenterOffset: 1
+                content: sb.label
+                size: 13
+                weight: 700
+                customColor: sb.ink
             }
 
-            Rectangle {
-                anchors.centerIn: parent
-                width: 44
-                height: 44
-                radius: 22
-                color: Colors.secondaryContainer
-
-                MaterialIconSymbol {
-                    anchors.centerIn: parent
-                    content: root.deviceIcon(tile.device?.icon)
-                    iconSize: 24
-                    fill: 1
-                    customColor: Colors.secondaryContainerText
-                }
+            RippleEffect {
+                anchors.fill: parent
+                topLeftRadius: 20
+                bottomLeftRadius: 20
+                topRightRadius: 4
+                bottomRightRadius: 4
+                hoverColor: Qt.alpha(sb.ink, 0.08)
+                rippleColor: Qt.alpha(sb.ink, 0.18)
+                onClicked: sb.pressed()
             }
         }
 
         Rectangle {
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: 12
-            visible: tile.output
-            opacity: tileHover.hovered ? 0 : 1
-            Behavior on opacity { EffectsAnim { speed: "fast" } }
-            implicitWidth: outRow.implicitWidth + 16
-            implicitHeight: 24
-            radius: 12
-            color: Colors.tertiaryContainer
+            Layout.preferredHeight: 40
+            Layout.preferredWidth: 36
+            topLeftRadius: sb.open ? 20 : 4
+            bottomLeftRadius: sb.open ? 20 : 4
+            topRightRadius: 20
+            bottomRightRadius: 20
+            color: sb.fill
+            Behavior on topLeftRadius { SpatialAnim { speed: "fast" } }
+            Behavior on bottomLeftRadius { SpatialAnim { speed: "fast" } }
 
-            RowLayout {
-                id: outRow
+            MaterialIconSymbol {
                 anchors.centerIn: parent
-                spacing: 4
-
-                MaterialIconSymbol {
-                    content: "volume_up"
-                    iconSize: 14
-                    fill: 1
-                    customColor: Colors.tertiaryContainerText
-                }
-
-                CustomText {
-                    content: "Output"
-                    size: 11
-                    weight: 600
-                    customColor: Colors.tertiaryContainerText
-                }
-            }
-        }
-
-        M3IconButton {
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: 10
-            width: 36
-            height: 36
-            icon: "link_off"
-            iconSize: 18
-            opacity: tileHover.hovered && !tile.busy ? 1 : 0
-            visible: opacity > 0.01
-            Behavior on opacity { EffectsAnim { speed: "fast" } }
-            onClicked: tile.device?.disconnect()
-        }
-
-        CustomCircularLoader {
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: 18
-            visible: tile.busy
-            size: 20
-            trackWidth: 2
-            waveAmplitude: 0
-            highlightColor: Colors.primary
-            trackColor: Colors.surfaceContainerHighest
-        }
-
-        ColumnLayout {
-            x: 14
-            width: parent.width - 28
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 12
-            spacing: 0
-
-            CustomText {
-                Layout.fillWidth: true
-                content: root.nameOf(tile.device)
-                size: 14
-                weight: 600
+                content: "keyboard_arrow_down"
+                iconSize: 20
+                customColor: sb.ink
+                rotation: sb.open ? 180 : 0
+                Behavior on rotation { SpatialAnim { speed: "fast" } }
             }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                CustomText {
-                    visible: tile.hasBattery
-                    content: Math.round(tile.level * 100) + "%"
-                    family: root.displayFamily
-                    renderType: Text.QtRendering
-                    size: 22
-                    weight: 400
-                    customColor: tile.ringColor
-                }
-
-                CustomText {
-                    Layout.fillWidth: true
-                    content: tile.device?.state === BluetoothDeviceState.Disconnecting ? "Disconnecting…"
-                        : !tile.hasBattery ? "Connected"
-                        : tile.low ? "charge soon" : "battery"
-                    size: 12
-                    weight: 400
-                    customColor: Colors.surfaceVariantText
-                }
+            RippleEffect {
+                anchors.fill: parent
+                topLeftRadius: parent.topLeftRadius
+                bottomLeftRadius: parent.bottomLeftRadius
+                topRightRadius: 20
+                bottomRightRadius: 20
+                hoverColor: Qt.alpha(sb.ink, 0.08)
+                rippleColor: Qt.alpha(sb.ink, 0.18)
+                onClicked: sb.toggled()
             }
         }
     }
@@ -345,88 +255,229 @@ Item {
     component DeviceRow: Rectangle {
         id: dr
         property var device: null
-        property bool fresh: false
         property bool first: false
         property bool last: false
+        readonly property bool isConnected: dr.device?.state === BluetoothDeviceState.Connected
         readonly property bool busy: root.busy(dr.device)
+        readonly property bool open: root.openAddress !== "" && root.openAddress === (dr.device?.address ?? "")
 
         Layout.fillWidth: true
-        implicitHeight: 52
-        topLeftRadius: dr.first ? 18 : 4
-        topRightRadius: dr.first ? 18 : 4
-        bottomLeftRadius: dr.last ? 18 : 4
-        bottomRightRadius: dr.last ? 18 : 4
-        color: drRipple.containsMouse ? Colors.surfaceContainerHighest
-            : dr.fresh ? Colors.surfaceContainer : Colors.surfaceContainerHigh
-        Behavior on color { EffectsColorAnim {} }
+        implicitHeight: dr.open ? 64 + extra.implicitHeight : 64
+        Behavior on implicitHeight { SpatialAnim {} }
+        clip: true
+        topLeftRadius: dr.first ? 24 : 6
+        topRightRadius: dr.first ? 24 : 6
+        bottomLeftRadius: dr.last ? 24 : 6
+        bottomRightRadius: dr.last ? 24 : 6
+        color: Colors.surfaceContainer
 
         RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 10
-            anchors.rightMargin: 10
+            x: 10
+            y: 10
+            width: parent.width - 20
+            height: 44
             spacing: 12
 
-            Rectangle {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
-                radius: 18
-                color: dr.fresh ? Colors.surfaceContainerHigh : Colors.surfaceContainerHighest
+            Item {
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 44
+
+                MaterialShapes.ShapeCanvas {
+                    anchors.fill: parent
+                    roundedPolygon: root.deviceShape(dr.device?.icon)
+                    color: dr.isConnected ? Colors.tertiaryContainer : Colors.surfaceContainerHighest
+                    Behavior on color { EffectsColorAnim {} }
+                }
 
                 MaterialIconSymbol {
                     anchors.centerIn: parent
                     content: root.deviceIcon(dr.device?.icon)
-                    iconSize: 20
+                    iconSize: 22
                     fill: 1
-                    customColor: Colors.surfaceVariantText
+                    customColor: dr.isConnected ? Colors.tertiaryContainerText : Colors.surfaceVariantText
                 }
             }
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 1
+                Layout.minimumWidth: 0
+                spacing: 2
 
                 CustomText {
                     Layout.fillWidth: true
                     content: root.nameOf(dr.device)
                     size: 14
-                    weight: 600
+                    weight: 800
                 }
 
                 CustomText {
                     Layout.fillWidth: true
-                    visible: dr.busy
-                    content: dr.device?.pairing ? "Pairing…"
-                        : dr.device?.state === BluetoothDeviceState.Disconnecting ? "Disconnecting…"
-                        : "Connecting…"
+                    content: root.stateText(dr.device)
                     size: 12
-                    weight: 400
+                    weight: 500
                     customColor: Colors.surfaceVariantText
                 }
             }
 
-            Rectangle {
+            SplitButton {
                 visible: !dr.busy
-                implicitWidth: actText.implicitWidth + 28
-                implicitHeight: 32
-                radius: 16
-                color: dr.fresh ? "transparent" : Colors.secondaryContainer
-                border.width: dr.fresh ? 1 : 0
-                border.color: Colors.outlineVariant
-
-                CustomText {
-                    id: actText
-                    anchors.centerIn: parent
-                    content: dr.fresh ? "Pair" : "Connect"
-                    size: 13
-                    weight: 600
-                    customColor: dr.fresh ? Colors.primary : Colors.secondaryContainerText
+                label: dr.isConnected ? "Disconnect" : "Connect"
+                strong: dr.isConnected
+                open: dr.open
+                onPressed: {
+                    if (!dr.device) return
+                    if (dr.isConnected) dr.device.disconnect()
+                    else dr.device.connect()
                 }
+                onToggled: root.openAddress = dr.open ? "" : (dr.device?.address ?? "")
             }
 
             Item {
                 visible: dr.busy
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
+                Layout.preferredWidth: 40
+                Layout.preferredHeight: 40
+
+                CustomCircularLoader {
+                    anchors.centerIn: parent
+                    size: 22
+                    trackWidth: 2
+                    waveAmplitude: 0
+                    highlightColor: Colors.primary
+                    trackColor: Colors.surfaceContainerHighest
+                }
+            }
+        }
+
+        ColumnLayout {
+            id: extra
+            x: 10
+            y: 64
+            width: parent.width - 20
+            spacing: 0
+            opacity: dr.open ? 1 : 0
+            Behavior on opacity { EffectsAnim {} }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Colors.outlineVariant
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 52
+                Layout.leftMargin: 6
+                spacing: 12
+
+                CustomText {
+                    Layout.fillWidth: true
+                    content: "Connect automatically"
+                    size: 13
+                    weight: 600
+                }
+
+                CustomToogle {
+                    isToggleOn: dr.device?.trusted ?? false
+                    onToggled: s => { if (dr.device) dr.device.trusted = s }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 48
+                Layout.leftMargin: 6
+                Layout.bottomMargin: 6
+                spacing: 12
+
+                CustomText {
+                    Layout.fillWidth: true
+                    content: dr.device?.address ?? ""
+                    size: 11
+                    weight: 500
+                    customColor: Colors.outline
+                }
+
+                Rectangle {
+                    Layout.preferredHeight: 36
+                    Layout.preferredWidth: forgetText.implicitWidth + 28
+                    radius: 18
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Colors.outlineVariant
+
+                    CustomText {
+                        id: forgetText
+                        anchors.centerIn: parent
+                        content: "Forget device"
+                        size: 13
+                        weight: 700
+                        customColor: Colors.error
+                    }
+
+                    RippleEffect {
+                        anchors.fill: parent
+                        radius: 18
+                        hoverColor: Qt.alpha(Colors.error, 0.08)
+                        rippleColor: Qt.alpha(Colors.error, 0.18)
+                        onClicked: {
+                            root.openAddress = ""
+                            dr.device?.forget()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    component NearbyRow: Rectangle {
+        id: nr
+        property var device: null
+        property bool first: false
+        property bool last: false
+        readonly property bool busy: root.busy(nr.device)
+
+        Layout.fillWidth: true
+        implicitHeight: 56
+        topLeftRadius: nr.first ? 24 : 6
+        topRightRadius: nr.first ? 24 : 6
+        bottomLeftRadius: nr.last ? 24 : 6
+        bottomRightRadius: nr.last ? 24 : 6
+        color: nrRipple.containsMouse ? Colors.surfaceContainerHigh : Colors.surfaceContainer
+        Behavior on color { EffectsColorAnim {} }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 18
+            anchors.rightMargin: 8
+            spacing: 14
+
+            MaterialIconSymbol {
+                content: root.deviceIcon(nr.device?.icon)
+                iconSize: 22
+                fill: 1
+                customColor: Colors.surfaceVariantText
+            }
+
+            CustomText {
+                Layout.fillWidth: true
+                content: root.nameOf(nr.device)
+                size: 14
+                weight: 700
+            }
+
+            CustomText {
+                visible: !nr.busy
+                Layout.rightMargin: 10
+                content: "Pair"
+                size: 13
+                weight: 800
+                customColor: Colors.primary
+            }
+
+            Item {
+                visible: nr.busy
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
 
                 CustomCircularLoader {
                     anchors.centerIn: parent
@@ -440,215 +491,278 @@ Item {
         }
 
         RippleEffect {
-            id: drRipple
+            id: nrRipple
             anchors.fill: parent
-            topLeftRadius: dr.topLeftRadius
-            topRightRadius: dr.topRightRadius
-            bottomLeftRadius: dr.bottomLeftRadius
-            bottomRightRadius: dr.bottomRightRadius
-            onClicked: {
-                if (dr.busy || !dr.device) return
-                if (dr.fresh) root.pair(dr.device)
-                else dr.device.connect()
-            }
+            topLeftRadius: nr.topLeftRadius
+            topRightRadius: nr.topRightRadius
+            bottomLeftRadius: nr.bottomLeftRadius
+            bottomRightRadius: nr.bottomRightRadius
+            onClicked: if (!nr.busy && nr.device) root.pair(nr.device)
         }
     }
 
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16
-        spacing: 12
+        spacing: 10
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 6
+            Layout.leftMargin: 4
             spacing: 8
 
             M3IconButton {
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                radius: 16
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
                 icon: "chevron_backward"
                 iconSize: 20
                 visible: root.showBack
                 onClicked: root.backClicked()
             }
 
-            ColumnLayout {
+            CustomText {
                 Layout.fillWidth: true
-                spacing: 0
+                content: "Bluetooth"
+                family: root.displayFamily
+                size: 30
+                weight: 400
+            }
 
-                CustomText {
-                    Layout.fillWidth: true
-                    content: "Bluetooth"
-                    family: root.displayFamily
-                    renderType: Text.QtRendering
-                    size: 22
-                    weight: 400
+            Rectangle {
+                id: pairBtn
+                visible: root.bluetoothOn
+                Layout.preferredHeight: 40
+                Layout.preferredWidth: pairRow.implicitWidth + 28
+                radius: 20
+                color: Colors.tertiaryContainer
+
+                RowLayout {
+                    id: pairRow
+                    anchors.centerIn: parent
+                    spacing: 6
+
+                    MaterialIconSymbol {
+                        visible: !root.scanning
+                        content: "add"
+                        iconSize: 20
+                        customColor: Colors.tertiaryContainerText
+                    }
+
+                    CustomCircularLoader {
+                        visible: root.scanning
+                        size: 18
+                        trackWidth: 2
+                        waveAmplitude: 0
+                        highlightColor: Colors.tertiaryContainerText
+                        trackColor: Qt.alpha(Colors.tertiaryContainerText, 0.2)
+                    }
+
+                    CustomText {
+                        content: root.scanning ? "Stop" : "Pair"
+                        size: 13
+                        weight: 800
+                        customColor: Colors.tertiaryContainerText
+                    }
                 }
 
-                CustomText {
-                    Layout.fillWidth: true
-                    content: !root.adapter ? "No adapter found"
-                        : !root.bluetoothOn ? "Off"
-                        : root.adapter.discoverable ? "Visible as " + (root.adapter.name || "this laptop")
-                        : root.connected.length === 1 ? "1 device connected"
-                        : root.connected.length > 1 ? root.connected.length + " devices connected"
-                        : "No devices connected"
-                    size: 12
-                    weight: 400
-                    customColor: Colors.surfaceVariantText
+                RippleEffect {
+                    anchors.fill: parent
+                    radius: 20
+                    hoverColor: Qt.alpha(Colors.tertiaryContainerText, 0.08)
+                    rippleColor: Qt.alpha(Colors.tertiaryContainerText, 0.18)
+                    onClicked: root.scanning ? root.stopScan() : root.startScan()
                 }
+
+                CustomToolTip {
+                    content: root.scanning ? "Stop searching" : "Pair new device"
+                    visible: pairTip.hovered
+                }
+
+                HoverHandler { id: pairTip }
             }
 
             M3IconButton {
                 Layout.preferredWidth: 40
                 Layout.preferredHeight: 40
+                id: btGear
                 icon: "settings"
                 iconSize: 20
-                onClicked: root.openSettings()
-            }
-
-            Item {
-                Layout.preferredWidth: 40
-                Layout.preferredHeight: 40
-
-                M3IconButton {
-                    anchors.fill: parent
-                    icon: "bluetooth_searching"
-                    iconSize: 20
-                    enabledButton: root.bluetoothOn && !root.scanning
-                    opacity: root.scanning ? 0 : root.bluetoothOn ? 1 : 0.4
-                    onClicked: if (root.bluetoothOn && !root.scanning) root.startScan()
-                    Behavior on opacity { EffectsAnim {} }
-                }
-
-                CustomCircularLoader {
-                    anchors.centerIn: parent
-                    size: 22
-                    trackWidth: 2
-                    waveAmplitude: 0
-                    highlightColor: Colors.primary
-                    trackColor: Colors.surfaceContainerHighest
-                    visible: root.scanning
-                }
-            }
-
-            CustomToogle {
-                Layout.alignment: Qt.AlignVCenter
-                isToggleOn: root.bluetoothOn
-                opacity: root.adapter ? 1 : 0.4
-                onToggled: function (state) {
-                    if (root.adapter) root.adapter.enabled = state
-                }
+                tip: "Bluetooth settings"
+                onClicked: root.openSettings(btGear)
             }
         }
 
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-
-            ColumnLayout {
-                anchors.centerIn: parent
-                visible: !root.bluetoothOn
-                spacing: 10
-
-                Item {
-                    Layout.alignment: Qt.AlignHCenter
-                    implicitWidth: 56
-                    implicitHeight: 56
-
-                    MaterialShapes.ShapeCanvas {
-                        anchors.fill: parent
-                        roundedPolygon: MatrialShapeFn.getCookie9Sided()
-                        color: Colors.surfaceContainerHigh
-                    }
-
-                    MaterialIconSymbol {
-                        anchors.centerIn: parent
-                        content: "bluetooth_disabled"
-                        iconSize: 24
-                        customColor: Colors.outline
-                    }
-                }
-
-                CustomText {
-                    Layout.alignment: Qt.AlignHCenter
-                    content: root.adapter ? "Turn Bluetooth on to see your devices" : "No Bluetooth adapter found"
-                    size: 12
-                    weight: 400
-                    customColor: Colors.outline
-                }
-            }
 
             Flickable {
                 id: flick
                 anchors.fill: parent
-                visible: root.bluetoothOn
-                contentHeight: body.implicitHeight
+                contentHeight: body.implicitHeight + 16
                 boundsBehavior: Flickable.StopAtBounds
+                clip: true
                 ScrollBar.vertical: CustomScrollBar {}
 
                 ColumnLayout {
                     id: body
                     width: flick.width
-                    spacing: 3
+                    spacing: 2
 
-                    GridLayout {
-                        Layout.fillWidth: true
-                        Layout.bottomMargin: 8
-                        visible: root.connected.length > 0
-                        columns: 2
-                        columnSpacing: 8
-                        rowSpacing: 8
+                    GroupRow {
+                        first: true
+                        last: !root.bluetoothOn
+                        color: root.bluetoothOn ? Colors.primaryContainer : Colors.surfaceContainer
 
-                        Repeater {
-                            model: ScriptModel { values: root.connected }
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 18
+                            anchors.rightMargin: 14
+                            spacing: 12
 
-                            DeviceTile {
-                                required property var modelData
-                                required property int index
+                            CustomText {
                                 Layout.fillWidth: true
-                                Layout.preferredWidth: 1
-                                Layout.columnSpan: index === root.connected.length - 1 && root.connected.length % 2 === 1 ? 2 : 1
-                                device: modelData
+                                content: root.adapter ? "Use Bluetooth" : "No Bluetooth adapter"
+                                size: 15
+                                weight: 800
+                                customColor: root.bluetoothOn ? Colors.primaryContainerText : Colors.surfaceText
+                            }
+
+                            CustomToogle {
+                                visible: !!root.adapter
+                                isToggleOn: root.bluetoothOn
+                                onToggled: s => { if (root.adapter) root.adapter.enabled = s }
                             }
                         }
                     }
 
+                    GroupRow {
+                        visible: root.bluetoothOn
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 18
+                            anchors.rightMargin: 12
+                            spacing: 12
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                CustomText { Layout.fillWidth: true; content: "Device name"; size: 14; weight: 700 }
+                                CustomText { Layout.fillWidth: true; content: root.adapterName; size: 12; weight: 500; customColor: Colors.surfaceVariantText }
+                            }
+
+                            MaterialIconSymbol {
+                                content: "chevron_right"
+                                iconSize: 22
+                                customColor: Colors.surfaceVariantText
+                            }
+                        }
+
+                        RippleEffect {
+                            anchors.fill: parent
+                            radius: 6
+                            onClicked: root.openSettings(parent)
+                        }
+                    }
+
+                    GroupRow {
+                        visible: root.bluetoothOn
+                        last: true
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 18
+                            anchors.rightMargin: 14
+                            spacing: 12
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                CustomText { Layout.fillWidth: true; content: "Visible to nearby devices"; size: 14; weight: 700 }
+                                CustomText {
+                                    Layout.fillWidth: true
+                                    content: root.adapter?.discoverable ? "On, others can find " + root.adapterName
+                                                                        : "Off, others can't find " + root.adapterName
+                                    size: 12
+                                    weight: 500
+                                    customColor: Colors.surfaceVariantText
+                                }
+                            }
+
+                            CustomToogle {
+                                isToggleOn: root.adapter?.discoverable ?? false
+                                onToggled: s => { if (root.adapter) root.adapter.discoverable = s }
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 40
+                        visible: !root.bluetoothOn
+                        spacing: 10
+
+                        Item {
+                            Layout.alignment: Qt.AlignHCenter
+                            implicitWidth: 64
+                            implicitHeight: 64
+
+                            MaterialShapes.ShapeCanvas {
+                                anchors.fill: parent
+                                roundedPolygon: "cookie9"
+                                color: Colors.surfaceContainerHigh
+                            }
+
+                            MaterialIconSymbol {
+                                anchors.centerIn: parent
+                                content: "bluetooth_disabled"
+                                iconSize: 26
+                                customColor: Colors.outline
+                            }
+                        }
+
+                        CustomText {
+                            Layout.alignment: Qt.AlignHCenter
+                            content: root.adapter ? "Turn Bluetooth on to see your devices" : "No Bluetooth adapter found"
+                            size: 12
+                            weight: 500
+                            customColor: Colors.surfaceVariantText
+                        }
+                    }
+
                     SectionLabel {
-                        visible: root.paired.length > 0
-                        text: "Paired"
+                        visible: root.bluetoothOn && root.mine.length > 0
+                        text: "Your devices"
+                        note: root.mine.length === 1 ? "1 paired" : root.mine.length + " paired"
                     }
 
                     Repeater {
-                        model: ScriptModel { values: root.paired }
+                        model: ScriptModel { values: root.mine }
 
                         DeviceRow {
                             required property var modelData
                             required property int index
                             device: modelData
                             first: index === 0
-                            last: index === root.paired.length - 1
+                            last: index === root.mine.length - 1
                         }
                     }
 
                     SectionLabel {
-                        Layout.topMargin: root.paired.length > 0 || root.connected.length > 0 ? 14 : 6
-                        text: "New devices"
+                        visible: root.bluetoothOn
+                        text: "Nearby"
                         busy: root.scanning
-                        busyText: "Searching"
+                        note: root.scanning ? "Searching" : ""
                     }
 
                     Repeater {
                         model: ScriptModel { values: root.fresh }
 
-                        DeviceRow {
+                        NearbyRow {
                             required property var modelData
                             required property int index
                             device: modelData
-                            fresh: true
                             first: index === 0
                             last: index === root.fresh.length - 1
                         }
@@ -656,24 +770,17 @@ Item {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        implicitHeight: 52
-                        visible: root.fresh.length === 0
-                        radius: 18
+                        implicitHeight: 56
+                        visible: root.bluetoothOn && root.fresh.length === 0
+                        radius: 24
                         color: Colors.surfaceContainer
 
                         CustomText {
                             anchors.centerIn: parent
-                            content: root.scanning ? "Looking for devices…" : "Search to find devices nearby"
+                            content: root.scanning ? "Looking for devices…" : "Nothing found yet"
                             size: 12
-                            weight: 400
+                            weight: 500
                             customColor: Colors.surfaceVariantText
-                        }
-
-                        RippleEffect {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            enabled: !root.scanning
-                            onClicked: root.startScan()
                         }
                     }
                 }
@@ -681,7 +788,6 @@ Item {
 
             ScrollFade {
                 anchors.fill: parent
-                visible: flick.visible
                 flickable: flick
                 color: Colors.surface
             }

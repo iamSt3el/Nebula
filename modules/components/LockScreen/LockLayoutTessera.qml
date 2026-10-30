@@ -55,17 +55,24 @@ Item {
         }
     }
 
+    LockTimeline {
+        id: tileLine
+        animated: root._animated
+        exiting: root.exiting
+    }
+
     component Tile: LockTile {
         id: tile
+        readonly property real order: tile.r.x / root.width * 6 + tile.r.y / root.height * 4
+        line: tileLine
         tl: root.small
         tr: root.small
         bl: root.small
         br: root.small
-        dy: 34 * root.u
+        dy: 24 * root.u
         preview: root.preview
-        delay: 60 + Math.round((tile.r.x / root.width * 6 + tile.r.y / root.height * 4) * 70)
-        animated: root._animated
-        exiting: root.exiting
+        at: 80 + Math.round(tile.order * 50)
+        outAt: Math.round((10 - tile.order) * 28)
     }
 
     Tile {
@@ -104,7 +111,7 @@ Item {
             CustomText {
                 content: LockSession.user
                 size: Math.round(40 * root.u)
-                renderType: Text.QtRendering
+                renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
                 weight: 700
                 customColor: "#ffffff"
             }
@@ -126,17 +133,16 @@ Item {
             customColor: Qt.alpha(Colors.primaryText, 0.75)
         }
 
-        Text {
+        LockTimeText {
             x: 30 * root.u
             anchors.bottom: parent.bottom
             anchors.bottomMargin: -34 * root.u
-            text: LockSession.hour + ":" + LockSession.minute
             color: Colors.primaryText
-            font.family: root._display
-            font.pixelSize: Math.round(250 * root.u)
-            font.weight: 800
-            font.letterSpacing: -6 * root.u
-            renderType: Text.QtRendering
+            family: root._display
+            pixelSize: Math.round(250 * root.u)
+            weight: 800
+            letterSpacing: -6 * root.u
+            renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
         }
     }
 
@@ -157,7 +163,7 @@ Item {
                 font.family: root._display
                 font.pixelSize: Math.round(108 * root.u)
                 font.weight: 800
-                renderType: Text.QtRendering
+                renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
             }
             Column {
                 CustomText { content: LockSession.weekday; size: Math.round(26 * root.u); weight: 600; customColor: Colors.secondaryContainerText }
@@ -183,7 +189,7 @@ Item {
             x: 34 * root.u
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 26 * root.u
-            CustomText { content: root.weather?.value ?? ""; size: Math.round(56 * root.u); renderType: Text.QtRendering; weight: 700; customColor: Colors.tertiaryContainerText }
+            CustomText { content: root.weather?.value ?? ""; size: Math.round(56 * root.u); renderType: root.preview ? Text.CurveRendering : Text.NativeRendering; weight: 700; customColor: Colors.tertiaryContainerText }
             CustomText {
                 width: Math.min(implicitWidth, root.colW * 2 - 60 * root.u)
                 content: root.weather?.sub ?? ""
@@ -230,7 +236,7 @@ Item {
             x: 34 * root.u
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 24 * root.u
-            CustomText { content: root.battery?.value ?? ""; size: Math.round(52 * root.u); renderType: Text.QtRendering; weight: 700 }
+            CustomText { content: root.battery?.value ?? ""; size: Math.round(52 * root.u); renderType: root.preview ? Text.CurveRendering : Text.NativeRendering; weight: 700 }
             CustomText {
                 content: (root.battery?.sub ?? "") !== "" ? "Charging" : "Battery"
                 size: Math.round(19 * root.u)
@@ -306,7 +312,7 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2 * root.u
-                CustomText { Layout.fillWidth: true; content: ServiceMusic.activeTrack?.title ?? ""; size: Math.round(34 * root.u); renderType: Text.QtRendering; weight: 700 }
+                CustomText { Layout.fillWidth: true; content: ServiceMusic.activeTrack?.title ?? ""; size: Math.round(34 * root.u); renderType: root.preview ? Text.CurveRendering : Text.NativeRendering; weight: 700 }
                 CustomText { Layout.fillWidth: true; content: ServiceMusic.activeTrack?.artist ?? ""; size: Math.round(22 * root.u); weight: 400; customColor: Colors.surfaceVariantText }
                 Rectangle {
                     Layout.topMargin: 16 * root.u
@@ -350,7 +356,7 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 16 * root.u
-                CustomText { content: root.greeter ? "Sign in" : "Unlock"; size: Math.round(40 * root.u); renderType: Text.QtRendering; weight: 700 }
+                CustomText { content: root.greeter ? "Sign in" : "Unlock"; size: Math.round(40 * root.u); renderType: root.preview ? Text.CurveRendering : Text.NativeRendering; weight: 700 }
                 LockAuthField {
                     id: auth
                     context: root.context

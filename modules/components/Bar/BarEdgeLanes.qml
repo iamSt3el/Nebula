@@ -22,13 +22,7 @@ Item {
     property Item popSurf: null
     property string popAnchor: ""
     property rect popFrom: Qt.rect(0, 0, 0, 0)
-    property string popShape: "stepped"
-
-    readonly property var shapeChoices: [
-        { value: "stepped", label: "Stepped", icon: "view_agenda" },
-        { value: "flat",    label: "Flat",    icon: "remove" },
-        { value: "pill",    label: "Pill",    icon: "circle" }
-    ]
+    property string popShape: "pill"
 
     function anchorName(surf, anchor) {
         if (surf && surf.vertical)
@@ -68,7 +62,7 @@ Item {
         lanes.popSurf = surf
         lanes.popAnchor = anchor
         lanes.popFrom = from
-        lanes.popShape = BarLayout.edgeShapes(surf.edge)[0] ?? "stepped"
+        lanes.popShape = BarLayout.gapPresetOf(surf.edge)
     }
 
     function closePop() {
@@ -92,8 +86,9 @@ Item {
         lanes.closePop()
         if (!surf)
             return
-        BarLayout.setEdge(surf.edge, "shape", shape)
-        const id = BarLayout.addShapedBlock(anchor, surf.edge, shape)
+        if (shape !== "")
+            BarLayout.applyGapPreset(surf.edge, shape)
+        const id = BarLayout.addBlock(anchor, surf.edge)
         Qt.callLater(() => lanes.pickParts(id))
     }
 
@@ -129,26 +124,44 @@ Item {
             }
             readonly property bool hot: lane.dropAnchor !== ""
             readonly property bool dragging: !!lane.ed && lane.ed.mode === "item"
+            readonly property bool open: lane.dragging || laneHover.hovered || lanes.popSurf === lane.surf
+            property real openT: lane.open ? 1 : 0
+            Behavior on openT { EffectsAnim { speed: "fast" } }
 
             x: lane.r.x
             y: lane.r.y
             width: lane.r.width
             height: lane.r.height
             radius: lanes.thick / 2
-            color: Qt.alpha(Colors.primary, lane.hot ? 0.18 : laneHover.hovered ? 0.1 : 0.06)
+            color: Qt.alpha(Colors.primary, (lane.hot ? 0.18 : laneHover.hovered ? 0.1 : 0.06) * lane.openT)
             border.width: 2
-            border.color: Qt.alpha(Colors.primary, lane.hot ? 1 : 0.55)
+            border.color: Qt.alpha(Colors.primary, (lane.hot ? 1 : 0.55) * lane.openT)
             opacity: lanes.active || lane.dragging ? 1 : 0
             visible: opacity > 0.01
             Behavior on opacity { EffectsAnim { speed: "fast" } }
-            Behavior on color { EffectsColorAnim { speed: "fast" } }
 
             HoverHandler { id: laneHover }
 
-            MouseArea { anchors.fill: parent }
+            MouseArea {
+                anchors.fill: parent
+                visible: lane.open
+            }
+
+            Rectangle {
+                readonly property bool flat: !lane.surf.vertical
+                opacity: 1 - lane.openT
+                visible: opacity > 0.01
+                width: flat ? 48 : 3
+                height: flat ? 3 : 48
+                radius: 1.5
+                x: flat ? (lane.width - width) / 2 : (lane.surf.far ? lane.width - 3 : 0)
+                y: flat ? (lane.surf.far ? lane.height - 3 : 0) : (lane.height - height) / 2
+                color: Colors.outline
+            }
 
             CustomText {
-                visible: !lane.surf.vertical
+                opacity: lane.openT
+                visible: !lane.surf.vertical && lane.openT > 0.01
                 x: 120
                 anchors.verticalCenter: parent.verticalCenter
                 width: Math.max(0, lane.width / 2 - 120 - 80)
@@ -178,6 +191,8 @@ Item {
 
                     x: lane.surf.vertical ? 4 : slotBtn.along
                     y: lane.surf.vertical ? slotBtn.along : 4
+                    opacity: lane.openT
+                    visible: lane.openT > 0.01
                     width: lane.surf.vertical ? 28 : slotBtn.alongSize
                     height: 28
                     radius: 14
@@ -303,28 +318,19 @@ Item {
                 EditKit.Pill {
                     icon: "close"
                     box: 36
+                    tip: "Close · Esc"
                     onClicked: lanes.closePop()
                 }
             }
 
             EditKit.SectionLabel { content: "Shape" }
 
-            RowLayout {
+            EditTextChoice {
                 Layout.fillWidth: true
-                spacing: 4
-
-                Repeater {
-                    model: lanes.shapeChoices
-
-                    delegate: EditKit.Pill {
-                        required property var modelData
-                        Layout.fillWidth: true
-                        icon: modelData.icon
-                        label: modelData.label
-                        lit: lanes.popShape === modelData.value
-                        onClicked: lanes.popShape = modelData.value
-                    }
-                }
+                model: (lanes.popSurf && BarLayout.gapPresetOf(lanes.popSurf.edge) === ""
+                    ? [{ value: "", label: "As it is", desc: "Keep this edge's own gaps" }] : []).concat(BarLayout.gapPresetInfo)
+                current: lanes.popShape
+                onPicked: v => lanes.popShape = v
             }
 
             EditKit.Pill {

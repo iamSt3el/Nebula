@@ -1,121 +1,137 @@
-import Quickshell
 import QtQuick
-import QtQuick.Layouts
 import qs.modules.utils
 import qs.modules.customComponents
 
 Item {
     id: root
+
     property int value: 0
     property int val: root.value
     property int inc: 10
     property int min: 0
     property int limit: 100
+    property color color: Colors.surfaceContainerHighest
+    property color valueColor: Colors.secondaryContainer
+    property color valueTextColor: Colors.secondaryContainerText
+    property string suffix: ""
 
-    onValueChanged: { if (val !== value) val = value }
-    property color color: Colors.surfaceContainerHigh
+    readonly property real outerRadius: root.height / 2
+    readonly property real innerRadius: 4
+    readonly property real pressedInnerRadius: 4
+    readonly property real buttonWidth: 48
+    readonly property real valueWidth: 64
+    readonly property real grow: 8
+    readonly property real pillWidth: Math.max(root.valueWidth, Math.ceil(valueText.implicitWidth) + 24)
 
-    implicitWidth: 140
-    implicitHeight: 34
+    onValueChanged: if (root.val !== root.value) root.val = root.value
 
-    Rectangle {
-        anchors.fill: parent
-        radius: 10
-        color: root.color
+    implicitWidth: root.buttonWidth * 2 + root.pillWidth + row.spacing * 2
+    implicitHeight: 40
 
-        RowLayout {
+    function step(dir) {
+        const next = Math.max(root.min, Math.min(root.limit, root.val + dir * root.inc))
+        if (next !== root.val)
+            root.val = next
+    }
+
+    component StepButton: Rectangle {
+        id: btn
+
+        property int dir: 1
+        property string icon: ""
+        readonly property bool lead: btn.dir < 0
+        readonly property bool can: btn.dir < 0 ? root.val > root.min : root.val < root.limit
+        readonly property bool down: area.pressed && btn.can
+        readonly property real inner: btn.down ? root.pressedInnerRadius : root.innerRadius
+
+        width: root.buttonWidth + (btn.down ? root.grow : 0)
+        height: root.height
+        topLeftRadius: btn.lead ? root.outerRadius : btn.inner
+        bottomLeftRadius: btn.lead ? root.outerRadius : btn.inner
+        topRightRadius: btn.lead ? btn.inner : root.outerRadius
+        bottomRightRadius: btn.lead ? btn.inner : root.outerRadius
+        color: !btn.can ? root.color
+            : btn.down ? Qt.tint(root.color, Qt.alpha(Colors.surfaceText, 0.12))
+            : area.containsMouse ? Qt.tint(root.color, Qt.alpha(Colors.surfaceText, 0.08))
+            : root.color
+
+        Behavior on width { SpatialAnim { speed: "fast" } }
+        Behavior on topLeftRadius { SpatialAnim { speed: "fast" } }
+        Behavior on bottomLeftRadius { SpatialAnim { speed: "fast" } }
+        Behavior on topRightRadius { SpatialAnim { speed: "fast" } }
+        Behavior on bottomRightRadius { SpatialAnim { speed: "fast" } }
+        Behavior on color { EffectsColorAnim { speed: "fast" } }
+
+        MaterialIconSymbol {
+            anchors.centerIn: parent
+            content: btn.icon
+            iconSize: btn.down ? 22 : 20
+            fill: 1
+            customColor: btn.can ? Colors.surfaceText : Qt.alpha(Colors.surfaceText, 0.38)
+
+            Behavior on iconSize { SpatialAnim { speed: "fast" } }
+        }
+
+        MouseArea {
+            id: area
             anchors.fill: parent
-            spacing: 0
-
-            // ── Minus ─────────────────────────────────────────────────────
-            Item {
-                Layout.preferredWidth: 38
-                Layout.fillHeight: true
-
-                MaterialIconSymbol {
-                    anchors.centerIn: parent
-                    content: "remove"
-                    iconSize: minusMouse.containsMouse && root.val > root.min ? 20 : 17
-                    Behavior on iconSize { SpatialAnim { speed: "fast" } }
-                    color: root.val <= root.min ? Colors.outline
-                         : minusMouse.pressed ? Colors.primary
-                         : minusMouse.containsMouse ? Colors.inverseSurface
-                         : Colors.surfaceVariantText
-
-                    Behavior on color    { ColorAnimation  { duration: 120 } }
-                }
-
-                MouseArea {
-                    id: minusMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    enabled: root.val > root.min
-                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: root.val = Math.max(root.min, root.val - root.inc)
-                }
+            hoverEnabled: true
+            cursorShape: btn.can ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onPressed: if (btn.can) {
+                root.step(btn.dir)
+                repeat.interval = 420
+                repeat.restart()
             }
+            onReleased: repeat.stop()
+            onCanceled: repeat.stop()
+        }
 
-            // ── Divider ───────────────────────────────────────────────────
-            Rectangle {
-                Layout.preferredWidth: 1
-                Layout.fillHeight: true
-                Layout.topMargin: 8
-                Layout.bottomMargin: 8
-                color: Colors.outline
-                opacity: 0.35
+        Timer {
+            id: repeat
+            repeat: true
+            onTriggered: {
+                repeat.interval = 70
+                if (btn.can)
+                    root.step(btn.dir)
+                else
+                    repeat.stop()
             }
+        }
+    }
 
-            // ── Value ─────────────────────────────────────────────────────
-            Item {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
+    Row {
+        id: row
+        anchors.fill: parent
+        spacing: 2
 
-                CustomText {
-                    anchors.centerIn: parent
-                    content: root.val
-                    size: 14
-                    weight: 600
-                    color: Colors.inverseSurface
-                }
+        StepButton {
+            id: minus
+            dir: -1
+            icon: "remove"
+        }
+
+        Rectangle {
+            width: root.pillWidth - (minus.down ? root.grow : 0) - (plus.down ? root.grow : 0)
+            height: root.height
+            radius: root.innerRadius
+            color: root.valueColor
+
+            Behavior on width { SpatialAnim { speed: "fast" } }
+
+            CustomText {
+                id: valueText
+                anchors.centerIn: parent
+                content: root.val + root.suffix
+                size: 14
+                weight: 600
+                customColor: root.valueTextColor
             }
+        }
 
-            // ── Divider ───────────────────────────────────────────────────
-            Rectangle {
-                Layout.preferredWidth: 1
-                Layout.fillHeight: true
-                Layout.topMargin: 8
-                Layout.bottomMargin: 8
-                color: Colors.outline
-                opacity: 0.35
-            }
-
-            // ── Plus ──────────────────────────────────────────────────────
-            Item {
-                Layout.preferredWidth: 38
-                Layout.fillHeight: true
-
-                MaterialIconSymbol {
-                    anchors.centerIn: parent
-                    content: "add"
-                    iconSize: plusMouse.containsMouse && root.val < root.limit ? 20 : 17
-                    Behavior on iconSize { SpatialAnim { speed: "fast" } }
-                    color: root.val >= root.limit ? Colors.outline
-                         : plusMouse.pressed ? Colors.primary
-                         : plusMouse.containsMouse ? Colors.inverseSurface
-                         : Colors.surfaceVariantText
-
-                    Behavior on color    { ColorAnimation  { duration: 120 } }
-                }
-
-                MouseArea {
-                    id: plusMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    enabled: root.val < root.limit
-                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: root.val = Math.min(root.limit, root.val + root.inc)
-                }
-            }
+        StepButton {
+            id: plus
+            dir: 1
+            icon: "add"
         }
     }
 }

@@ -15,8 +15,10 @@ Item {
     property real barH: 0
     property bool shown: false
     property bool turned: false
+    property bool far: false
     property color fill: Colors.surface
     property string shapeOverride: ""
+    property real shapeInset: 0
     property bool hovered: false
     readonly property color tone: root.hovered && root.shapeOverride === "" ? Colors.primaryContainer : root.fill
 
@@ -27,6 +29,7 @@ Item {
     readonly property real angle: BarLayout.itemStyle(root.itemId, "rotate", 0)
     readonly property real shadowSize: BarLayout.shadowReach
     readonly property real shadowAlpha: BarLayout.shadowAlpha
+    readonly property real shadowLift: root.far ? -BarLayout.shadowLift : BarLayout.shadowLift
     readonly property real edgeW: KindleMode.outlines ? KindleMode.edge : 0
 
     visible: opacity > 0.01
@@ -36,12 +39,13 @@ Item {
     }
 
     component Shade: MultiEffect {
+        property bool across: false
         shadowEnabled: root.shadowSize > 0
-        shadowColor: Qt.alpha(Colors.shadow, Math.min(1, root.shadowAlpha * 1.6))
+        shadowColor: Qt.alpha(BarLayout.shadowTone, Math.min(1, root.shadowAlpha * 1.6))
         shadowBlur: 1
         blurMax: Math.max(1, Math.round(root.shadowSize))
-        shadowHorizontalOffset: 0
-        shadowVerticalOffset: 0
+        shadowHorizontalOffset: across ? root.shadowLift : 0
+        shadowVerticalOffset: across ? 0 : root.shadowLift
     }
 
     Rectangle {
@@ -65,7 +69,7 @@ Item {
         anchors.centerIn: parent
         width: root.plateH
         height: root.plateH
-        active: root.shapeName !== ""
+        active: root.shapeName !== "" && root.shapeInset <= 0
         visible: active
         transform: Matrix4x4 {
             matrix: root.turned ? Qt.matrix4x4(0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1) : Qt.matrix4x4()
@@ -77,7 +81,7 @@ Item {
             roundedPolygon: ShapeLibrary.get(root.shapeName) ?? ShapeLibrary.get("circle")
             angle: root.angle
             layer.enabled: root.shadowSize > 0
-            layer.effect: Shade {}
+            layer.effect: Shade { across: root.turned }
 
             Behavior on color {
                 EffectsColorAnim {}

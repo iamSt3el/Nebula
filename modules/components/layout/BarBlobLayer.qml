@@ -66,7 +66,9 @@ BlobField {
     fillColor: Colors.surface
     edgeColor: Colors.outline
     edgeWidth: KindleMode.outlines ? KindleMode.edge : 0
-    shadowColor: Colors.shadow
+    shadowColor: BarLayout.shadowTone
     shadowSize: BarLayout.shadowReach
     shadowStrength: BarLayout.shadowAlpha
+    shadowOffset: BarLayout.shadowLift
+    shadowContact: BarLayout.shadowContact
 }

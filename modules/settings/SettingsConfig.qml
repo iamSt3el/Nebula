@@ -16,6 +16,9 @@ Singleton {
     property alias weather: settingsAdapter.weather
     property alias notifications: settingsAdapter.notifications
     property alias gameMode: settingsAdapter.gameMode
+    property alias reading: settingsAdapter.reading
+    property alias books: settingsAdapter.books
+    property alias wiz: settingsAdapter.wiz
     property alias dashboard: settingsAdapter.dashboard
     property alias sleep: settingsAdapter.sleep
     property alias lockscreen: settingsAdapter.lockscreen
@@ -117,6 +120,20 @@ Singleton {
                 musicVisStyle: "Wave",
                 musicVisFps: "30 fps",
                 musicVisColor: "Primary",
+                musicVisBeat: true,
+                musicVisFreqColors: true,
+                musicVisFade: true,
+                musicVisEdge: "bottom",
+                musicVisHeight: 200,
+                musicVisBrightness: 75,
+                musicVisMirror: false,
+                musicVisStringGap: 12,
+                musicVisLayer: "behind",
+                soundFxOn: false,
+                soundFxStyle: "boost",
+                soundFxBass: 0,
+                soundFxTreble: 0,
+                soundFxTarget: "auto",
                 wallpaperDir: Quickshell.env("HOME") + "/wallpaper",
                 workspaceCount: 10,
                 workspaceNames: ({}),
@@ -129,6 +146,7 @@ Singleton {
                 barWeatherPanel: true,
                 motionScheme: "expressive",
                 holidayCountry: "",
+                editTipSeen: false,
             })
 
             property var general: ({
@@ -162,6 +180,20 @@ Singleton {
                 musicVisStyle: "Wave",
                 musicVisFps: "30 fps",
                 musicVisColor: "Primary",
+                musicVisBeat: true,
+                musicVisFreqColors: true,
+                musicVisFade: true,
+                musicVisEdge: "bottom",
+                musicVisHeight: 200,
+                musicVisBrightness: 75,
+                musicVisMirror: false,
+                musicVisStringGap: 12,
+                musicVisLayer: "behind",
+                soundFxOn: false,
+                soundFxStyle: "boost",
+                soundFxBass: 0,
+                soundFxTreble: 0,
+                soundFxTarget: "auto",
                 wallpaperDir: Quickshell.env("HOME") + "/wallpaper",
                 workspaceCount: 10,
                 workspaceNames: ({}),
@@ -174,6 +206,7 @@ Singleton {
                 barWeatherPanel: true,
                 motionScheme: "expressive",
                 holidayCountry: "",
+                editTipSeen: false,
             })
 
             onGeneralChanged: {
@@ -286,15 +319,11 @@ Singleton {
                 cardOpacity: 0.60,
                 clockX: 100,
                 clockY: 100,
-                dateWidgetX: 300,
-                dateWidgetY: 300,
                 analogClockX: 400,
                 analogClockY: 200,
                 showClock: false,
-                showDateWidget: false,
                 showAnalogClock: false,
                 analogClockStyle: "classic",
-                dateWidgetStyle: "bold",
                 digitalClockStyle: "veil",
                 showProfileBadge: false,
                 profileBadgeX: 100,
@@ -335,35 +364,19 @@ Singleton {
                 calendarAlmanacY: 300,
                 calendarAlmanacMonday: true,
                 calendarAlmanacDimOther: true,
-                showCalendarTorn: false,
-                calendarTornX: 1120,
-                calendarTornY: 300,
-                calendarTornMonday: true,
-                calendarTornStrip: true,
                 showCalendarWindows: false,
                 calendarWindowsX: 420,
                 calendarWindowsY: 440,
                 calendarWindowsMonday: true,
                 calendarWindowsFooter: true,
-                showCalendarDaylight: false,
-                calendarDaylightX: 420,
-                calendarDaylightY: 100,
-                calendarDaylightPlace: true,
                 showCalendarYear: false,
                 calendarYearX: 760,
                 calendarYearY: 440,
                 calendarYearHolidays: true,
-                showCalendarStamp: false,
-                calendarStampX: 1100,
-                calendarStampY: 440,
-                calendarStampPostmark: true,
                 showCalendarMoon: false,
                 calendarMoonX: 760,
                 calendarMoonY: 100,
                 calendarMoonMonday: true,
-                showMoonPhase: false,
-                moonPhaseX: 620,
-                moonPhaseY: 440,
                 showStickyNote: false,
                 stickyNoteText: "",
                 stickyNoteX: 620,
@@ -373,128 +386,77 @@ Singleton {
                 headlinesY: 900,
                 newsFeedUrl: "https://feeds.bbci.co.uk/news/world/rss.xml",
                 newsRefreshMinutes: 30,
-                showTaskList: false,
-                taskListX: 960,
-                taskListY: 200,
-                showCommitGarden: false,
-                commitGardenX: 145,
-                commitGardenY: 165,
-                showNotebook: false,
-                notebookX: 585,
-                notebookY: 165,
-                showTerminalStats: false,
-                terminalStatsX: 915,
-                terminalStatsY: 165,
-                showMostOpened: false,
-                mostOpenedX: 1135,
-                mostOpenedY: 165,
                 showYearAgo: false,
                 yearAgoX: 145,
                 yearAgoY: 385,
                 showPhone: false,
                 phoneX: 365,
                 phoneY: 385,
-                showHabits: false,
-                habitsX: 585,
-                habitsY: 385,
                 showCountdowns: false,
                 countdownsX: 365,
                 countdownsY: 605,
-                showMood: false,
-                moodX: 695,
-                moodY: 605,
-                showNetworkGraph: false,
-                networkGraphX: 100,
-                networkGraphY: 780,
-                networkGraphWindow: "3 min",
                 networkGraphInterval: "2 s",
-                showSysCockpit: false,
-                sysCockpitX: 145,
-                sysCockpitY: 165,
-                showSysBlueprint: false,
-                sysBlueprintX: 695,
-                sysBlueprintY: 165,
-                showSysVitals: false,
-                sysVitalsX: 145,
-                sysVitalsY: 495,
-                showSysForecast: false,
-                sysForecastX: 695,
-                sysForecastY: 495,
-                showSysFlask: false,
-                sysFlaskX: 145,
-                sysFlaskY: 165,
-                showLavaLamp: false,
-                lavaLampX: 1575,
-                lavaLampY: 165,
-                showSysThermo: false,
-                sysThermoX: 365,
-                sysThermoY: 165,
-                showSysCreature: false,
-                sysCreatureX: 540,
-                sysCreatureY: 300,
-                showDayRibbon: false,
-                dayRibbonX: 365,
-                dayRibbonY: 420,
-                showSysCells: false,
-                sysCellsX: 585,
-                sysCellsY: 165,
-                showSysShape: false,
-                sysShapeX: 805,
-                sysShapeY: 165,
-                showSysHourglass: false,
-                sysHourglassX: 1025,
-                sysHourglassY: 165,
-                showSysFillNumber: false,
-                sysFillNumberX: 1245,
-                sysFillNumberY: 165,
                 showMusicExpressive: false,
                 musicExpressiveX: 145,
                 musicExpressiveY: 605,
                 showMusicTicket: false,
                 musicTicketX: 585,
                 musicTicketY: 605,
-                showMusicPoster: false,
-                musicPosterX: 475,
-                musicPosterY: 165,
-                showMusicTuner: false,
-                musicTunerX: 585,
-                musicTunerY: 825,
-                showMusicWaveform: false,
-                musicWaveformX: 1025,
-                musicWaveformY: 605,
-                showMusicSpectrum: false,
-                musicSpectrumX: 145,
-                musicSpectrumY: 825,
-                showMusicLyrics: false,
-                musicLyricsX: 1025,
-                musicLyricsY: 385,
-                showMusicCapsule: false,
-                musicCapsuleX: 145,
-                musicCapsuleY: 935,
-                showMusicGlance: false,
-                musicGlanceX: 695,
-                musicGlanceY: 935,
-                showMusicFlap: false,
-                musicFlapX: 1025,
-                musicFlapY: 825,
-                showMusicBento: false,
-                musicBentoX: 1245,
-                musicBentoY: 385,
-                showMusicRibbon: false,
-                musicRibbonX: 35,
-                musicRibbonY: 165,
-                showMusicNeon: false,
-                musicNeonX: 585,
-                musicNeonY: 385,
-                showMusicTerminal: false,
-                musicTerminalX: 145,
-                musicTerminalY: 385,
+                showMusicDisc: false,
+                musicDiscX: 475,
+                musicDiscY: 165,
+                showMusicDeck: false,
+                musicDeckX: 585,
+                musicDeckY: 825,
+                showMusicRail: false,
+                musicRailX: 35,
+                musicRailY: 165,
+                showMusicPulse: false,
+                musicPulseX: 145,
+                musicPulseY: 935,
+                showSysCores: false,
+                sysCoresX: 1685,
+                sysCoresY: 55,
+                showSysQuad: false,
+                sysQuadX: 1245,
+                sysQuadY: 385,
+                showSysChrono: false,
+                sysChronoX: 1355,
+                sysChronoY: 605,
+                showSysSilhouette: false,
+                sysSilhouetteX: 1245,
+                sysSilhouetteY: 605,
+                sysSilhouetteThreads: false,
+                showSysMemory: false,
+                sysMemoryX: 1245,
+                sysMemoryY: 495,
+                showSysBattery: false,
+                sysBatteryX: 1575,
+                sysBatteryY: 495,
+                showSysThermals: false,
+                sysThermalsX: 1685,
+                sysThermalsY: 275,
+                showSysNet: false,
+                sysNetX: 1245,
+                sysNetY: 605,
+                showSysOrbit: false,
+                sysOrbitX: 1355,
+                sysOrbitY: 55,
                 showWeatherHourly: false,
                 weatherHourlyX: 420,
                 weatherHourlyY: 200,
-                showWeatherShape: false,
-                weatherShapeX: 660,
-                weatherShapeY: 200,
+                showWeatherPoster: false,
+                weatherPosterX: 145,
+                weatherPosterY: 165,
+                showWeatherHours: false,
+                weatherHoursX: 365,
+                weatherHoursY: 165,
+                showWeatherDayClock: false,
+                weatherDayClockX: 805,
+                weatherDayClockY: 165,
+                showWeatherWind: false,
+                weatherWindX: 1025,
+                weatherWindY: 165,
                 showWorldClock: false,
                 worldClockX: 880,
                 worldClockY: 440,
@@ -509,9 +471,7 @@ Singleton {
                 photoFrameImage: "",
                 photoFrameShapeLock: "",
                 analogShapeLock: "",
-                weatherShapeLock: "",
                 dateShapeLock: "",
-                batteryShapeLock: "",
                 clockShapeLock: "",
                 worldClockShapeLock: "",
                 clockUse24: false,
@@ -535,6 +495,7 @@ Singleton {
                 doNotDisturb: false,
                 showBanners: true,
                 popupTimeout: 5,
+                popupLook: "cards",
                 maxVisible: 3,
                 groupPopups: true,
                 urgentSticky: true,
@@ -651,6 +612,8 @@ Singleton {
 
             readonly property var _lockscreenDefaults: ({
                 layout: "veil",
+                clockScreen: "display",
+                field: "split",
                 showDate: true,
                 showStatus: true,
                 showMusic: true,
@@ -661,6 +624,8 @@ Singleton {
 
             property var lockscreen: ({
                 layout: "veil",
+                clockScreen: "display",
+                field: "split",
                 showDate: true,
                 showStatus: true,
                 showMusic: true,
@@ -725,6 +690,109 @@ Singleton {
                 }
                 if (needsPatch)
                     gameMode = Object.assign({}, d, cur)
+            }
+
+            readonly property var _readingDefaults: ({
+                enabled: false,
+                filter: "warm",
+                warmTemp: 4600,
+                warmCap: 0.88,
+                sepiaTone: 0.35,
+                sepiaKeep: 0.15,
+                einkContrast: 1.2,
+                einkLevels: 16,
+                einkGrain: 0.025
+            })
+
+            property var reading: ({
+                enabled: false,
+                filter: "warm",
+                warmTemp: 4600,
+                warmCap: 0.88,
+                sepiaTone: 0.35,
+                sepiaKeep: 0.15,
+                einkContrast: 1.2,
+                einkLevels: 16,
+                einkGrain: 0.025
+            })
+
+            onReadingChanged: {
+                const d = _readingDefaults
+                const cur = reading || {}
+                let needsPatch = false
+                for (const k in d) {
+                    if (cur[k] === undefined) { needsPatch = true; break }
+                }
+                if (needsPatch)
+                    reading = Object.assign({}, d, cur)
+            }
+
+            readonly property var _booksDefaults: ({
+                layout: "spread",
+                page: "warm",
+                dark: "off",
+                font: "Literata",
+                size: 17,
+                spacing: "normal",
+                justify: true,
+                eyeComfort: true
+            })
+
+            property var books: ({
+                layout: "spread",
+                page: "warm",
+                dark: "off",
+                font: "Literata",
+                size: 17,
+                spacing: "normal",
+                justify: true,
+                eyeComfort: true
+            })
+
+            onBooksChanged: {
+                const d = _booksDefaults
+                const cur = books || {}
+                let needsPatch = false
+                for (const k in d) {
+                    if (cur[k] === undefined) { needsPatch = true; break }
+                }
+                if (needsPatch)
+                    books = Object.assign({}, d, cur)
+            }
+
+            readonly property var _wizDefaults: ({
+                ip: "",
+                mode: "white",
+                themeRole: "primary",
+                boost: true,
+                follow: true,
+                musicStyle: "pulse",
+                sensitivity: 0.6,
+                speed: 100,
+                recent: []
+            })
+
+            property var wiz: ({
+                ip: "",
+                mode: "white",
+                themeRole: "primary",
+                boost: true,
+                follow: true,
+                musicStyle: "pulse",
+                sensitivity: 0.6,
+                speed: 100,
+                recent: []
+            })
+
+            onWizChanged: {
+                const d = _wizDefaults
+                const cur = wiz || {}
+                let needsPatch = false
+                for (const k in d) {
+                    if (cur[k] === undefined) { needsPatch = true; break }
+                }
+                if (needsPatch)
+                    wiz = Object.assign({}, d, cur)
             }
 
             property var bar: ({

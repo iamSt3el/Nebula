@@ -17,6 +17,9 @@ ColumnLayout {
     property var listGetter: function(key) { return [] }
     property var listAdd: function(key, v) {}
     property var listRemove: function(key, v) {}
+    property bool compact: false
+    property bool listOpen: false
+    signal openList()
 
     readonly property string kind: row.spec.type ?? ""
     readonly property var value: row.getter(row.spec.key)
@@ -28,6 +31,15 @@ ColumnLayout {
     readonly property int stops: row.kind === "slider" ? Math.round(((row.spec.max ?? 1) - (row.spec.min ?? 0)) / (row.spec.step ?? 1)) + 1 : 0
     readonly property bool stepper: row.kind === "slider" && (row.stops > 8 || (row.spec.presets ?? []).length > 0)
     readonly property bool stepperInline: row.stepper && (row.spec.presets ?? []).length === 0 && !row.spec.auto
+    readonly property bool folded: row.compact && ((row.picker && (row.spec.choices ?? []).length > 4) || row.kind === "shape")
+    readonly property string foldedValue: {
+        if (!row.folded)
+            return ""
+        if (row.kind === "shape")
+            return row.value ? String(row.value).replace(/([A-Z0-9]+)/g, " $1").trim() : "None"
+        const c = (row.spec.choices ?? []).find(x => x.value === row.value)
+        return c ? c.label : ""
+    }
 
     function set(v) {
         row.setter(row.spec.key, v)
@@ -97,10 +109,18 @@ ColumnLayout {
         customColor: Colors.primary
     }
 
+    EditSideRow {
+        visible: row.folded
+        label: row.spec.label ?? ""
+        value: row.foldedValue
+        lit: row.listOpen
+        onClicked: row.openList()
+    }
+
     RowLayout {
-        visible: row.kind !== "heading"
+        visible: row.kind !== "heading" && !row.folded
         Layout.fillWidth: true
-        Layout.minimumHeight: row.kind === "toggle" || row.stepperInline ? 40 : 22
+        Layout.minimumHeight: row.kind === "toggle" || row.stepperInline ? (row.compact ? 36 : 40) : 22
         spacing: 12
 
         ColumnLayout {
@@ -110,7 +130,7 @@ ColumnLayout {
             CustomText {
                 Layout.fillWidth: true
                 content: row.spec.label ?? ""
-                size: row.kind === "toggle" || row.stepperInline ? 14 : 13
+                size: row.kind === "toggle" || row.stepperInline ? (row.compact ? 13 : 14) : 13
                 weight: row.kind === "toggle" || row.stepperInline ? 500 : 600
                 customColor: row.kind === "toggle" || row.stepperInline ? Colors.surfaceText : Colors.surfaceVariantText
                 wrapMode: Text.WordWrap
@@ -224,7 +244,7 @@ ColumnLayout {
     }
 
     EditChoice {
-        visible: row.picker
+        visible: row.picker && !row.folded
         Layout.fillWidth: true
         choices: row.picker ? row.spec.choices : []
         value: row.value
@@ -310,7 +330,7 @@ ColumnLayout {
     }
 
     ShapePicker {
-        visible: row.kind === "shape"
+        visible: row.kind === "shape" && !row.folded
         Layout.fillWidth: true
         centered: true
         showAuto: false

@@ -88,6 +88,8 @@ Item {
     readonly property bool editMode: GlobalStates.barEditMode && layout.isPrimary
     readonly property bool editing: barBlock.editMode && !barBlock.leaving
     readonly property bool blockSelected: !!barBlock.editor && barBlock.editor.selectedBlock === barBlock.blockId
+    readonly property bool otherBlockSelected: barBlock.editing && !!barBlock.editor && barBlock.editor.selectedBlock !== ""
+        && !barBlock.blockSelected
     // this block's slice of the edit-mode sweep, from its own place on the screen
     readonly property real revealT: GlobalStates.barRevealAt(barBlock.absX + barBlock.width / 2,
                                                              barBlock.frameW)
@@ -105,6 +107,10 @@ Item {
     Behavior on pillTintT { EffectsAnim { speed: "default" } }
     property color pillTintColor: BarLayout.roleColor(barBlock.tintRole === "none" ? "primary" : barBlock.tintRole)
     Behavior on pillTintColor { EffectsColorAnim {} }
+    readonly property real pillOpacity: Math.max(0, Math.min(100, BarLayout.blockStyle(barBlock.blockId, "opacity", 100))) / 100
+    property real fadeK: barBlock.isPill && !barBlock.split ? 1 - barBlock.pillOpacity : 0
+    Behavior on fadeK { EffectsAnim { speed: "default" } }
+    readonly property real pillClear: Math.max(barBlock.clearT, barBlock.fadeK)
     readonly property real pillTintRgb: Math.round(barBlock.pillTintColor.r * 255) * 65536
         + Math.round(barBlock.pillTintColor.g * 255) * 256 + Math.round(barBlock.pillTintColor.b * 255)
     property real pillT: barBlock.isPill ? 1 : 0
@@ -140,14 +146,20 @@ Item {
         return { nl: c.tl, nr: c.tr, fl: c.bl, fr: c.br }
     }
     readonly property var geomSig: [barBlock.x, barBlock.y, barBlock.width, barBlock.visible, barBlock.pc, barBlock.pillRadius, barBlock.frameCorners,
-        barBlock.pillT, barBlock.flatT, barBlock.drop, barBlock.tabOpen, barBlock.dropDepth,
-        barBlock.dropX, barBlock.dropW, !!barBlock.dropSource, barBlock.dropReleasing, barBlock.fixedWidth,
+        barBlock.pillT, barBlock.flatT, barBlock.drop, barBlock.tabOpen, barBlock.fixedWidth,
         barBlock.wantedBase, barBlock.leaving, barBlock.shape, barBlock.floating, barBlock.merged, barBlock.anchorSide,
-        barBlock.clearT, barBlock.pillTintT, barBlock.pillTintRgb, barBlock.lineUp, barBlock.panelCorner]
+        barBlock.clearT, barBlock.fadeK, barBlock.pillTintT, barBlock.pillTintRgb, barBlock.lineUp, barBlock.panelCorner]
     onGeomSigChanged: if (barBlock.frame && barBlock.frame.markGeom) barBlock.frame.markGeom()
     readonly property var tabSig: [barBlock.tabX, barBlock.tabW, barBlock.tabH, barBlock.goo,
         barBlock.gooX, barBlock.gooW, barBlock.gooH, barBlock.srcX, barBlock.srcW, barBlock.gooHost]
-    onTabSigChanged: if (barBlock.frame && barBlock.frame.markTabs) barBlock.frame.markTabs()
+    onTabSigChanged: {
+        if (!barBlock.frame)
+            return
+        if (barBlock.gliding && barBlock.frame.recomputeTabs)
+            barBlock.frame.recomputeTabs()
+        else if (barBlock.frame.markTabs)
+            barBlock.frame.markTabs()
+    }
     readonly property string panelStyle: BarLayout.panelStyleFor(barBlock.blockId, barBlock.edge, barBlock.shape)
     readonly property real contentNearL: barBlock.floating ? barBlock.panelCorner
         : barBlock.merged && barBlock.tabX < -0.5 ? barBlock.panelCorner : 0
@@ -189,10 +201,11 @@ Item {
     readonly property real floatGap: barBlock.floating ? barBlock.panelGapSetting
         : barBlock.fusedHost ? 0
         : barBlock.merged ? Math.max(barBlock.panelGapSetting, barBlock.crowded || barBlock.fusedAttach ? 8 : 0) * Math.max(0, Math.min(1, (barBlock.tabH - barBlock.barH) / 24)) : 0
-    property real goo: barBlock.floating && barBlock.shownKind !== "" ? 1 : 0
+    property real goo: { barBlock.snapKick; return barBlock.floating && barBlock.shownKind !== "" ? 1 : 0 }
     Behavior on goo {
-        enabled: barBlock.floating
+        enabled: barBlock.floating && !barBlock.gooSnap
         NumberAnimation {
+            id: gooAnim
             duration: barBlock.quickMotion ? (barBlock.shownKind !== "" ? 380 : 260)
                 : barBlock.shownKind !== "" ? 520 : 400
             easing.type: barBlock.quickMotion && barBlock.shownKind === "" ? Easing.OutCubic : Easing.InOutCubic
@@ -210,6 +223,10 @@ Item {
     }
     property int openSeq: 0
     onShownKindChanged: {
+        if (barBlock.shownKind !== "") {
+            barBlock.heldX = barBlock.tabTargetX
+            barBlock.heldW = barBlock.tabTargetW
+        }
         barBlock.updateCrowded()
         if (barBlock.shownKind !== "" && layout.nextPanelSeq)
             barBlock.openSeq = layout.nextPanelSeq()
@@ -461,6 +478,16 @@ Item {
         return null
     }
 
+    function flightItems() {
+        const out = []
+        for (let i = 0; i < rep.count; i++) {
+            const s = rep.itemAt(i)
+            if (s && !s.leaving && s.itemShown && s.loaderItem)
+                out.push({ id: s.itemId, item: s.loaderItem, slot: s })
+        }
+        return out
+    }
+
     function sourceFrom(item) {
         barBlock.plateFrom(item)
         if (item) {
@@ -689,8 +716,8 @@ Item {
 
     readonly property var outsideCloseKinds: ["sound", "network", "bluetooth", "brightness", "powerMode", "power", "windowInfo",
         "battery", "phoneStatus", "phoneNotifs", "phoneCall", "soundscape", "scenes", "notifications", "weather", "claudeCode",
-        "kindle", "dashboard", "calendar", "more", "music", "musicDevelop", "musicDrop", "musicButtons", "musicShelf",
-        "musicCounter", "musicShape"]
+        "kindle", "dashboard", "calendar", "more", "musicPoster", "musicDial",
+        "musicSources", "musicBeads", "musicDevelop", "musicShape", "cpu", "memory", "wiz"]
 
     HyprlandFocusGrab {
         windows: [QsWindow.window]
@@ -722,12 +749,11 @@ Item {
         switch (k) {
         case "weather":   return BarLayout.panelW("weather")
         case "calendar":  return BarLayout.panelW("calendar")
-        case "music":     return 440
+        case "musicPoster": return 480
+        case "musicDial": return 380
+        case "musicSources": return 440
+        case "musicBeads": return 540
         case "musicDevelop": return 460
-        case "musicDrop": return 400
-        case "musicButtons": return 480
-        case "musicShelf": return Math.min(900, barBlock.widthRoom)
-        case "musicCounter": return 420
         case "musicShape": return 440
         case "tray":      return 28 + barBlock.trayCols * 36 + (barBlock.trayCols - 1) * 6
         case "trayMenu":  return 260
@@ -740,12 +766,16 @@ Item {
         case "powerMode": return 320
         case "battery":   return 400
         case "claudeCode": return 400
+        case "cpu":       return 380
+        case "memory":    return 380
+        case "wiz":       return 380
         case "kindle":    return 400
-        case "dashboard": return barBlock.itemOf("dashboard") ? Math.min(barBlock.itemOf("dashboard").implicitWidth, barBlock.widthRoom) : 460
+        case "dashboard": return barBlock.itemOf("dashboard")?.inPage ? Math.min(barBlock.itemOf("dashboard").pageW, barBlock.widthRoom)
+                                 : Math.min(BarLayout.panelW("dashboard"), barBlock.widthRoom)
         case "phoneStatus": return 400
         case "phoneNotifs": return 420
         case "phoneCall": return 400
-        case "power":     return 340
+        case "power":     return 360
         case "windowInfo": return 360
         case "notifPopup": return 380
         case "more":      return barBlock.itemOf("more") ? barBlock.itemOf("more").implicitWidth : 240
@@ -769,12 +799,11 @@ Item {
                                                          barBlock.itemOf("weather") ? barBlock.itemOf("weather").implicitHeight : Appearance.size.weatherPanelHeight,
                                                          barBlock.heightCap("weather"))
         case "calendar":  return BarLayout.panelHeightIn("calendar", Appearance.size.calanderHeight, barBlock.heightRoom)
-        case "music":     return 200
+        case "musicPoster": return 300
+        case "musicDial": return 410
+        case "musicSources": return 340
+        case "musicBeads": return 190
         case "musicDevelop": return 230
-        case "musicDrop": return 380
-        case "musicButtons": return 300
-        case "musicShelf": return 108
-        case "musicCounter": return 272
         case "musicShape": return 240
         case "tray":      return 28 + barBlock.trayRows * 36 + (barBlock.trayRows - 1) * 6
         case "trayMenu":  return barBlock.itemOf("trayMenu") ? barBlock.itemOf("trayMenu").implicitHeight : 160
@@ -789,11 +818,18 @@ Item {
         case "windowInfo": return barBlock.itemOf("windowInfo") ? barBlock.itemOf("windowInfo").implicitHeight : 300
         case "notifPopup": return barBlock.itemOf("notifPopup") ? barBlock.itemOf("notifPopup").implicitHeight : 120
         case "more":      return barBlock.itemOf("more") ? barBlock.itemOf("more").implicitHeight : 120
-        case "notifications": return barBlock.itemOf("notifications") ? barBlock.itemOf("notifications").implicitHeight : 480
+        case "notifications": return barBlock.measured("notifications", 120)
         case "battery":   return barBlock.itemOf("battery") ? barBlock.itemOf("battery").implicitHeight : 520
         case "claudeCode": return barBlock.itemOf("claudeCode") ? barBlock.itemOf("claudeCode").implicitHeight : 480
+        case "cpu":       return barBlock.itemOf("cpu") ? barBlock.itemOf("cpu").implicitHeight : 600
+        case "memory":    return barBlock.itemOf("memory") ? barBlock.itemOf("memory").implicitHeight : 600
+        case "wiz":       return barBlock.itemOf("wiz") ? barBlock.itemOf("wiz").implicitHeight : 640
         case "kindle":    return barBlock.itemOf("kindle") ? barBlock.itemOf("kindle").implicitHeight : 560
-        case "dashboard": return Math.min(barBlock.itemOf("dashboard") ? barBlock.itemOf("dashboard").implicitHeight : 900, barBlock.heightRoom)
+        case "dashboard": return barBlock.itemOf("dashboard")?.inPage ? Math.min(barBlock.itemOf("dashboard").pageH, barBlock.heightCap("dashboard"))
+                                 : BarLayout.panelHeightIn("dashboard",
+                                                           barBlock.itemOf("dashboard") ? barBlock.itemOf("dashboard").implicitHeight
+                                                               : GlobalStates.dashboardHeight > 0 ? GlobalStates.dashboardHeight : 600,
+                                                           barBlock.heightCap("dashboard"))
         case "phoneStatus": return barBlock.itemOf("phoneStatus") ? barBlock.itemOf("phoneStatus").implicitHeight : 260
         case "phoneNotifs": return barBlock.itemOf("phoneNotifs") ? barBlock.itemOf("phoneNotifs").implicitHeight : 300
         case "phoneCall": return barBlock.itemOf("phoneCall") ? barBlock.itemOf("phoneCall").implicitHeight : 300
@@ -812,18 +848,25 @@ Item {
     readonly property string animKind: barBlock.motionClosing ? barBlock.lastKind : barBlock.panelKind
     readonly property bool panelMotion: barBlock.animKind !== ""
     readonly property bool quickMotion: barBlock.panelMotion && barBlock.isTransient(barBlock.animKind)
-    readonly property int sizeDuration: barBlock.drawer && barBlock.panelMotion ? M3Motion.spatialDuration("default")
+    readonly property bool caeStyle: !barBlock.merged && !barBlock.floating && !barBlock.drawer
+    readonly property bool caeMotion: barBlock.caeStyle && barBlock.panelMotion && !barBlock.quickMotion
+    readonly property var caeCurve: [0.38, 1.21, 0.22, 1.0, 1, 1]
+    readonly property int sizeDuration: barBlock.gliding ? M3Motion.spatialDuration("move")
+        : barBlock.caeMotion ? 500
+        : barBlock.drawer && barBlock.panelMotion ? M3Motion.spatialDuration("default")
         : barBlock.quickMotion ? (barBlock.motionClosing ? 240 : 380)
         : barBlock.panelMotion && !barBlock.motionClosing
         ? M3Motion.panel.openDuration : M3Motion.spatialDuration("fast")
-    readonly property var sizeCurve: !barBlock.panelMotion ? M3Motion.spatialCurve("fast")
+    readonly property var sizeCurve: barBlock.gliding ? M3Motion.spatialCurve("move")
+        : !barBlock.panelMotion ? M3Motion.spatialCurve("fast")
+        : barBlock.caeMotion ? barBlock.caeCurve
         : barBlock.drawer ? M3Motion.spatialCurve("default")
         : barBlock.quickMotion ? (barBlock.motionClosing ? [0.3, 0.0, 1.0, 1.0, 1, 1] : [0.05, 0.7, 0.1, 1.0, 1, 1])
         : barBlock.motionClosing ? M3Motion.panel.closeCurve
         : M3Motion.panel.openCurve
 
     readonly property int spanDuration: barBlock.panelMotion && barBlock.motionClosing && !barBlock.quickMotion && !barBlock.drawer
-        ? M3Motion.panel.closeDuration : barBlock.sizeDuration
+        && !barBlock.caeMotion ? M3Motion.panel.closeDuration : barBlock.sizeDuration
     readonly property var spanCurve: barBlock.sizeCurve
     readonly property int dropDuration: barBlock.spanDuration
     readonly property var dropCurve: barBlock.sizeCurve
@@ -998,8 +1041,16 @@ Item {
     function queueSync() {
         Qt.callLater(barBlock.syncBody)
     }
-    onTabTargetXChanged: barBlock.queueSync()
-    onTabTargetWChanged: barBlock.queueSync()
+    onTabTargetXChanged: {
+        barBlock.queueSync()
+        if (barBlock.shownKind !== "")
+            barBlock.heldX = barBlock.tabTargetX
+    }
+    onTabTargetWChanged: {
+        barBlock.queueSync()
+        if (barBlock.shownKind !== "")
+            barBlock.heldW = barBlock.tabTargetW
+    }
     onAbsXChanged: barBlock.queueSync()
     onClosingChanged: barBlock.queueSync()
     Component.onDestruction: if (barBlock.frame && barBlock.frame.clearBody) barBlock.frame.clearBody(barBlock.blockId)
@@ -1052,12 +1103,90 @@ Item {
 
     readonly property bool drawer: barBlock.flatT > 0.5 && !barBlock.isPill && !barBlock.floating && !barBlock.merged
 
-    property real tabX: barBlock.shownKind !== "" ? barBlock.tabTargetX
+    property real heldX: 0
+    property real heldW: 0
+    property bool spanSnap: false
+    property real handX: 0
+    property real handW: 0
+    property real handH: 0
+    property bool gooSnap: false
+    property int snapKick: 0
+    property bool handHold: false
+    property string handFor: ""
+    property bool gliding: false
+    property real closedAt: 0
+
+    Timer {
+        id: glideEnd
+        interval: M3Motion.spatialDuration("move") + 60
+        onTriggered: barBlock.gliding = false
+    }
+
+    function handoffSource() {
+        const f = barBlock.frame
+        if (!f || !f.visibleBlocks)
+            return null
+        const now = Date.now()
+        for (const b of f.visibleBlocks) {
+            if (b === barBlock || b.leaving || !b.tabOpen || b.panelKind !== "" || b.shownKind !== "")
+                continue
+            if (now - b.closedAt > 120)
+                continue
+            return b
+        }
+        return null
+    }
+
+    function tryHandoff() {
+        const k = barBlock.handFor
+        barBlock.handFor = ""
+        if (k === "" || barBlock.shownKind !== k)
+            return
+        const src = barBlock.handoffSource()
+        if (!src)
+            return
+        tabXAnim.stop()
+        tabWAnim.stop()
+        tabHAnim.stop()
+        gooAnim.stop()
+        barBlock.handX = src.absX + src.tabX - barBlock.absX
+        barBlock.handW = src.tabW
+        barBlock.handH = Math.max(barBlock.barH, src.tabHRaw)
+        barBlock.gliding = true
+        glideEnd.restart()
+        barBlock.tabSnap = true
+        barBlock.gooSnap = true
+        barBlock.handHold = true
+        barBlock.snapKick++
+        barBlock.gooSnap = false
+        barBlock.tabSnap = false
+        barBlock.handHold = false
+        src.snapShut()
+    }
+
+    function snapShut() {
+        tabXAnim.stop()
+        tabWAnim.stop()
+        tabHAnim.stop()
+        gooAnim.stop()
+        barBlock.tabSnap = true
+        barBlock.gooSnap = true
+        barBlock.revealMode = ""
+        barBlock.snapKick++
+        barBlock.gooSnap = false
+        barBlock.tabSnap = false
+    }
+
+    property real tabX: { barBlock.snapKick; return barBlock.handHold ? barBlock.handX
+        : barBlock.shownKind !== "" ? barBlock.tabTargetX
+        : barBlock.caeStyle && barBlock.revealMode === "" && barBlock.heldW > 0 ? barBlock.heldX
         : barBlock.revealMode === "" ? barBlock.srcEdgeX
-        : barBlock.revealMode === "end" ? barBlock.revealX + barBlock.revealW : barBlock.revealX
-    property real tabW: barBlock.shownKind !== "" ? barBlock.tabTargetW
+        : barBlock.revealMode === "end" ? barBlock.revealX + barBlock.revealW : barBlock.revealX }
+    property real tabW: { barBlock.snapKick; return barBlock.handHold ? barBlock.handW
+        : barBlock.shownKind !== "" ? barBlock.tabTargetW
+        : barBlock.caeStyle && barBlock.revealMode === "" && barBlock.heldW > 0 ? barBlock.heldW
         : barBlock.revealMode === "" ? barBlock.srcEdgeW
-        : barBlock.revealMode === "across" ? barBlock.revealW : 0
+        : barBlock.revealMode === "across" ? barBlock.revealW : 0 }
     property bool heightFollow: false
     property bool followLock: false
     property real followAcross: 0
@@ -1065,7 +1194,12 @@ Item {
     property real followSeen: 0
     property real followMoved: 0
     property bool followRun: false
-    onLiveAcrossChanged: if (barBlock.heightFollow) barBlock.followRun = true
+    onLiveAcrossChanged: {
+        if (!barBlock.heightFollow)
+            return
+        barBlock.followRun = true
+        barBlock.rememberHeight()
+    }
     readonly property real liveAcross: barBlock.shownKind !== "" ? barBlock.acrossOf(barBlock.shownKind) + barBlock.tuckShown : 0
 
     function startFollow() {
@@ -1078,6 +1212,32 @@ Item {
         barBlock.followVel = 0
         barBlock.followRun = false
         barBlock.heightFollow = true
+        barBlock.rememberHeight()
+    }
+
+    readonly property var memoKinds: ["notifications"]
+    property var heightMemo: ({})
+
+    function measured(k, fallback) {
+        const it = barBlock.itemOf(k)
+        if (barBlock.memoKinds.indexOf(k) >= 0 && !(barBlock.heightFollow && barBlock.shownKind === k)) {
+            const m = barBlock.heightMemo[k]
+            if (m !== undefined)
+                return m
+        }
+        return it ? it.implicitHeight : fallback
+    }
+
+    function rememberHeight() {
+        const k = barBlock.shownKind
+        if (!barBlock.heightFollow || barBlock.memoKinds.indexOf(k) < 0)
+            return
+        const it = barBlock.itemOf(k)
+        if (!it || barBlock.heightMemo[k] === it.implicitHeight)
+            return
+        const m = Object.assign({}, barBlock.heightMemo)
+        m[k] = it.implicitHeight
+        barBlock.heightMemo = m
     }
 
     function stopFollow() {
@@ -1122,10 +1282,12 @@ Item {
         }
     }
 
-    property real tabH: barBlock.shownKind !== "" ? barBlock.barH + (barBlock.heightFollow ? barBlock.followAcross : barBlock.acrossOf(barBlock.shownKind) + barBlock.tuckShown)
-        : barBlock.revealMode === "start" || barBlock.revealMode === "end" ? barBlock.revealH : barBlock.barH
+    readonly property real tabH: Math.max(barBlock.barH, barBlock.tabHRaw)
+    property real tabHRaw: { barBlock.snapKick; return barBlock.handHold ? barBlock.handH
+        : barBlock.shownKind !== "" ? barBlock.barH + (barBlock.heightFollow ? barBlock.followAcross : barBlock.acrossOf(barBlock.shownKind) + barBlock.tuckShown)
+        : barBlock.revealMode === "start" || barBlock.revealMode === "end" ? barBlock.revealH : barBlock.barH }
     Behavior on tabX {
-        enabled: !barBlock.tabSnap && !barBlock.resizing
+        enabled: !barBlock.tabSnap && !barBlock.spanSnap && !barBlock.resizing
         NumberAnimation {
             id: tabXAnim
             duration: barBlock.spanDuration
@@ -1135,7 +1297,7 @@ Item {
         }
     }
     Behavior on tabW {
-        enabled: !barBlock.tabSnap && !barBlock.resizing
+        enabled: !barBlock.tabSnap && !barBlock.spanSnap && !barBlock.resizing
         NumberAnimation {
             id: tabWAnim
             duration: barBlock.spanDuration
@@ -1144,7 +1306,7 @@ Item {
             onRunningChanged: if (!running) barBlock.checkSettled()
         }
     }
-    Behavior on tabH {
+    Behavior on tabHRaw {
         enabled: !barBlock.tabSnap && !barBlock.resizing && !barBlock.followLock
         NumberAnimation {
             id: tabHAnim
@@ -1158,50 +1320,6 @@ Item {
     readonly property bool tabOpen: barBlock.shownKind !== "" || barBlock.tabH > barBlock.barH + 0.5
         || (barBlock.floating && barBlock.goo > 0.001)
 
-    property Item dropSource: null
-    property Item dropOwner: null
-    property bool dropReleasing: false
-    property real dropCenterHeld: 0
-    readonly property real dropW: 32
-    readonly property real dropHang: 26
-    readonly property real dropCenter: {
-        barBlock.slotLayout
-        barBlock.width
-        const s = barBlock.dropSource
-        if (!s || !barBlock.dropOwner)
-            return barBlock.dropReleasing ? barBlock.dropCenterHeld : 0
-        let n = s
-        for (let i = 0; i < 8 && n && n !== barBlock; i++) {
-            n.x
-            n.width
-            n = n.parent
-        }
-        return s.mapToItem(barBlock, s.width / 2, 0).x
-    }
-    readonly property real dropX: barBlock.dropCenter - barBlock.dropW / 2
-    readonly property bool dropWanted: !!barBlock.dropSource && !!barBlock.dropOwner && barBlock.dropOwner.playing
-        && !barBlock.tabOpen && !barBlock.vertical && !barBlock.editing
-        && !barBlock.coveredAt(barBlock.dropX, barBlock.dropW)
-    property real dropDepth: barBlock.dropWanted ? barBlock.dropHang : 0
-    Behavior on dropDepth { SpatialAnim {} }
-    onDropDepthChanged: if (barBlock.dropReleasing && barBlock.dropDepth < 0.5) barBlock.dropReleasing = false
-
-    function registerDrop(source, owner) {
-        barBlock.dropReleasing = false
-        barBlock.dropOwner = owner
-        barBlock.dropSource = source
-    }
-
-    function releaseDrop(source) {
-        if (barBlock.dropSource !== source)
-            return
-        if (barBlock.dropDepth > 0.5) {
-            barBlock.dropCenterHeld = barBlock.dropCenter
-            barBlock.dropReleasing = true
-        }
-        barBlock.dropSource = null
-        barBlock.dropOwner = null
-    }
     readonly property real tabPathH: barBlock.tabH + (barBlock.merged ? barBlock.floatGap : 0)
 
     function slotShift(listIndex) {
@@ -1374,7 +1492,7 @@ Item {
     }
 
     visible: barBlock.pc > 0.001
-    z: editLayer.gripHovered ? 1 : 0
+    z: editLayer.item && editLayer.item.gripHovered ? 1 : 0
     width: barBlock.implicitWidth * barBlock.pc
     implicitWidth: barBlock.collapsedWidth
     implicitHeight: barBlock.barH
@@ -1397,6 +1515,9 @@ Item {
 
     onPanelKindChanged: {
         const k = barBlock.panelKind
+        if (k === "" && barBlock.shownKind !== "")
+            barBlock.closedAt = Date.now()
+        const opening = k !== "" && !barBlock.tabOpen
         barBlock.motionClosing = k === ""
         if (k === "launcher" && barBlock.tabH <= barBlock.barH + 0.5) {
             barBlock.snapSource(barBlock.itemFor("launcher"), "launcher")
@@ -1440,8 +1561,16 @@ Item {
             barBlock.lastKind = k
         barBlock.stopFollow()
         barBlock.panelSwap = k !== "" && barBlock.shownKind !== ""
+        const caeOpen = k !== "" && barBlock.caeStyle && !barBlock.tabOpen
+        if (caeOpen)
+            barBlock.spanSnap = true
         barBlock.shownKind = k
+        barBlock.spanSnap = false
         barBlock.showContent(k)
+        if (opening) {
+            barBlock.handFor = k
+            Qt.callLater(barBlock.tryHandoff)
+        }
     }
 
     function itemOf(k) {
@@ -1690,42 +1819,12 @@ Item {
 
     }
 
-    Item {
-        id: dropArt
-        readonly property real t: barBlock.dropDepth / barBlock.dropHang
-        readonly property real side: barBlock.barH - 18 + 4 * dropArt.t
-        readonly property real cy: barBlock.far
-            ? barBlock.barH / 2 - (barBlock.barH / 2 + 10) * dropArt.t
-            : barBlock.barH / 2 + (barBlock.barH / 2 + 10) * dropArt.t
-        z: 2
-        visible: (!!barBlock.dropSource || barBlock.dropReleasing) && !barBlock.editing && !barBlock.coveredAt(barBlock.dropX, barBlock.dropW)
-        opacity: barBlock.dropSource ? 1 : dropArt.t
-        x: Math.round(barBlock.dropCenter - dropArt.side / 2)
-        y: Math.round(dropArt.cy - dropArt.side / 2)
-        width: dropArt.side
-        height: dropArt.side
-
-        ClippingWrapperRectangle {
-            anchors.fill: parent
-            radius: width / 2
-            color: Colors.surfaceContainerHighest
-
-            Image {
-                source: ServiceMusic.activeTrack?.artUrl ?? ""
-                sourceSize.width: 96
-                sourceSize.height: 96
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                opacity: barBlock.dropOwner && barBlock.dropOwner.playing ? 1 : 0.7
-            }
-        }
-    }
-
     property bool resizing: false
     property string resizeKind: ""
     readonly property string sizeKind: !barBlock.editing ? ""
         : barBlock.launchHost && GlobalStates.launcherPreview && barBlock.shownKind === "launcher" ? "launcher"
         : barBlock.previewHost && barBlock.shownKind === GlobalStates.panelPreview && !!BarLayout.panelSpecs[barBlock.shownKind]
+          && !BarLayout.panelSpecs[barBlock.shownKind].fitOnly
         ? barBlock.shownKind : ""
     readonly property bool sizeHandles: barBlock.sizeKind !== "" && (barBlock.resizing
         || (!tabXAnim.running && !tabWAnim.running && !tabHAnim.running))
@@ -1971,7 +2070,7 @@ Item {
                     width: (slot.innerWidth + slot.margin[0] + slot.margin[1]) * slot.pc
                     height: barBlock.barH
                     clip: slot.pc < 0.999
-                    readonly property bool dimmed: barBlock.spotlitItem !== "" && !slot.selected
+                    readonly property bool dimmed: (barBlock.spotlitItem !== "" && !slot.selected) || barBlock.otherBlockSelected
                     readonly property bool covered: barBlock.coveredAt(slot.x, slot.width)
                     opacity: (slot.dragged || slot.covered ? 0 : Math.min(1, slot.pc))
                         * (slot.dimmed ? 0.45 : 1)
@@ -1998,8 +2097,10 @@ Item {
                         contentHeight: slot.contentHeight
                         barH: barBlock.barH
                         turned: barBlock.vertical
+                        far: barBlock.far
                         fill: slot.loaded && (loader.item.plateShape ?? "") !== "" ? loader.item.plateTone : barBlock.plateFill
                         shapeOverride: slot.loaded ? (loader.item.plateShape ?? "") : ""
+                        shapeInset: slot.loaded ? (loader.item.plateInset ?? 0) : 0
                         hovered: slotHover.hovered && !BarLayout.isGroup(slot.itemId) && (!slot.loaded || loader.item.hoverPlate !== false)
                         shown: slot.itemShown && barBlock.split
                     }
@@ -2071,7 +2172,7 @@ Item {
                         Matrix4x4 { id: uprightM; matrix: barBlock.flipAbout(slot.rawW, slot.rawH) }
                         Matrix4x4 { id: sidewaysM; matrix: barBlock.mirrorAbout(slot.rawW, slot.rawH) }
                         visible: slot.itemShown
-                        opacity: slot.isOpener ? 0 : 1
+                        opacity: slot.isOpener || (layout.flyHidden[slot.itemId] ?? false) ? 0 : 1
                         Behavior on opacity {
                             EffectsAnim { speed: "fast" }
                         }
@@ -2175,27 +2276,13 @@ Item {
                             easing.overshoot: 1.4
                         }
 
-                        SequentialAnimation {
-                            running: slot.selected && GlobalStates.panelPreview === "" && !GlobalStates.launcherPreview
-                            loops: Animation.Infinite
-                            onRunningChanged: if (!running) selRing.opacity = 1
-
-                            NumberAnimation {
-                                target: selRing
-                                property: "opacity"
-                                from: 1
-                                to: 0.35
-                                duration: 700
-                                easing.type: Easing.InOutSine
-                            }
-                            NumberAnimation {
-                                target: selRing
-                                property: "opacity"
-                                from: 0.35
-                                to: 1
-                                duration: 700
-                                easing.type: Easing.InOutSine
-                            }
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            radius: selRing.radius + 4
+                            color: "transparent"
+                            border.width: 3
+                            border.color: Qt.alpha(Colors.primary, 0.22)
                         }
                     }
                 }
@@ -2231,6 +2318,8 @@ Item {
         property real reveal: 1
         property real drift: 0
         property bool quiet: false
+        property bool ride: false
+        readonly property real rideY: barBlock.far ? Math.max(0, slot.pinY) : Math.min(slot.pinY, panelClip.height - slot.fh)
 
         function enter() {
             if (!slot.shown)
@@ -2307,11 +2396,13 @@ Item {
         onShownChanged: {
             if (slot.shown) {
                 slotCache.stop()
-                slot.quiet = barBlock.panelSwap
+                slot.quiet = barBlock.panelSwap || barBlock.caeStyle
+                slot.ride = barBlock.caeStyle && !barBlock.panelSwap
                 slot.homeX = Qt.binding(() => barBlock.tabX + (barBlock.tabW - slot.fw) / 2)
                 slot.enter()
             } else {
                 slotCache.restart()
+                slot.ride = barBlock.caeStyle && barBlock.shownKind === ""
                 slot.homeX = slot.homeX
             }
         }
@@ -2320,9 +2411,9 @@ Item {
         height: barBlock.contentHeight(slot.kind)
 
         x: Math.round(barBlock.absX + slot.homeX) - barBlock.absX - slot.clipX
-        y: Math.round(slot.clipY + (slot.shown ? slot.pinY + (barBlock.far ? slot.drift : -slot.drift) : slot.slideY)) - slot.clipY
+        y: Math.round(slot.clipY + (slot.ride ? slot.rideY
+            : slot.shown ? slot.pinY + (barBlock.far ? slot.drift : -slot.drift) : slot.slideY)) - slot.clipY
         active: slot.kind !== ""
-        asynchronous: true
         opacity: slot.shown ? 1 : 0
         visible: slot.opacity > 0.01
         z: slot.shown ? 1 : 0
@@ -2335,7 +2426,7 @@ Item {
         }
 
         Behavior on opacity {
-            enabled: slot.opacity > 0.5
+            enabled: slot.opacity > 0.5 || barBlock.caeStyle
             EffectsAnim { speed: "default" }
         }
 
@@ -2359,9 +2450,9 @@ Item {
         layer.samples: 4
 
         ShapePath {
-            strokeColor: Colors.primary
-            strokeWidth: barBlock.isDropTarget ? 2 : 1.5
-            strokeStyle: ShapePath.DashLine
+            strokeColor: barBlock.blockSelected && BarLayout.gapModel ? "transparent" : Colors.primary
+            strokeWidth: barBlock.isDropTarget || barBlock.blockSelected ? 2 : 1.5
+            strokeStyle: barBlock.blockSelected ? ShapePath.SolidLine : ShapePath.DashLine
             dashPattern: [3, 3]
             fillColor: Qt.alpha(Colors.primary, barBlock.isDropTarget ? 0.16 : 0.06)
 
@@ -2375,12 +2466,15 @@ Item {
         }
     }
 
-    readonly property bool gripShown: editLayer.gripShown
+    readonly property bool gripShown: editLayer.item ? editLayer.item.gripShown : false
 
-    BarBlockEditLayer {
+    Loader {
         id: editLayer
         z: 50
         opacity: 1 - BarLayout.gapDragT
-        block: barBlock
+        active: barBlock.editMode || barBlock.revealT > 0.001
+        sourceComponent: BarBlockEditLayer {
+            block: barBlock
+        }
     }
 }

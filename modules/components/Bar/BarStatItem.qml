@@ -17,6 +17,7 @@ Item {
     property string widthTemplate: ""
     property string compactLabel: ""
     property string defaultShape: "cookie9"
+    property string panelKind: ""
 
     readonly property bool iconSizable: true
     readonly property real box: BarLayout.boxFor(root.itemId, root.host)
@@ -32,6 +33,7 @@ Item {
     readonly property bool shaped: root.style === "shape"
     readonly property string shapeName: BarLayout.opt(root.itemId, "shape") ?? root.defaultShape
     readonly property bool filled: BarLayout.opt(root.itemId, "meter") === "fill"
+    readonly property bool swept: BarLayout.opt(root.itemId, "meter") === "sweep"
     readonly property real angle: BarLayout.itemStyle(root.itemId, "rotate", 0)
     readonly property bool showIcon: BarLayout.opt(root.itemId, "showIcon") !== false
     readonly property bool showValue: !root.shaped && BarLayout.opt(root.itemId, "showValue") !== false
@@ -41,6 +43,7 @@ Item {
     readonly property bool bigShape: root.shaped && !!root.host && root.host.split === true
     readonly property string plateShape: root.bigShape ? root.shapeName : ""
     readonly property bool hoverPlate: false
+    readonly property real plateInset: root.bigShape && !root.filled && !root.swept && bigMeter.item ? bigMeter.item.ring : 0
     readonly property color plateTone: root.bigShape ? (root.host.plateFill ?? Colors.surface) : Colors.surface
 
     readonly property bool vertical: !!root.host && root.host.vertical === true
@@ -116,6 +119,7 @@ Item {
     }
 
     Loader {
+        id: bigMeter
         anchors.centerIn: parent
         active: root.bigShape
         sourceComponent: StatShape {
@@ -136,6 +140,8 @@ Item {
         id: hov
         anchors.fill: parent
         hoverEnabled: true
+        cursorShape: root.panelKind !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
+        onClicked: if (root.panelKind !== "" && root.host) root.host.openPanel(root.panelKind, root)
     }
 
     CustomToolTip {
@@ -162,7 +168,9 @@ Item {
     component StatShape: BarShapeMeter {
         value: root.load
         shape: root.shapeName
+        thickness: BarLayout.opt(root.itemId, "thickness") ?? -1
         filled: root.filled
+        sweep: root.swept
         angle: root.angle
         icon: root.icon
         showIcon: root.showIcon

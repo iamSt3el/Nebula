@@ -7,18 +7,18 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from nebula.paths import COLORS, HOME, SETTINGS
+from nebula.paths import HOME, SETTINGS
 
 DIR = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config")) / "nebula" / "layouts"
 PREVIOUS = DIR / ".previous.json"
 ACTIVE = DIR / ".active"
 FORMAT = 1
 
-SECTIONS = ["bar", "widgets", "dashboard", "panels", "lockscreen", "look"]
+SECTIONS = ["bar", "widgets", "dashboard", "panels", "lockscreen"]
 LABELS = {"bar": "Bar and dock", "widgets": "Desktop widgets", "dashboard": "Dashboard",
-          "panels": "Panel styles", "lockscreen": "Lock screen", "look": "Wallpaper and colours"}
+          "panels": "Panel styles", "lockscreen": "Lock screen"}
 
-WIDGET_DATA = {"habits", "countdowns", "moods", "stickyNoteText", "notebookVault"}
+WIDGET_DATA = {"countdowns", "stickyNoteText"}
 DOCK_KEYS = ["dock", "dockAutoHide", "dockMusicPlayer", "dockSdf"]
 PANEL_PREFIXES = ("launcher", "notes")
 PANEL_KEYS = ["clipboardStyle", "notifPopupStyle", "barWeatherPanel"]
@@ -65,17 +65,6 @@ def capture(only=None) -> dict:
         out["panels"] = _panel_keys(g)
     if "lockscreen" in want and "lockscreen" in s:
         out["lockscreen"] = s["lockscreen"]
-    if "look" in want:
-        try:
-            colors = json.loads(COLORS.read_text())
-        except Exception:
-            colors = {}
-        t = s.get("theme") or {}
-        wp = colors.get("sourceWallpaper") or colors.get("wallpaper") or ""
-        if wp:
-            out["look"] = {"wallpaper": wp,
-                           "scheme": t.get("matugenScheme", "scheme-content"),
-                           "mode": t.get("matugenTheme", "dark")}
     return out
 
 
@@ -107,10 +96,6 @@ def summary(sections: dict) -> dict:
     ls = sections.get("lockscreen")
     if ls is not None:
         info["lockLayout"] = ls.get("layout", "")
-    look = sections.get("look")
-    if look:
-        info["wallpaper"] = look.get("wallpaper", "")
-        info["mode"] = look.get("mode", "")
     return info
 
 
@@ -165,7 +150,12 @@ def _covers(now, saved) -> bool:
     return now == saved
 
 
+def _tracked(sections: dict) -> dict:
+    return {k: v for k, v in sections.items() if k in SECTIONS}
+
+
 def _differs(sections: dict, now=None) -> bool:
+    sections = _tracked(sections)
     now = now if now is not None else capture(list(sections.keys()))
     return any(not _covers(now.get(k), v) for k, v in sections.items())
 
@@ -192,7 +182,7 @@ def update(ref: str) -> int:
     except Exception as e:
         print(f"[nebula] {e}", file=sys.stderr)
         return 1
-    sections = capture(list(doc["sections"].keys()))
+    sections = capture(list(_tracked(doc["sections"]).keys()))
     if not sections:
         print("[nebula] nothing to save", file=sys.stderr)
         return 1
@@ -226,15 +216,6 @@ def _patch(sections: dict, want: set) -> tuple:
     return patch, applied
 
 
-def _apply_look(sections: dict, want: set) -> bool:
-    look = sections.get("look")
-    if "look" in want and look and os.path.isfile(look.get("wallpaper", "")):
-        from nebula import wallpaper
-        wallpaper.apply(look["wallpaper"], look.get("scheme", "scheme-content"), look.get("mode", "dark"))
-        return True
-    return False
-
-
 def apply_sections(sections: dict, only=None, emit=False) -> list:
     want = set(only or SECTIONS)
     patch, applied = _patch(sections, want)
@@ -251,8 +232,6 @@ def apply_sections(sections: dict, only=None, emit=False) -> list:
             else:
                 s[key] = value
         _write_settings(s)
-    if _apply_look(sections, want):
-        applied.append("look")
     return applied
 
 
@@ -266,7 +245,7 @@ def load(ref: str, only=None, emit=False) -> int:
     except Exception as e:
         print(f"[nebula] {e}", file=sys.stderr)
         return 1
-    touched = [k for k in doc["sections"] if not only or k in only]
+    touched = [k for k in _tracked(doc["sections"]) if not only or k in only]
     before = _doc("Before " + doc.get("name", path.stem), capture(touched))
     before["active"] = _get_active()
     _atomic_json(PREVIOUS, before)
@@ -342,7 +321,7 @@ def entries() -> list:
                 continue
             docs[p.stem] = doc
             rows.append({"id": p.stem, "name": doc.get("name", p.stem), "file": str(p),
-                         "saved": doc.get("saved", ""), "sections": list(doc["sections"].keys()),
+                         "saved": doc.get("saved", ""), "sections": list(_tracked(doc["sections"]).keys()),
                          "current": p.stem == active,
                          "modified": p.stem == active and _differs(doc["sections"], now),
                          **summary(doc["sections"])})

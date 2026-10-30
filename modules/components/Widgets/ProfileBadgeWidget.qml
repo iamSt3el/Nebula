@@ -16,27 +16,16 @@ WidgetHost {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.topMargin: 14
+            anchors.topMargin: 18
             anchors.leftMargin: parent.pad
             anchors.rightMargin: parent.pad
             anchors.bottomMargin: parent.pad
             spacing: 0
 
-            Rectangle {
-                Layout.alignment: Qt.AlignHCenter
-                implicitWidth: 38
-                implicitHeight: 7
-                radius: 3.5
-                color: Colors.surfaceContainerLowest
-                border.width: 1
-                border.color: Colors.outlineVariant
-            }
-
             ProfileAvatar {
                 Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: 14
-                Layout.preferredWidth: 108
-                Layout.preferredHeight: 108
+                Layout.preferredWidth: 112
+                Layout.preferredHeight: 112
                 radius: 30
             }
 
@@ -45,7 +34,7 @@ WidgetHost {
                 Layout.maximumWidth: parent.width
                 Layout.topMargin: 12
                 content: ServiceProfile.name
-                size: 28
+                size: 26
                 weight: 400
                 family: SettingsConfig.general.displayFont ?? "Titan One"
                 renderType: Text.QtRendering
@@ -56,9 +45,9 @@ WidgetHost {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 2
                 content: "@" + ServiceProfile.user
-                size: 13
-                weight: 400
-                customColor: Colors.outline
+                size: 12
+                weight: 600
+                customColor: Colors.surfaceVariantText
             }
 
             RowLayout {
@@ -91,29 +80,38 @@ WidgetHost {
 
             Item { Layout.fillHeight: true }
 
-            Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: 1
-                color: Colors.outlineVariant
-            }
-
             RowLayout {
                 Layout.fillWidth: true
-                Layout.topMargin: 10
-                spacing: 8
+                spacing: 3
 
-                ColumnLayout {
-                    spacing: 1
-                    CustomText { content: "Packages"; size: 10; weight: 400; customColor: Colors.outline }
-                    CustomText { content: ServiceProfile.packages > 0 ? ServiceProfile.packages : "—"; size: 14; weight: 600 }
-                }
+                Repeater {
+                    model: [{ v: ServiceProfile.packages > 0 ? String(ServiceProfile.packages) : "—", k: "packages" },
+                            { v: ServiceProfile.sinceText, k: "since" }]
 
-                Item { Layout.fillWidth: true }
+                    delegate: Rectangle {
+                        id: tile
+                        required property var modelData
+                        required property int index
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        implicitHeight: 46
+                        topLeftRadius: tile.index === 0 ? 14 : 4
+                        bottomLeftRadius: tile.index === 0 ? 14 : 4
+                        topRightRadius: tile.index === 1 ? 14 : 4
+                        bottomRightRadius: tile.index === 1 ? 14 : 4
+                        color: Colors.surfaceContainerHigh
 
-                ColumnLayout {
-                    spacing: 1
-                    CustomText { Layout.alignment: Qt.AlignRight; content: "Since"; size: 10; weight: 400; customColor: Colors.outline }
-                    CustomText { Layout.alignment: Qt.AlignRight; content: ServiceProfile.sinceText; size: 14; weight: 600 }
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 9
+                            anchors.rightMargin: 4
+                            anchors.topMargin: 6
+                            anchors.bottomMargin: 6
+                            spacing: 0
+                            CustomText { Layout.fillWidth: true; content: tile.modelData.v; size: 13; weight: 800; elide: Text.ElideRight }
+                            CustomText { content: tile.modelData.k; size: 10; weight: 600; customColor: Colors.surfaceVariantText }
+                        }
+                    }
                 }
             }
         }

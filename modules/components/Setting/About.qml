@@ -6,46 +6,34 @@ import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
-import QtQuick.Controls
-import "../../MatrialShapes/" as MaterialShapes
-import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
+import Quickshell.Widgets
 
 Item {
     id: root
     anchors.fill: parent
-    anchors.margins: 5
 
     property var info: ({})
+    property bool copied: false
 
     readonly property string home: Quickshell.env("HOME") ?? ""
     readonly property string shellDir: Quickshell.shellDir ?? ""
     readonly property string prettyDir: root.home !== "" && root.shellDir.startsWith(root.home)
         ? "~" + root.shellDir.slice(root.home.length) : root.shellDir
-
     readonly property string revision: root.info.revision ?? ""
     readonly property bool dirty: root.revision.endsWith("*")
-
     readonly property var links: [
-        { icon: "code",       label: "GitHub",       url: "https://github.com/iamSt3el/Nebula" },
-        { icon: "bug_report", label: "Report issue", url: "https://github.com/iamSt3el/Nebula/issues/new" },
-        { icon: "star",       label: "Star",         url: "https://github.com/iamSt3el/Nebula" }
+        { icon: "code", title: "GitHub", subtitle: "Source and releases", url: "https://github.com/iamSt3el/Nebula" },
+        { icon: "bug_report", title: "Report an issue", subtitle: "Opens a new issue on GitHub", url: "https://github.com/iamSt3el/Nebula/issues/new" },
+        { icon: "star", title: "Star the project", subtitle: "", url: "https://github.com/iamSt3el/Nebula" }
     ]
 
     function shown(v) {
-        return (v === undefined || v === null || v === "") ? "—" : v
+        return (v === undefined || v === null || v === "") ? "—" : String(v)
     }
-
-    readonly property var envTiles: [
-        { icon: "deployed_code", label: "Quickshell", value: root.shown(root.info.quickshell) },
-        { icon: "grid_view",     label: "Compositor", value: root.shown(root.info.compositor) },
-        { icon: "memory",        label: "Kernel",     value: root.shown(root.info.kernel) },
-        { icon: "computer",      label: "Distro",     value: root.shown(root.info.distro) }
-    ]
 
     Process {
         id: infoProcess
         command: [Quickshell.shellDir + "/bin/nebula", "about", root.shellDir]
-
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
@@ -57,332 +45,730 @@ Item {
         }
     }
 
+    Timer {
+        id: copiedReset
+        interval: 1600
+        onTriggered: root.copied = false
+    }
+
     Component.onCompleted: {
         infoProcess.running = true
         ServiceSystemInfo.getUptime()
+        ServiceSystemInfo.retain()
     }
 
-    Flickable {
-        id: pageFlick
-        ScrollBar.vertical: CustomScrollBar {}
-        anchors.fill: parent
-        contentHeight: column.implicitHeight
-        contentWidth: width
-        clip: true
+    Component.onDestruction: ServiceSystemInfo.release()
+
+    readonly property var drive: ServiceStorage.rootDrive
+
+    property real usedBytes: root.drive?.used ?? 0
+    property real availBytes: root.drive?.avail ?? 0
+    property real usedPct: root.drive?.pct ?? 0
+
+    Behavior on usedBytes {
+        NumberAnimation { duration: 850; easing.type: Easing.OutCubic }
+    }
+    Behavior on availBytes {
+        NumberAnimation { duration: 850; easing.type: Easing.OutCubic }
+    }
+    Behavior on usedPct {
+        NumberAnimation { duration: 850; easing.type: Easing.OutCubic }
+    }
+
+    property string hostname: ""
+    readonly property real homeBytes: ServiceStorage.childrenPath === root.home
+        ? ServiceStorage.entries.reduce((s, e) => s + (e.bytes ?? 0), 0) : 0
+    readonly property real driveSize: root.drive?.size ?? 0
+    readonly property var segments: {
+        const used = root.drive?.used ?? 0
+        const free = root.drive?.avail ?? 0
+        const home = Math.min(root.homeBytes, used)
+        const out = []
+        if (home > 0) {
+            out.push({ label: "Home", bytes: home, color: Colors.primary })
+            out.push({ label: "System and other", bytes: Math.max(0, used - home), color: Colors.secondary })
+        } else {
+            out.push({ label: "Used", bytes: used, color: Colors.primary })
+        }
+        out.push({ label: "Free", bytes: free, color: Colors.surfaceContainerHighest })
+        return out.filter(s => s.bytes > 0)
+    }
+
+    Process {
+        running: true
+        command: ["cat", "/proc/sys/kernel/hostname"]
+        stdout: StdioCollector {
+            onStreamFinished: root.hostname = text.trim()
+        }
+    }
+
+    component SpecTile: Rectangle {
+        id: tile
+        property string icon: ""
+        property string title: ""
+        property string target: ""
+        default property alias rows: tileRows.data
+        Layout.fillWidth: true
+        Layout.preferredWidth: 1
+        Layout.fillHeight: true
+        implicitHeight: tileCol.implicitHeight + 32
+        radius: 20
+        color: Colors.surfaceContainerHigh
 
         ColumnLayout {
-            id: column
-            width: parent.width
-            spacing: 3
+            id: tileCol
+            x: 16
+            y: 16
+            width: parent.width - 32
+            spacing: 8
 
-            Rectangle {
+            Item {
                 Layout.fillWidth: true
-                Layout.margins: 5
-                implicitHeight: 190
-                radius: 28
-                color: Colors.primaryContainer
+                implicitHeight: 32
+
+                RippleEffect {
+                    anchors.fill: parent
+                    anchors.margins: -6
+                    radius: 14
+                    visible: tile.target !== ""
+                    onClicked: aboutStages.push(tile.target)
+                }
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 28
-                    anchors.rightMargin: 28
-                    spacing: 24
+                    spacing: 10
 
-                    Item {
-                        Layout.preferredWidth: 120
-                        Layout.preferredHeight: 120
-                        Layout.alignment: Qt.AlignVCenter
+                    MaterialIconSymbol { content: tile.icon; iconSize: 21; fill: 1; customColor: Colors.primary }
 
-                        MaterialShapes.ShapeCanvas {
-                            anchors.fill: parent
-                            roundedPolygon: MaterialShapeFn.getCookie9Sided()
-                            color: Colors.primaryContainerText
-                        }
-
-                        NebulaLogo {
-                            anchors.centerIn: parent
-                            width: 62
-                            height: 62
-                            color: Colors.primaryContainer
-                        }
-                    }
-
-                    ColumnLayout {
+                    CustomText {
                         Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignVCenter
-                        spacing: 6
-
-                        CustomText {
-                            content: "Nebula"
-                            size: 44
-                            weight: 800
-                            customColor: Colors.primaryContainerText
-                        }
-
-                        CustomText {
-                            Layout.fillWidth: true
-                            content: "A modern desktop shell for Wayland"
-                            size: 14
-                            customColor: Qt.alpha(Colors.primaryContainerText, 0.85)
-                            elide: Text.ElideRight
-                        }
-
-                        RowLayout {
-                            Layout.topMargin: 8
-                            spacing: 8
-
-                            Rectangle {
-                                implicitWidth: versionText.implicitWidth + 24
-                                implicitHeight: 30
-                                radius: 15
-                                color: Colors.primaryContainerText
-
-                                CustomText {
-                                    id: versionText
-                                    anchors.centerIn: parent
-                                    content: "v1.0.0"
-                                    size: 12
-                                    weight: 700
-                                    customColor: Colors.primaryContainer
-                                }
-                            }
-
-                            Rectangle {
-                                visible: root.revision !== ""
-                                implicitWidth: revisionRow.implicitWidth + 24
-                                implicitHeight: 30
-                                radius: 15
-                                color: "transparent"
-                                border.width: 1
-                                border.color: Colors.primaryContainerText
-
-                                RowLayout {
-                                    id: revisionRow
-                                    anchors.centerIn: parent
-                                    spacing: 6
-
-                                    MaterialIconSymbol {
-                                        content: "commit"
-                                        iconSize: 15
-                                        customColor: Colors.primaryContainerText
-                                    }
-
-                                    CustomText {
-                                        content: root.revision.replace("*", "") + (root.dirty ? " · local changes" : "")
-                                        size: 12
-                                        weight: 600
-                                        customColor: Colors.primaryContainerText
-                                    }
-                                }
-                            }
-                        }
+                        content: tile.title
+                        size: 14
+                        weight: 500
+                        elide: Text.ElideRight
                     }
-                }
-            }
-
-            CustomText {
-                Layout.topMargin: 18
-                Layout.leftMargin: 5
-                content: "Running on"
-                size: 13
-                customColor: Colors.primary
-            }
-
-            GridLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 5
-                Layout.rightMargin: 5
-                Layout.topMargin: 3
-                columns: 2
-                rowSpacing: 3
-                columnSpacing: 3
-
-                Repeater {
-                    model: root.envTiles
-                    delegate: EnvTile {
-                        required property var modelData
-                        required property int index
-                        tile: modelData
-                        cell: index
-                    }
-                }
-            }
-
-            CustomText {
-                Layout.topMargin: 16
-                Layout.leftMargin: 5
-                content: "Config"
-                size: 13
-                customColor: Colors.primary
-            }
-
-            CustomCard {
-                id: configCard
-                Layout.leftMargin: 5
-                Layout.rightMargin: 5
-                Layout.topMargin: 3
-                autoRadius: false
-                topRadius: 20
-                bottomRadius: 20
-
-                property bool copied: false
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 12
 
                     MaterialIconSymbol {
-                        content: "folder"
+                        visible: tile.target !== ""
+                        content: "chevron_right"
                         iconSize: 20
                         customColor: Colors.outline
                     }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 1
-
-                        CustomText {
-                            content: "Location" + (ServiceSystemInfo.uptime ? " · up " + ServiceSystemInfo.uptime : "")
-                            size: 11
-                            customColor: Colors.outline
-                        }
-
-                        CustomText {
-                            Layout.fillWidth: true
-                            content: root.shown(root.prettyDir)
-                            size: 14
-                            weight: 600
-                            elide: Text.ElideMiddle
-                        }
-                    }
-
-                    M3IconButton {
-                        icon: configCard.copied ? "check" : "content_copy"
-                        iconSize: 18
-                        implicitWidth: 36
-                        implicitHeight: 36
-                        onClicked: {
-                            Quickshell.clipboardText = root.shellDir
-                            configCard.copied = true
-                            copyReset.restart()
-                        }
-                    }
-
-                    M3IconButton {
-                        icon: "folder_open"
-                        iconSize: 18
-                        implicitWidth: 36
-                        implicitHeight: 36
-                        onClicked: Quickshell.execDetached(["xdg-open", root.shellDir])
-                    }
-                }
-
-                Timer {
-                    id: copyReset
-                    interval: 1400
-                    onTriggered: configCard.copied = false
                 }
             }
 
-            RowLayout {
+            ColumnLayout {
+                id: tileRows
                 Layout.fillWidth: true
-                Layout.topMargin: 16
-                Layout.leftMargin: 5
-                Layout.rightMargin: 5
-                Layout.bottomMargin: 5
-                spacing: 8
+                spacing: 0
+            }
+        }
+    }
 
-                Repeater {
-                    model: root.links
-                    delegate: M3Button {
-                        required property var modelData
-                        Layout.fillWidth: true
-                        Layout.preferredWidth: 1
-                        size: "xsmall"
-                        variant: "tonal"
-                        icon: modelData.icon
-                        label: modelData.label
-                        onClicked: Quickshell.execDetached(["xdg-open", modelData.url])
+    component SpecRow: Item {
+        id: spec
+        property string label: ""
+        property string value: ""
+        property string url: ""
+        property bool first: false
+        signal clicked()
+        Layout.fillWidth: true
+        implicitHeight: 34
+
+        Rectangle {
+            visible: !spec.first
+            anchors.top: parent.top
+            width: parent.width
+            height: 1
+            color: Colors.surfaceContainerHighest
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            spacing: 10
+
+            CustomText {
+                Layout.preferredWidth: 92
+                content: spec.label
+                size: 13
+                customColor: Colors.outline
+            }
+
+            CustomText {
+                Layout.fillWidth: true
+                content: spec.value
+                size: 13
+                weight: 500
+                elide: Text.ElideRight
+                customColor: spec.url !== "" && specArea.containsMouse ? Colors.primary : Colors.surfaceText
+            }
+        }
+
+        MouseArea {
+            id: specArea
+            anchors.fill: parent
+            enabled: spec.url !== ""
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: Quickshell.execDetached(["xdg-open", spec.url])
+        }
+    }
+
+    StageView {
+        id: aboutStages
+
+        StagePage {
+            stageId: "front"
+
+            StageHero {
+                lead: NebulaLogo {
+                    id: logo
+                    implicitWidth: 76
+                    implicitHeight: 76
+                    tonal: true
+                    progress: 0
+
+                    Timer {
+                        interval: 160
+                        running: true
+                        onTriggered: logo.play()
                     }
+                }
+                title: "Nebula 1.0.0"
+                subtitle: "A modern desktop shell for Wayland" + (root.revision !== "" ? " · " + root.revision.replace("*", "") + (root.dirty ? " with local changes" : "") : "")
+
+                M3Button {
+                    icon: "refresh"
+                    label: "Restart shell"
+                    onClicked: Quickshell.reload(true)
                 }
 
                 M3Button {
-                    size: "xsmall"
-                    variant: "outlined"
-                    icon: "restart_alt"
-                    label: "Setup"
+                    variant: "tonal"
+                    icon: "rocket_launch"
+                    label: "Run setup again"
                     onClicked: {
                         GlobalStates.settingsOpen = false
                         Quickshell.execDetached([Quickshell.shellDir + "/bin/nebula", "setup"])
                     }
                 }
+            }
 
-                M3Button {
-                    size: "xsmall"
-                    variant: "outlined"
-                    icon: "refresh"
-                    label: "Restart"
-                    onClicked: Quickshell.reload(true)
+            GridLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 10
+                columns: 2
+                columnSpacing: 10
+                rowSpacing: 10
+
+                SpecTile {
+                    icon: "laptop"
+                    title: "This computer"
+                    target: "system"
+
+                    SpecRow { first: true; label: "Name"; value: root.shown(root.hostname) }
+                    SpecRow { label: "Processor"; value: root.shown(ServiceSystemInfo.cpuName) }
+                    SpecRow { label: "Memory"; value: ServiceSystemInfo.memTotalGb > 0 ? ServiceSystemInfo.memTotalGb.toFixed(1) + " GB" : "—" }
+                    SpecRow { label: "Up for"; value: root.shown(ServiceSystemInfo.uptime) }
+                }
+
+                SpecTile {
+                    icon: "deployed_code"
+                    title: "Software"
+                    target: "system"
+
+                    SpecRow { first: true; label: "System"; value: root.shown(root.info.distro) }
+                    SpecRow { label: "Kernel"; value: root.shown(root.info.kernel) }
+                    SpecRow { label: "Compositor"; value: root.shown(root.info.compositor) }
+                    SpecRow { label: "Runtime"; value: root.info.quickshell ? "Quickshell " + root.info.quickshell : "—" }
+                }
+
+                Rectangle {
+                    Layout.columnSpan: 2
+                    Layout.fillWidth: true
+                    implicitHeight: storageCol.implicitHeight + 32
+                    radius: 20
+                    color: Colors.surfaceContainerHigh
+
+                    ColumnLayout {
+                        id: storageCol
+                        x: 16
+                        y: 16
+                        width: parent.width - 32
+                        spacing: 14
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 10
+
+                            MaterialIconSymbol { content: "hard_drive"; iconSize: 21; fill: 1; customColor: Colors.primary }
+
+                            CustomText {
+                                Layout.fillWidth: true
+                                content: "Storage"
+                                size: 14
+                                weight: 500
+                            }
+
+                            CustomText {
+                                content: root.drive ? root.drive.source + " · " + root.drive.fstype + " · " + root.drive.target : ""
+                                size: 12
+                                customColor: Colors.outline
+                            }
+                        }
+
+                        RowLayout {
+                            spacing: 10
+
+                            CustomText {
+                                content: ServiceStorage.formatBytes(root.usedBytes)
+                                family: SettingsConfig.general.displayFont ?? "Rubik"
+                                renderType: Text.QtRendering
+                                size: 34
+                                customColor: root.usedPct > 0.9 ? Colors.error : Colors.surfaceText
+                            }
+
+                            CustomText {
+                                Layout.alignment: Qt.AlignBottom
+                                Layout.bottomMargin: 6
+                                content: "used of " + ServiceStorage.formatBytes(root.driveSize) + " · " + ServiceStorage.formatBytes(root.availBytes) + " free"
+                                size: 13
+                                customColor: Colors.outline
+                            }
+                        }
+
+                        Row {
+                            id: segBar
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 22
+                            spacing: 3
+
+                            readonly property real total: root.segments.reduce((s, e) => s + e.bytes, 0)
+
+                            Repeater {
+                                model: root.segments
+
+                                Rectangle {
+                                    required property var modelData
+                                    required property int index
+                                    width: Math.max(4, Math.round((segBar.width - segBar.spacing * (root.segments.length - 1)) * modelData.bytes / Math.max(1, segBar.total)))
+                                    height: segBar.height
+                                    color: modelData.color
+                                    topLeftRadius: index === 0 ? 11 : 3
+                                    bottomLeftRadius: index === 0 ? 11 : 3
+                                    topRightRadius: index === root.segments.length - 1 ? 11 : 3
+                                    bottomRightRadius: index === root.segments.length - 1 ? 11 : 3
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 18
+
+                            Repeater {
+                                model: root.segments
+
+                                ColumnLayout {
+                                    required property var modelData
+                                    spacing: 2
+
+                                    RowLayout {
+                                        spacing: 6
+
+                                        Rectangle {
+                                            Layout.preferredWidth: 10
+                                            Layout.preferredHeight: 10
+                                            radius: 3
+                                            color: modelData.color
+                                            border.width: modelData.label === "Free" ? 1 : 0
+                                            border.color: Colors.outlineVariant
+                                        }
+
+                                        CustomText {
+                                            content: modelData.label
+                                            size: 12
+                                            customColor: Colors.outline
+                                        }
+                                    }
+
+                                    CustomText {
+                                        content: ServiceStorage.formatBytes(modelData.bytes)
+                                        size: 13
+                                        weight: 600
+                                    }
+                                }
+                            }
+
+                            Item { Layout.fillWidth: true }
+                        }
+
+                        RowLayout {
+                            spacing: 8
+
+                            M3Button {
+                                variant: "tonal"
+                                icon: "grid_view"
+                                label: ServiceStorage.mapScanning ? "Usage map · scanning" : "Usage map"
+                                onClicked: aboutStages.push("map")
+                            }
+
+                            M3Button {
+                                visible: ServiceStorage.drives.length > 1
+                                variant: "outlined"
+                                icon: "sd_card"
+                                label: "Other drives"
+                                onClicked: aboutStages.push("drives")
+                            }
+                        }
+                    }
+                }
+
+                SpecTile {
+                    icon: "folder_managed"
+                    title: "Config"
+                    target: "config"
+
+                    SpecRow { first: true; label: "Shell"; value: root.prettyDir }
+                    SpecRow { label: "Folder"; value: "Open in files"; url: "file://" + root.shellDir }
+                }
+
+                SpecTile {
+                    icon: "help"
+                    title: "Help"
+                    target: "help"
+
+                    SpecRow { first: true; label: "GitHub"; value: "Source and releases"; url: root.links[0].url }
+                    SpecRow { label: "Issues"; value: "Report a problem"; url: root.links[1].url }
                 }
             }
         }
-    }
-    ScrollFade {
-        anchors.fill: parent
-        flickable: pageFlick
-    }
 
-    component EnvTile: Rectangle {
-        id: tileRect
+        StageLazy {
+            stageId: "drives"
 
-        property var tile: ({})
-        property int cell: 0
+            StagePage {
+                stageId: "drives"
+                title: "Drives"
+                aside: ServiceStorage.drives.length > 0 ? String(ServiceStorage.drives.length) : ""
 
-        Layout.fillWidth: true
-        Layout.preferredWidth: 1
-        implicitHeight: 68
-        color: Colors.surfaceContainerHigh
-        topLeftRadius: tileRect.cell === 0 ? 20 : 5
-        topRightRadius: tileRect.cell === 1 ? 20 : 5
-        bottomLeftRadius: tileRect.cell === 2 ? 20 : 5
-        bottomRightRadius: tileRect.cell === 3 ? 20 : 5
+                Repeater {
+                    model: ServiceStorage.drives
 
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 16
-            anchors.rightMargin: 16
-            spacing: 12
+                    StageRow {
+                        required property var modelData
+                        icon: modelData.target === "/" ? "hard_drive" : "sd_card"
+                        title: modelData.target
+                        subtitle: modelData.source + " · " + modelData.fstype
+                        value: ServiceStorage.formatBytes(modelData.used) + " of " + ServiceStorage.formatBytes(modelData.size)
 
-            Rectangle {
-                Layout.preferredWidth: 40
-                Layout.preferredHeight: 40
-                radius: 20
-                color: Colors.secondaryContainer
-
-                MaterialIconSymbol {
-                    anchors.centerIn: parent
-                    content: tileRect.tile.icon ?? ""
-                    iconSize: 20
-                    customColor: Colors.secondaryContainerText
+                        below: M3WavyProgressBar {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 12
+                            progress: modelData.pct
+                            activeThickness: 8
+                            trackThickness: 8
+                            waveAmplitude: 0
+                            showStopIndicator: true
+                            activeColor: modelData.pct > 0.9 ? Colors.error : Colors.primary
+                            trackColor: Colors.surfaceContainerHighest
+                        }
+                    }
                 }
             }
+        }
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
+        StageLazy {
+            stageId: "system"
 
-                CustomText {
-                    content: tileRect.tile.label ?? ""
-                    size: 11
-                    customColor: Colors.outline
+            StagePage {
+                stageId: "system"
+                title: "This computer"
+
+                StageHeading { text: "Software" }
+                StageInfoRow { title: "Nebula"; value: "1.0.0" + (root.revision !== "" ? " (" + root.revision + ")" : "") }
+                StageInfoRow { title: "Quickshell"; value: root.shown(root.info.quickshell) }
+                StageInfoRow { title: "Compositor"; value: root.shown(root.info.compositor) }
+                StageInfoRow { title: "Kernel"; value: root.shown(root.info.kernel) }
+                StageInfoRow { title: "Distro"; value: root.shown(root.info.distro) }
+
+                StageHeading { text: "Hardware" }
+                StageInfoRow { title: "Processor"; value: root.shown(ServiceSystemInfo.cpuName) }
+                StageInfoRow { title: "Memory"; value: ServiceSystemInfo.memTotalGb > 0 ? ServiceSystemInfo.memTotalGb.toFixed(1) + " GB" : "—" }
+                StageInfoRow { title: "Up for"; value: root.shown(ServiceSystemInfo.uptime) }
+            }
+        }
+
+        StageLazy {
+            stageId: "config"
+
+            StagePage {
+                stageId: "config"
+                title: "Config"
+
+                StageRow {
+                    icon: "folder"
+                    title: "Location"
+                    subtitle: root.prettyDir
+                    value: root.copied ? "Copied" : ""
+
+                    M3IconButton {
+                        Layout.preferredWidth: 36
+                        Layout.preferredHeight: 36
+                        icon: "content_copy"
+                        iconSize: 18
+                        tip: "Copy the path"
+                        onClicked: {
+                            Quickshell.clipboardText = root.shellDir
+                            root.copied = true
+                            copiedReset.restart()
+                        }
+                    }
                 }
 
-                CustomText {
-                    Layout.fillWidth: true
-                    content: tileRect.tile.value ?? ""
-                    size: 15
-                    weight: 600
-                    elide: Text.ElideRight
+                StageNavRow {
+                    icon: "open_in_new"
+                    title: "Open the folder"
+                    onClicked: Quickshell.execDetached(["xdg-open", root.shellDir])
+                }
+            }
+        }
+
+        StageLazy {
+            stageId: "help"
+
+            StagePage {
+                stageId: "help"
+                title: "Help and feedback"
+
+                Repeater {
+                    model: root.links
+
+                    StageNavRow {
+                        required property var modelData
+                        icon: modelData.icon
+                        title: modelData.title
+                        subtitle: modelData.subtitle
+                        onClicked: Quickshell.execDetached(["xdg-open", modelData.url])
+                    }
+                }
+
+                StageGap {}
+
+                StageNavRow {
+                    icon: "keyboard"
+                    title: "Keyboard shortcuts"
+                    subtitle: "Every shortcut, grouped"
+                    onClicked: GlobalStates.settingsPage = 18
+                }
+            }
+        }
+
+        StageLazy {
+            stageId: "map"
+
+            StagePage {
+                stageId: "map"
+                title: "Usage map"
+
+                CustomCard {
+                    autoRadius: false; topRadius: 20; bottomRadius: 20
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Rectangle {
+                                implicitWidth: 32; implicitHeight: 32
+                                radius: 16
+                                color: Colors.surfaceContainerHighest
+                                opacity: ServiceStorage.canGoUp ? 1 : 0.4
+
+                                Behavior on opacity { EffectsAnim { speed: "fast" } }
+
+                                MaterialIconSymbol {
+                                    anchors.centerIn: parent
+                                    content: "arrow_upward"
+                                    iconSize: 16
+                                    customColor: Colors.primary
+                                }
+
+                                RippleEffect {
+                                    anchors.fill: parent
+                                    radius: 16
+                                    enabled: ServiceStorage.canGoUp
+                                    onClicked: ServiceStorage.goUp()
+                                }
+                            }
+
+                            Flickable {
+                                Layout.fillWidth: true
+                                implicitHeight: 32
+                                contentWidth: crumbRow.implicitWidth
+                                contentHeight: height
+                                clip: true
+                                interactive: contentWidth > width
+
+                                RowLayout {
+                                    id: crumbRow
+                                    height: 32
+                                    spacing: 2
+
+                                    Repeater {
+                                        model: ServiceStorage.breadcrumb
+
+                                        delegate: RowLayout {
+                                            id: crumb
+                                            required property var modelData
+                                            required property int index
+                                            spacing: 2
+
+                                            readonly property bool last:
+                                                crumb.index === ServiceStorage.breadcrumb.length - 1
+
+                                            opacity: 0
+
+                                            SequentialAnimation {
+                                                running: true
+                                                PauseAnimation {
+                                                    duration: Math.min(crumb.index, 8) * 26
+                                                }
+                                                EffectsAnim {
+                                                    target: crumb; property: "opacity"; to: 1
+                                                }
+                                            }
+
+                                            MaterialIconSymbol {
+                                                visible: crumb.index > 0
+                                                content: "chevron_right"
+                                                iconSize: 14
+                                                customColor: Colors.outline
+                                            }
+
+                                            Rectangle {
+                                                id: crumbPill
+                                                implicitWidth: crumbText.implicitWidth + 16
+                                                implicitHeight: 26
+                                                radius: 13
+                                                color: crumb.last ? Qt.alpha(Colors.primary, 0.16)
+                                                     : crumbRipple.containsMouse ? Qt.alpha(Colors.primary, 0.07)
+                                                     : "transparent"
+
+                                                Behavior on color { EffectsColorAnim { speed: "fast" } }
+                                                Behavior on implicitWidth { SpatialAnim { speed: "fast" } }
+
+                                                CustomText {
+                                                    id: crumbText
+                                                    anchors.centerIn: parent
+                                                    content: crumb.modelData.label
+                                                    size: 12
+                                                    weight: crumb.last ? 700 : 500
+                                                    customColor: crumb.last ? Colors.primary : Colors.outline
+                                                }
+
+                                                RippleEffect {
+                                                    id: crumbRipple
+                                                    anchors.fill: parent
+                                                    radius: 13
+                                                    hoverColor: "transparent"
+                                                    onClicked: ServiceStorage.jumpTo(crumb.modelData.path)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                id: rootSwitch
+                                implicitWidth: rootRow.implicitWidth + 22
+                                implicitHeight: 32
+                                radius: 16
+                                color: Colors.surfaceContainerHighest
+
+                                readonly property bool atHome:
+                                    ServiceStorage.currentPath === ServiceStorage.home
+
+                                Behavior on implicitWidth { SpatialAnim { speed: "fast" } }
+
+                                RowLayout {
+                                    id: rootRow
+                                    anchors.centerIn: parent
+                                    spacing: 6
+                                    MaterialIconSymbol {
+                                        content: rootSwitch.atHome ? "hard_drive" : "home"
+                                        iconSize: 15
+                                        customColor: Colors.primary
+                                    }
+                                    CustomText {
+                                        content: rootSwitch.atHome ? "Whole disk" : "Home"
+                                        size: 12
+                                        customColor: Colors.primary
+                                    }
+                                }
+
+                                RippleEffect {
+                                    anchors.fill: parent
+                                    radius: 16
+                                    onClicked: ServiceStorage.openRoot(
+                                        rootSwitch.atHome ? "/" : ServiceStorage.home)
+                                }
+                            }
+
+                            Rectangle {
+                                implicitWidth: openRow.implicitWidth + 22
+                                implicitHeight: 32
+                                radius: 16
+                                color: Colors.surfaceContainerHighest
+
+                                RowLayout {
+                                    id: openRow
+                                    anchors.centerIn: parent
+                                    spacing: 6
+                                    MaterialIconSymbol {
+                                        content: "folder_open"; iconSize: 15
+                                        customColor: Colors.primary
+                                    }
+                                    CustomText {
+                                        content: "Open"; size: 12
+                                        customColor: Colors.primary
+                                    }
+                                }
+
+                                RippleEffect {
+                                    anchors.fill: parent
+                                    radius: 16
+                                    onClicked: ServiceStorage.openPath(ServiceStorage.currentPath)
+                                }
+                            }
+                        }
+
+                        StorageTreemap {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 380
+                            items: ServiceStorage.entries
+                            busy: ServiceStorage.mapScanning
+                            scanKey: ServiceStorage.currentPath
+                            itemsKey: ServiceStorage.childrenPath
+                            onDrill: name => ServiceStorage.drillInto(name)
+                        }
+
+                        CustomText {
+                            Layout.fillWidth: true
+                            content: ServiceStorage.entries.length > 0
+                                ? ServiceStorage.entries.length + " items  ·  click a tile to go deeper"
+                                : ""
+                            size: 11
+                            customColor: Colors.outline
+
+                            opacity: content === "" ? 0 : 1
+                            Behavior on opacity { EffectsAnim {} }
+                        }
+                    }
                 }
             }
         }

@@ -6,7 +6,12 @@ Item {
 
     property real strength: 1
 
-    layer.enabled: true
+    property bool _placed: false
+    readonly property bool _inWindow: root.Window.window !== null
+    on_InWindowChanged: if (root._inWindow) root._placed = true
+    Component.onCompleted: if (root._inWindow) root._placed = true
+
+    layer.enabled: root._placed
     layer.smooth: true
     layer.effect: MultiEffect {
         shadowEnabled: true

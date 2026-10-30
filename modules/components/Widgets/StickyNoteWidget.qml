@@ -5,10 +5,9 @@ import QtQuick.Controls.Basic
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.customComponents
+import "../../MatrialShapes/" as MaterialShapes
+import "../../MatrialShapes/shape-library.js" as ShapeLibrary
 
-// Scratchpad you can type straight onto the wallpaper. Text lives in
-// SettingsConfig.widgets.stickyNoteText rather than a new service — it's a
-// single string and that store is already debounced to disk.
 WidgetHost {
     id: root
     configKey: "stickyNote"
@@ -19,14 +18,13 @@ WidgetHost {
     defaultPos: Qt.point(620, 660)
 
     readonly property string savedText: SettingsConfig.widgets.stickyNoteText ?? ""
+    readonly property real fold: 44
 
-    // Only push external changes in when the user isn't mid-edit, otherwise the
-    // save round-trip would fight the cursor.
     onSavedTextChanged: if (!area.activeFocus && area.text !== savedText) area.text = savedText
 
     Component.onCompleted: {
         area.text = root.preview
-            ? "Pick up keys\nCall the landlord\nrent — friday"
+            ? "Pick up keys\nCall the landlord\nRent — friday"
             : root.savedText
     }
 
@@ -43,7 +41,20 @@ WidgetHost {
     }
 
     WidgetCard {
+        id: paper
         anchors.fill: parent
+        color: Colors.tertiaryContainer
+        bottomRightRadius: root.fold + 12
+
+        Rectangle {
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            width: root.fold
+            height: root.fold
+            topLeftRadius: root.fold / 2
+            bottomRightRadius: paper.bottomRightRadius
+            color: Qt.alpha(Colors.tertiaryContainerText, 0.12)
+        }
 
         RowLayout {
             id: header
@@ -51,17 +62,28 @@ WidgetHost {
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.margins: parent.pad
-            spacing: 6
+            spacing: 8
 
-            MaterialIconSymbol { content: "sticky_note_2"; iconSize: 15; customColor: Colors.primary }
-            CustomText { content: "Note"; size: 13; customColor: Colors.primary }
+            MaterialShapes.ShapeCanvas {
+                Layout.preferredWidth: 22
+                Layout.preferredHeight: 22
+                roundedPolygon: ShapeLibrary.get("sunny")
+                color: Colors.tertiaryContainerText
+            }
+            CustomText {
+                content: "NOTE"
+                size: 12
+                weight: 800
+                font.letterSpacing: 0.5
+                customColor: Colors.tertiaryContainerText
+            }
 
             Item { Layout.fillWidth: true }
 
             MaterialIconSymbol {
                 content: "close"
-                iconSize: 14
-                customColor: Colors.outline
+                iconSize: 16
+                customColor: Colors.tertiaryContainerText
                 visible: area.text.length > 0 && !root.preview
                 opacity: clearArea.containsMouse ? 1 : 0.6
 
@@ -81,10 +103,10 @@ WidgetHost {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            anchors.topMargin: 6
-            anchors.leftMargin: 14
+            anchors.topMargin: 4
+            anchors.leftMargin: paper.pad - 6
             anchors.rightMargin: 10
-            anchors.bottomMargin: 12
+            anchors.bottomMargin: root.fold * 0.5
             clip: true
 
             TextArea {
@@ -92,18 +114,17 @@ WidgetHost {
                 readOnly: root.preview
                 background: null
                 wrapMode: TextArea.Wrap
-                font.pixelSize: 13
+                font.pixelSize: 16
+                font.weight: 600
                 font.family: SettingsConfig.general.defaultFont ?? "Rubik"
-                color: Colors.surfaceText
-                selectionColor: Qt.alpha(Colors.primary, 0.35)
-                selectedTextColor: Colors.surfaceText
+                color: Colors.tertiaryContainerText
+                selectionColor: Qt.alpha(Colors.tertiaryContainerText, 0.25)
+                selectedTextColor: Colors.tertiaryContainerText
                 placeholderText: "Jot something down…"
-                placeholderTextColor: Colors.outline
+                placeholderTextColor: Qt.alpha(Colors.tertiaryContainerText, 0.55)
 
                 onTextChanged: if (!root.preview) saveTimer.restart()
 
-                // Tells the layer surface to hold the keyboard only while this
-                // field is being edited; also commits without waiting out the timer.
                 onActiveFocusChanged: {
                     if (!root.preview) GlobalStates.widgetTextFocus = activeFocus
                     if (!activeFocus) saveTimer.restart()

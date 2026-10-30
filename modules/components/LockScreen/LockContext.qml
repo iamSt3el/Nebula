@@ -22,12 +22,35 @@ Scope {
 
 	property int failedAttempts: 0
 	property bool capsLockOn: false
+	property bool clockAwake: false
+
+	function wakeClock() {
+		root.clockAwake = true
+		clockIdle.restart()
+	}
+
+	function pokeClock() {
+		if (root.clockAwake)
+			clockIdle.restart()
+	}
+
+	Timer {
+		id: clockIdle
+		interval: 20000
+		onTriggered: {
+			if (root.currentText === "" && !root.unlockInProgress)
+				root.clockAwake = false
+			else
+				clockIdle.restart()
+		}
+	}
 
 	onActiveChanged: {
 		if (active) {
 			failedAttempts = 0
 			showFailure = false
 			currentText = ""
+			clockAwake = false
 		} else {
 			capsLockOn = false
 		}
@@ -43,6 +66,7 @@ Scope {
 	// Clear failure text and reset timer when user types
 	onCurrentTextChanged: {
 		showFailure = false
+		pokeClock()
 		if (currentText.length > 0) {
 			passwordClearTimer.restart()
 		}

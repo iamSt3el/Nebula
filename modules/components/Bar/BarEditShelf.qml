@@ -149,6 +149,7 @@ EditKit.Card {
 
             EditKit.Pill {
                 icon: "close"
+                tip: "Close · Esc"
                 onClicked: shelf.host.shelfOpen = false
             }
         }
@@ -336,6 +337,7 @@ EditKit.Card {
                                         icon: "add"
                                         box: 32
                                         lit: true
+                                        tip: "Add after the selected item"
                                         onClicked: shelf.host.addItem(part.modelData)
                                     }
                                 }

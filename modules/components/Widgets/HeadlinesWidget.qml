@@ -6,8 +6,6 @@ import qs.modules.services
 import qs.modules.settings
 import qs.modules.customComponents
 
-// Rotating headline ticker. Shows three at a time and advances through the feed
-// so a long list stays readable instead of being truncated.
 WidgetHost {
     id: root
     configKey: "headlines"
@@ -17,7 +15,11 @@ WidgetHost {
     maxSpan: Qt.size(6, 5)
     defaultPos: Qt.point(620, 900)
 
-    readonly property int pageSize: Math.max(1, Math.floor((root.height - 64) / 42))
+    readonly property string display: SettingsConfig.general?.displayFont || "Titan One"
+    readonly property real pad: WidgetSizes.padFor(root.width)
+    readonly property int leadLines: root.height > WidgetSizes.span(2) + 1 ? 3 : 2
+    readonly property int follows: Math.max(0, Math.floor((root.height - root.pad * 2 - 22 - 10 - root.leadLines * 21 - 10 + 2) / 38))
+    readonly property int pageSize: 1 + root.follows
 
     readonly property var sampleHeadlines: [
         { title: "Markets close higher as inflation eases for a third month" },
@@ -31,15 +33,30 @@ WidgetHost {
     readonly property var items: root.preview ? root.sampleHeadlines : ServiceNews.headlines
 
     property int page: 0
-    readonly property int pageCount: Math.max(1, Math.ceil(items.length / pageSize))
-
+    readonly property int pageCount: Math.max(1, Math.ceil(root.items.length / root.pageSize))
+    readonly property int pageIndex: root.page % root.pageCount
     readonly property var visibleItems: {
-        if (items.length === 0) return []
-        const start = (page % pageCount) * pageSize
-        return items.slice(start, start + pageSize)
+        if (root.items.length === 0) return []
+        const start = root.pageIndex * root.pageSize
+        return root.items.slice(start, start + root.pageSize)
+    }
+    readonly property var leadItem: root.visibleItems.length > 0 ? root.visibleItems[0] : null
+    readonly property var followItems: root.visibleItems.slice(1)
+
+    readonly property string age: {
+        ServiceClock.date
+        if (root.preview) return "12 min ago"
+        const t = ServiceNews.lastUpdated
+        if (!t) return ""
+        const m = Math.max(0, Math.round((Date.now() - t.getTime()) / 60000))
+        return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"
     }
 
-    // Previews must never start the fetch loop
+    function open(item) {
+        if (!root.preview && item && item.link)
+            Qt.openUrlExternally(item.link)
+    }
+
     Component.onCompleted: if (!root.preview) ServiceNews.retain()
     Component.onDestruction: if (!root.preview) ServiceNews.release()
 
@@ -55,91 +72,185 @@ WidgetHost {
     WidgetCard {
         anchors.fill: parent
 
-        // ── Header ────────────────────────────────────────────────────
-        RowLayout {
-            id: header
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: 16
-            spacing: 7
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: root.pad
+            spacing: 10
+            visible: root.items.length > 0
 
-            MaterialIconSymbol { content: "newspaper"; iconSize: 15; customColor: Colors.primary }
-            CustomText {
+            RowLayout {
                 Layout.fillWidth: true
-                content: root.preview ? "World News"
-                       : (ServiceNews.channelTitle.length > 0 ? ServiceNews.channelTitle : "Headlines")
-                size: 13
-                customColor: Colors.primary
-            }
+                spacing: 6
 
-            Loader {
-                active: !root.preview && ServiceNews.isLoading
-                visible: active
-                sourceComponent: CustomCircularLoader {
-                    size: 14; trackWidth: 2
-                    waveAmplitude: 0
-                    highlightColor: Colors.outline
+                Rectangle {
+                    implicitWidth: chipRow.implicitWidth + 16
+                    implicitHeight: 22
+                    radius: 11
+                    color: Colors.tertiaryContainer
+
+                    Row {
+                        id: chipRow
+                        anchors.centerIn: parent
+                        spacing: 4
+                        MaterialIconSymbol {
+                            anchors.verticalCenter: parent.verticalCenter
+                            content: "public"
+                            iconSize: 13
+                            customColor: Colors.tertiaryContainerText
+                        }
+                        CustomText {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.min(implicitWidth, root.width * 0.42)
+                            content: (root.preview ? "World News"
+                                     : (ServiceNews.channelTitle.length > 0 ? ServiceNews.channelTitle : "Headlines")).toUpperCase()
+                            size: 10
+                            weight: 800
+                            font.letterSpacing: 0.3
+                            elide: Text.ElideRight
+                            customColor: Colors.tertiaryContainerText
+                        }
+                    }
+                }
+
+                CustomText {
+                    content: root.age
+                    size: 11
+                    weight: 500
+                    customColor: Colors.surfaceVariantText
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Row {
+                    spacing: 3
+                    visible: root.pageCount > 1
+                    Repeater {
+                        model: root.pageCount
+                        delegate: Rectangle {
+                            required property int index
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: index === root.pageIndex ? 16 : 5
+                            height: 5
+                            radius: 2.5
+                            color: index === root.pageIndex ? Colors.primary : Colors.outlineVariant
+                            Behavior on width { SpatialAnim { speed: "fast" } }
+                        }
+                    }
+                }
+
+                Loader {
+                    active: !root.preview && ServiceNews.isLoading
+                    visible: active
+                    sourceComponent: CustomCircularLoader {
+                        size: 14; trackWidth: 2
+                        waveAmplitude: 0
+                        highlightColor: Colors.outline
+                    }
+                }
+
+                MaterialIconSymbol {
+                    visible: !root.preview && !ServiceNews.isLoading
+                    content: "refresh"
+                    iconSize: 16
+                    customColor: Colors.outline
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.margins: -5
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: ServiceNews.refresh()
+                    }
                 }
             }
 
-            MaterialIconSymbol {
-                visible: !root.preview && !ServiceNews.isLoading
-                content: "refresh"
-                iconSize: 15
-                customColor: Colors.outline
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: leadText.implicitHeight
+
+                CustomText {
+                    id: leadText
+                    width: parent.width
+                    content: root.leadItem ? root.leadItem.title : ""
+                    size: 17
+                    weight: 800
+                    wrapMode: Text.WordWrap
+                    maximumLineCount: root.leadLines
+                    elide: Text.ElideRight
+                    lineHeight: 1.1
+                }
+
                 MouseArea {
                     anchors.fill: parent
-                    anchors.margins: -5
+                    enabled: !root.preview && !!root.leadItem && !!root.leadItem.link
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: ServiceNews.refresh()
+                    onClicked: root.open(root.leadItem)
                 }
             }
-        }
 
-        // ── Headlines ─────────────────────────────────────────────────
-        ColumnLayout {
-            id: list
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: header.bottom
-            anchors.leftMargin: 16
-            anchors.rightMargin: 16
-            anchors.topMargin: 10
-            spacing: 9
+            Item { Layout.fillHeight: true }
 
-            opacity: 1
-            Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutQuad } }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                visible: root.followItems.length > 0
 
-            Repeater {
-                model: root.visibleItems
-
-                delegate: RowLayout {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    spacing: 9
-
-                    Rectangle {
-                        Layout.alignment: Qt.AlignTop
-                        Layout.topMargin: 5
-                        implicitWidth: 5; implicitHeight: 5
-                        radius: 2.5
-                        color: Colors.primary
-                    }
-
-                    CustomText {
+                Repeater {
+                    model: root.followItems
+                    delegate: Rectangle {
+                        id: row
+                        required property var modelData
+                        required property int index
                         Layout.fillWidth: true
-                        content: modelData.title
-                        size: 12
-                        wrapMode: Text.WordWrap
-                        maximumLineCount: 2
-                        elide: Text.ElideRight
+                        Layout.preferredHeight: 36
+                        readonly property bool first: row.index === 0
+                        readonly property bool last: row.index === root.followItems.length - 1
+                        topLeftRadius: row.first ? 12 : 4
+                        topRightRadius: row.first ? 12 : 4
+                        bottomLeftRadius: row.last ? 12 : 4
+                        bottomRightRadius: row.last ? 12 : 4
+                        color: rowArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
+                        Behavior on color { EffectsColorAnim {} }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
+                            spacing: 8
+                            CustomText {
+                                content: (row.index + 2).toString()
+                                family: root.display
+                                size: 13
+                                weight: 400
+                                customColor: Colors.primary
+                            }
+                            Item {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                CustomText {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width
+                                    content: row.modelData.title
+                                    size: 11
+                                    weight: 600
+                                    wrapMode: Text.WordWrap
+                                    maximumLineCount: 2
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: rowArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            enabled: !root.preview && !!row.modelData.link
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.open(row.modelData)
+                        }
                     }
                 }
             }
         }
 
-        // ── Empty / error state ───────────────────────────────────────
         ColumnLayout {
             anchors.centerIn: parent
             spacing: 6
@@ -156,28 +267,6 @@ WidgetHost {
                 content: ServiceNews.hasError ? "Couldn't load feed" : "Loading headlines…"
                 size: 12
                 customColor: Colors.outline
-            }
-        }
-
-        // ── Page dots ─────────────────────────────────────────────────
-        RowLayout {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 12
-            spacing: 5
-            visible: root.pageCount > 1
-
-            Repeater {
-                model: root.pageCount
-                delegate: Rectangle {
-                    required property int index
-                    implicitWidth: index === (root.page % root.pageCount) ? 14 : 5
-                    implicitHeight: 5
-                    radius: 2.5
-                    color: index === (root.page % root.pageCount) ? Colors.primary
-                                                                  : Colors.surfaceContainerHighest
-                    Behavior on implicitWidth { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-                }
             }
         }
     }

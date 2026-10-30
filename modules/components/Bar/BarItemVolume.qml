@@ -22,11 +22,13 @@ Item {
     readonly property real gapPx: BarLayout.scaleFor(root.iconPx, 18, 6, 3)
     readonly property real padPx: root.plate - root.iconPx
     readonly property string style: BarLayout.opt(root.itemId, "style") ?? "icon"
-    readonly property bool cookie: root.style === "cookie" || root.style === "fill"
+    readonly property bool cookie: root.style === "cookie" || root.style === "fill" || root.style === "sweep"
+    readonly property bool sweep: root.style === "sweep"
     readonly property bool filled: root.style === "fill" || BarLayout.opt(root.itemId, "meter") === "fill"
     readonly property bool bigCookie: root.cookie && !!root.host && root.host.split === true
     readonly property string shapeName: BarLayout.opt(root.itemId, "shape") ?? "cookie9"
     readonly property string plateShape: root.bigCookie ? root.shapeName : ""
+    readonly property real plateInset: root.bigCookie && !root.filled && !root.sweep ? volCookie.ring : 0
     readonly property bool hoverPlate: !root.cookie
     readonly property color plateTone: root.bigCookie ? (root.host.plateFill ?? Colors.surface) : Colors.surface
     readonly property bool headphones: {
@@ -70,7 +72,9 @@ Item {
                 Layout.preferredHeight: Layout.preferredWidth
                 value: ServicePipewire.muted ? 0 : ServicePipewire.volume
                 shape: root.shapeName
+                thickness: BarLayout.opt(root.itemId, "thickness") ?? -1
                 filled: root.filled
+                sweep: root.sweep
                 angle: BarLayout.itemStyle(root.itemId, "rotate", 0)
                 icon: ServicePipewire.muted ? "volume_off" : root.headphones ? "headphones" : "volume_up"
                 iconSize: BarLayout.itemStyle(root.itemId, "iconSize", 0)

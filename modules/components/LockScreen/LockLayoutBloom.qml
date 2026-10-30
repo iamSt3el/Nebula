@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import Nebula
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
@@ -30,23 +31,39 @@ Item {
 
     LockStatusModel { id: status }
 
-    component Digit: MotionEnter {
+    LockTimeline {
+        id: tl
+        animated: root._animated
+        exiting: root.exiting
+    }
+
+    component Digit: LockPart {
         id: dg
         required property int index
         readonly property string value: root.digits.charAt(dg.index)
+        readonly property int _back: (3 - dg.index) * 50
+        line: tl
         width: 268 * root.u
         height: 268 * root.u
-        dy: 0
-        fromScale: 0.3
-        fromRotation: -40
-        delay: 90 + dg.index * 90
-        animated: root._animated
-        exiting: root.exiting
+        fromScale: 0.35
+        fromRotation: -25
+        exitScale: 0.35
+        exitRotation: 25
+        at: 140 + dg.index * 70
+        dur: 540
+        curve: tl.spring
+        outAt: dg._back + 60
+        outDur: 340
+        fade: 4
 
-        MaterialShapes.ShapeCanvas {
+        ShapePainter {
             id: face
             anchors.fill: parent
-            roundedPolygon: ShapeLibrary.get(root.digitShapes[parseInt(dg.value) || 0])
+            textureSize: Qt.size(Math.ceil(width), Math.ceil(height))
+            stretchToFill: true
+            fromShape: "circle"
+            toShape: root.digitShapes[parseInt(dg.value) || 0]
+            progress: tl.span(dg.at + 80, 520, tl.standard, dg._back, 300, tl.standard)
             color: dg.index < 2 ? Colors.primary : Colors.primaryContainer
 
             RotationAnimation on rotation {
@@ -60,27 +77,28 @@ Item {
 
         Text {
             anchors.centerIn: parent
+            opacity: tl.span(dg.at + 220, 260, tl.standard, dg._back, 120)
             text: dg.value
             color: dg.index < 2 ? Colors.primaryText : Colors.primaryContainerText
             font.family: root._family
             font.pixelSize: Math.round(176 * root.u)
             font.weight: 700
-            renderType: Text.QtRendering
+            renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
         }
     }
 
-    MotionEnter {
+    LockPart {
+        line: tl
         anchors.horizontalCenter: parent.horizontalCenter
         y: 64 * root.u
-        delay: 40
-        dy: -24 * root.u
-        animated: root._animated
-        exiting: root.exiting
+        at: 420
+        dur: 420
+        dy: -16 * root.u
 
         CustomText {
             content: root.greeter ? "Sign in, " + LockSession.user : LockSession.greeting + ", " + LockSession.user
             size: Math.round(30 * root.u)
-            renderType: Text.QtRendering
+            renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
             weight: 500
             customColor: Colors.surfaceVariantText
         }
@@ -94,13 +112,13 @@ Item {
         Digit { index: 0 }
         Digit { index: 1 }
 
-        MotionEnter {
+        LockPart {
+            line: tl
             anchors.verticalCenter: parent.verticalCenter
-            delay: 260
-            dy: 0
-            fromScale: 0
-            animated: root._animated
-            exiting: root.exiting
+            at: 480
+            dur: 300
+            fromScale: 0.4
+            fade: 2
 
             Column {
                 spacing: 36 * root.u
@@ -123,18 +141,19 @@ Item {
         Digit { index: 3 }
     }
 
-    MotionEnter {
+    LockPart {
+        line: tl
         visible: root.cfg.showDate !== false
         anchors.horizontalCenter: parent.horizontalCenter
         y: 500 * root.u
-        delay: 480
-        animated: root._animated
-        exiting: root.exiting
+        at: 520
+        dur: 420
+        dy: 24 * root.u
 
         CustomText {
             content: LockSession.weekday + ", " + LockSession.month + " " + LockSession.dayNum
             size: Math.round(40 * root.u)
-            renderType: Text.QtRendering
+            renderType: root.preview ? Text.CurveRendering : Text.NativeRendering
             weight: 600
         }
     }
@@ -148,15 +167,16 @@ Item {
         Repeater {
             model: status.entries
 
-            delegate: MotionEnter {
+            delegate: LockPart {
                 id: chip
                 required property var modelData
                 required property int index
-                dy: 0
-                fromScale: 0.2
-                delay: 560 + chip.index * 70
-                animated: root._animated
-                exiting: root.exiting
+                line: tl
+                fromScale: 0.6
+                at: 580 + chip.index * 60
+                dur: 420
+                curve: tl.spring
+                fade: 3
 
                 Column {
                     spacing: 12 * root.u
@@ -188,13 +208,13 @@ Item {
         }
     }
 
-    MotionEnter {
+    LockPart {
+        line: tl
         anchors.horizontalCenter: parent.horizontalCenter
         y: root.height - height - 92 * root.u
-        delay: 640
-        dy: 40 * root.u
-        animated: root._animated
-        exiting: root.exiting
+        at: 600
+        dur: 460
+        dy: 30 * root.u
 
         RowLayout {
             spacing: 18 * root.u
@@ -224,15 +244,14 @@ Item {
         }
     }
 
-    MotionEnter {
+    LockPart {
+        line: tl
         visible: root._music
         x: 72 * root.u
         y: root.height - height - 100 * root.u
-        delay: 720
+        at: 680
+        dur: 460
         dx: -30 * root.u
-        dy: 0
-        animated: root._animated
-        exiting: root.exiting
 
         Rectangle {
             width: musicRow.implicitWidth + 34 * root.u
@@ -285,15 +304,14 @@ Item {
         }
     }
 
-    MotionEnter {
+    LockPart {
+        line: tl
         visible: root.cfg.showPower !== false
         x: root.width - width - 72 * root.u
         y: root.height - height - 104 * root.u
-        delay: 720
+        at: 680
+        dur: 460
         dx: 30 * root.u
-        dy: 0
-        animated: root._animated
-        exiting: root.exiting
 
         LockPowerActions {
             variant: "icons"

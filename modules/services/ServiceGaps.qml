@@ -30,6 +30,8 @@ Singleton {
     }
 
     property var occupied: ({})
+    property var frame: ({ on: 0 })
+    property Item barItem: null
 
 
     readonly property var screenBorder: SettingsConfig.bar?.border ?? ({})

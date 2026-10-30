@@ -6,19 +6,27 @@ function meterColorOpt(styles) {
                          { "value": "tertiary", "label": "Tertiary" }, { "value": "error", "label": "Error" },
                          { "value": "surfaceText", "label": "Text" }] }
 }
+function thicknessOpt(styles) {
+    return { "key": "thickness", "label": "Progress thickness", "type": "slider", "min": 1, "max": 8, "step": 1, "default": -1,
+             "auto": "Auto", "unit": " px", "onlyIf": { "key": "style", "values": styles } }
+}
 function shapeMeterOpts(style, shape) {
     return [{ "key": "shape", "label": "Shape", "type": "shape", "default": shape, "onlyIf": { "key": "style", "values": [style] } },
             { "key": "meter", "label": "Meter", "type": "grid", "default": "progress", "onlyIf": { "key": "style", "values": [style] },
               "choices": [{ "value": "progress", "label": "Progress", "icon": "progress_activity" },
-                          { "value": "fill",     "label": "Fill",     "icon": "water_drop" }] }]
+                          { "value": "fill",     "label": "Fill",     "icon": "water_drop" },
+                          { "value": "sweep",    "label": "Sweep",    "icon": "clock_loader_60" }] },
+            thicknessOpt([style])]
 }
 function levelOptions(icon, shape) {
     return [{ "key": "style", "label": "Style", "type": "grid", "default": "icon",
               "choices": [{ "value": "icon", "label": "Icon", "icon": icon },
                           { "value": "fill", "label": "Fill", "icon": "water_drop" },
+                          { "value": "sweep", "label": "Sweep", "icon": "clock_loader_60" },
                           { "value": "cookie", "label": "Progress", "icon": "progress_activity" }] },
-            { "key": "shape", "label": "Shape", "type": "shape", "default": shape, "onlyIf": { "key": "style", "values": ["fill", "cookie"] } },
-            meterColorOpt(["fill", "cookie"]),
+            { "key": "shape", "label": "Shape", "type": "shape", "default": shape, "onlyIf": { "key": "style", "values": ["fill", "sweep", "cookie"] } },
+            meterColorOpt(["fill", "sweep", "cookie"]),
+            thicknessOpt(["cookie"]),
             { "key": "showPercent", "label": "Show percentage", "type": "toggle", "default": true, "onlyIf": { "key": "style", "values": ["icon"] } }]
 }
 function statOptions(shape) {
@@ -57,16 +65,13 @@ function musicOptions(style) {
     return [{ key: "style", label: "Style", type: "grid", default: style,
               choices: [{ value: "pill",    label: "Transport", icon: "skip_next" },
                         { value: "develop", label: "Develop",   icon: "filter_b_and_w" },
-                        { value: "drop",    label: "Drop",      icon: "water_drop" },
-                        { value: "buttons", label: "Buttons",   icon: "view_week" },
-                        { value: "shelf",   label: "Shelf",     icon: "shelves" },
-                        { value: "counter", label: "Counter",   icon: "timer" },
                         { value: "shape",   label: "Shape",     icon: "interests" }] },
             { key: "panel", label: "Panel", type: "choice", default: "match",
-              choices: [{ value: "match", label: "Same as style" }, { value: "side", label: "Side by side" },
-                        { value: "develop", label: "Develop" }, { value: "drop", label: "Drop" },
-                        { value: "buttons", label: "Buttons" }, { value: "shelf", label: "Shelf" },
-                        { value: "counter", label: "Counter" }, { value: "shape", label: "Shape" }] },
+              choices: [{ value: "match", label: "Same as style" }, { value: "poster", label: "Poster" },
+                        { value: "dial", label: "Dial" }, { value: "sources", label: "Sources" },
+                        { value: "beads", label: "Beads" }, { value: "develop", label: "Develop" },
+                        { value: "shape", label: "Shape" }] },
+            { key: "artShape", label: "Art shape", type: "shape", setting: "musicArtShape", default: "cookie9" },
             { key: "hideIdle", label: "Hide when nothing plays", type: "toggle", default: false }]
 }
 
@@ -79,6 +84,10 @@ function build(env) {
                                 { value: "worm",    label: "Worm",      icon: "more_horiz" },
                                 { value: "goo",     label: "Goo",       icon: "bubble_chart" },
                                 { value: "bounce",  label: "Bounce",    icon: "sports_basketball" },
+                                { value: "connected", label: "Connected", icon: "view_column" },
+                                { value: "slider",  label: "Slider",    icon: "linear_scale" },
+                                { value: "wavy",    label: "Wavy track", icon: "waves" },
+                                { value: "morph",   label: "Shape morph", icon: "category" },
                                 { value: "numbers", label: "Numbers",   icon: "pin" },
                                 { value: "kanji",   label: "Kanji",     icon: "translate" },
                                 { value: "lanterns", label: "Lanterns", icon: "light" },
@@ -140,7 +149,9 @@ function build(env) {
           options: [{ key: "popupStyle", label: "Popups without a Popups item", type: "choice", setting: "notifPopupStyle", default: "item",
                       choices: [{ value: "item", label: "From the bell" }, { value: "icon", label: "Dock icons" }] }] },
         { id: "popups",        label: "Popups",        icon: "notifications_active", group: "Core", anchor: true,
-          options: [{ key: "timeout", label: "Seconds on screen", type: "slider", section: "notifications", setting: "popupTimeout",
+          options: [{ key: "look", label: "Look", type: "choice", section: "notifications", setting: "popupLook", default: "cards",
+                      choices: [{ value: "cards", label: "Cards", icon: "view_agenda" }, { value: "island", label: "Island", icon: "pill" }] },
+                    { key: "timeout", label: "Seconds on screen", type: "slider", section: "notifications", setting: "popupTimeout",
                       min: 1, max: 30, step: 1, default: 5 },
                     { key: "cards", label: "Cards at once", type: "slider", section: "notifications", setting: "maxVisible",
                       min: 1, max: 5, step: 1, default: 3 },
@@ -158,14 +169,16 @@ function build(env) {
           options: [{ key: "style", label: "Style", type: "grid", default: "icon",
                       choices: [{ value: "icon",  label: "Icon",     icon: "battery_android_full" },
                                 { value: "fill",  label: "Fill",     icon: "water_drop" },
+                                { value: "sweep", label: "Sweep",    icon: "clock_loader_60" },
                                 { value: "cell",  label: "Cell",     icon: "battery_horiz_075" },
                                 { value: "pill",  label: "Pill",     icon: "pill" },
                                 { value: "ring",  label: "Ring",     icon: "donut_large" },
                                 { value: "tall",  label: "Upright",  icon: "battery_full" },
                                 { value: "bars",  label: "Steps",    icon: "view_week" },
                                 { value: "shape", label: "Progress", icon: "progress_activity" }] },
-                    { key: "shape", label: "Shape", type: "shape", default: "cookie9", onlyIf: { key: "style", values: ["fill", "shape"] } },
-                    meterColorOpt(["fill", "shape"]),
+                    { key: "shape", label: "Shape", type: "shape", default: "cookie9", onlyIf: { key: "style", values: ["fill", "sweep", "shape"] } },
+                    meterColorOpt(["fill", "sweep", "shape"]),
+                    thicknessOpt(["shape"]),
                     { key: "showPercent", label: "Show percentage", type: "toggle", default: false,
                       onlyIf: { key: "style", values: ["icon", "cell", "ring", "tall", "bars"] } }] },
         { id: "phoneStatus",   label: "Phone status",  icon: "smartphone",           group: "Core",
@@ -218,6 +231,7 @@ function build(env) {
                     { key: "longMin", label: "Long break (min)", type: "slider", setting: "focusLongBreak", min: 5, max: 45, step: 5, default: 15 },
                     { key: "rounds", label: "Sessions per round", type: "slider", setting: "focusRounds", min: 2, max: 8, step: 1, default: 4 }] },
         { id: "caffeine",      label: "Caffeine",      icon: "coffee",               group: "Toggles", options: [showLabelOpt] },
+        { id: "wiz",           label: "Smart light",   icon: "lightbulb",            group: "Toggles", options: [showLabelOpt] },
         { id: "dnd",           label: "Do not disturb", icon: "do_not_disturb_on",   group: "Toggles", options: [showLabelOpt] },
         { id: "gameMode",      label: "Game mode",     icon: "sports_esports",       group: "Toggles", options: [showLabelOpt] },
 
@@ -229,7 +243,7 @@ function build(env) {
                     { key: "radius", label: "Corner radius", type: "slider", setting: "launcherRadius", min: 0, max: 40, step: 2, default: -1,
                       auto: "Match bar", onlyIf: { key: "position", values: ["center"] } },
                     { key: "hLayout", label: "Layout", type: "heading" },
-                    { key: "style", label: "Style", type: "grid", setting: "launcherStyle", default: "list",
+                    { key: "style", label: "Style", type: "grid", setting: "launcherStyle", default: "palette",
                       choices: env.launcherStyles.map(x => ({ value: x.value, label: x.label, icon: x.icon })) },
                     { key: "iconSize", label: "Icon size", type: "slider", setting: "launcherIconSize", min: 20, max: 48, step: 2, default: 30 },
                     { key: "hOrder", label: "Order", type: "heading" },
@@ -257,6 +271,10 @@ function build(env) {
         { id: "kindle",        label: "Kindle",        icon: "auto_stories",         group: "Launchers", options: [showLabelOpt] },
         { id: "dashboard",     label: "Dashboard",     icon: "space_dashboard",      group: "Launchers",
           options: [showLabelOpt,
+                    { key: "style", label: "Wide layout", type: "choice", setting: "dashWideStyle", default: "rail",
+                      choices: [{ value: "rail", label: "Rail", icon: "view_sidebar" }, { value: "ribbon", label: "Day ribbon", icon: "wb_twilight" },
+                                { value: "instruments", label: "Instruments", icon: "speed" }, { value: "poster", label: "Poster", icon: "format_size" },
+                                { value: "stage", label: "Stage", icon: "album" }, { value: "planner", label: "Planner", icon: "calendar_month" }] },
                     { key: "profile",  label: "Profile and date",       type: "toggle", setting: "dashProfile",  default: true },
                     { key: "toggles",  label: "Quick toggles",          type: "toggle", setting: "dashToggles",  default: true },
                     { key: "sliders",  label: "Volume and brightness",  type: "toggle", setting: "dashSliders",  default: true },

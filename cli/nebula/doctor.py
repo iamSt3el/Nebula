@@ -36,11 +36,14 @@ TOOLS = [
     ("jq",            "jq",             "Clipboard pocket"),
     ("ddcutil",       "ddcutil",        "Monitor brightness over DDC"),
     ("gowall",        "gowall",         "Gowall palettes"),
+    ("easyeffects",   "easyeffects",    "Sound effects"),
+    ("grub-mkfont",   "grub",           "GRUB theme (nebula grub)"),
 ]
 
 MODULES = [
     ("materialyoucolor", "python-materialyoucolor", "Wallpaper colours"),
     ("PIL",              "python-pillow",           "Image scaling and previews"),
+    ("fontTools",        "python-fonttools",        "Google Sans Flex Clock font"),
 ]
 
 

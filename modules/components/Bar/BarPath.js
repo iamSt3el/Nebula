@@ -101,10 +101,10 @@ function sdfShape(bs, o, out) {
     const sideTouch = px => Math.max(clamp(1 - (px - touchL) / rMax, 0, 1),
                                      clamp(1 - (touchR - px) / rMax, 0, 1))
 
-    const factor = (edgeTouch, b, px, melt, ef) => {
+    const factor = (edgeTouch, b, px, ef) => {
         const fE = ef * edgeTouch
         const fB = o.bottomFlare * clamp(1 - (o.screenH - b) / rMax, 0, 1)
-            * (melt ? 1 : sideTouch(px))
+            * sideTouch(px)
         return { s: 1 - 2 * Math.max(fE, fB), vertical: fE >= fB }
     }
 
@@ -125,11 +125,10 @@ function sdfShape(bs, o, out) {
         const risen = r => b.vh ? Math.min(r, Math.max(0, Math.min(hL, hR) - Math.min(rMax, w / 2))) : r
         const raL = risen(Math.max(0, Math.min(entry[i], x - curX)))
         const raR = risen(Math.min(rMax, hR / 2, reach[i + 1], share[i + 1]))
-        const melt = b.melt === true
 
         let rl = 0
         let rr = 0
-        const cl = factor(i === 0 ? clamp(1 - gaps[0] / rMax, 0, 1) : 0, y, x, melt, flareL)
+        const cl = factor(i === 0 ? clamp(1 - gaps[0] / rMax, 0, 1) : 0, y, x, flareL)
         if (cl.s >= 0) {
             rl = Math.min(rMax, vL - raL, w / 2) * cl.s
         } else {
@@ -138,7 +137,7 @@ function sdfShape(bs, o, out) {
             if (r > 0.01)
                 out.flares.push({ x: x, y: y, r: r, mode: cl.vertical ? 1 : 2 })
         }
-        const cr = factor(i === n - 1 ? clamp(1 - gaps[n] / rMax, 0, 1) : 0, y, X, melt, flareR)
+        const cr = factor(i === n - 1 ? clamp(1 - gaps[n] / rMax, 0, 1) : 0, y, X, flareR)
         if (cr.s >= 0) {
             rr = Math.min(rMax, vR - raR, w / 2) * cr.s
         } else {

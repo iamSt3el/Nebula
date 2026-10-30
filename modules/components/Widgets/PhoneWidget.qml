@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
 import qs.modules.utils
 import qs.modules.services
 import qs.modules.settings
@@ -15,33 +14,44 @@ WidgetHost {
     readonly property bool near: root.preview || ServicePhone.ready
     readonly property int battery: root.preview ? 64 : ServicePhone.battery
     readonly property bool paired: root.preview || ServicePhone.paired
-    readonly property string name: root.preview ? "Phone" : (ServicePhone.name || "Phone")
+    readonly property bool charging: root.preview || ServicePhone.charging
+    readonly property int notifs: root.preview ? 3 : ServicePhone.notifs
+    readonly property string name: root.preview ? "POCO M3 Pro" : (ServicePhone.name || "Phone")
+    readonly property bool known: root.near && root.battery >= 0
+    readonly property bool low: root.known && root.battery <= 15
+    readonly property string display: SettingsConfig.general?.displayFont || "Titan One"
 
-    component PhoneButton: Rectangle {
-        id: pb
+    component GroupButton: Rectangle {
+        id: gb
         property string icon: ""
         property string tip: ""
+        property real startR: 6
+        property real endR: 6
         signal activated
-        width: 36
-        height: 36
-        radius: 12
-        color: pbArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
+        Layout.fillWidth: true
+        Layout.preferredHeight: 40
+        topLeftRadius: gb.startR
+        bottomLeftRadius: gb.startR
+        topRightRadius: gb.endR
+        bottomRightRadius: gb.endR
+        color: gbArea.containsMouse && root.near ? Colors.surfaceContainerHighest : Colors.secondaryContainer
         opacity: root.near ? 1 : 0.45
+        Behavior on color { EffectsColorAnim {} }
         MaterialIconSymbol {
             anchors.centerIn: parent
-            content: pb.icon
-            iconSize: 18
-            customColor: Colors.primary
+            content: gb.icon
+            iconSize: 20
+            customColor: Colors.secondaryContainerText
         }
         MouseArea {
-            id: pbArea
+            id: gbArea
             anchors.fill: parent
             hoverEnabled: true
             enabled: root.near && !root.preview
             cursorShape: Qt.PointingHandCursor
-            onClicked: pb.activated()
+            onClicked: gb.activated()
         }
-        CustomToolTip { content: pb.tip; visible: pbArea.containsMouse }
+        CustomToolTip { content: gb.tip; visible: gbArea.containsMouse }
     }
 
     WidgetCard {
@@ -50,96 +60,124 @@ WidgetHost {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: parent.pad
-            spacing: 6
+            spacing: 10
 
-            WidgetTitle {
-                Layout.fillWidth: true
-                icon: "smartphone"
-                title: root.name
-            }
-
-            Item {
+            RowLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                spacing: 14
 
-                Item {
-                    id: ring
-                    anchors.centerIn: parent
-                    width: Math.min(parent.width, parent.height, 84)
-                    height: width
-                    visible: root.near && root.battery >= 0
-                    readonly property real frac: Math.max(0, Math.min(1, root.battery / 100))
+                Rectangle {
+                    id: body
+                    Layout.preferredWidth: 58
+                    Layout.preferredHeight: Math.min(100, parent.height)
+                    Layout.alignment: Qt.AlignVCenter
+                    radius: 18
+                    color: Colors.surfaceContainerHighest
 
-                    Shape {
-                        anchors.fill: parent
-                        preferredRendererType: Shape.CurveRenderer
-                        ShapePath {
-                            strokeColor: Colors.surfaceContainerHighest
-                            strokeWidth: 8
-                            fillColor: "transparent"
-                            capStyle: ShapePath.RoundCap
-                            PathAngleArc { centerX: ring.width / 2; centerY: ring.height / 2; radiusX: ring.width / 2 - 5; radiusY: ring.height / 2 - 5; startAngle: 0; sweepAngle: 360 }
-                        }
-                        ShapePath {
-                            strokeColor: root.battery <= 15 ? Colors.error : Colors.tertiary
-                            strokeWidth: 8
-                            fillColor: "transparent"
-                            capStyle: ShapePath.RoundCap
-                            PathAngleArc { centerX: ring.width / 2; centerY: ring.height / 2; radiusX: ring.width / 2 - 5; radiusY: ring.height / 2 - 5; startAngle: -90; sweepAngle: 360 * ring.frac }
-                        }
+                    readonly property real inset: 4
+                    readonly property real innerH: body.height - body.inset * 2
+                    readonly property real level: root.known ? Math.max(0, Math.min(1, root.battery / 100)) : 0
+
+                    Rectangle {
+                        x: body.inset
+                        width: body.width - body.inset * 2
+                        height: body.innerH * body.level
+                        y: body.height - body.inset - height
+                        visible: height > 0.5
+                        readonly property real r: body.radius - body.inset
+                        bottomLeftRadius: r
+                        bottomRightRadius: r
+                        topLeftRadius: Math.max(0, Math.min(r, r - (body.innerH - height)))
+                        topRightRadius: topLeftRadius
+                        color: root.low ? Colors.error : Colors.primary
+                        Behavior on height { SpatialAnim { speed: "slow" } }
+                        Behavior on color { EffectsColorAnim {} }
                     }
 
-                    Column {
-                        anchors.centerIn: parent
-                        CustomText {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            content: root.battery + "%"
-                            size: 16
-                            weight: 600
-                        }
-                        MaterialIconSymbol {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            visible: ServicePhone.charging && !root.preview
-                            content: "bolt"
-                            iconSize: 14
-                            customColor: Colors.tertiary
-                        }
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: 7
+                        width: 16
+                        height: 4
+                        radius: 2
+                        color: Colors.outlineVariant
                     }
-                }
 
-                Column {
-                    anchors.centerIn: parent
-                    visible: !ring.visible
-                    spacing: 4
                     MaterialIconSymbol {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        content: root.paired ? "phonelink_off" : "phonelink_setup"
-                        iconSize: 30
-                        customColor: Colors.outline
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 10
+                        visible: !root.known || root.charging
+                        content: !root.known ? (root.paired ? "phonelink_off" : "phonelink_setup") : "bolt"
+                        iconSize: 18
+                        customColor: !root.known ? Colors.outline : (root.low ? Colors.errorText : Colors.primaryText)
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 2
+
+                    CustomText {
+                        Layout.fillWidth: true
+                        content: root.known ? root.battery + "%" : "—"
+                        family: root.display
+                        size: 30
+                        weight: 400
+                        customColor: root.low ? Colors.error : Colors.surfaceText
                     }
                     CustomText {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        content: !root.paired ? "Pair with KDE Connect" : root.near ? "Battery unknown" : "Not nearby"
+                        Layout.fillWidth: true
+                        content: root.name
                         size: 12
-                        customColor: Colors.outline
+                        weight: 700
+                    }
+                    CustomText {
+                        Layout.fillWidth: true
+                        content: !root.paired ? "Pair with KDE Connect"
+                               : !root.near ? "Not nearby"
+                               : root.charging ? "Charging · nearby" : "Nearby"
+                        size: 11
+                        weight: 500
+                        customColor: Colors.surfaceVariantText
+                    }
+                    Rectangle {
+                        Layout.topMargin: 4
+                        visible: root.near && root.notifs > 0
+                        implicitWidth: notifRow.implicitWidth + 16
+                        implicitHeight: 22
+                        radius: 11
+                        color: Colors.tertiaryContainer
+                        Row {
+                            id: notifRow
+                            anchors.centerIn: parent
+                            spacing: 4
+                            MaterialIconSymbol {
+                                anchors.verticalCenter: parent.verticalCenter
+                                content: "notifications"
+                                iconSize: 14
+                                customColor: Colors.tertiaryContainerText
+                            }
+                            CustomText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                content: root.notifs.toString()
+                                size: 11
+                                weight: 700
+                                customColor: Colors.tertiaryContainerText
+                            }
+                        }
                     }
                 }
             }
 
-            Row {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 8
-                PhoneButton { icon: "volume_up"; tip: "Ring phone"; onActivated: ServicePhone.ring() }
-                PhoneButton { icon: "upload_file"; tip: "Send a file"; onActivated: GlobalStates.phoneOpen = true }
-                PhoneButton { icon: "content_paste"; tip: "Send clipboard"; onActivated: ServicePhone.sendClipboard() }
-            }
-
-            CustomText {
-                Layout.alignment: Qt.AlignHCenter
-                visible: root.near && (root.preview || ServicePhone.notifs > 0)
-                content: (root.preview ? 3 : ServicePhone.notifs) + " notifications"
-                size: 11
-                customColor: Colors.outline
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                GroupButton { icon: "ring_volume"; tip: "Ring phone"; startR: 20; onActivated: ServicePhone.ring() }
+                GroupButton { icon: "upload_file"; tip: "Send a file"; onActivated: GlobalStates.phoneOpen = true }
+                GroupButton { icon: "content_paste_go"; tip: "Send clipboard"; endR: 20; onActivated: ServicePhone.sendClipboard() }
             }
         }
     }

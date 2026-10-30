@@ -270,10 +270,10 @@ PACMAN_PKGS=(
   gcc cmake extra-cmake-modules
 )
 pacman -Qq quickshell-git &>/dev/null || PACMAN_PKGS+=(quickshell)
-PACMAN_PKGS_OPT=(ddcutil papirus-icon-theme yt-dlp)
+PACMAN_PKGS_OPT=(ddcutil papirus-icon-theme yt-dlp easyeffects)
 v sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
 sudo pacman -S --needed --noconfirm "${PACMAN_PKGS_OPT[@]}" \
-  || warn "Optional packages failed (ddcutil, papirus-icon-theme, yt-dlp)"
+  || warn "Optional packages failed (ddcutil, papirus-icon-theme, yt-dlp, easyeffects)"
 
 # ── uv (fast Python package manager) ─────────────────────────────────────────
 step "uv (Python toolchain)"
@@ -315,7 +315,8 @@ else
   "$AUR_HELPER" -S --needed --noconfirm "${AUR_PKGS_OPT[@]}" || warn "Optional AUR package failed (gowall)"
 fi
 
-# Rubik (UI) and Titan One (display) straight from the Google Fonts repo;
+# Rubik (UI), Titan One and Google Sans Flex (display) and Literata (reading)
+# straight from the Google Fonts repo;
 # the ttf-rubik AUR package is broken
 step "Fonts"
 FONTS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
@@ -339,14 +340,23 @@ fetch_font() {
 fetch_font "Rubik"             ofl/rubik              "Rubik%5Bwght%5D.ttf|Rubik[wght].ttf" "Rubik-Italic%5Bwght%5D.ttf|Rubik-Italic[wght].ttf"
 fetch_font "Titan One"         ofl/titanone           "TitanOne-Regular.ttf|TitanOne-Regular.ttf"
 fetch_font "Just Another Hand" apache/justanotherhand "JustAnotherHand-Regular.ttf|JustAnotherHand-Regular.ttf"
+fetch_font "Google Sans Flex"  ofl/googlesansflex     "GoogleSansFlex%5BROND%2Copsz%2Cslnt%2Cwdth%2Cwght%5D.ttf|GoogleSansFlex[ROND,opsz,slnt,wdth,wght].ttf"
+fetch_font "Literata"          ofl/literata           "Literata%5Bopsz%2Cwght%5D.ttf|Literata[opsz,wght].ttf" "Literata-Italic%5Bopsz%2Cwght%5D.ttf|Literata-Italic[opsz,wght].ttf"
 fc-cache -f "$FONTS_DIR" >/dev/null
 
 # ── Python venv via uv ────────────────────────────────────────────────────────
 step "Python environment"
 mkdir -p "$(dirname "$VENV_DIR")"
 v uv venv --prompt nebula "$VENV_DIR" -p 3.12
-v uv pip install materialyoucolor Pillow --python "$VENV_DIR/bin/python"
+v uv pip install materialyoucolor Pillow fonttools skia-pathops --python "$VENV_DIR/bin/python"
 ok "Python venv ready at $VENV_DIR"
+CLOCK_FONT_SRC="$FONTS_DIR/GoogleSansFlex[ROND,opsz,slnt,wdth,wght].ttf"
+[[ -f "$CLOCK_FONT_SRC" ]] || CLOCK_FONT_SRC="$(fc-list -f '%{file}\n' 'Google Sans Flex' | grep -m1 'GoogleSansFlex\[')"
+if [[ -f "$CLOCK_FONT_SRC" && ! -f "$FONTS_DIR/GoogleSansFlexClock-Regular.ttf" ]]; then
+  "$VENV_DIR/bin/python" "$INSTALL_DIR/scripts/flex_clock_font.py" "$CLOCK_FONT_SRC" "$FONTS_DIR/GoogleSansFlexClock-Regular.ttf" \
+    && fc-cache -f "$FONTS_DIR" >/dev/null && ok "Google Sans Flex Clock generated" \
+    || warn "Google Sans Flex Clock generation failed"
+fi
 
 # ── WfRecorder plugin ─────────────────────────────────────────────────────────
 step "WfRecorder plugin"

@@ -48,8 +48,6 @@ Item {
             if (root.hostBlock)
                 root.hostBlock.openTrayMenu(trayItem, proxy.opener())
         }
-        function registerDrop() {
-        }
         function appMenu() {
         }
         function appEntered() {

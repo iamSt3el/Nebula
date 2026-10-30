@@ -31,6 +31,16 @@ Item {
 
     implicitWidth: 96
     implicitHeight: 96
+    property bool _maskFresh: false
+
+    Connections {
+        target: root.Window.window
+        enabled: !root._maskFresh
+        function onFrameSwapped() {
+            root._maskFresh = true
+            maskShape.update()
+        }
+    }
 
     Item {
         id: mask
@@ -41,6 +51,7 @@ Item {
         layer.mipmap: true
 
         MaterialShapes.ShapeCanvas {
+            id: maskShape
             anchors.fill: parent
             rotation: root.shapeRotation
             roundedPolygon: ShapeLibrary.get(root.shapeName) ?? ShapeLibrary.get("circle")
@@ -52,6 +63,8 @@ Item {
         id: art
         anchors.fill: parent
         visible: false
+        layer.enabled: true
+        layer.smooth: true
 
         Image {
             id: img
@@ -86,13 +99,17 @@ Item {
         }
     }
 
-    MultiEffect {
+    Loader {
         anchors.fill: parent
-        visible: root.hasImage
-        source: art
-        maskEnabled: true
-        maskSource: mask
-        maskThresholdMin: 0.5
-        maskSpreadAtMin: 1.0
+        active: root.Window.window !== null
+        visible: active
+
+        sourceComponent: MultiEffect {
+            source: art
+            maskEnabled: true
+            maskSource: mask
+            maskThresholdMin: 0.5
+            maskSpreadAtMin: 1.0
+        }
     }
 }

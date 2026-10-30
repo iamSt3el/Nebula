@@ -38,12 +38,25 @@ Singleton{
             .trim()
     }
 
+    function _norm(t) {
+        return String(t).toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9\u00c0-\u024f\u0400-\u04ff\u0900-\u097f ]+/g, " ").replace(/\s+/g, " ").trim()
+    }
+
+    function _artists(t) {
+        return String(t).split(/,|&|\band\b|\bx\b|\bfeat\.?|\bft\.?|\bwith\b/i).map(a => root._norm(a)).filter(a => a.length > 1)
+    }
+
     function _considerHd() {
         const p = root.activePlayer
         if (!p || !p.trackTitle || p.trackTitle === "")
             return
         const key = root._hdKey(p.trackTitle, p.trackArtist ?? "")
-        if (root._hdCache[key] !== undefined || artLookup.running || artFetch.running || ytLookup.running)
+        const known = root._hdCache[key]
+        if (typeof known === "string" && known !== "")
+            return
+        if (known && Date.now() - known.failedAt < 600000)
+            return
+        if (diskCheck.running || artLookup.running || artFetch.running || ytLookup.running)
             return
         if (root._rawArt !== "") {
             if (artProbe.status === Image.Loading || artProbe.status === Image.Null)
@@ -52,18 +65,34 @@ Singleton{
                 return
         }
         artLookup.forKey = key
-        artLookup.forArtist = String(p.trackArtist ?? "").toLowerCase()
-        artLookup.forAlbum = String(p.trackAlbum ?? "").toLowerCase()
+        artLookup.forArtists = root._artists(p.trackArtist ?? "")
+        artLookup.forTitle = root._norm(root._cleanTitle(p.trackTitle))
+        artLookup.forAlbum = root._norm(p.trackAlbum ?? "")
         artLookup.forQuery = ((p.trackArtist ?? "") + " " + p.trackTitle).trim()
         artLookup.command = ["curl", "-sf", "-m", "8", "-G", "https://itunes.apple.com/search",
                              "--data-urlencode", "term=" + ((p.trackArtist ?? "") + " " + root._cleanTitle(p.trackTitle)).trim(),
                              "--data-urlencode", "entity=song", "--data-urlencode", "limit=8"]
-        artLookup.running = true
+        diskCheck.forKey = key
+        diskCheck.file = root._artDir + "/" + Qt.md5(key) + ".jpg"
+        diskCheck.command = ["test", "-s", diskCheck.file]
+        diskCheck.running = true
+    }
+
+    Process {
+        id: diskCheck
+        property string forKey: ""
+        property string file: ""
+        onExited: code => {
+            if (code === 0)
+                root._applyHd(diskCheck.forKey, "file://" + diskCheck.file)
+            else
+                artLookup.running = true
+        }
     }
 
     function _applyHd(key, url) {
         const cache = Object.assign({}, root._hdCache)
-        cache[key] = url
+        cache[key] = url !== "" ? url : { failedAt: Date.now() }
         root._hdCache = cache
         const p = root.activePlayer
         if (url !== "" && p && root._hdKey(p.trackTitle ?? "", p.trackArtist ?? "") === key && root.activeTrack)
@@ -86,10 +115,18 @@ Singleton{
 
     on_RawArtChanged: hdKick.restart()
 
+    Timer {
+        interval: 120000
+        repeat: true
+        running: root.isPlaying
+        onTriggered: root._considerHd()
+    }
+
     Process {
         id: artLookup
         property string forKey: ""
-        property string forArtist: ""
+        property var forArtists: []
+        property string forTitle: ""
         property string forAlbum: ""
         property string forQuery: ""
         stdout: StdioCollector { id: artOut }
@@ -97,12 +134,18 @@ Singleton{
             let url = ""
             try {
                 const results = JSON.parse(artOut.text).results ?? []
-                const a = artLookup.forArtist
+                const wanted = artLookup.forArtists
                 const byArtist = results.filter(r => {
-                    const n = String(r.artistName ?? "").toLowerCase()
-                    return a === "" || n.includes(a) || a.includes(n)
+                    const n = root._norm(r.artistName ?? "")
+                    return wanted.length === 0 || wanted.some(a => n.includes(a) || a.includes(n))
                 })
-                const pick = byArtist.find(r => String(r.collectionName ?? "").toLowerCase() === artLookup.forAlbum) ?? byArtist[0]
+                const title = artLookup.forTitle
+                const titled = byArtist.filter(r => {
+                    const t = root._norm(root._cleanTitle(r.trackName ?? ""))
+                    return title !== "" && (t === title || t.startsWith(title) || title.startsWith(t))
+                })
+                const pool = titled.length > 0 ? titled : byArtist
+                const pick = pool.find(r => root._norm(r.collectionName ?? "") === artLookup.forAlbum) ?? pool[0]
                 if (pick && pick.artworkUrl100)
                     url = String(pick.artworkUrl100).replace(/\/\d+x\d+bb\./, "/600x600bb.")
             } catch (e) {

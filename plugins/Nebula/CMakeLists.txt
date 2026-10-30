@@ -28,20 +28,18 @@ qt_add_qml_module(nebulaplugin
         shapes.cpp
         shapepainter.h
         shapepainter.cpp
-        barfield.h
-        barfield.cpp
         blobfield.h
         blobfield.cpp
+        cuttext.h
+        cuttext.cpp
     OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Nebula
 )
 
-qt_add_shaders(nebulaplugin "nebula_barfield_shaders"
+qt_add_shaders(nebulaplugin "nebula_blobfield_shaders"
     BATCHABLE OPTIMIZED NOHLSL NOMSL
     GLSL "300es,330"
     PREFIX "/"
     FILES
-        shaders/barfield.vert
-        shaders/barfield.frag
         shaders/blobfield.vert
         shaders/blobfield.frag
 )

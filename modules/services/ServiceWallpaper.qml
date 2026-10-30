@@ -641,6 +641,7 @@ Singleton {
                 ? parsed
                 : [...onlineWallpapers, ...parsed]
 
+            _queueThumbs(parsed)
             onlineTotal = meta.total || onlineWallpapers.length
             if (_requestPage === 1 && onlineTotal > 0 && currentSearchText.trim().length > 0)
                 _rememberSearch(currentSearchText.trim())
@@ -685,7 +686,39 @@ Singleton {
     }
 
     property var onlineThumbs: ({})
+    property var onlineThumbMiss: ({})
     property var _onlineThumbNext: null
+    property var _thumbWant: []
+
+    function onlineThumbUrl(item) {
+        if (!item || typeof item !== "object" || !item.id) return ""
+        const p = onlineThumbs[item.id]
+        if (p) return "file://" + p
+        return onlineThumbMiss[item.id] ? (item.thumbUrl || "") : ""
+    }
+
+    function _queueThumbs(items) {
+        const want = _thumbWant.slice()
+        for (const it of items)
+            if (it && it.id && it.thumbUrl && !onlineThumbs[it.id] && !want.some(w => w.id === it.id))
+                want.push(it)
+        _thumbWant = want
+        if (!thumbBatch.running)
+            _runThumbs()
+    }
+
+    function _runThumbs() {
+        const batch = _thumbWant.slice(0, 24)
+        _thumbWant = _thumbWant.slice(24)
+        if (batch.length === 0) return
+        const args = []
+        for (const it of batch)
+            args.push(it.id, it.thumbUrl)
+        thumbBatch._ids = batch.map(it => it.id)
+        thumbBatch.command = ["sh", Quickshell.shellDir + "/scripts/wallhaven_thumbs.sh", onlineThumbDir, ...args]
+        thumbBatch._got = ({})
+        thumbBatch.running = true
+    }
     readonly property string onlineThumbDir: StandardPaths.writableLocation(StandardPaths.CacheLocation).toString().replace("file://", "") + "/wallhaven-thumbs"
 
     function onlinePreviewFor(item) {
@@ -1224,6 +1257,31 @@ Singleton {
             const queued = root._detailNext
             root._detailNext = ""
             if (queued) Qt.callLater(root.requestDetails, queued)
+        }
+    }
+
+    Process {
+        id: thumbBatch
+        property var _ids: []
+        property var _got: ({})
+        stdout: SplitParser {
+            onRead: line => {
+                const id = line.trim()
+                if (id === "" || thumbBatch._ids.indexOf(id) < 0) return
+                thumbBatch._got[id] = true
+                const next = Object.assign({}, root.onlineThumbs)
+                next[id] = root.onlineThumbDir + "/" + id + ".jpg"
+                root.onlineThumbs = next
+            }
+        }
+        onExited: {
+            const miss = thumbBatch._ids.filter(id => !thumbBatch._got[id])
+            if (miss.length > 0) {
+                const next = Object.assign({}, root.onlineThumbMiss)
+                for (const id of miss) next[id] = true
+                root.onlineThumbMiss = next
+            }
+            Qt.callLater(root._runThumbs)
         }
     }
 

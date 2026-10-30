@@ -15,6 +15,7 @@ Rectangle {
 
     // Children placed directly inside CustomCard go into the inner ColumnLayout
     default property alias content: _layout.data
+    property alias contentSpacing: _layout.spacing
 
     color: Colors.surfaceContainerHigh
 

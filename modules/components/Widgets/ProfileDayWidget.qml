@@ -14,11 +14,11 @@ WidgetHost {
     maxSpan: Qt.size(6, 2)
     defaultPos: Qt.point(365, 165)
 
+    readonly property string display: SettingsConfig.general?.displayFont || "Titan One"
     readonly property var stats: [
-        { label: "Screen time", value: ServiceProfile.span(ServiceProfile.screenMs),
-          note: ServiceProfile.topApp ? ServiceProfile.appName(ServiceProfile.topApp.id) + " " + ServiceProfile.span(ServiceProfile.topApp.ms) : "Nothing yet" },
-        { label: "Commits", value: ServiceProfile.commitsToday + " today", note: ServiceProfile.commitsWeek + " this week" },
-        { label: "Uptime", value: ServiceProfile.uptimeText, note: "since " + ServiceProfile.bootText }
+        { label: "screen time", value: ServiceProfile.span(ServiceProfile.screenMs) },
+        { label: ServiceProfile.commitsToday === 1 ? "commit today" : "commits today", value: String(ServiceProfile.commitsToday) },
+        { label: "uptime", value: ServiceProfile.uptimeText }
     ]
 
     WidgetCard {
@@ -35,9 +35,9 @@ WidgetHost {
                 spacing: 12
 
                 ProfileAvatar {
-                    Layout.preferredWidth: 52
-                    Layout.preferredHeight: 52
-                    radius: 18
+                    Layout.preferredWidth: 44
+                    Layout.preferredHeight: 44
+                    radius: 16
                 }
 
                 ColumnLayout {
@@ -46,17 +46,17 @@ WidgetHost {
 
                     CustomText {
                         content: ServiceProfile.greeting
-                        size: 13
-                        weight: 400
+                        size: 12
+                        weight: 600
                         customColor: Colors.surfaceVariantText
                     }
 
                     CustomText {
                         Layout.fillWidth: true
                         content: ServiceProfile.name
-                        size: 26
+                        size: 20
                         weight: 400
-                        family: SettingsConfig.general.displayFont ?? "Titan One"
+                        family: root.display
                         renderType: Text.QtRendering
                         elide: Text.ElideRight
                     }
@@ -67,52 +67,41 @@ WidgetHost {
 
                     CustomText {
                         Layout.alignment: Qt.AlignRight
-                        content: Qt.formatTime(new Date(ServiceProfile.now), "h:mm AP")
-                        size: 20
-                        weight: 600
+                        content: Qt.formatTime(new Date(ServiceProfile.now), "h:mm")
+                        size: 28
+                        weight: 400
+                        family: root.display
+                        renderType: Text.QtRendering
                     }
 
                     CustomText {
                         Layout.alignment: Qt.AlignRight
-                        content: Qt.formatDate(new Date(ServiceProfile.now), "dddd, d MMM")
-                        size: 12
-                        weight: 400
-                        customColor: Colors.outline
+                        content: Qt.formatTime(new Date(ServiceProfile.now), "AP") + " · " + Qt.formatDate(new Date(ServiceProfile.now), "ddd d MMM")
+                        size: 11
+                        weight: 600
+                        customColor: Colors.surfaceVariantText
                     }
                 }
             }
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: 28
 
                 Repeater {
                     model: root.stats
 
-                    delegate: Rectangle {
-                        id: tileBox
+                    delegate: ColumnLayout {
+                        id: stat
                         required property var modelData
-                        Layout.fillWidth: true
-                        Layout.preferredWidth: 1
-                        Layout.minimumWidth: 0
-                        implicitHeight: 54
-                        radius: WidgetSizes.nestedRadius(card.width)
-                        color: Colors.surfaceContainerHigh
+                        spacing: 0
 
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 10
-                            anchors.topMargin: 7
-                            anchors.bottomMargin: 7
-                            spacing: 1
-
-                            CustomText { content: tileBox.modelData.label; size: 10; weight: 400; customColor: Colors.outline }
-                            CustomText { Layout.fillWidth: true; content: tileBox.modelData.value; size: 15; weight: 600; elide: Text.ElideRight }
-                            CustomText { Layout.fillWidth: true; content: tileBox.modelData.note; size: 10; weight: 400; customColor: Colors.surfaceVariantText; elide: Text.ElideRight }
-                        }
+                        CustomText { content: stat.modelData.value; size: 17; weight: 800 }
+                        CustomText { content: stat.modelData.label; size: 11; weight: 600; customColor: Colors.surfaceVariantText }
                     }
                 }
+
+                Item { Layout.fillWidth: true }
             }
 
             Item { Layout.fillHeight: true }
@@ -143,32 +132,34 @@ WidgetHost {
                 }
 
                 Rectangle {
-                    x: ServiceProfile.dayFrac * bar.width - 1
-                    y: -3
-                    width: 2
-                    height: bar.height + 6
-                    radius: 1
-                    color: Colors.surfaceText
+                    x: ServiceProfile.dayFrac * bar.width - width / 2
+                    y: (bar.height - height) / 2
+                    width: 20
+                    height: 20
+                    radius: 10
+                    color: Colors.tertiary
+                    border.width: 4
+                    border.color: WidgetSizes.cardColor
                 }
             }
 
             Item {
                 id: axis
                 Layout.fillWidth: true
-                Layout.topMargin: -7
-                implicitHeight: 12
+                Layout.topMargin: -4
+                implicitHeight: 13
 
                 Repeater {
-                    model: ["12 AM", "6 AM", "12 PM", "6 PM", "12 AM"]
+                    model: ["12 AM", "Noon", "12 AM"]
 
                     delegate: CustomText {
                         required property string modelData
                         required property int index
-                        x: Math.max(0, Math.min(axis.width - width, index / 4 * axis.width - width / 2))
+                        x: Math.max(0, Math.min(axis.width - width, index / 2 * axis.width - width / 2))
                         content: modelData
-                        size: 10
-                        weight: 400
-                        customColor: Colors.outline
+                        size: 11
+                        weight: 600
+                        customColor: Colors.surfaceVariantText
                     }
                 }
             }

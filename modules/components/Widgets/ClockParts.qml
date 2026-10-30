@@ -1,6 +1,7 @@
 import QtQuick
 import qs.modules.services
 import qs.modules.settings
+import qs.modules.utils
 
 QtObject {
     id: root
@@ -18,4 +19,13 @@ QtObject {
     readonly property string month: ServiceClock.month
     readonly property int day: parseInt(ServiceClock.date)
     readonly property string time: root.hour + ":" + root.minute
+
+    readonly property bool lightScheme: Qt.color(Colors.surface).hslLightness > 0.5
+    readonly property color ink: root.lightScheme ? Colors.inverseSurfaceText : Colors.surfaceText
+    readonly property color inkVariant: root.lightScheme ? Qt.alpha(Colors.inverseSurfaceText, 0.78) : Colors.surfaceVariantText
+    readonly property color accent: root.lightScheme ? Colors.inversePrimary : Colors.primary
+    readonly property color accentTertiary: {
+        const c = Qt.color(Colors.tertiary)
+        return root.lightScheme ? Qt.hsla(c.hslHue, c.hslSaturation, 0.8, 1) : c
+    }
 }

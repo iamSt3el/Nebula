@@ -1,39 +1,26 @@
+pragma ComponentBehavior: Bound
+
 import Quickshell
 import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
-import Quickshell.Widgets
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
+import "../../MatrialShapes/" as MaterialShapes
 
 Item {
     id: root
 
-    implicitHeight: col.implicitHeight + 24
+    implicitWidth: 360
+    implicitHeight: col.implicitHeight + 36
 
-    readonly property int countdownSeconds: 10
-
-    property string armed: ""
-    property int remaining: 0
-
-    readonly property string armedLabel: {
-        if (root.armed === "shutdown") return "Shutting down"
-        if (root.armed === "restart")  return "Restarting"
-        if (root.armed === "firmware") return "Restarting to firmware"
-        if (root.armed === "logout")   return "Logging out"
-        return ""
-    }
-
-    readonly property string armedIcon: {
-        if (root.armed === "shutdown") return "power_settings_new"
-        if (root.armed === "logout")   return "logout"
-        return "restart_alt"
-    }
+    property bool firmwareAsk: false
+    signal closeRequested()
 
     function run(action) {
-        if (action === "lock")     { Quickshell.execDetached(["loginctl", "lock-session"]); return }
+        if (action === "lock")     { root.closeRequested(); lockDelay.restart(); return }
         if (action === "sleep")    { Quickshell.execDetached(["systemctl", "suspend"]);     return }
         if (action === "logout")   { Hyprland.dispatch("hl.dsp.exit()");                    return }
         if (action === "restart")  { Quickshell.execDetached(["systemctl", "reboot"]);      return }
@@ -41,304 +28,459 @@ Item {
         if (action === "firmware") { Quickshell.execDetached(["systemctl", "reboot", "--firmware-setup"]) }
     }
 
-    function trigger(action, delayed) {
-        if (!delayed) {
-            root.run(action)
-            return
-        }
-        root.armed = action
-        root.remaining = root.countdownSeconds
-        tick.restart()
+    readonly property var tracks: [logoutTrack, restartTrack, shutdownTrack]
+    readonly property bool sliding: logoutTrack.auto || restartTrack.auto || shutdownTrack.auto
+
+    function autoSlide(track) {
+        for (const t of root.tracks)
+            if (t !== track) t.reset()
+        track.slide()
     }
 
-    function cancel() {
-        tick.stop()
-        root.armed = ""
-        root.remaining = 0
-    }
-
-    function commit() {
-        const action = root.armed
-        root.cancel()
-        root.run(action)
-    }
-
-    Timer {
-        id: tick
-        interval: 1000
-        repeat: true
-        onTriggered: {
-            root.remaining -= 1
-            if (root.remaining <= 0) root.commit()
-        }
+    function resetAll() {
+        for (const t of root.tracks)
+            t.reset()
+        root.firmwareAsk = false
     }
 
     onVisibleChanged: {
         GlobalStates.powerPanelOpen = root.visible
-        if (!root.visible) root.cancel()
+        if (root.visible) {
+            ServiceSystemInfo.getUptime()
+            return
+        }
+        for (const t of root.tracks)
+            t.clear()
+        root.firmwareAsk = false
     }
-    Component.onCompleted: GlobalStates.powerPanelOpen = root.visible
+    Component.onCompleted: {
+        GlobalStates.powerPanelOpen = root.visible
+        ServiceSystemInfo.getUptime()
+    }
     Component.onDestruction: GlobalStates.powerPanelOpen = false
+
+    Timer {
+        id: lockDelay
+        interval: 250
+        onTriggered: GlobalStates.lockRequested()
+    }
+
+    Timer {
+        id: firmwareTimer
+        interval: 3000
+        onTriggered: root.firmwareAsk = false
+    }
 
     Item {
         anchors.fill: parent
         focus: true
 
         Keys.onPressed: event => {
-            if (event.key === Qt.Key_Escape && root.armed !== "") {
-                root.cancel()
+            if (event.key === Qt.Key_Escape && (root.sliding || root.firmwareAsk)) {
+                root.resetAll()
                 event.accepted = true
                 return
             }
-            if (root.armed !== "") return
-
             switch (event.key) {
-            case Qt.Key_L: root.trigger("lock", false);    event.accepted = true; break
-            case Qt.Key_S: root.trigger("sleep", false);   event.accepted = true; break
-            case Qt.Key_E: root.trigger("logout", true);   event.accepted = true; break
-            case Qt.Key_R: root.trigger("restart", true);  event.accepted = true; break
-            case Qt.Key_P: root.trigger("shutdown", true); event.accepted = true; break
+            case Qt.Key_L: root.run("lock");                 event.accepted = true; break
+            case Qt.Key_S: root.run("sleep");                event.accepted = true; break
+            case Qt.Key_E: root.autoSlide(logoutTrack);      event.accepted = true; break
+            case Qt.Key_R: root.autoSlide(restartTrack);     event.accepted = true; break
+            case Qt.Key_P: root.autoSlide(shutdownTrack);    event.accepted = true; break
             }
         }
     }
 
     ColumnLayout {
         id: col
-        anchors { fill: parent; margins: 12 }
-        spacing: 4
+        x: 18
+        y: 18
+        width: root.width - 36
+        spacing: 12
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.margins: 8
-            Layout.bottomMargin: 14
-            spacing: 12
-
-            ClippingWrapperRectangle {
-                Layout.preferredWidth: 44
-                Layout.preferredHeight: 44
-                radius: 22
-                color: Colors.secondaryContainer
-
-                Image {
-                    anchors.fill: parent
-                    source: SettingsConfig.general.profile ?? ""
-                    sourceSize: Qt.size(88, 88)
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 0
-
-                CustomText {
-                    Layout.fillWidth: true
-                    content: Quickshell.env("USER") ?? ""
-                    size: 15
-                    weight: 700
-                    elide: Text.ElideRight
-                }
-
-                CustomText {
-                    Layout.fillWidth: true
-                    content: "up " + ServiceSystemInfo.getUptime()
-                    size: 12
-                    customColor: Colors.outline
-                    elide: Text.ElideRight
-                }
-            }
-
-            MaterialIconSymbol {
-                content: ServiceUPower.isCharging ? "battery_charging_full" : "battery_android_full"
-                iconSize: 18
-                customColor: Colors.primary
-            }
+            spacing: 8
 
             CustomText {
-                content: Math.round(ServiceUPower.powerLevel * 100) + "%"
-                size: 12
+                Layout.fillWidth: true
+                content: "Power"
+                size: 20
                 weight: 600
+            }
+            CustomText {
+                visible: (ServiceSystemInfo.uptime ?? "") !== ""
+                content: "Up " + (ServiceSystemInfo.uptime ?? "")
+                size: 13
+                weight: 400
+                customColor: Colors.surfaceVariantText
             }
         }
 
-        PowerRow { action: "lock";     icon: "lock";                label: "Lock";      cap: "L" }
-        PowerRow { action: "sleep";    icon: "bedtime";             label: "Sleep";     cap: "S" }
-        PowerRow { action: "logout";   icon: "logout";              label: "Log out";   cap: "E"; delayed: true }
-        PowerRow { action: "restart";  icon: "restart_alt";         label: "Restart";   cap: "R"; delayed: true }
-        PowerRow { action: "shutdown"; icon: "power_settings_new";  label: "Shut down"; cap: "P"; delayed: true
-                   tileColor: Colors.error; tileInk: Colors.errorText }
-
-        Rectangle {
+        RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            Layout.topMargin: 6
-            Layout.bottomMargin: 6
+            spacing: 8
+
+            PowerTile {
+                action: "lock"
+                icon: "lock"
+                label: "Lock"
+                detail: "Keeps everything open"
+                key: "L"
+                tone: Colors.primaryContainer
+                ink: Colors.primaryContainerText
+            }
+            PowerTile {
+                action: "sleep"
+                icon: "bedtime"
+                label: "Sleep"
+                detail: "Suspend to RAM"
+                key: "S"
+                tone: Colors.secondaryContainer
+                ink: Colors.secondaryContainerText
+            }
+        }
+
+        CustomText {
             Layout.leftMargin: 4
-            Layout.rightMargin: 4
-            color: Colors.outlineVariant
+            Layout.topMargin: 6
+            content: "Slide to confirm"
+            size: 13
+            weight: 600
+            customColor: Colors.primary
         }
 
-        PowerRow {
-            action: "firmware"
-            icon: "memory"
-            label: "Restart to firmware"
-            delayed: true
-            dim: true
+        SlideTrack {
+            id: logoutTrack
+            action: "logout"
+            icon: "logout"
+            verb: "log out"
+            key: "E"
+            shape: "cookie9"
+            trackColor: Colors.surfaceContainer
+            fillColor: Colors.secondaryContainer
+            thumbColor: Colors.secondaryContainerText
+            thumbInk: Colors.secondaryContainer
+            textColor: Colors.surfaceVariantText
+        }
+        SlideTrack {
+            id: restartTrack
+            action: "restart"
+            icon: "restart_alt"
+            verb: "restart"
+            key: "R"
+            shape: "cookie9"
+            trackColor: Colors.surfaceContainer
+            fillColor: Colors.primaryContainer
+            thumbColor: Colors.primary
+            thumbInk: Colors.primaryText
+            textColor: Colors.surfaceVariantText
+        }
+        SlideTrack {
+            id: shutdownTrack
+            action: "shutdown"
+            icon: "power_settings_new"
+            verb: "shut down"
+            key: "P"
+            shape: "cookie9"
+            trackColor: Qt.tint(Colors.surfaceContainer, Qt.alpha(Colors.errorContainer, 0.35))
+            fillColor: Colors.errorContainer
+            thumbColor: Colors.error
+            thumbInk: Colors.errorText
+            textColor: Colors.errorContainerText
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 6
+            Layout.rightMargin: 6
+            spacing: 10
+
+            MaterialIconSymbol {
+                content: "info"
+                iconSize: 16
+                fill: 1
+                customColor: Colors.primary
+            }
+            CustomText {
+                Layout.fillWidth: true
+                content: root.sliding ? "Press Esc to stop" : "Let go before the end to cancel"
+                size: 12
+                weight: 400
+                customColor: Colors.surfaceVariantText
+                elide: Text.ElideRight
+            }
         }
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.topMargin: 8
-            Layout.preferredHeight: 54
-            radius: 16
-            color: Colors.surfaceContainerHigh
-            visible: root.armed !== ""
+            Layout.topMargin: 4
+            implicitHeight: 44
+            radius: 22
+            color: root.firmwareAsk ? Colors.errorContainer
+                 : fwMa.containsMouse ? Colors.surfaceContainerHigh : Colors.surfaceContainer
+            Behavior on color { EffectsColorAnim { speed: "fast" } }
 
-            RowLayout {
-                anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
-                spacing: 10
+            Row {
+                anchors.centerIn: parent
+                spacing: 8
 
                 MaterialIconSymbol {
-                    content: root.armedIcon
+                    anchors.verticalCenter: parent.verticalCenter
+                    content: "developer_board"
                     iconSize: 18
-                    customColor: Colors.primary
+                    customColor: root.firmwareAsk ? Colors.errorContainerText : Colors.surfaceVariantText
                 }
-
                 CustomText {
-                    Layout.fillWidth: true
-                    content: root.armedLabel + " in " + root.remaining + " s"
+                    anchors.verticalCenter: parent.verticalCenter
+                    content: root.firmwareAsk ? "Click again to restart to firmware" : "Restart to firmware"
                     size: 13
-                    weight: 600
-                    elide: Text.ElideRight
+                    weight: 500
+                    customColor: root.firmwareAsk ? Colors.errorContainerText : Colors.surfaceVariantText
                 }
+            }
 
-                CountBtn {
-                    label: "Now"
-                    filled: true
-                    onActivated: root.commit()
-                }
-
-                CountBtn {
-                    label: "Cancel"
-                    onActivated: root.cancel()
+            MouseArea {
+                id: fwMa
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (root.firmwareAsk) {
+                        root.firmwareAsk = false
+                        root.run("firmware")
+                        return
+                    }
+                    root.firmwareAsk = true
+                    firmwareTimer.restart()
                 }
             }
         }
     }
 
-    component PowerRow: Rectangle {
-        id: pr
+    component PowerTile: Rectangle {
+        id: tile
 
         property string action: ""
         property string icon: ""
         property string label: ""
-        property string cap: ""
-        property bool delayed: false
-        property bool dim: false
-        property color tileColor: Colors.surfaceContainerHigh
-        property color tileInk: Colors.surfaceText
+        property string detail: ""
+        property string key: ""
+        property color tone
+        property color ink
 
         Layout.fillWidth: true
-        Layout.preferredHeight: pr.dim ? 46 : 54
-        radius: 16
-        color: prMa.containsMouse ? Colors.secondaryContainer : Qt.alpha(Colors.secondaryContainer, 0)
+        Layout.preferredWidth: 1
+        implicitHeight: 96
+        radius: tileMa.pressed ? 18 : 28
+        color: tileMa.containsMouse ? Qt.tint(tile.tone, Qt.alpha(tile.ink, 0.08)) : tile.tone
+        Behavior on radius { SpatialAnim { speed: "fast" } }
         Behavior on color { EffectsColorAnim { speed: "fast" } }
 
-        opacity: root.armed !== "" ? 0.45 : 1
-        Behavior on opacity { EffectsAnim { speed: "fast" } }
+        MaterialIconSymbol {
+            x: 16
+            y: 14
+            content: tile.icon
+            iconSize: 28
+            fill: 1
+            customColor: tile.ink
+        }
 
-        RowLayout {
-            anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
-            spacing: 14
-
-            Rectangle {
-                Layout.preferredWidth: 38
-                Layout.preferredHeight: 38
-                radius: 12
-                color: pr.dim ? Qt.alpha(pr.tileColor, 0)
-                       : prMa.containsMouse ? Colors.primary : pr.tileColor
-                Behavior on color { EffectsColorAnim { speed: "fast" } }
-
-                MaterialIconSymbol {
-                    anchors.centerIn: parent
-                    content: pr.icon
-                    iconSize: 20
-                    customColor: pr.dim ? Colors.outline
-                                 : prMa.containsMouse ? Colors.primaryText : pr.tileInk
-                }
-            }
+        Rectangle {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 14
+            width: 22
+            height: 22
+            radius: 7
+            color: Qt.alpha(tile.ink, 0.14)
 
             CustomText {
-                Layout.fillWidth: true
-                content: pr.label
-                size: pr.dim ? 13 : 14
-                weight: pr.dim ? 500 : 600
-                customColor: pr.dim ? Colors.outline
-                             : prMa.containsMouse ? Colors.secondaryContainerText : Colors.surfaceText
+                anchors.centerIn: parent
+                content: tile.key
+                size: 11
+                weight: 700
+                customColor: tile.ink
+            }
+        }
+
+        Column {
+            x: 16
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 14
+            width: tile.width - 32
+            spacing: 1
+
+            CustomText {
+                content: tile.label
+                size: 16
+                weight: 600
+                customColor: tile.ink
+            }
+            CustomText {
+                width: parent.width
+                content: tile.detail
+                size: 12
+                weight: 400
                 elide: Text.ElideRight
-            }
-
-            Rectangle {
-                visible: pr.cap !== ""
-                Layout.preferredWidth: Math.max(22, capText.implicitWidth + 12)
-                Layout.preferredHeight: 22
-                radius: 6
-                color: prMa.containsMouse ? Qt.alpha(Colors.secondaryContainerText, 0.18)
-                                          : Colors.surfaceContainerHighest
-
-                CustomText {
-                    id: capText
-                    anchors.centerIn: parent
-                    content: pr.cap
-                    size: 11
-                    weight: 700
-                    customColor: prMa.containsMouse ? Colors.secondaryContainerText : Colors.surfaceText
-                }
+                customColor: tile.ink
             }
         }
 
         MouseArea {
-            id: prMa
-            anchors.fill: parent
-            hoverEnabled: root.armed === ""
-            enabled: root.armed === ""
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.trigger(pr.action, pr.delayed)
-        }
-    }
-
-    component CountBtn: Rectangle {
-        id: cb
-
-        property string label: ""
-        property bool filled: false
-        signal activated()
-
-        implicitHeight: 30
-        implicitWidth: cbText.implicitWidth + 28
-        radius: 15
-        color: cb.filled ? Colors.primary
-             : cbMa.containsMouse ? Qt.alpha(Colors.surfaceText, 0.08) : "transparent"
-        border.width: cb.filled ? 0 : 1
-        border.color: Colors.outlineVariant
-        Behavior on color { EffectsColorAnim { speed: "fast" } }
-
-        CustomText {
-            id: cbText
-            anchors.centerIn: parent
-            content: cb.label
-            size: 12
-            weight: cb.filled ? 700 : 600
-            customColor: cb.filled ? Colors.primaryText : Colors.surfaceText
-        }
-
-        MouseArea {
-            id: cbMa
+            id: tileMa
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: cb.activated()
+            onClicked: root.run(tile.action)
+        }
+    }
+
+    component SlideTrack: Rectangle {
+        id: st
+
+        property string action: ""
+        property string icon: ""
+        property string verb: ""
+        property string key: ""
+        property string shape: "cookie9"
+        property color trackColor
+        property color fillColor
+        property color thumbColor
+        property color thumbInk
+        property color textColor
+
+        property real progress: 0
+        property bool fired: false
+        readonly property bool auto: autoAnim.running
+        readonly property bool done: st.progress >= 0.92
+        readonly property real travel: st.width - 64
+
+        function reset() {
+            autoAnim.stop()
+            if (st.fired) return
+            if (!dragMa.pressed && st.progress > 0) backAnim.restart()
+        }
+
+        function clear() {
+            autoAnim.stop()
+            backAnim.stop()
+            st.fired = false
+            st.progress = 0
+        }
+
+        function slide() {
+            if (st.fired) return
+            backAnim.stop()
+            autoAnim.restart()
+        }
+
+        function fire() {
+            if (st.fired) return
+            st.fired = true
+            st.progress = 1
+            root.run(st.action)
+        }
+
+        Layout.fillWidth: true
+        implicitHeight: 64
+        radius: 32
+        color: st.trackColor
+        clip: true
+
+        Rectangle {
+            width: thumb.x + 60
+            height: parent.height
+            radius: 32
+            color: st.fillColor
+        }
+
+        Row {
+            anchors.centerIn: parent
+            anchors.horizontalCenterOffset: 20
+            spacing: 6
+            opacity: 1 - st.progress * 0.35
+
+            CustomText {
+                anchors.verticalCenter: parent.verticalCenter
+                content: st.done ? "Let go to " + st.verb : "Slide to " + st.verb
+                size: 14
+                weight: 500
+                customColor: st.textColor
+            }
+            MaterialIconSymbol {
+                anchors.verticalCenter: parent.verticalCenter
+                content: "keyboard_double_arrow_right"
+                iconSize: 18
+                customColor: st.textColor
+            }
+        }
+
+        Item {
+            id: thumb
+            x: 4 + st.progress * st.travel
+            y: 4
+            width: 56
+            height: 56
+
+            MaterialShapes.ShapeCanvas {
+                anchors.fill: parent
+                roundedPolygon: st.shape
+                color: st.thumbColor
+                rotation: st.progress * 160
+            }
+            MaterialIconSymbol {
+                anchors.centerIn: parent
+                content: st.icon
+                iconSize: 24
+                fill: 1
+                customColor: st.thumbInk
+            }
+        }
+
+        MouseArea {
+            id: dragMa
+            anchors.fill: parent
+            hoverEnabled: true
+            enabled: !st.fired
+            cursorShape: dragMa.pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            property real grab: -1
+
+            onPressed: mouse => {
+                autoAnim.stop()
+                backAnim.stop()
+                dragMa.grab = mouse.x <= thumb.x + 60 ? mouse.x - thumb.x : -1
+            }
+            onPositionChanged: mouse => {
+                if (!dragMa.pressed || dragMa.grab < 0 || st.travel <= 0) return
+                st.progress = Math.max(0, Math.min(1, (mouse.x - dragMa.grab - 4) / st.travel))
+            }
+            onReleased: {
+                if (dragMa.grab >= 0 && st.done) st.fire()
+                else if (st.progress > 0) backAnim.restart()
+                dragMa.grab = -1
+            }
+            onCanceled: {
+                dragMa.grab = -1
+                if (st.progress > 0) backAnim.restart()
+            }
+        }
+
+        SpatialAnim {
+            id: backAnim
+            target: st
+            property: "progress"
+            to: 0
+        }
+
+        NumberAnimation {
+            id: autoAnim
+            target: st
+            property: "progress"
+            to: 1
+            duration: 1400
+            easing.type: Easing.InOutCubic
+            onFinished: if (st.progress >= 0.999) st.fire()
         }
     }
 }

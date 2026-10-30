@@ -45,6 +45,8 @@ class BlobField : public QQuickItem {
     Q_PROPERTY(QColor shadowColor READ shadowColor WRITE setShadowColor NOTIFY shadowColorChanged)
     Q_PROPERTY(qreal shadowSize READ shadowSize WRITE setShadowSize NOTIFY shadowSizeChanged)
     Q_PROPERTY(qreal shadowStrength READ shadowStrength WRITE setShadowStrength NOTIFY shadowStrengthChanged)
+    Q_PROPERTY(qreal shadowOffset READ shadowOffset WRITE setShadowOffset NOTIFY shadowOffsetChanged)
+    Q_PROPERTY(qreal shadowContact READ shadowContact WRITE setShadowContact NOTIFY shadowContactChanged)
     Q_PROPERTY(int pieceCount READ pieceCount NOTIFY piecesChanged)
 
 public:
@@ -68,6 +70,10 @@ public:
     void setShadowSize(qreal s);
     qreal shadowStrength() const { return m_shadowStrength; }
     void setShadowStrength(qreal s);
+    qreal shadowOffset() const { return m_shadowOffset; }
+    void setShadowOffset(qreal o);
+    qreal shadowContact() const { return m_shadowContact; }
+    void setShadowContact(qreal c);
     int pieceCount() const { return int(m_pieces.size()); }
 
     Q_INVOKABLE qreal gapBetween(const QVariantMap &a, const QVariantMap &b) const;
@@ -82,6 +88,8 @@ signals:
     void shadowColorChanged();
     void shadowSizeChanged();
     void shadowStrengthChanged();
+    void shadowOffsetChanged();
+    void shadowContactChanged();
     void piecesChanged();
 
 protected:
@@ -90,6 +98,7 @@ protected:
 
 private:
     void pack();
+    bool shadowOn() const;
 
     QVariantList m_blobs;
     QVariantMap m_frame;
@@ -100,6 +109,8 @@ private:
     QColor m_shadow = Qt::black;
     qreal m_shadowSize = 0;
     qreal m_shadowStrength = 0;
+    qreal m_shadowOffset = 0;
+    qreal m_shadowContact = 0;
     QSharedPointer<BlobPack> m_pack;
     std::vector<BlobPiece> m_pieces;
     int m_dropped = 0;

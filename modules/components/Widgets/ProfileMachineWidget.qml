@@ -14,12 +14,9 @@ WidgetHost {
     defaultPos: Qt.point(915, 400)
 
     readonly property var facts: [
-        { k: "Kernel", v: ServiceProfile.kernel.replace(/-\d+$/, "") || "—" },
-        { k: "Desktop", v: ServiceProfile.desktop },
-        { k: "Shell", v: ServiceProfile.shell },
-        { k: "Packages", v: ServiceProfile.packages > 0 ? String(ServiceProfile.packages) : "—" },
-        { k: "Uptime", v: ServiceProfile.uptimeText },
-        { k: "Theme", v: "Nebula" }
+        { k: "uptime", v: ServiceProfile.uptimeText },
+        { k: "packages", v: ServiceProfile.packages > 0 ? String(ServiceProfile.packages) : "—" },
+        { k: "kernel", v: ServiceProfile.kernel.split("-")[0] || "—" }
     ]
 
     readonly property var swatches: [Colors.primary, Colors.primaryContainer, Colors.secondary, Colors.secondaryContainer,
@@ -39,9 +36,9 @@ WidgetHost {
                 spacing: 10
 
                 ProfileAvatar {
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: 36
-                    radius: 18
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    radius: 14
                 }
 
                 ColumnLayout {
@@ -50,45 +47,56 @@ WidgetHost {
 
                     CustomText {
                         Layout.fillWidth: true
-                        textFormat: Text.StyledText
-                        content: "<font color=\"" + Colors.primary + "\">" + ServiceProfile.user + "</font>"
-                               + "<font color=\"" + Colors.outline + "\">@</font>" + (ServiceProfile.host || "localhost")
-                        size: 15
-                        weight: 600
+                        content: ServiceProfile.user + "@" + (ServiceProfile.host || "localhost")
+                        size: 14
+                        weight: 800
                         elide: Text.ElideRight
                     }
 
                     CustomText {
                         Layout.fillWidth: true
-                        content: ServiceProfile.os + (ServiceProfile.since ? " · since " + ServiceProfile.sinceText : "")
+                        content: ServiceProfile.osShort + " · " + ServiceProfile.desktop + " · " + ServiceProfile.shell
                         size: 11
-                        weight: 400
-                        customColor: Colors.outline
+                        weight: 600
+                        customColor: Colors.surfaceVariantText
                         elide: Text.ElideRight
                     }
                 }
             }
 
-            GridLayout {
+            RowLayout {
                 Layout.fillWidth: true
-                columns: 3
-                rowSpacing: 8
-                columnSpacing: 10
+                spacing: 3
 
                 Repeater {
                     model: root.facts
 
-                    delegate: ColumnLayout {
+                    delegate: Rectangle {
                         id: kv
                         required property var modelData
+                        required property int index
+                        readonly property bool first: kv.index === 0
+                        readonly property bool last: kv.index === root.facts.length - 1
                         Layout.fillWidth: true
                         Layout.preferredWidth: 1
                         Layout.minimumWidth: 0
-                        Layout.maximumWidth: Infinity
-                        spacing: 1
+                        implicitHeight: 46
+                        topLeftRadius: kv.first ? 14 : 4
+                        bottomLeftRadius: kv.first ? 14 : 4
+                        topRightRadius: kv.last ? 14 : 4
+                        bottomRightRadius: kv.last ? 14 : 4
+                        color: Colors.surfaceContainerHigh
 
-                        CustomText { content: kv.modelData.k; size: 10; weight: 400; customColor: Colors.outline }
-                        CustomText { Layout.fillWidth: true; content: kv.modelData.v; size: 13; weight: 600; elide: Text.ElideRight }
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 8
+                            anchors.topMargin: 6
+                            anchors.bottomMargin: 6
+                            spacing: 0
+                            CustomText { Layout.fillWidth: true; content: kv.modelData.v; size: 14; weight: 800; elide: Text.ElideRight }
+                            CustomText { content: kv.modelData.k; size: 10; weight: 600; customColor: Colors.surfaceVariantText }
+                        }
                     }
                 }
             }
@@ -97,17 +105,22 @@ WidgetHost {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 6
+                spacing: 2
 
                 Repeater {
                     model: root.swatches
 
                     delegate: Rectangle {
+                        id: sw
                         required property color modelData
+                        required property int index
                         Layout.fillWidth: true
                         implicitHeight: 14
-                        radius: 7
-                        color: modelData
+                        topLeftRadius: sw.index === 0 ? 7 : 2
+                        bottomLeftRadius: sw.index === 0 ? 7 : 2
+                        topRightRadius: sw.index === root.swatches.length - 1 ? 7 : 2
+                        bottomRightRadius: sw.index === root.swatches.length - 1 ? 7 : 2
+                        color: sw.modelData
                     }
                 }
             }

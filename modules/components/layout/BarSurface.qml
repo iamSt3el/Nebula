@@ -939,19 +939,8 @@ Item {
                 const p = surface.blockP(b)
                 const bot = bridge + (top + surface.barH + (b.lineUp ?? 0) - bridge) * p
                 ends.push({ b: b, bx: bx, bw: bw, bot: bot, bridge: bridge, isl: isl })
-                const dd = !b.tabOpen && (b.dropSource || b.dropReleasing) ? (b.dropDepth ?? 0) : 0
-                if (dd > 0.5) {
-                    const dx = Math.max(bx, bx + b.dropX)
-                    const dX = Math.min(bx + bw, bx + b.dropX + b.dropW)
-                    if (dx > bx + 0.01)
-                        out.push({ x: bx, w: dx - bx, bot: bot, isl: isl, run: ri, top: top, id: b.blockId })
-                    out.push({ x: dx, w: Math.max(0, dX - dx), bot: bot + dd * p, isl: isl, run: ri, top: top, melt: true, id: b.blockId })
-                    if (bx + bw > dX + 0.01)
-                        out.push({ x: dX, w: bx + bw - dX, bot: bot, isl: isl, run: ri, top: top, id: b.blockId })
-                } else {
-                    out.push({ x: bx, w: bw, bot: bot, isl: isl, run: ri, top: top, id: b.blockId,
-                               vh: surface.bumpMode && !b.isPill ? top + surface.barH + (b.lineUp ?? 0) - bridge : 0 })
-                }
+                out.push({ x: bx, w: bw, bot: bot, isl: isl, run: ri, top: top, id: b.blockId,
+                           vh: surface.bumpMode && !b.isPill ? top + surface.barH + (b.lineUp ?? 0) - bridge : 0 })
                 isl++
             }
             if (r.pill || r.flat >= 0.999 || !ends.length)
@@ -1073,8 +1062,8 @@ Item {
             const o = typeof rad === "object" ? { x: s.x, y: s.y, w: s.width, h: s.height, rtl: rad.tl, rtr: rad.tr, rbl: rad.bl, rbr: rad.br }
                                               : { x: s.x, y: s.y, w: s.width, h: s.height, r: rad }
             o.k = surface.disX
-            if (b && b.isPill && (b.clearT > 0.001 || b.pillTintT > 0.001)) {
-                o.clear = b.clearT
+            if (b && b.isPill && (b.pillClear > 0.001 || b.pillTintT > 0.001)) {
+                o.clear = b.pillClear
                 o.tint = 0.22 * b.pillTintT
                 o.tintRgb = b.pillTintRgb
             }
@@ -1385,7 +1374,7 @@ Item {
         bottomFlare: surface.flareAnim,
         farMerge: surface.farBand > surface.borderFar + 0.5,
         capTop: ServiceGaps.borderFor(surface.side) > 0 ? surface.sdfBot : surface.edgeInset,
-        sink: ServiceGaps.borderFor(surface.side) <= 0 ? BarLayout.shadowReach : 0,
+        sink: ServiceGaps.borderFor(surface.side) <= 0 ? BarLayout.shadowReach + BarLayout.shadowLift : 0,
         sideStripL: surface.stripStart > 0.5,
         sideStripR: surface.stripEnd > 0.5
     })
@@ -1470,9 +1459,9 @@ Item {
                 else
                     BarPath.sdfIslands([g], Object.assign({}, surface.sdfOpts,
                         { top: T, bridge: h, endR: Math.min(pb.pillRadius, h / 2) * pb.pillT, bottomFlare: 0, corners: cs }), f)
-                if (pb.clearT > 0.001 || pb.pillTintT > 0.001) {
+                if (pb.pillClear > 0.001 || pb.pillTintT > 0.001) {
                     for (let k = from; k < f.pills.length; k++)
-                        Object.assign(f.pills[k], { clear: pb.clearT, tint: 0.22 * pb.pillTintT, tintRgb: pb.pillTintRgb })
+                        Object.assign(f.pills[k], { clear: pb.pillClear, tint: 0.22 * pb.pillTintT, tintRgb: pb.pillTintRgb })
                 }
             } else {
                 BarPath.sdfShape(g, Object.assign({}, surface.sdfOpts,

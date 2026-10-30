@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
 import qs.modules.utils
 import qs.modules.services
 import qs.modules.settings
@@ -14,7 +13,8 @@ WidgetHost {
     defaultPos: Qt.point(880, 300)
     tile: WidgetSizes.wide
 
-    readonly property string _serif: "Noto Serif Display"
+    readonly property string display: SettingsConfig.general?.displayFont || "Titan One"
+    readonly property int today: parseInt(ServiceClock.date)
 
     readonly property int startDay: (SettingsConfig.widgets.calendarAlmanacMonday ?? true) ? 1 : 0
     readonly property bool dimOther: SettingsConfig.widgets.calendarAlmanacDimOther ?? true
@@ -102,32 +102,10 @@ WidgetHost {
     WidgetCard {
         anchors.fill: parent
 
-        Shape {
-            anchors.fill: parent
-            anchors.margins: 9
-            preferredRendererType: Shape.CurveRenderer
-
-            ShapePath {
-                strokeColor: Qt.alpha(Colors.outline, 0.75)
-                strokeWidth: 1
-                strokeStyle: ShapePath.DashLine
-                dashPattern: [2, 2.6]
-                fillColor: "transparent"
-
-                PathRectangle {
-                    x: 0.5
-                    y: 0.5
-                    width: Math.max(0, root.width - 19)
-                    height: Math.max(0, root.height - 19)
-                    radius: WidgetSizes.radius - 10
-                }
-            }
-        }
-
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 22
-            spacing: 13
+            anchors.margins: 16
+            spacing: 16
 
             ColumnLayout {
                 Layout.preferredWidth: 100
@@ -136,70 +114,46 @@ WidgetHost {
 
                 CustomText {
                     content: ServiceClock.month
-                    size: 13
-                    weight: 600
-                    customColor: Colors.outline
-                    family: root._serif
-                    renderType: Text.QtRendering
+                    size: 12
+                    weight: 700
+                    customColor: Colors.surfaceVariantText
                 }
 
                 CustomText {
-                    Layout.topMargin: -4
-                    content: String(parseInt(ServiceClock.date))
+                    Layout.topMargin: 2
+                    content: String(root.today)
                     size: 54
-                    weight: 700
-                    family: root._serif
+                    weight: 400
+                    family: root.display
                     renderType: Text.QtRendering
                 }
 
                 CustomText {
-                    Layout.topMargin: -4
-                    content: ServiceClock.day.toUpperCase()
-                    size: 10
-                    weight: 700
-                    customColor: Colors.outline
-                    font.letterSpacing: 1.8
+                    Layout.topMargin: 2
+                    content: ServiceClock.day
+                    size: 13
+                    weight: 800
                 }
 
                 Item { Layout.fillHeight: true }
 
                 Rectangle {
-                    Layout.preferredWidth: Math.min(chipText.implicitWidth + 18, 100)
-                    Layout.preferredHeight: 21
-                    radius: 11
-                    color: root.todayInfo !== "" ? Qt.alpha(Colors.tertiary, 0.16)
-                                                 : Qt.alpha(Colors.primary, 0.14)
+                    Layout.preferredWidth: Math.min(chipText.implicitWidth + 20, 100)
+                    Layout.preferredHeight: 24
+                    radius: 12
+                    color: root.todayInfo !== "" ? Colors.tertiaryContainer : Colors.secondaryContainer
 
                     CustomText {
                         id: chipText
                         anchors.centerIn: parent
-                        width: parent.width - 16
-                        content: root.todayInfo !== "" ? root.todayInfo : "WEEK " + root.weekNumber
-                        size: 10
-                        weight: 700
-                        customColor: root.todayInfo !== "" ? Colors.tertiary : Colors.primary
-                        font.letterSpacing: 0.8
+                        width: Math.min(implicitWidth, parent.width - 16)
+                        content: root.todayInfo !== "" ? root.todayInfo : "Week " + root.weekNumber
+                        size: 11
+                        weight: 800
+                        elide: Text.ElideRight
+                        customColor: root.todayInfo !== "" ? Colors.tertiaryContainerText : Colors.secondaryContainerText
                         horizontalAlignment: Text.AlignHCenter
                     }
-                }
-            }
-
-            Shape {
-                id: seam
-                Layout.fillHeight: true
-                Layout.preferredWidth: 1
-                preferredRendererType: Shape.CurveRenderer
-
-                ShapePath {
-                    strokeColor: Qt.alpha(Colors.outline, 0.45)
-                    strokeWidth: 1
-                    strokeStyle: ShapePath.DashLine
-                    dashPattern: [2, 3]
-                    fillColor: "transparent"
-                    startX: 0.5
-                    startY: 0
-
-                    PathLine { x: 0.5; y: seam.height }
                 }
             }
 
@@ -221,10 +175,9 @@ WidgetHost {
                         CustomText {
                             anchors.centerIn: parent
                             content: parent.modelData
-                            size: 8
+                            size: 10
                             weight: 700
-                            customColor: Colors.outline
-                            font.letterSpacing: 0.5
+                            customColor: Colors.surfaceVariantText
                         }
                     }
                 }
@@ -241,37 +194,38 @@ WidgetHost {
 
                         readonly property bool isToday: cell.modelData.isToday
                         readonly property bool holiday: cell.modelData.isHoliday
+                        readonly property bool past: cell.modelData.isCurrentMonth && !cell.isToday && cell.modelData.day < root.today
                         readonly property real side: Math.min(cell.width, cell.height)
 
                         Rectangle {
                             anchors.centerIn: parent
                             visible: cell.isToday
-                            width: Math.min(cell.side, 19)
+                            width: Math.min(cell.side + 2, 22)
                             height: width
                             radius: width / 2
-                            color: Colors.primary
+                            color: Colors.tertiaryContainer
                         }
 
                         CustomText {
                             id: dayText
                             anchors.centerIn: parent
                             content: cell.modelData.day
-                            size: 10
-                            weight: cell.isToday ? 700 : 500
-                            customColor: cell.isToday ? Colors.primaryText
+                            size: 11
+                            weight: cell.isToday ? 800 : 600
+                            customColor: cell.isToday ? Colors.tertiaryContainerText
                                 : !cell.modelData.isCurrentMonth ? (root.dimOther ? Colors.outlineVariant : "transparent")
-                                : cell.holiday ? Colors.tertiary
+                                : cell.past ? Colors.outline
                                 : Colors.surfaceText
                         }
 
                         Rectangle {
                             visible: cell.holiday && cell.modelData.isCurrentMonth && !cell.isToday
                             anchors.horizontalCenter: parent.horizontalCenter
-                            anchors.top: dayText.bottom
-                            anchors.topMargin: 0
-                            width: 10
-                            height: 1
-                            color: Qt.alpha(Colors.tertiary, 0.7)
+                            anchors.bottom: parent.bottom
+                            width: 4
+                            height: 4
+                            radius: 2
+                            color: cell.past ? Colors.outlineVariant : Colors.primary
                         }
 
                         CustomToolTip {

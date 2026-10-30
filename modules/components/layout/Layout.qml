@@ -36,8 +36,7 @@ PanelWindow{
     property Item editChrome: null
     property Item drawerHost: null
     readonly property var surfaces: [surfTop, surfRight, surfBottom, surfLeft]
-    readonly property bool blobWanted: (SettingsConfig.bar?.renderer ?? "") === "blob"
-    property bool blobRenderer: false
+    readonly property var flyHidden: barFlight.hidden
 
     function cornerFor(side, atEnd, top, bottom) {
         if (!side.visible || side.panelDepth <= 0)
@@ -140,6 +139,20 @@ PanelWindow{
 
     Binding {
         target: ServiceGaps
+        property: "frame"
+        when: layout.isPrimary
+        value: barBlob.frame
+    }
+
+    Binding {
+        target: ServiceGaps
+        property: "barItem"
+        when: layout.isPrimary
+        value: root
+    }
+
+    Binding {
+        target: ServiceGaps
         property: "occupied"
         when: layout.isPrimary
         value: ({ top: surfTop.occupied, right: surfRight.occupied, bottom: surfBottom.occupied, left: surfLeft.occupied })
@@ -232,7 +245,11 @@ PanelWindow{
             return
         if (layout.drawerWanted && barEditor.drawerMode === "settings" && d.tab === "add")
             d.tab = "edges"
-        if (layout.drawerWanted) d.open()
+        if (layout.drawerWanted) {
+            if (!d.alive)
+                d.placeNow()
+            d.open()
+        }
         else d.close()
     }
 
@@ -255,6 +272,13 @@ PanelWindow{
         property: "editTopInset"
         when: layout.isPrimary
         value: surfTop.visible && surfTop.present ? surfTop.thickness : (surfTop.visible ? 40 : 0)
+    }
+
+    Binding {
+        target: GlobalStates
+        property: "editBottomInset"
+        when: layout.isPrimary
+        value: surfBottom.visible && surfBottom.present ? surfBottom.thickness : 0
     }
 
     function widgetAt(x, y) {
@@ -435,11 +459,13 @@ PanelWindow{
             barEditor.overDrawer = inDrawer
             const surf = inDrawer ? null : root.edgeAt(x, y)
             if (!surf) {
+                barEditor.caretX = -1
                 barEditor.dropBlock = ""
                 return
             }
             const f = surf.toFrame(x, y)
             if (!surf.present) {
+                barEditor.caretX = -1
                 const rel = f.x - surf.rowItem.x
                 const W = surf.rowItem.width
                 const anchor = rel < W / 3 ? "left" : rel > 2 * W / 3 ? "right" : "center"
@@ -450,25 +476,62 @@ PanelWindow{
                 return
             }
             x = f.x
-            y = f.y
-            let best = null
-            let bestD = 1e9
+            let inside = null
             for (const b of surf.visibleBlocks) {
-                if (b.leaving || b.blockId === "__sys")
+                if (b.leaving || b.blockId === "__sys" || b.width <= 0)
                     continue
                 const bx = surf.rowItem.x + b.parent.x + b.x
-                const d = x < bx ? bx - x : (x > bx + b.width ? x - bx - b.width : 0)
-                if (d < bestD) {
-                    bestD = d
-                    best = b
+                if (x >= bx - 2 && x <= bx + b.width + 2) {
+                    inside = b
+                    break
                 }
             }
-            if (!best) {
-                barEditor.dropBlock = ""
+            if (inside) {
+                barEditor.caretX = -1
+                barEditor.dropBlock = inside.blockId
+                barEditor.dropIndex = inside.dropIndexAt(x - (surf.rowItem.x + inside.parent.x + inside.x))
                 return
             }
-            barEditor.dropBlock = best.blockId
-            barEditor.dropIndex = best.dropIndexAt(x - (surf.rowItem.x + best.parent.x + best.x))
+            const src = BarLayout.blockById(barEditor.fromBlock)
+            const emptied = src && src.items.length === 1 && src.items[0] === barEditor.itemId ? src.id : ""
+            const slot = root.slotAt(surf, x, emptied)
+            barEditor.dropBlock = "+" + surf.edge + ":" + slot.side + ":" + slot.idx
+            barEditor.dropIndex = 0
+        }
+
+        function slotAt(surf, x, exclude) {
+            const W = surf.rowItem.width
+            const rel = x - surf.rowItem.x
+            const side = rel < W / 3 ? "left" : (rel > 2 * W / 3 ? "right" : "center")
+            const rep = side === "left" ? surf.leftRepeater : (side === "center" ? surf.centerRepeater : surf.rightRepeater)
+            const group = side === "left" ? surf.leftGroupItem : (side === "center" ? surf.centerGroupItem : surf.rightGroupItem)
+            const others = []
+            for (let i = 0; i < rep.count; i++) {
+                const b = rep.itemAt(i)
+                if (b && b.blockId !== exclude && b.visible && !b.leaving)
+                    others.push(b)
+            }
+            let idx = 0
+            for (const b of others) {
+                if (surf.rowItem.x + group.x + b.x + b.width / 2 < x)
+                    idx++
+            }
+            let caret
+            if (others.length === 0)
+                caret = side === "left" ? 8 : (side === "right" ? W - 8 : W / 2)
+            else if (idx < others.length)
+                caret = group.x + others[idx].x - surf.groupGap / 2
+            else {
+                const l = others[others.length - 1]
+                caret = group.x + l.x + l.width + surf.groupGap / 2
+            }
+            const cr = surf.toScreen(surf.rowItem.x + Math.max(4, Math.min(W - 4, caret)) - 1.5,
+                                     surf.rowItem.y + group.y + 4, 3, surf.barH - 8)
+            barEditor.caretX = cr.x
+            barEditor.caretY = cr.y
+            barEditor.caretW = cr.width
+            barEditor.caretH = cr.height
+            return { side: side, idx: idx }
         }
 
         function gapMarks(f) {
@@ -540,6 +603,19 @@ PanelWindow{
                         along(s, 0, s.blockX(first), mid(first))
                         along(s, s.blockX(last) + last.width, s.width, mid(last))
                     }
+                } else if (f.key === "around") {
+                    const i = vb.findIndex(o => o.blockId === f.block)
+                    if (i < 0)
+                        continue
+                    const o = vb[i]
+                    if (i > 0)
+                        along(s, s.blockX(vb[i - 1]) + vb[i - 1].width, s.blockX(o), mid(o))
+                    if (i < vb.length - 1)
+                        along(s, s.blockX(o) + o.width, s.blockX(vb[i + 1]), mid(vb[i + 1]))
+                    const corner = [surfLeft.cornerPillStart, surfLeft.cornerPillEnd,
+                                    surfRight.cornerPillStart, surfRight.cornerPillEnd].filter(p => !!p)
+                    if (o.isPill && corner.indexOf(o) < 0)
+                        across(s, s.blockX(o) + o.width / 2, 0, s.blockTop(o))
                 } else if (f.key === "pillStart") {
                     const e = s.rowItem.x - s.cornerGapStart
                     along(s, e - s.pillStartGap * s.startPill, e, mid(vb[0]))
@@ -568,40 +644,10 @@ PanelWindow{
                 barEditor.caretX = -1
                 return
             }
-            const W = surf.rowItem.width
-            const rel = x - surf.rowItem.x
-            const side = rel < W / 3 ? "left" : (rel > 2 * W / 3 ? "right" : "center")
-            const rep = side === "left" ? surf.leftRepeater : (side === "center" ? surf.centerRepeater : surf.rightRepeater)
-            const group = side === "left" ? surf.leftGroupItem : (side === "center" ? surf.centerGroupItem : surf.rightGroupItem)
-            const others = []
-            for (let i = 0; i < rep.count; i++) {
-                const b = rep.itemAt(i)
-                if (b && b.blockId !== barEditor.fromBlock && b.visible && !b.leaving)
-                    others.push(b)
-            }
-            let idx = 0
-            for (const b of others) {
-                if (surf.rowItem.x + group.x + b.x + b.width / 2 < x)
-                    idx++
-            }
-            let caret
-            if (others.length === 0)
-                caret = side === "left" ? 8 : (side === "right" ? W - 8 : W / 2)
-            else if (idx < others.length)
-                caret = group.x + others[idx].x - surf.groupGap / 2
-            else {
-                const l = others[others.length - 1]
-                caret = group.x + l.x + l.width + surf.groupGap / 2
-            }
-            barEditor.dropAnchor = side
+            const slot = root.slotAt(surf, x, barEditor.fromBlock)
+            barEditor.dropAnchor = slot.side
             barEditor.dropEdge = surf.edge
-            barEditor.dropBlockIndex = idx
-            const cr = surf.toScreen(surf.rowItem.x + Math.max(4, Math.min(W - 4, caret)) - 1.5,
-                                     surf.rowItem.y + group.y + 4, 3, surf.barH - 8)
-            barEditor.caretX = cr.x
-            barEditor.caretY = cr.y
-            barEditor.caretW = cr.width
-            barEditor.caretH = cr.height
+            barEditor.dropBlockIndex = slot.idx
         }
 
         function nearestSurface(x, y) {
@@ -640,7 +686,6 @@ PanelWindow{
             property string selectedItem: ""
             property string selectedBlock: ""
             property string joinTarget: ""
-            property string gimbalBlock: ""
             property bool joinAtEnd: false
             property string dropEdge: "top"
             property real caretY: 0
@@ -665,17 +710,13 @@ PanelWindow{
             }
 
             onSelectedBlockChanged: {
-                if (barEditor.selectedBlock !== "") {
+                if (barEditor.selectedBlock !== "")
                     barEditor.selectedItem = ""
-                    barEditor.gimbalBlock = ""
-                }
             }
 
             onSelectedItemChanged: {
-                if (barEditor.selectedItem !== "") {
+                if (barEditor.selectedItem !== "")
                     barEditor.selectedBlock = ""
-                    barEditor.gimbalBlock = ""
-                }
                 if (barEditor.selectedItem === "") {
                     barEditor.panelStage = false
                     if (barEditor.drawerMode === "options" || barEditor.drawerMode === "inspector") barEditor.drawerMode = ""
@@ -766,7 +807,8 @@ PanelWindow{
                         if (from !== "") Qt.callLater(() => BarLayout.hideItem(id))
                     } else if (toBlock.indexOf("+") === 0) {
                         const spec = toBlock.slice(1).split(":")
-                        Qt.callLater(() => BarLayout.moveItem(id, BarLayout.addBlock(spec[1], spec[0]), 0))
+                        const at = spec.length > 2 ? parseInt(spec[2]) : 1e9
+                        Qt.callLater(() => BarLayout.placeInNewBlock(id, spec[1], at, spec[0]))
                     } else if (toBlock !== "") {
                         Qt.callLater(() => BarLayout.moveItem(id, toBlock, toIndex))
                     }
@@ -812,10 +854,6 @@ PanelWindow{
                     editKeys.forceActiveFocus()
                     if (barEditor.mode !== "")
                         return
-                    if (barEditor.gimbalBlock !== "") {
-                        barEditor.gimbalBlock = ""
-                        return
-                    }
                     if (editChrome && editChrome.closeAll())
                         return
                     if (!root.surfaceAt(mouse.x, mouse.y)) {
@@ -835,21 +873,15 @@ PanelWindow{
             }
         }
 
-        BarSdf {
+        BarBlobLayer {
+            id: barBlob
             anchors.fill: parent
-            visible: !layout.blobRenderer
-            surfaces: layout.blobRenderer ? [] : layout.surfaces
-        }
-
-        Loader {
-            anchors.fill: parent
-            active: layout.blobWanted
-            source: "BarBlobLayer.qml"
-            onLoaded: item.surfaces = Qt.binding(() => layout.surfaces)
-            onStatusChanged: layout.blobRenderer = status === Loader.Ready
+            opacity: barFlight.shapeIn
+            surfaces: layout.surfaces
         }
 
         component EdgeSurface: BarSurface {
+            opacity: barFlight.shapeIn
             isPrimary: layout.isPrimary
             editor: barEditor
             visible: layout.isPrimary && !cfg.hidden && !(ServiceGameMode.hideWidgets && cfg.gameHide)
@@ -928,8 +960,12 @@ PanelWindow{
                     }
                 }
             }
-            for (const key of ["blockGap", "edges"])
-                add(root.gapMarks({ key: key, edge: "", block: "" }))
+            if (root.allGaps) {
+                for (const key of ["blockGap", "edges"])
+                    add(root.gapMarks({ key: key, edge: "", block: "" }))
+            } else if (root.gapFocus !== "") {
+                add(root.gapMarks({ key: "around", edge: "", block: root.gapFocus }))
+            }
             add(root.gapMarks(BarLayout.gapFlash ?? BarLayout.gapHover))
             return all
         }
@@ -952,6 +988,52 @@ PanelWindow{
 
         function queueGapMarks() {
             Qt.callLater(root.refreshGapMarks)
+        }
+
+        property bool allGaps: false
+        property string gapFocus: ""
+
+        function focusBlock() {
+            if (barEditor.mode !== "")
+                return ""
+            for (const s of layout.surfaces) {
+                if (!s || !s.visible || !s.present)
+                    continue
+                const h = s.visibleBlocks.find(o => o.hovering && !o.leaving && o.blockId !== barEditor.selectedBlock)
+                if (h)
+                    return h.blockId
+            }
+            if (barEditor.selectedBlock !== "")
+                return ""
+            if (barEditor.selectedItem !== "") {
+                const b = BarLayout.allBlocks.find(o => o.items.indexOf(barEditor.selectedItem) >= 0)
+                if (b)
+                    return b.id
+            }
+            return ""
+        }
+
+        Timer {
+            interval: 120
+            repeat: true
+            running: layout.barEditing && !root.allGaps
+            onTriggered: {
+                const f = root.focusBlock()
+                if (f !== root.gapFocus) {
+                    root.gapFocus = f
+                    root.queueGapMarks()
+                }
+            }
+        }
+
+        Connections {
+            target: layout
+            function onBarEditingChanged() {
+                if (!layout.barEditing) {
+                    root.allGaps = false
+                    root.gapFocus = ""
+                }
+            }
         }
 
         Connections {
@@ -1001,7 +1083,7 @@ PanelWindow{
                 required property real label
                 visible: !EditSession.peek
                 readonly property bool flat: mark.x1 - mark.x0 >= mark.y1 - mark.y0
-                z: 249
+                z: 208
                 anchors.fill: parent
 
                 Rectangle {
@@ -1051,7 +1133,8 @@ PanelWindow{
 
         Rectangle {
             z: 250
-            visible: barEditor.mode === "block" && barEditor.caretX >= 0
+            visible: barEditor.caretX >= 0 && (barEditor.mode === "block"
+                || (barEditor.mode === "item" && barEditor.dropBlock.indexOf("+") === 0 && !barEditor.overDrawer))
             x: barEditor.caretX
             y: barEditor.caretY
             width: barEditor.caretW
@@ -1095,25 +1178,52 @@ PanelWindow{
                 id: drawerItem
                 z: 220
                 editor: barEditor
+                chrome: layout.editChrome
                 readonly property bool beside: barEditor.drawerMode === "options" && !layout.anyPreview
                     && !!layout.editChrome && layout.editChrome.selFound
+                readonly property real liveW: barEditor.drawerMode === "options" ? Math.min(360, root.width - 32) : Math.min(640, root.width - 32)
+                readonly property real liveX: drawerItem.beside ? layout.editChrome.besideX(drawerItem.liveW)
+                    : !layout.anyPreview ? (root.width - drawerItem.liveW) / 2
+                    : layout.previewRight ? (surfLeft.visible && surfLeft.present ? surfLeft.thickness : 0) + 16
+                    : root.width - drawerItem.liveW - (surfRight.visible && surfRight.present ? surfRight.thickness : 0) - 16
+                readonly property real liveY: drawerItem.beside ? layout.editChrome.besideY(drawerItem.liveW, drawerItem.height)
+                    : layout.editChrome ? layout.editChrome.cardTop : surfTop.thickness + 48
                 maxHeight: layout.height * 0.7
-                width: drawerItem.beside ? Math.min(460, root.width - 32) : Math.min(640, root.width - 32)
+                width: Math.min(640, root.width - 32)
                 opacity: EditSession.peek ? 0 : 1
                 Behavior on opacity { EffectsAnim { speed: "fast" } }
-                x: drawerItem.beside ? layout.editChrome.besideX(drawerItem.width)
-                    : !layout.anyPreview ? (root.width - width) / 2
-                    : layout.previewRight ? (surfLeft.visible && surfLeft.present ? surfLeft.thickness : 0) + 16
-                    : root.width - width - (surfRight.visible && surfRight.present ? surfRight.thickness : 0) - 16
-                y: drawerItem.beside ? layout.editChrome.besideY(drawerItem.width, drawerItem.height)
-                    : layout.editChrome ? layout.editChrome.cardTop : surfTop.thickness + 48
+
+                function placeNow() {
+                    drawerItem.width = drawerItem.liveW
+                    drawerItem.x = drawerItem.liveX
+                    drawerItem.y = drawerItem.liveY
+                }
+                function placeIfWanted() {
+                    if (layout.drawerWanted)
+                        drawerItem.placeNow()
+                }
+                onLiveWChanged: Qt.callLater(drawerItem.placeIfWanted)
+                onLiveXChanged: Qt.callLater(drawerItem.placeIfWanted)
+                onLiveYChanged: Qt.callLater(drawerItem.placeIfWanted)
+                Component.onCompleted: drawerItem.placeNow()
+
                 Behavior on y {
-                    SpatialAnim { speed: "default" }
+                    enabled: drawerItem.alive
+                    SpatialAnim { speed: "move" }
                 }
                 Behavior on x {
-                    SpatialAnim { speed: "default" }
+                    enabled: drawerItem.alive
+                    SpatialAnim { speed: "move" }
                 }
             }
+        }
+
+        BarFlight {
+            id: barFlight
+            anchors.fill: parent
+            z: 290
+            surfaces: layout.surfaces
+            shape: barBlob
         }
 
         Item {
@@ -1382,7 +1492,9 @@ PanelWindow{
                 return
             }
             if (barEditor.mode !== "") barEditor.cancel()
-            else if (barEditor.gimbalBlock !== "") barEditor.gimbalBlock = ""
+            else if (editChrome && editChrome.closeOverlays()) return
+            else if (drawerHost && drawerHost.sidePage !== "") drawerHost.sidePage = ""
+            else if (editChrome && editChrome.stageSideOpen()) return
             else if (editChrome && editChrome.closeAll()) return
             else if (barEditor.selectedItem !== "") barEditor.selectedItem = ""
             else if (barEditor.selectedBlock !== "") barEditor.selectedBlock = ""
@@ -1396,6 +1508,9 @@ PanelWindow{
             if (event.key === Qt.Key_Space && !event.isAutoRepeat) {
                 EditSession.peek = false
                 event.accepted = true
+            } else if (event.key === Qt.Key_Alt && !event.isAutoRepeat) {
+                root.allGaps = false
+                root.queueGapMarks()
             }
         }
         Keys.onPressed: event => {
@@ -1407,6 +1522,14 @@ PanelWindow{
             const alt = event.modifiers & Qt.AltModifier
             const shift = event.modifiers & Qt.ShiftModifier
             const k = event.key
+            if (k === Qt.Key_Alt) {
+                if (!event.isAutoRepeat && !root.allGaps) {
+                    root.allGaps = true
+                    root.queueGapMarks()
+                }
+                event.accepted = true
+                return
+            }
             if (ctrl) {
                 if (k === Qt.Key_Z && shift) EditSession.redo()
                 else if (k === Qt.Key_Z) EditSession.undo()

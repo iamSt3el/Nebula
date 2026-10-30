@@ -18,13 +18,15 @@ Item {
 
     property string mode: "corner"
     readonly property string style: popups.mode
-    readonly property bool enabled_: popups.style === "icon" && popups.visible
+    readonly property bool enabled_: (popups.style === "icon" || popups.style === "island") && popups.visible
     readonly property var live: popups.enabled_ ? [...ServiceNotification.popups].reverse() : []
     readonly property var front: popups.live.length > 0 ? popups.live[0] : null
     readonly property bool active: popups.front !== null
     property var shown: null
     property bool hovered: false
     readonly property rect hit: loader.item && loader.item.hit ? loader.item.hit : Qt.rect(0, 0, 0, 0)
+    readonly property string islandAnchor: BarLayout.popupHostItem !== "" ? BarLayout.popupHostItem
+        : (BarLayout.shownItemIds().find(i => BarLayout.baseId(i) === "clock") ?? "")
 
     onFrontChanged: if (popups.front) popups.shown = popups.front
 
@@ -60,7 +62,7 @@ Item {
         target: ServiceNotification
         property: "popupsPaused"
         value: popups.hovered && popups.active
-        when: popups.style === "icon"
+        when: popups.style === "icon" || popups.style === "island"
     }
 
     Binding {
@@ -72,9 +74,10 @@ Item {
     Loader {
         id: loader
         anchors.fill: parent
-        active: popups.style === "icon"
-        sourceComponent: iconComp
+        active: popups.style === "icon" || popups.style === "island"
+        sourceComponent: popups.style === "island" ? islandComp : iconComp
     }
 
     Component { id: iconComp; NotifIconBubble { host: popups } }
+    Component { id: islandComp; NotifIsland { host: popups } }
 }

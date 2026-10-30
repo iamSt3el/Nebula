@@ -14,7 +14,7 @@ WidgetHost {
     defaultPos: Qt.point(420, 440)
     tile: WidgetSizes.large
 
-    readonly property string _serif: "Noto Serif Display"
+    readonly property string display: SettingsConfig.general?.displayFont || "Titan One"
 
     readonly property int startDay: (SettingsConfig.widgets.calendarWindowsMonday ?? true) ? 1 : 0
     readonly property bool showFooter: SettingsConfig.widgets.calendarWindowsFooter ?? true
@@ -69,28 +69,19 @@ WidgetHost {
 
                 CustomText {
                     content: ServiceClock.month
-                    size: 28
-                    weight: 600
-                    family: root._serif
+                    size: 24
+                    weight: 400
+                    family: root.display
                     renderType: Text.QtRendering
                 }
                 Item { Layout.fillWidth: true }
                 CustomText {
-                    content: ServiceClock.year
+                    content: root.daysLeft === 0 ? root.today + " lit · last tonight"
+                                                 : root.today + " lit · " + root.daysLeft + " to go"
                     size: 12
-                    weight: 500
+                    weight: 600
                     customColor: Colors.surfaceVariantText
                 }
-            }
-
-            CustomText {
-                Layout.fillWidth: true
-                Layout.topMargin: -6
-                content: root.daysLeft === 0 ? "lights on for " + root.today + " nights · last one tonight"
-                    : "lights on for " + root.today + " nights · " + root.daysLeft + " to go"
-                size: 11
-                weight: 400
-                customColor: Colors.surfaceVariantText
             }
 
             RowLayout {
@@ -104,8 +95,8 @@ WidgetHost {
                         horizontalAlignment: Text.AlignHCenter
                         content: modelData
                         size: 10
-                        weight: 600
-                        customColor: Colors.outline
+                        weight: 700
+                        customColor: Colors.surfaceVariantText
                     }
                 }
             }
@@ -139,71 +130,32 @@ WidgetHost {
                         opacity: cell.inMonth ? 1 : 0
 
                         Rectangle {
-                            visible: cell.isToday
-                            anchors.centerIn: pane
-                            width: pane.width + 14
-                            height: pane.height + 14
-                            radius: 10
-                            color: Qt.alpha(Colors.tertiary, 0.14)
-                        }
-
-                        Rectangle {
-                            visible: cell.isToday
-                            anchors.centerIn: pane
-                            width: pane.width + 6
-                            height: pane.height + 6
-                            radius: 7
-                            color: Qt.alpha(Colors.tertiary, 0.3)
-                        }
-
-                        Rectangle {
                             id: pane
                             anchors.fill: parent
-                            radius: 5
-                            clip: true
-                            color: cell.isToday ? Colors.tertiary
-                                : cell.past ? Qt.alpha(Colors.primaryContainer, 0.42)
-                                : Qt.alpha(Colors.surfaceContainerHighest, 0.55)
-
-                            readonly property color mullion: cell.isToday ? Qt.alpha(Colors.tertiaryText, 0.25)
-                                : Qt.alpha(Colors.surface, cell.past ? 0.35 : 0.5)
-
-                            Rectangle {
-                                x: Math.round(pane.width / 2)
-                                width: 1
-                                height: pane.height
-                                color: pane.mullion
-                            }
-
-                            Rectangle {
-                                y: Math.round(pane.height / 2)
-                                width: pane.width
-                                height: 1
-                                color: pane.mullion
-                            }
-
-                            Rectangle {
-                                visible: cell.holiday
-                                width: pane.width
-                                height: Math.max(6, pane.height * 0.34)
-                                topLeftRadius: 4
-                                topRightRadius: 4
-                                bottomLeftRadius: 10
-                                bottomRightRadius: 10
-                                color: Colors.tertiaryContainer
-                            }
+                            radius: 10
+                            color: cell.isToday ? Colors.tertiaryContainer
+                                : cell.past ? Colors.primaryContainer
+                                : Colors.surfaceContainerHigh
 
                             CustomText {
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                anchors.rightMargin: 4
-                                anchors.bottomMargin: 1
+                                anchors.centerIn: parent
                                 content: String(cell.modelData.day)
-                                size: 10
-                                weight: cell.isToday ? 700 : 500
-                                customColor: cell.isToday ? Colors.tertiaryText
-                                    : cell.past ? Qt.alpha(Colors.primary, 0.9)
-                                    : Qt.alpha(Colors.surfaceVariantText, 0.75)
+                                size: 11
+                                weight: cell.isToday ? 800 : 600
+                                customColor: cell.isToday ? Colors.tertiaryContainerText
+                                    : cell.past ? Colors.primaryContainerText
+                                    : Colors.surfaceVariantText
+                            }
+
+                            Rectangle {
+                                visible: cell.holiday && !cell.past && !cell.isToday
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: 4
+                                width: 4
+                                height: 4
+                                radius: 2
+                                color: Colors.primary
                             }
                         }
 
@@ -222,43 +174,26 @@ WidgetHost {
                 }
             }
 
-            Rectangle {
+            RowLayout {
                 Layout.fillWidth: true
                 Layout.topMargin: 2
                 visible: root.showFooter
-                implicitHeight: 2
-                radius: 1
-                color: Qt.alpha(Colors.surfaceText, 0.14)
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                visible: root.showFooter
                 spacing: 8
 
-                Rectangle {
-                    implicitWidth: 14
-                    implicitHeight: 8
-                    topLeftRadius: 3
-                    topRightRadius: 3
-                    bottomLeftRadius: 6
-                    bottomRightRadius: 6
-                    color: Colors.tertiaryContainer
-                }
                 CustomText {
                     Layout.fillWidth: true
-                    content: root.nextHoliday ? "Next: " + root.nextHoliday.name : "No more holidays this year"
-                    size: 11
-                    weight: 400
+                    content: root.nextHoliday ? "Next · " + root.nextHoliday.name : "No more holidays this year"
+                    size: 12
+                    weight: 600
+                    elide: Text.ElideRight
                     customColor: Colors.surfaceVariantText
                 }
                 CustomText {
                     visible: root.nextHoliday !== null
                     content: root.nextHoliday
                         ? (root.nextHoliday.days === 1 ? "tomorrow" : "in " + root.nextHoliday.days + " days") : ""
-                    size: 11
-                    weight: 600
-                    customColor: Colors.tertiary
+                    size: 12
+                    weight: 700
                 }
             }
         }

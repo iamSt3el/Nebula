@@ -25,7 +25,6 @@ Item {
 
     property bool preview: false
     property int entranceDelay: 300
-    property real entranceScale: 0.92
     property real entranceRise: 0
 
     onVisibleChanged: if (visible && col.visible && !appLauncher.preview) appLauncher.focusSearch()
@@ -147,6 +146,8 @@ Item {
         appLauncher.closed()
     }
 
+    readonly property var menuApp: ctxMenu.targetApp
+
     function openMenu(item, x, y, app) {
         const p = item.mapToItem(appLauncher, x, y)
         appLauncher.showContextMenu(p.x, p.y, app)
@@ -170,8 +171,6 @@ Item {
 
     onClosed: {
         col.visible = false
-        col.opacity = 0
-        col.scale   = appLauncher.entranceScale
         if (appLauncher.searchField) appLauncher.searchField.text = ""
         appLauncher.query = ""
         ServiceApps.reset()
@@ -269,8 +268,6 @@ Item {
     function replayEntrance() {
         if (col.visible || showTimer.running)
             return
-        col.opacity = 0
-        col.scale = appLauncher.entranceScale
         showTimer.restart()
     }
 
@@ -289,8 +286,6 @@ Item {
             if (!appLauncher.preview) {
                 showTimer.stop()
                 col.visible = false
-                col.opacity = 0
-                col.scale   = appLauncher.entranceScale
             }
         }
     }
@@ -300,8 +295,6 @@ Item {
         anchors.fill: parent
         anchors.margins: appLauncher.contentInset
         visible: false
-        opacity: 0
-        scale: appLauncher.entranceScale
         transform: Translate { id: colRise; y: 0 }
 
         Timer {
@@ -309,48 +302,37 @@ Item {
             interval: appLauncher.entranceDelay
             onTriggered: {
                 col.visible = true
-                entranceAnim.start()
+                if (appLauncher.entranceRise !== 0)
+                    entranceAnim.start()
                 appLauncher.focusSearch()
             }
         }
 
-        Component.onCompleted: showTimer.start()
+        Timer {
+            id: buildTimer
+            interval: 0
+            onTriggered: styleLoader.active = true
+        }
 
-        ParallelAnimation {
+        Component.onCompleted: {
+            showTimer.start()
+            buildTimer.start()
+        }
+
+        NumberAnimation {
             id: entranceAnim
-            NumberAnimation {
-                target: col; property: "opacity"
-                from: 0; to: 1
-                duration: 200; easing.type: Easing.OutCubic
-            }
-            NumberAnimation {
-                target: col; property: "scale"
-                from: appLauncher.entranceScale; to: 1
-                duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.5
-            }
-            NumberAnimation {
-                target: colRise; property: "y"
-                from: appLauncher.entranceRise; to: 0
-                duration: M3Motion.spatialDuration("default")
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: [0.2, 0.0, 0.0, 1.0, 1, 1]
-            }
+            target: colRise; property: "y"
+            from: appLauncher.entranceRise; to: 0
+            duration: M3Motion.spatialDuration("default")
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: [0.2, 0.0, 0.0, 1.0, 1, 1]
         }
 
         Loader {
             id: styleLoader
             anchors.fill: parent
-            sourceComponent: {
-                switch (ServiceLauncher.style) {
-                case "spotlight":  return spotlightComp
-                case "rail":       return railComp
-                case "bento":      return bentoComp
-                case "folders":    return foldersComp
-                case "expressive": return expressiveComp
-                case "hearth":     return hearthComp
-                }
-                return listComp
-            }
+            active: false
+            sourceComponent: ServiceLauncher.style === "hearth" ? hearthComp : paletteComp
             onLoaded: {
                 const q = appLauncher.query
                 if (appLauncher.searchField) appLauncher.searchField.text = q
@@ -359,13 +341,8 @@ Item {
         }
     }
 
-    Component { id: spotlightComp;  LauncherStyleSpotlight  { launcher: appLauncher } }
-    Component { id: railComp;       LauncherStyleRail       { launcher: appLauncher } }
-    Component { id: bentoComp;      LauncherStyleBento      { launcher: appLauncher } }
-    Component { id: foldersComp;    LauncherStyleFolders    { launcher: appLauncher } }
-    Component { id: listComp;       LauncherStyleList       { launcher: appLauncher } }
-    Component { id: expressiveComp; LauncherStyleExpressive { launcher: appLauncher } }
     Component { id: hearthComp;     LauncherStyleHearth     { launcher: appLauncher } }
+    Component { id: paletteComp;    LauncherStylePalette    { launcher: appLauncher } }
 
     // ── Context menu click-away ────────────────────────────────────────────
     MouseArea {
@@ -395,10 +372,11 @@ Item {
                 y = Math.max(4, appLauncher.height - height - 8)
         }
 
+        transformOrigin: Item.Top
         scale: visible ? 1 : 0.88
         opacity: visible ? 1 : 0
-        Behavior on scale   { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-        Behavior on opacity { NumberAnimation { duration: 150 } }
+        Behavior on scale   { SpatialAnim { speed: "fast" } }
+        Behavior on opacity { EffectsAnim { speed: "fast" } }
 
         ColumnLayout {
             id: cmCol

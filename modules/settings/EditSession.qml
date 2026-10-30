@@ -25,7 +25,7 @@ Singleton {
     property var namers: ({})
     property var searchers: ({})
 
-    readonly property var noisyGeneral: ["soundscape", "clipboardPins", "launcherSizes"]
+    readonly property var noisyGeneral: ["soundscape", "clipboardPins", "launcherSizes", "editTipSeen"]
     readonly property var noisyWidgets: ["habits", "countdowns", "moods", "worldClockZones"]
 
     onPeekChanged: if (root.peek) root.peeked = true

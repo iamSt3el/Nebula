@@ -219,7 +219,7 @@ function sysEdge(barCfg, general) {
 }
 
 function gapModel(barCfg) {
-    return !!barCfg && barCfg.renderer === "blob"
+    return !!barCfg
 }
 
 function gapDefaults(cfg) {
@@ -259,33 +259,12 @@ function gapShape(barCfg, general, id, side) {
 
 function blockShapes(barCfg, general, sanitized) {
     const blocks = sanitized || upgradeBlocks((barCfg && barCfg.blocks) || [], barCfg)
-    const styles = (barCfg && barCfg.blockStyles) || {}
     const out = { ids: {}, edges: {} }
-    if (gapModel(barCfg)) {
-        for (const e of SIDES) {
-            const list = blocks.filter(b => edgeOf(b) === e)
-            for (const b of list)
-                out.ids[b.id] = gapShape(barCfg, general, b.id, e)
-            out.edges[e] = list.length ? list.map(b => out.ids[b.id]) : [gapDefaults(edgeCfg(barCfg, general, e)).edge > 0.5 ? "pill" : "stepped"]
-        }
-        return out
-    }
     for (const e of SIDES) {
         const list = blocks.filter(b => edgeOf(b) === e)
-        const own = list.map(b => {
-            const s = styles[b.id] ? styles[b.id].shape : undefined
-            return isShape(s) ? s : ""
-        })
-        const legacy = edgeCfg(barCfg, general, e).shape
-        for (let i = 0; i < list.length; i++) {
-            let s = own[i]
-            for (let d = 1; !s && d < list.length; d++)
-                s = own[i - d] || own[i + d] || ""
-            out.ids[list[i].id] = s || legacy
-        }
-        out.edges[e] = list.map(b => out.ids[b.id])
-        if (!out.edges[e].length)
-            out.edges[e] = [legacy]
+        for (const b of list)
+            out.ids[b.id] = gapShape(barCfg, general, b.id, e)
+        out.edges[e] = list.length ? list.map(b => out.ids[b.id]) : [gapDefaults(edgeCfg(barCfg, general, e)).edge > 0.5 ? "pill" : "stepped"]
     }
     return out
 }

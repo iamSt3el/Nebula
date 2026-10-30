@@ -32,11 +32,13 @@ void ShapePainter::setStretchToFill(bool v) { setStyle(m_stretch, v); }
 void ShapePainter::setPolygonIsNormalized(bool v) { setStyle(m_normalized, v); }
 void ShapePainter::setStrokeProgress(qreal v) { setStyle(m_strokeProgress, v); }
 void ShapePainter::setStrokeWidth(qreal v) { setStyle(m_strokeWidth, v); }
+void ShapePainter::setTrackGap(qreal v) { setStyle(m_trackGap, v); }
 void ShapePainter::setStrokeColor(const QColor &v) { setStyle(m_strokeColor, v); }
 void ShapePainter::setStrokeTrackColor(const QColor &v) { setStyle(m_strokeTrackColor, v); }
 void ShapePainter::setAngle(qreal v) { setStyle(m_angle, v); }
 void ShapePainter::setFillLevel(qreal v) { setStyle(m_fillLevel, v); }
 void ShapePainter::setLevelColor(const QColor &v) { setStyle(m_levelColor, v); }
+void ShapePainter::setSweepLevel(qreal v) { setStyle(m_sweepLevel, v); }
 
 QTransform ShapePainter::spin(const QPainterPath &shape, qreal pad) const
 {
@@ -153,12 +155,7 @@ void ShapePainter::paint(QPainter *painter)
         painter->setTransform(spin(ringPath, m_strokeWidth / 2), true);
         QPen pen(m_strokeTrackColor, m_strokeWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
         painter->setBrush(Qt::NoBrush);
-        painter->setPen(pen);
-        painter->drawPolyline(pts.data(), int(pts.size()));
 
-        const double progress = std::max(0.0, std::min(1.0, double(m_strokeProgress)));
-        if (progress <= 0)
-            return;
         double total = 0;
         std::vector<double> lengths;
         lengths.reserve(pts.size());
@@ -167,22 +164,51 @@ void ShapePainter::paint(QPainter *painter)
             lengths.push_back(l);
             total += l;
         }
-        double remaining = total * progress;
-        QPainterPath path(pts[0]);
-        for (size_t i = 1; i < pts.size() && remaining > 0; i++) {
-            const double l = lengths[i - 1];
-            if (l <= remaining) {
-                path.lineTo(pts[i]);
-                remaining -= l;
-            } else {
-                const double f = remaining / l;
-                path.lineTo(pts[i - 1] + (pts[i] - pts[i - 1]) * f);
-                remaining = 0;
+        if (total <= 0)
+            return;
+
+        auto span = [&](double from, double to) {
+            const double a = total * from;
+            const double b = total * to;
+            QPainterPath out;
+            double walked = 0;
+            bool open = false;
+            for (size_t i = 1; i < pts.size(); i++) {
+                const double l = lengths[i - 1];
+                const double s0 = walked;
+                const double s1 = walked + l;
+                walked = s1;
+                if (s1 < a || l <= 0)
+                    continue;
+                if (s0 > b)
+                    break;
+                const QPointF p0 = pts[i - 1] + (pts[i] - pts[i - 1]) * (std::max(a, s0) - s0) / l;
+                const QPointF p1 = pts[i - 1] + (pts[i] - pts[i - 1]) * (std::min(b, s1) - s0) / l;
+                if (!open) {
+                    out.moveTo(p0);
+                    open = true;
+                }
+                out.lineTo(p1);
             }
+            return out;
+        };
+
+        const double progress = std::max(0.0, std::min(1.0, double(m_strokeProgress)));
+        const double gap = m_trackGap >= 0 && progress > 0
+            ? std::min(progress, (m_trackGap + m_strokeWidth) / total)
+            : 0.0;
+        if (progress <= 0) {
+            painter->setPen(pen);
+            painter->drawPolyline(pts.data(), int(pts.size()));
+            return;
+        }
+        if (progress + gap < 1 - gap) {
+            painter->setPen(pen);
+            painter->drawPath(span(progress + gap, 1 - gap));
         }
         pen.setColor(m_strokeColor);
         painter->setPen(pen);
-        painter->drawPath(path);
+        painter->drawPath(span(0, progress));
         return;
     }
 
@@ -209,6 +235,20 @@ void ShapePainter::paint(QPainter *painter)
         const QRectF b = itemPath.boundingRect();
         painter->save();
         painter->setClipRect(QRectF(b.left(), b.bottom() - b.height() * level, b.width(), b.height() * level));
+        painter->fillPath(itemPath, m_levelColor);
+        painter->restore();
+    }
+    if (m_sweepLevel > 0) {
+        const qreal level = std::min<qreal>(1, m_sweepLevel);
+        const QRectF b = itemPath.boundingRect();
+        const QPointF c = b.center();
+        const qreal r = std::hypot(b.width(), b.height());
+        QPainterPath pie;
+        pie.moveTo(c);
+        pie.arcTo(QRectF(c.x() - r, c.y() - r, 2 * r, 2 * r), 90, -360 * level);
+        pie.closeSubpath();
+        painter->save();
+        painter->setClipPath(pie, Qt::IntersectClip);
         painter->fillPath(itemPath, m_levelColor);
         painter->restore();
     }

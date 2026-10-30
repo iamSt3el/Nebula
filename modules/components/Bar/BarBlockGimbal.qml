@@ -12,7 +12,7 @@ Item {
     property QtObject editor: null
     property bool live: false
 
-    readonly property string blockId: gimbal.editor ? gimbal.editor.gimbalBlock : ""
+    readonly property string blockId: gimbal.editor ? gimbal.editor.selectedBlock : ""
     property int rev: 0
     property string dragKey: ""
     property string hoverKey: ""
@@ -89,9 +89,9 @@ Item {
         const c1 = gimbal.pt(s, x1 + 5, far + 5)
         return {
             ua: Qt.point(a.x - o.x, a.y - o.y), ud: Qt.point(d.x - o.x, d.y - o.y),
-            left: gimbal.pt(s, x0 - 22, mid), leftFoot: gimbal.pt(s, x0 - 4, mid),
-            right: gimbal.pt(s, x1 + 22, mid), rightFoot: gimbal.pt(s, x1 + 4, mid),
-            lift: gimbal.pt(s, (x0 + x1) / 2, far + 34), liftFoot: gimbal.pt(s, (x0 + x1) / 2, far + 4),
+            left: gimbal.pt(s, x0 - 1, mid), leftFoot: gimbal.pt(s, x0 - 1, mid),
+            right: gimbal.pt(s, x1 + 1, mid), rightFoot: gimbal.pt(s, x1 + 1, mid),
+            lift: gimbal.pt(s, (x0 + x1) / 2, far + 6), liftFoot: gimbal.pt(s, (x0 + x1) / 2, far + 6),
             corner: gimbal.pt(s, x0 + r * 0.29, far - r * 0.29),
             box: Qt.rect(Math.min(c0.x, c1.x), Math.min(c0.y, c1.y), Math.abs(c1.x - c0.x), Math.abs(c1.y - c0.y)),
             radius: r + 5, vertical: s.vertical, edge: s.edge,
@@ -227,7 +227,7 @@ Item {
         } else if (sn.key === "corner") {
             let v = clamp(sn.rad + (da - dd) / 0.58, 0, sn.full)
             v = v >= sn.full - 1 ? sn.full : v < 1 ? 0 : v
-            BarLayout.draftBlockStyle(sn.edge, sn.id, { radius: v })
+            BarLayout.draftBlockStyle(sn.edge, sn.id, { radius: v, corners: null })
             gimbal.say(gimbal.words("corner", Math.round(v)))
         }
     }
@@ -274,7 +274,7 @@ Item {
         property string icon: ""
         property color fill: Colors.primaryContainer
         property color ink: Colors.primaryContainerText
-        property real base: 30
+        property real base: 22
         property real iconRot: 0
         property bool shownKnob: true
         readonly property bool active: gimbal.dragKey === knob.key
@@ -282,18 +282,18 @@ Item {
         visible: knob.shownKnob && (gimbal.dragKey === "" || knob.active)
         x: Math.round(knob.at.x - width / 2)
         y: Math.round(knob.at.y - height / 2)
-        width: knob.base + (knob.hot ? 6 : 0)
+        width: knob.base + (knob.hot ? 4 : 0)
         height: width
         z: knob.active ? 3 : 2
-        Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+        Behavior on width { SpatialAnim { speed: "fast" } }
 
         Rectangle {
             anchors.fill: parent
             radius: width / 2
             color: knob.hot ? Colors.primary : knob.fill
+            Behavior on color { EffectsColorAnim { speed: "fast" } }
             border.width: 2
             border.color: Qt.alpha(Colors.surface, 0.9)
-            Behavior on color { ColorAnimation { duration: 120 } }
         }
 
         MaterialIconSymbol {
@@ -405,42 +405,9 @@ Item {
         }
         Knob {
             key: "corner"
-            base: 16
+            base: 14
+            shownKnob: !!gimbal.found && !BarLayout.splitBlock(gimbal.found.b.blockId)
             at: gimbal.geo ? gimbal.geo.corner : Qt.point(0, 0)
-        }
-
-        Rectangle {
-            id: nameChip
-            readonly property point liftAt: gimbal.geo ? gimbal.geo.lift : Qt.point(0, 0)
-            readonly property bool side: !!gimbal.geo && gimbal.geo.vertical
-            readonly property bool onLeft: !!gimbal.geo && gimbal.geo.edge === "left"
-            visible: !!gimbal.geo && gimbal.dragKey === "" && gimbal.tip === ""
-            x: Math.round(nameChip.side && !nameChip.onLeft ? liftAt.x - width - 24 : liftAt.x + 24)
-            y: Math.round(liftAt.y - height / 2)
-            width: nameRow.implicitWidth + 20
-            height: 28
-            radius: 14
-            color: Colors.surfaceContainerHigh
-            border.width: 1
-            border.color: Qt.alpha(Colors.outline, 0.3)
-
-            Row {
-                id: nameRow
-                anchors.centerIn: parent
-                spacing: 6
-                CustomText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    content: gimbal.found ? gimbal.nameOf(gimbal.found.b) : ""
-                    size: 12
-                    weight: 600
-                }
-                CustomText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    content: "· right-click to close"
-                    size: 11
-                    customColor: Colors.outline
-                }
-            }
         }
     }
 

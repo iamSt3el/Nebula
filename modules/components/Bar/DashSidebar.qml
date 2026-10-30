@@ -13,8 +13,7 @@ Item {
     id: root
 
     property var actions: null
-    property string page: "home"
-    readonly property bool passwordPrompt: sub.item ? (sub.item.passwordPrompt ?? false) : false
+    signal opened(string key)
     readonly property var fans: ServiceSystemInfo.fanRpms ?? []
     readonly property var cfg: SettingsConfig.general
     readonly property bool showProfile: root.cfg.dashProfile ?? true
@@ -28,15 +27,11 @@ Item {
     readonly property real homeH: Math.max(96, homeCol.implicitHeight + 36)
 
     implicitWidth: 460
-    implicitHeight: root.page === "home" ? root.homeH : Math.max(root.homeH, 620)
+    implicitHeight: root.homeH
 
     Item {
         id: home
         anchors.fill: parent
-        opacity: root.page === "home" ? 1 : 0
-        visible: opacity > 0.01
-        transform: Translate { x: root.page === "home" ? 0 : -40; Behavior on x { SpatialAnim {} } }
-        Behavior on opacity { EffectsAnim {} }
 
         ColumnLayout {
             id: homeCol
@@ -67,16 +62,19 @@ Item {
                 rowSpacing: 6
 
                 Repeater {
-                    model: root.actions ? root.actions.pick(["wifi", "bluetooth", "dnd", "caffeine"]) : []
+                    id: toggleRep
+                    model: root.actions ? root.actions.pick(["wifi", "bluetooth", "dnd", "caffeine", "reading", "game"]) : []
                     DashToggle {
                         required property var modelData
+                        required property int index
                         Layout.fillWidth: true
                         Layout.preferredWidth: 1
+                        Layout.columnSpan: index === toggleRep.count - 1 && toggleRep.count % 2 === 1 ? 2 : 1
                         variant: "wide"
                         info: modelData
-                        expandable: modelData.key === "wifi" || modelData.key === "bluetooth"
+                        expandable: modelData.key === "wifi" || modelData.key === "bluetooth" || modelData.key === "reading"
                         onClicked: root.actions.fire(modelData.key)
-                        onOpened: root.page = modelData.key
+                        onOpened: root.opened(modelData.key)
                     }
                 }
             }
@@ -211,32 +209,6 @@ Item {
                     CustomText { Layout.alignment: Qt.AlignHCenter; content: "New notifications will show up here"; size: 12; weight: 500; customColor: Colors.surfaceVariantText }
                 }
             }
-        }
-    }
-
-    Loader {
-        id: sub
-        anchors.fill: parent
-        active: root.page !== "home"
-        opacity: active ? 1 : 0
-        Behavior on opacity { EffectsAnim {} }
-        transform: Translate { x: sub.active ? 0 : 40; Behavior on x { SpatialAnim {} } }
-        sourceComponent: root.page === "wifi" ? wifiComp : root.page === "bluetooth" ? btComp : null
-    }
-
-    Component {
-        id: wifiComp
-        Wifi {
-            showBack: true
-            onBackClicked: root.page = "home"
-        }
-    }
-
-    Component {
-        id: btComp
-        Bluetooth {
-            showBack: true
-            onBackClicked: root.page = "home"
         }
     }
 }

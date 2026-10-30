@@ -15,6 +15,26 @@ Singleton{
     property QtObject spacing
     property QtObject motion
 
+    readonly property string fontFamily: SettingsConfig.general.defaultFont ?? "Rubik"
+
+    readonly property real fontScale: {
+        const s = SettingsConfig.general.fontScale ?? "normal"
+        if (s === "compact") return 0.85
+        if (s === "large")   return 1.15
+        if (s === "xlarge")  return 1.3
+        return 1.0
+    }
+
+    readonly property int fontWeight: {
+        const w = SettingsConfig.general.fontWeight ?? "extrabold"
+        if (w === "thin")     return 300
+        if (w === "regular")  return 400
+        if (w === "medium")   return 500
+        if (w === "semibold") return 600
+        if (w === "bold")     return 700
+        return 800
+    }
+
     size : QtObject{
         property int barHeight: Math.max(32, Math.min(56, SettingsConfig.bar?.height ?? 40))
         property int arcHeight: 10

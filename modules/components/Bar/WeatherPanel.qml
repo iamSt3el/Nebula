@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import Quickshell
 import QtQuick
 import QtQuick.Layouts
@@ -5,11 +7,17 @@ import qs.modules.customComponents
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
+import "../../MatrialShapes/" as MaterialShapes
 
 Item {
     id: root
     anchors.fill: parent
     signal closed
+
+    property real topLeftRadius: 20
+    property real topRightRadius: 20
+    property real bottomLeftRadius: 20
+    property real bottomRightRadius: 20
 
     implicitHeight: root.fullH
 
@@ -20,7 +28,24 @@ Item {
     NumberAnimation on opacity { from: 0; to: 1; duration: 300; easing.type: Easing.OutQuad;   running: true }
     NumberAnimation on _slideX { from: 400; to: 0; duration: 300; easing.type: Easing.OutCubic; running: true }
 
-    readonly property real maxContentH: root.implicitHeight
+    readonly property real maxContentH: root.fullH
+
+    readonly property bool dark: Qt.color(Colors.surface).hslLightness < 0.5
+    readonly property color bg: root.dark ? "transparent" : Colors.tertiaryContainer
+    readonly property color ink: root.dark ? Colors.surfaceText : Colors.tertiaryContainerText
+    readonly property color subInk: root.dark ? Colors.surfaceVariantText
+        : Qt.tint(Colors.tertiaryContainerText, Qt.alpha(Colors.tertiaryContainer, 0.25))
+    readonly property color heroFill: root.dark ? Colors.tertiaryContainer : Colors.tertiary
+    readonly property color heroInk: root.dark ? Colors.tertiaryContainerText : Colors.tertiaryText
+    readonly property color rowBg: root.dark ? Colors.surfaceContainerHigh
+        : Qt.tint(Colors.tertiaryContainer, Qt.alpha("#ffffff", 0.45))
+    readonly property color rowIcon: root.dark ? Colors.tertiary : Colors.tertiaryContainerText
+    readonly property color iconBg: Qt.alpha(root.rowIcon, 0.14)
+    readonly property color nowBg: root.dark ? Colors.tertiaryContainer : Colors.tertiaryContainerText
+    readonly property color nowInk: root.dark ? Colors.tertiaryContainerText : Colors.tertiaryContainer
+    readonly property color btnBg: root.dark ? Colors.tertiaryContainer : Colors.tertiaryContainerText
+    readonly property color btnIcon: root.dark ? Colors.tertiaryContainerText : Colors.tertiaryContainer
+    readonly property string displayFamily: SettingsConfig.general.displayFont ?? "Titan One"
 
     readonly property bool metric: ServiceWeather.useMetric
     readonly property var cur: ServiceWeather.currentCondition
@@ -46,10 +71,6 @@ Item {
         return isNaN(n) ? 0 : n
     }
 
-    function celsius(t) {
-        return root.metric ? t : (t - 32) * 5 / 9
-    }
-
     function dayHi(d) {
         return root.num(root.pick(d, "maxtempC", "maxtempF"))
     }
@@ -72,7 +93,9 @@ Item {
 
     function hourLabel(h) {
         const hh = ((h % 24) + 24) % 24
-        return (hh % 12 === 0 ? 12 : hh % 12) + (hh < 12 ? " AM" : " PM")
+        if (hh === 12) return "noon"
+        if (hh === 0) return "midnight"
+        return (hh % 12) + (hh < 12 ? " AM" : " PM")
     }
 
     function kind(code) {
@@ -100,26 +123,28 @@ Item {
         return night ? "Clear" : "Sunny"
     }
 
-    function kindSky(k) {
+    function kindShape(k, night) {
         switch (k) {
-        case "storm":  return "with storms around"
-        case "snow":   return "with snow"
-        case "ice":    return "with sleet"
-        case "rain":   return "with some rain"
-        case "fog":    return "after a foggy start"
-        case "cloud":  return "under cloudy skies"
-        case "partly": return "with some cloud"
+        case "storm":  return "softBoom"
+        case "snow":   return "flower"
+        case "ice":    return "gem"
+        case "rain":   return "drop"
+        case "fog":    return "pill"
+        case "cloud":  return "puffy"
+        case "partly": return "sunny"
         }
-        return "under clear skies"
+        return night ? "cookie9" : "verySunny"
     }
 
-    function feelWord(t) {
-        const c = root.celsius(t)
-        if (c < 5) return "cold"
-        if (c < 15) return "cool"
-        if (c < 24) return "mild"
-        if (c < 33) return "warm"
-        return "hot"
+    function shortHour(h) {
+        const hh = ((h % 24) + 24) % 24
+        return (hh % 12 === 0 ? 12 : hh % 12) + (hh < 12 ? " AM" : " PM")
+    }
+
+    function nightAt(min) {
+        if (!root.sunKnown) return false
+        const m = ((min % 1440) + 1440) % 1440
+        return m < root.riseMin || m >= root.setMin
     }
 
     function partOfDay(h) {
@@ -130,15 +155,11 @@ Item {
         return "night"
     }
 
-    function strong(v) {
-        return "<font color=\"" + Colors.surfaceText + "\"><b>" + v + "</b></font>"
-    }
-
     readonly property string updatedText: {
         root.now
         if (ServiceWeather.isLoading) return "Updating…"
         if (ServiceWeather.hasError && !root.cur) return "Offline"
-        if (!ServiceWeather.lastUpdated) return "—"
+        if (!ServiceWeather.lastUpdated) return ""
         const mins = Math.floor((root.now - ServiceWeather.lastUpdated) / 60000)
         if (mins < 1) return "Just now"
         if (mins < 60) return mins + "m ago"
@@ -155,8 +176,7 @@ Item {
 
     readonly property int curTemp: root.num(root.pick(root.cur, "temp_C", "temp_F"))
     readonly property int feels: root.num(root.pick(root.cur, "FeelsLikeC", "FeelsLikeF"))
-    readonly property int todayHi: root.dayHi(root.days[0])
-    readonly property int todayLo: root.dayLo(root.days[0])
+    readonly property string curKind: root.kind(ServiceWeather.weatherCode)
 
     readonly property var upcoming: {
         const out = []
@@ -175,397 +195,408 @@ Item {
         return out
     }
 
-    readonly property string headline: {
-        if (!root.cur) return "No weather yet."
-        const h = root.now.getHours()
-        const when = h >= 21 || h < 5 || (root.night && h >= 17) ? "tonight" : "this " + root.partOfDay(h)
-        return root.kindWord(root.kind(ServiceWeather.weatherCode), root.night) + " and "
-             + root.feelWord(root.feels) + " " + when + "."
-    }
-
-    readonly property string nextLine: {
-        if (root.upcoming.length === 0) return ""
-        if (root.night) {
-            const until = root.riseMin >= 0
-                ? (root.nowMin < root.riseMin ? root.riseMin : 1440 + root.riseMin) : root.nowMin + 600
-            let lo = null
-            for (let i = 0; i < root.upcoming.length && root.upcoming[i].abs <= until; i++)
-                if (!lo || root.upcoming[i].temp < lo.temp) lo = root.upcoming[i]
-            return lo ? "Cools to " + root.strong(lo.temp + "°") + " by sunrise." : ""
-        }
-        const until = root.setMin >= 0 ? root.setMin : 18 * 60
-        let hi = null
-        for (let i = 0; i < root.upcoming.length && root.upcoming[i].abs <= until; i++)
-            if (!hi || root.upcoming[i].temp > hi.temp) hi = root.upcoming[i]
-        if (hi && hi.temp > root.curTemp)
-            return "Warms to " + root.strong(hi.temp + "°") + " around " + root.hourLabel(hi.hour) + "."
-        const mid = root.upcoming.find(e => e.day === 1 && e.hour === 0)
-        return mid ? "Cools to " + root.strong(mid.temp + "°") + " by midnight." : ""
-    }
-
-    readonly property string tomorrowLine: {
-        const t = root.days[1]
-        if (!t) return ""
-        const hs = t.hourly ?? []
-        let peak = null
-        for (let i = 0; i < hs.length; i++) {
-            const v = root.num(root.metric ? hs[i].tempC : hs[i].tempF)
-            if (!peak || v > peak.v) peak = { v: v, hour: Math.floor(parseInt(hs[i].time) / 100), code: hs[i].weatherCode }
-        }
-        if (!peak) return ""
-        const verb = peak.v >= root.todayHi ? "climbs to " : "reaches "
-        return "Tomorrow " + verb + root.strong(peak.v + "°") + " around " + root.hourLabel(peak.hour)
-             + " " + root.kindSky(root.kind(peak.code)) + "."
-    }
-
-    readonly property string rainLine: {
-        let wet = null
-        let best = null
-        for (let i = 0; i < root.upcoming.length; i++) {
+    readonly property var hourly: {
+        if (!root.cur) return []
+        const out = [{ label: "Now", temp: root.curTemp, shape: root.kindShape(root.curKind, root.night), now: true }]
+        for (let i = 0; i < root.upcoming.length && out.length < 8; i++) {
             const e = root.upcoming[i]
-            if (!wet && e.rain >= 30) wet = e
-            if (!best || e.rain > best.rain) best = e
-        }
-        const whenOf = e => {
-            const part = root.partOfDay(e.hour)
-            if (e.day === 0) return part === "night" ? "tonight" : "this " + part
-            if (e.day === 1) return part === "night" && e.hour < 5 ? "overnight" : "tomorrow " + part
-            const name = Qt.formatDate(new Date(root.days[e.day].date + "T00:00:00"), "dddd")
-            return name + " " + part
-        }
-        if (wet) return "Rain is likely " + whenOf(wet) + ", " + root.strong(wet.rain + "%") + "."
-        if (best && best.rain > 0)
-            return "The best chance of rain is " + whenOf(best) + ", and it is only " + root.strong(best.rain + "%") + "."
-        return root.upcoming.length > 0 ? "No rain in the forecast." : ""
-    }
-
-    readonly property string story: [root.nextLine, root.tomorrowLine, root.rainLine].filter(s => s !== "").join(" ")
-
-    readonly property var facts: {
-        const c = root.cur
-        if (!c) return []
-        const hum = root.num(c.humidity)
-        const diff = root.feels - root.curTemp
-        const out = [
-            { icon: "thermostat", label: "Feels like", value: root.feels + "°",
-              note: Math.abs(diff) <= 1 ? "same" : diff > 0 ? "warmer" : "cooler" },
-            { icon: "humidity_percentage", label: "Humidity", value: hum + "%",
-              note: hum < 40 ? "dry" : hum < 65 ? "comfortable" : "humid" },
-            { icon: "air", label: "Wind", value: root.pick(c, "windspeedKmph", "windspeedMiles") + (root.metric ? " km/h" : " mph"),
-              note: "from " + ServiceWeather.windDirection },
-            { icon: "compress", label: "Pressure", value: String(root.pick(c, "pressure", "pressureInches")),
-              note: root.metric ? "hPa" : "inHg" },
-            { icon: "visibility", label: "Visibility", value: root.pick(c, "visibility", "visibilityMiles") + (root.metric ? " km" : " mi"),
-              note: root.num(c.visibility) >= 10 ? "clear" : root.num(c.visibility) >= 4 ? "hazy" : "poor" }
-        ]
-        if (root.sunKnown) {
-            const rise = root.night
-            const at = rise ? root.riseMin : root.setMin
-            const left = at > root.nowMin ? at - root.nowMin : at + 1440 - root.nowMin
-            out.push({ icon: rise ? "wb_twilight" : "nights_stay", label: rise ? "Sunrise" : "Sunset",
-                       value: root.shortTime(rise ? root.astro.sunrise : root.astro.sunset),
-                       note: left >= 60 ? "in " + Math.round(left / 60) + " h" : "in " + left + " min" })
+            out.push({ label: root.shortHour(e.hour), temp: e.temp, now: false,
+                       shape: root.kindShape(root.kind(e.code), root.nightAt(e.abs)) })
         }
         return out
     }
 
-    readonly property real pad: 18
-    readonly property real gap: 14
-    readonly property real rowH: 42
+    function whenOf(e) {
+        const part = root.partOfDay(e.hour)
+        if (e.day === 0) return part === "night" ? "tonight" : "this " + part
+        if (e.day === 1) return part === "night" && e.hour < 5 ? "overnight" : "tomorrow " + part
+        return Qt.formatDate(new Date(root.days[e.day].date + "T00:00:00"), "dddd") + " " + part
+    }
+
+    readonly property var rowData: {
+        const out = []
+        const c = root.cur
+        if (c) {
+            const hum = root.num(c.humidity)
+            out.push({ shape: "cookie4", label: "Feels like",
+                       value: root.feels + "°, " + (hum < 40 ? "dry air" : hum < 65 ? "comfortable" : "humid") })
+        }
+        if (root.upcoming.length > 0 && root.riseMin >= 0) {
+            const until = root.nowMin < root.riseMin ? root.riseMin : 1440 + root.riseMin
+            let lo = null
+            for (let i = 0; i < root.upcoming.length && root.upcoming[i].abs <= until; i++)
+                if (!lo || root.upcoming[i].temp < lo.temp) lo = root.upcoming[i]
+            if (lo)
+                out.push({ shape: "moon", label: root.night ? "Until sunrise" : "Tonight",
+                           value: lo.temp + "° by " + root.hourLabel(lo.hour) })
+        }
+        if (root.sunKnown) {
+            const rise = root.night
+            out.push({ shape: rise ? "sunny" : "verySunny", label: rise ? "Sunrise" : "Sunset",
+                       value: root.shortTime(rise ? root.astro.sunrise : root.astro.sunset) })
+        }
+        let wet = null
+        for (let i = 0; i < root.upcoming.length; i++)
+            if (root.upcoming[i].rain >= 30) { wet = root.upcoming[i]; break }
+        if (wet)
+            out.push({ shape: "drop", label: "Rain", value: wet.rain + "% " + root.whenOf(wet) })
+        const t = root.days[1]
+        if (t) {
+            const hs = t.hourly ?? []
+            const mid = hs.length > 4 ? hs[4] : hs[hs.length - 1]
+            const sky = mid ? root.kindWord(root.kind(mid.weatherCode), false).toLowerCase() : ""
+            out.push({ shape: "squircle", label: "Tomorrow",
+                       value: root.dayLo(t) + "–" + root.dayHi(t) + "°" + (sky ? ", " + sky : "") })
+        }
+        return out
+    }
+
+    readonly property real pad: 16
+    readonly property real gap: 16
+    readonly property real headerH: 40
+    readonly property real rowH: 52
+    readonly property real rowGap: 2
+    readonly property real stripH: 78
+    readonly property real stripGap: 10
     readonly property real innerW: Math.max(0, root.width - root.pad * 2)
-    readonly property real availH: Math.max(0, root.height - root.pad * 2)
     readonly property bool wide: root.innerW >= 520
-    readonly property real leftW: root.wide ? Math.round((root.innerW - 24) * 0.55) : root.innerW
-    readonly property real factsW: root.wide ? root.innerW - 24 - root.leftW : root.innerW
-    readonly property real storyH: root.story !== "" ? storyProbe.implicitHeight : 0
-    readonly property real weekH: root.days.length > 0 ? week.implicitHeight : 0
-    readonly property real topH: header.implicitHeight + root.gap + hero.implicitHeight
-
-    readonly property real fullH: {
-        const story = root.storyH > 0 ? root.gap + root.storyH : 0
-        const facts = root.facts.length * root.rowH
-        const week = root.weekH > 0 ? root.gap + root.weekH : 0
-        const body = root.wide
-            ? root.gap + Math.max(hero.implicitHeight + story, facts) + header.implicitHeight
-            : root.topH + story + (facts > 0 ? root.gap + facts : 0)
-        return root.pad * 2 + body + week
-    }
-
-    readonly property bool showWeek: {
-        if (root.weekH <= 0) return false
-        return root.availH - root.topH >= root.gap + root.weekH
-    }
-
-    readonly property real bodyH: root.availH - header.implicitHeight - root.gap
-                                  - (root.showWeek ? root.gap + root.weekH : 0)
-
-    readonly property bool showStory: root.storyH > 0 && root.bodyH - hero.implicitHeight >= root.gap + root.storyH
-
-    readonly property int factCount: {
-        const room = root.wide
-            ? root.bodyH
-            : root.bodyH - hero.implicitHeight - (root.showStory ? root.gap + root.storyH : 0) - root.gap
-        return Math.max(0, Math.min(root.facts.length, Math.floor(room / root.rowH)))
-    }
-
-    readonly property int weekCount: Math.max(1, Math.min(root.days.length, Math.floor((root.innerW - 12) / 40)))
+    readonly property real leftW: root.wide ? Math.round((root.innerW - root.gap) * 0.47) : root.innerW
+    readonly property real rightW: root.wide ? root.innerW - root.gap - root.leftW : root.innerW
+    readonly property string tempText: root.cur ? root.curTemp + "°" : "--"
+    readonly property real shapeSize: Math.round(Math.max(130, Math.min(240, root.leftW * 0.56)))
+    readonly property real numRatio: Math.max(0.5, numProbe.implicitWidth / 100)
+    readonly property real bigSize: Math.round(Math.min(root.shapeSize * 0.6 / root.numRatio, root.shapeSize * 0.42))
 
     CustomText {
-        id: storyProbe
+        id: numProbe
         visible: false
-        width: root.leftW
-        content: root.story
-        textFormat: Text.StyledText
-        size: 14
+        content: root.tempText
+        size: 100
         weight: 400
-        lineHeight: 1.35
-        wrapMode: Text.WordWrap
+        family: root.displayFamily
+        font.letterSpacing: -3
         elide: Text.ElideNone
+    }
+    readonly property int slotCount: Math.max(3, Math.min(8, Math.floor((root.leftW + root.rowGap) / 58)))
+    readonly property var slots: root.hourly.slice(0, root.slotCount)
+    readonly property bool hasStrip: root.slots.length > 1
+    readonly property real heroH: hero.implicitHeight
+
+    function rowsHeight(n) {
+        return n > 0 ? n * root.rowH + (n - 1) * root.rowGap : 0
+    }
+
+    readonly property real fullH: {
+        const top = root.pad * 2 + root.headerH + 8
+        const strip = root.hasStrip ? root.stripH : 0
+        const rows = root.rowsHeight(root.rowData.length)
+        if (root.wide)
+            return top + Math.max(root.heroH + (strip > 0 ? root.gap + strip : 0), rows)
+        return top + root.heroH + root.gap + (strip > 0 ? strip + (rows > 0 ? root.stripGap : 0) : 0) + rows
+    }
+
+    readonly property real bodyH: Math.max(0, root.height - root.pad * 2 - root.headerH - 8)
+
+    readonly property var fit: {
+        const n = root.rowData.length
+        if (root.wide) {
+            const rows = Math.max(0, Math.min(n, Math.floor((root.bodyH + root.rowGap) / (root.rowH + root.rowGap))))
+            return { rows: rows, strip: root.hasStrip && root.bodyH - root.heroH - root.gap >= root.stripH }
+        }
+        let room = root.bodyH - root.heroH - root.gap
+        let rows = 0
+        let strip = false
+        let rowsDone = false
+        const order = [0, 1, -1]
+        for (let i = 2; i < n; i++) order.push(i)
+        for (let k = 0; k < order.length; k++) {
+            if (order[k] === -1) {
+                if (!root.hasStrip) continue
+                const cost = root.stripH + (rows > 0 ? root.stripGap : 0)
+                if (room >= cost) { strip = true; room -= cost }
+                continue
+            }
+            if (rowsDone || order[k] >= n) continue
+            const cost = rows > 0 ? root.rowH + root.rowGap : root.rowH + (strip ? root.stripGap : 0)
+            if (room >= cost) { rows++; room -= cost } else rowsDone = true
+        }
+        return { rows: rows, strip: strip }
+    }
+
+    readonly property var shownRows: root.rowData.slice(0, root.fit.rows)
+
+    component FactList: ColumnLayout {
+        id: list
+        required property var host
+        spacing: list.host.rowGap
+
+        Repeater {
+            model: list.host.shownRows
+
+            Rectangle {
+                id: row
+
+                required property var modelData
+                required property int index
+                readonly property bool first: row.index === 0
+                readonly property bool last: row.index === list.host.shownRows.length - 1
+
+                Layout.fillWidth: true
+                implicitHeight: list.host.rowH
+                color: list.host.rowBg
+                topLeftRadius: row.first ? 24 : 6
+                topRightRadius: row.first ? 24 : 6
+                bottomLeftRadius: row.last ? 24 : 6
+                bottomRightRadius: row.last ? 24 : 6
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 16
+                    spacing: 12
+
+                    Rectangle {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        radius: 16
+                        color: list.host.iconBg
+
+                        MaterialShapes.ShapeCanvas {
+                            anchors.centerIn: parent
+                            width: 16
+                            height: 16
+                            roundedPolygon: row.modelData.shape
+                            color: list.host.rowIcon
+                        }
+                    }
+
+                    CustomText {
+                        content: row.modelData.label
+                        size: 13
+                        weight: 600
+                        customColor: list.host.subInk
+                    }
+
+                    CustomText {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        horizontalAlignment: Text.AlignRight
+                        content: row.modelData.value
+                        size: 14
+                        weight: 800
+                        customColor: list.host.ink
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        visible: !root.dark
+        color: root.bg
+        topLeftRadius: root.topLeftRadius
+        topRightRadius: root.topRightRadius
+        bottomLeftRadius: root.bottomLeftRadius
+        bottomRightRadius: root.bottomRightRadius
     }
 
     ColumnLayout {
-        id: column
         anchors.fill: parent
         anchors.margins: root.pad
-        spacing: root.gap
-        clip: true
+        spacing: 0
 
         RowLayout {
             id: header
             Layout.fillWidth: true
-            spacing: 6
+            Layout.preferredHeight: root.headerH
+            Layout.leftMargin: 6
+            spacing: 8
 
             CustomText {
                 Layout.fillWidth: true
-                content: ((ServiceWeather.cityName !== "Unknown" ? ServiceWeather.cityName : ServiceWeather.location)
-                          + "  ·  " + Qt.formatDate(root.now, "ddd d MMM")).toUpperCase()
-                size: 11
-                weight: 600
-                font.letterSpacing: 1.2
-                customColor: Colors.outline
-                elide: Text.ElideRight
+                content: ServiceWeather.cityName !== "Unknown" ? ServiceWeather.cityName : ServiceWeather.location
+                size: 14
+                weight: 800
+                customColor: root.ink
             }
 
             CustomText {
+                visible: root.updatedText !== ""
                 content: root.updatedText
                 size: 11
-                customColor: ServiceWeather.isLoading ? Colors.primary : Colors.outline
+                weight: 600
+                customColor: root.subInk
             }
 
             M3IconButton {
-                Layout.preferredWidth: 30
-                Layout.preferredHeight: 30
+                Layout.preferredWidth: 40
+                Layout.preferredHeight: 40
                 icon: "refresh"
-                iconSize: 16
-                iconColor: ServiceWeather.isLoading ? Colors.primary : Colors.surfaceVariantText
+                iconSize: 18
+                color: root.btnBg
+                iconColor: root.btnIcon
+                iconHoverColor: root.btnIcon
+                tip: "Refresh"
                 onClicked: ServiceWeather.refresh()
             }
         }
 
-        GridLayout {
+        RowLayout {
             Layout.fillWidth: true
-            columns: root.wide ? 2 : 1
-            columnSpacing: 24
-            rowSpacing: root.gap
+            Layout.fillHeight: true
+            Layout.topMargin: 8
+            spacing: root.gap
 
             ColumnLayout {
                 Layout.preferredWidth: root.leftW
                 Layout.maximumWidth: root.leftW
-                Layout.alignment: Qt.AlignTop
-                spacing: root.gap
+                Layout.fillHeight: true
+                spacing: 0
 
                 RowLayout {
                     id: hero
                     Layout.fillWidth: true
-                    spacing: 12
+                    spacing: 14
 
                     Item {
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        Layout.alignment: Qt.AlignTop
-                        implicitHeight: headlineText.implicitHeight
+                        id: badge
+                        Layout.preferredWidth: root.shapeSize
+                        Layout.preferredHeight: root.shapeSize
+
+                        MaterialShapes.ShapeCanvas {
+                            anchors.fill: parent
+                            roundedPolygon: root.kindShape(root.curKind, root.night)
+                            color: root.heroFill
+                        }
 
                         CustomText {
-                            id: headlineText
-                            width: Math.max(0, root.leftW - tempCol.implicitWidth - hero.spacing)
-                            content: root.headline
-                            size: root.wide ? 30 : 26
+                            anchors.centerIn: parent
+                            anchors.horizontalCenterOffset: Math.round(root.bigSize * 0.03)
+                            content: root.tempText
+                            size: root.bigSize
                             weight: 400
-                            family: SettingsConfig.general.displayFont ?? "Titan One"
-                            renderType: Text.QtRendering
-                            wrapMode: Text.WordWrap
+                            family: root.displayFamily
+                            font.letterSpacing: -Math.round(root.bigSize * 0.03)
                             elide: Text.ElideNone
-                            lineHeight: 1.1
-                            verticalAlignment: Text.AlignTop
+                            customColor: root.heroInk
                         }
                     }
 
                     ColumnLayout {
-                        id: tempCol
-                        Layout.alignment: Qt.AlignTop
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.alignment: Qt.AlignVCenter
                         spacing: 4
 
                         CustomText {
-                            Layout.alignment: Qt.AlignRight
-                            content: root.cur ? root.curTemp + "°" : "--"
-                            size: root.wide ? 64 : 56
+                            Layout.fillWidth: true
+                            content: root.cur ? root.kindWord(root.curKind, root.night) : "No weather yet"
+                            size: Math.round(Math.max(20, Math.min(34, root.shapeSize * 0.17)))
                             weight: 400
-                            family: SettingsConfig.general.displayFont ?? "Titan One"
-                            renderType: Text.QtRendering
-                            customColor: Colors.primary
+                            family: root.displayFamily
+                            wrapMode: Text.WordWrap
+                            elide: Text.ElideNone
+                            customColor: root.ink
                         }
 
                         CustomText {
-                            Layout.alignment: Qt.AlignRight
+                            Layout.fillWidth: true
                             visible: root.days.length > 0
-                            content: "H " + root.todayHi + "°  ·  L " + root.todayLo + "°"
-                            size: 12
-                            customColor: Colors.surfaceVariantText
+                            content: "High " + root.dayHi(root.days[0]) + "°"
+                            size: 14
+                            weight: 800
+                            customColor: root.ink
+                        }
+
+                        CustomText {
+                            Layout.fillWidth: true
+                            visible: root.days.length > 0
+                            content: "Low " + root.dayLo(root.days[0]) + "°"
+                            size: 14
+                            weight: 600
+                            customColor: root.subInk
                         }
                     }
                 }
 
                 Item {
-                    Layout.fillWidth: true
-                    visible: root.showStory
-                    implicitHeight: storyText.implicitHeight
-
-                    CustomText {
-                        id: storyText
-                        width: root.leftW
-                        content: root.story
-                        textFormat: Text.StyledText
-                        size: 14
-                        weight: 400
-                        lineHeight: 1.35
-                        wrapMode: Text.WordWrap
-                        elide: Text.ElideNone
-                        customColor: Colors.surfaceVariantText
-                    }
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: root.gap
                 }
-            }
 
-            ColumnLayout {
-                Layout.preferredWidth: root.factsW
-                Layout.maximumWidth: root.factsW
-                Layout.alignment: Qt.AlignTop
-                visible: root.factCount > 0
-                spacing: 0
+                RowLayout {
+                    id: strip
+                    Layout.fillWidth: true
+                    visible: root.fit.strip
+                    spacing: root.rowGap
 
-                Repeater {
-                    model: root.facts.slice(0, root.factCount)
-
-                    delegate: Item {
-                        id: factRow
-                        required property var modelData
-                        Layout.fillWidth: true
-                        implicitHeight: root.rowH
+                    Repeater {
+                        model: root.slots
 
                         Rectangle {
-                            width: parent.width
-                            height: 1
-                            color: Colors.outlineVariant
-                        }
+                            id: slot
 
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.topMargin: 1
-                            spacing: 12
+                            required property var modelData
+                            required property int index
+                            readonly property bool first: slot.index === 0
+                            readonly property bool last: slot.index === root.slots.length - 1
 
-                            MaterialIconSymbol {
-                                content: factRow.modelData.icon
-                                iconSize: 18
-                                customColor: Colors.outline
-                            }
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            Layout.minimumWidth: 0
+                            implicitHeight: root.stripH
+                            color: slot.modelData.now ? root.nowBg : root.rowBg
+                            topLeftRadius: slot.first ? 24 : 6
+                            bottomLeftRadius: slot.first ? 24 : 6
+                            topRightRadius: slot.last ? 24 : 6
+                            bottomRightRadius: slot.last ? 24 : 6
 
-                            CustomText {
-                                Layout.fillWidth: true
-                                content: factRow.modelData.label
-                                size: 13
-                                weight: 400
-                                customColor: Colors.surfaceVariantText
-                            }
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: 6
 
-                            CustomText {
-                                content: factRow.modelData.value
-                                size: 13
-                                weight: 600
-                            }
+                                CustomText {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    content: slot.modelData.label
+                                    size: 11
+                                    weight: 700
+                                    customColor: slot.modelData.now ? root.nowInk : root.subInk
+                                }
 
-                            CustomText {
-                                visible: root.factsW >= 280
-                                Layout.preferredWidth: 78
-                                horizontalAlignment: Text.AlignRight
-                                content: factRow.modelData.note
-                                size: 11
-                                weight: 400
-                                customColor: Colors.outline
+                                MaterialShapes.ShapeCanvas {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    Layout.preferredWidth: 18
+                                    Layout.preferredHeight: 18
+                                    roundedPolygon: slot.modelData.shape
+                                    color: slot.modelData.now ? root.nowInk : root.rowIcon
+                                }
+
+                                CustomText {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    content: slot.modelData.temp + "°"
+                                    size: 15
+                                    weight: 800
+                                    customColor: slot.modelData.now ? root.nowInk : root.ink
+                                }
                             }
                         }
                     }
+                }
+
+                FactList {
+                    host: root
+                    Layout.fillWidth: true
+                    Layout.topMargin: root.fit.strip && root.fit.rows > 0 ? root.stripGap : 0
+                    visible: !root.wide && root.fit.rows > 0
                 }
             }
-        }
 
-        Item {
-            Layout.fillHeight: true
-        }
-
-        Rectangle {
-            id: week
-            Layout.fillWidth: true
-            visible: root.showWeek
-            implicitHeight: weekRow.implicitHeight + 24
-            radius: 18
-            color: Colors.surfaceContainerHigh
-
-            RowLayout {
-                id: weekRow
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.leftMargin: 6
-                anchors.rightMargin: 6
-                spacing: 2
-
-                Repeater {
-                    model: root.days.slice(0, root.weekCount)
-
-                    delegate: ColumnLayout {
-                        id: dayCol
-                        required property var modelData
-                        required property int index
-                        Layout.fillWidth: true
-                        Layout.preferredWidth: 1
-                        Layout.minimumWidth: 0
-                        Layout.maximumWidth: Infinity
-                        spacing: 4
-
-                        CustomText {
-                            Layout.alignment: Qt.AlignHCenter
-                            content: dayCol.index === 0 ? "Today"
-                                   : Qt.formatDate(new Date(dayCol.modelData.date + "T00:00:00"), "ddd")
-                            size: 11
-                            weight: 600
-                            customColor: dayCol.index === 0 ? Colors.primary : Colors.outline
-                        }
-
-                        CustomText {
-                            Layout.alignment: Qt.AlignHCenter
-                            content: root.dayHi(dayCol.modelData) + "°"
-                            size: 14
-                            weight: 600
-                        }
-
-                        CustomText {
-                            Layout.alignment: Qt.AlignHCenter
-                            content: root.dayLo(dayCol.modelData) + "°"
-                            size: 11
-                            weight: 400
-                            customColor: Colors.outline
-                        }
-                    }
-                }
+            FactList {
+                host: root
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                visible: root.wide && root.fit.rows > 0
             }
         }
     }

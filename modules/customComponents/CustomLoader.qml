@@ -1,59 +1,64 @@
 import QtQuick
-import "../MatrialShapes/" as MaterialShapes
-import "../MatrialShapes/material-shapes.js" as MaterialShapesFn
+import Nebula
 
 Item {
     id: root
 
     property color color: "#6750A4"
-    property real size: 60
+    property real size: 48
     property bool running: true
 
-    width: size
-    height: size
+    readonly property var shapes: ["softBurst", "cookie9", "pentagon", "pill", "sunny", "cookie4", "oval"]
+    readonly property bool _live: root.running && root.visible
 
-    property int  _shapeIdx:      0
-    property real _rotation:      0
-    property real _rotationBase:  0
+    property int _index: 0
+    property real _morph: 0
+    property real _turn: 90
+    property real _spin: 0
 
-    property var _shapes: [
-        MaterialShapesFn.getCookie12Sided,
-        MaterialShapesFn.getSlanted,
-        MaterialShapesFn.getCircle,
-        MaterialShapesFn.getCookie4Sided,
-        MaterialShapesFn.getGem,
-        MaterialShapesFn.getPill,
-    ]
+    width: root.size
+    height: root.size
 
     SequentialAnimation {
         loops: Animation.Infinite
-        running: root.running && root.visible
+        running: root._live
 
-        // Advance shape first — ShapeCanvas auto-morphs via its Behavior on progress
-        ScriptAction {
-            script: root._shapeIdx = (root._shapeIdx + 1) % root._shapes.length
-        }
-
-        // Rotate while the morph plays out
         NumberAnimation {
-            target: root; property: "_rotation"
-            to: root._rotationBase + 180
-            duration: 700; easing.type: Easing.OutExpo
+            target: root
+            property: "_morph"
+            from: 0
+            to: 1
+            duration: 500
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.6
         }
-
+        PauseAnimation { duration: 150 }
         ScriptAction {
-            script: root._rotationBase += 180
+            script: {
+                root._index = (root._index + 1) % root.shapes.length
+                root._morph = 0
+                root._turn = (root._turn + 90) % 360
+            }
         }
-
-        PauseAnimation { duration: 100 }
     }
 
-    MaterialShapes.ShapeCanvas {
+    NumberAnimation on _spin {
+        from: 0
+        to: 360
+        duration: 4666
+        loops: Animation.Infinite
+        running: root._live
+    }
+
+    ShapePainter {
         anchors.centerIn: parent
-        width: root.size
-        height: root.size
+        width: Math.round(root.size * 38 / 48)
+        height: width
+        fromShape: root.shapes[root._index]
+        toShape: root.shapes[(root._index + 1) % root.shapes.length]
+        progress: Math.min(1, root._morph)
         color: root.color
-        rotation: root._rotation
-        roundedPolygon: root._shapes[root._shapeIdx]()
+        rotation: root._morph * 90 + root._turn + root._spin
+        antialiasing: true
     }
 }

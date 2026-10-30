@@ -10,7 +10,15 @@ import Quickshell.Services.Pipewire
 Singleton{
     id: root   
 
+    function isEffectsNode(node) {
+        const name = String(node?.name ?? "")
+        const app = String(node?.properties?.["application.id"] ?? node?.properties?.["application.name"] ?? "")
+        return name.startsWith("easyeffects") || name.startsWith("ee_") || /easy ?effects/i.test(app)
+    }
+
     readonly property var nodes: Pipewire.nodes.values.reduce((acc, node) => {
+        if (root.isEffectsNode(node))
+            return acc;
         if(!node.isStream){
             if(node.isSink)
             acc.sinks.push(node);

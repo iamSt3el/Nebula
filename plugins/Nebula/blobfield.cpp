@@ -21,9 +21,10 @@ constexpr int kOffFill = 80;
 constexpr int kOffEdge = 96;
 constexpr int kOffShadow = 112;
 constexpr int kOffShadowInfo = 128;
-constexpr int kOffFrameHole = 144;
-constexpr int kOffFrameRad = 160;
-constexpr int kOffRect = 176;
+constexpr int kOffShadowMore = 144;
+constexpr int kOffFrameHole = 160;
+constexpr int kOffFrameRad = 176;
+constexpr int kOffRect = 192;
 constexpr int kOffRadii = kOffRect + 16 * kBlobLocal;
 constexpr int kOffExtra = kOffRadii + 16 * kBlobLocal;
 constexpr int kOffPaint = kOffExtra + 16 * kBlobLocal;
@@ -51,6 +52,9 @@ public:
     QColor shadow;
     float shadowSize = 0;
     float shadowStrength = 0;
+    float shadowOffset = 0;
+    float shadowContact = 0;
+    QSizeF size;
 };
 
 class BlobShader : public QSGMaterialShader {
@@ -91,6 +95,8 @@ public:
         std::memcpy(d + kOffEdge, edge, 16);
         std::memcpy(d + kOffShadow, shadow, 16);
         std::memcpy(d + kOffShadowInfo, info, 16);
+        const float more[4] = { m->shadowOffset, m->shadowContact, float(m->size.width()), float(m->size.height()) };
+        std::memcpy(d + kOffShadowMore, more, 16);
         std::memcpy(d + kOffFrameHole, &p->frameHole, 16);
         std::memcpy(d + kOffFrameRad, &p->frameRad, 16);
         for (int i = 0; i < count; ++i) {
@@ -226,6 +232,33 @@ void BlobField::setShadowStrength(qreal s)
     update();
 }
 
+void BlobField::setShadowOffset(qreal o)
+{
+    o = std::max<qreal>(0, o);
+    if (qFuzzyCompare(m_shadowOffset + 1, o + 1))
+        return;
+    m_shadowOffset = o;
+    pack();
+    emit shadowOffsetChanged();
+    update();
+}
+
+void BlobField::setShadowContact(qreal c)
+{
+    c = std::clamp<qreal>(c, 0, 1);
+    if (qFuzzyCompare(m_shadowContact + 1, c + 1))
+        return;
+    m_shadowContact = c;
+    pack();
+    emit shadowContactChanged();
+    update();
+}
+
+bool BlobField::shadowOn() const
+{
+    return m_shadowSize > 0 && (m_shadowStrength > 0 || m_shadowContact > 0);
+}
+
 void BlobField::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)
 {
     QQuickItem::geometryChange(newGeometry, oldGeometry);
@@ -247,8 +280,8 @@ void BlobField::pack()
     auto p = QSharedPointer<BlobPack>::create();
     const float k = float(m_smoothing);
     p->smoothing = k;
-    const bool shadowOn = m_shadowSize > 0 && m_shadowStrength > 0;
-    const float pad = k + std::max(shadowOn ? float(m_shadowSize) : 0.f, m_edgeWidth > 0 ? float(m_edgeWidth) + 2.f : 0.f) + 2.f;
+    const float reach = shadowOn() ? float(m_shadowSize + m_shadowOffset) : 0.f;
+    const float pad = k + std::max(reach, m_edgeWidth > 0 ? float(m_edgeWidth) + 2.f : 0.f) + 2.f;
     const QRect bounds(0, 0, int(std::ceil(width())), int(std::ceil(height())));
     if (bounds.isEmpty()) {
         m_pack = p;
@@ -300,7 +333,7 @@ void BlobField::pack()
         return QRegion(bounds).subtracted(inner);
     };
     const QRegion edgeBand = ring(pad);
-    const QRegion visibleFrame = frameOn ? ring(2.f + (shadowOn ? float(m_shadowSize) : 0.f)) : QRegion();
+    const QRegion visibleFrame = frameOn ? ring(2.f + reach) : QRegion();
 
     QRegion covered;
     std::vector<QRectF> padded(size_t(p->count));
@@ -335,8 +368,8 @@ void BlobField::pack()
                 piece.blobs.push_back(i);
             }
         }
-        piece.frame = edgeBand.intersects(r);
-        if (piece.blobs.empty() && !(piece.frame && frameOn))
+        piece.frame = frameOn && edgeBand.intersects(r);
+        if (piece.blobs.empty() && !piece.frame)
             continue;
         pieces.push_back(std::move(piece));
     }
@@ -354,7 +387,7 @@ QSGNode *BlobField::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
 {
     QSGNode *root = oldNode ? oldNode : new QSGNode;
     QSGNode *child = root->firstChild();
-    const bool shadowOn = m_shadowSize > 0 && m_shadowStrength > 0;
+    const bool shadowOn = BlobField::shadowOn();
     for (const BlobPiece &piece : m_pieces) {
         auto *node = static_cast<QSGGeometryNode *>(child);
         if (!node) {
@@ -388,6 +421,9 @@ QSGNode *BlobField::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
         mat->shadow = m_shadow;
         mat->shadowSize = shadowOn ? float(m_shadowSize) : 0.f;
         mat->shadowStrength = shadowOn ? float(m_shadowStrength) : 0.f;
+        mat->shadowOffset = shadowOn ? float(m_shadowOffset) : 0.f;
+        mat->shadowContact = shadowOn ? float(m_shadowContact) : 0.f;
+        mat->size = size();
         node->markDirty(QSGNode::DirtyMaterial);
         child = node->nextSibling();
     }

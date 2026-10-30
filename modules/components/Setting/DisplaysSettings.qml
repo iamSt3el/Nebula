@@ -1,20 +1,24 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls
 import qs.modules.utils
+import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
 
 Item {
     id: root
     anchors.fill: parent
-    anchors.margins: 5
 
     readonly property var mons: ServiceHyprConfig.monitors
     property string selected: ""
     readonly property var sel: root.mons.find(m => m.name === root.selected) ?? root.mons[0] ?? null
     readonly property var others: root.mons.filter(m => m.name !== (root.sel?.name ?? ""))
     readonly property int enabledCount: root.mons.filter(m => !m.disabled).length
+    readonly property var selModes: root.modesOf(root.sel)
+    readonly property string selRes: root.sel ? root.sel.width + "x" + root.sel.height : ""
+    readonly property string selHz: root.sel ? Number(root.sel.refreshRate).toFixed(2) : ""
+    readonly property string useMode: root.sel?.disabled ? "off"
+        : (root.sel?.mirrorOf && root.sel.mirrorOf !== "none") ? "mirror" : "extend"
 
     function logical(m) {
         const rot = (m.transform % 2) === 1
@@ -27,28 +31,48 @@ Item {
         const out = {}
         for (const s of (m?.availableModes ?? [])) {
             const r = s.match(/^(\d+)x(\d+)@([\d.]+)/)
-            if (!r) continue
+            if (!r)
+                continue
             const res = r[1] + "x" + r[2]
-            if (!out[res]) out[res] = []
+            if (!out[res])
+                out[res] = []
             const hz = Number(r[3]).toFixed(2)
-            if (out[res].indexOf(hz) < 0) out[res].push(hz)
+            if (out[res].indexOf(hz) < 0)
+                out[res].push(hz)
         }
         return out
     }
-
-    readonly property var selModes: root.modesOf(root.sel)
-    readonly property string selRes: root.sel ? root.sel.width + "x" + root.sel.height : ""
-    readonly property string selHz: root.sel ? Number(root.sel.refreshRate).toFixed(2) : ""
 
     function niceRes(res) {
         return res.replace("x", " × ")
     }
 
+    function nameOf(m) {
+        if (!m)
+            return ""
+        if (/^eDP|^LVDS|^DSI/.test(m.name))
+            return "Built-in display"
+        return (m.description ?? "").replace(/\s+\S+$/, "") || m.model || m.name
+    }
+
+    function summaryOf(m) {
+        if (m.disabled)
+            return m.name + " · off"
+        return m.name + " · " + m.width + " × " + m.height + " at " + Number(m.refreshRate).toFixed(2) + " Hz"
+            + (Math.abs(m.scale - 1) > 0.01 ? " · " + Math.round(m.scale * 100) + "%" : "")
+    }
+
+    function open(m) {
+        root.selected = m.name
+        stages.push("display")
+    }
+
     function snapPosition(m, gx, gy) {
         const me = root.logical(m)
-        var best = null, bestD = 1e12
+        let best = null, bestD = 1e12
         for (const o of root.mons) {
-            if (o.name === m.name || o.disabled) continue
+            if (o.name === m.name || o.disabled)
+                continue
             const r = root.logical(o)
             const cands = [
                 { x: r.x + r.w, y: r.y }, { x: r.x - me.w, y: r.y },
@@ -57,43 +81,33 @@ Item {
             ]
             for (const c of cands) {
                 const d = (c.x - gx) * (c.x - gx) + (c.y - gy) * (c.y - gy)
-                if (d < bestD) { bestD = d; best = c }
+                if (d < bestD) {
+                    bestD = d
+                    best = c
+                }
             }
         }
         return best ?? { x: Math.round(gx), y: Math.round(gy) }
     }
 
-    Flickable {
-        id: pageFlick
-        ScrollBar.vertical: CustomScrollBar {}
-        anchors.fill: parent
-        contentHeight: column.implicitHeight + 70
-        contentWidth: width
-        clip: true
+    Component.onCompleted: ServiceHyprConfig.refreshMonitors()
 
-        ColumnLayout {
-            id: column
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.leftMargin: 5
-            anchors.rightMargin: 5
-            anchors.topMargin: 5
-            spacing: 0
+    StageView {
+        id: stages
 
-            CustomText { Layout.topMargin: 24; content: "Arrangement"; size: 13; customColor: Colors.primary }
+        StagePage {
+            stageId: "front"
 
             Rectangle {
                 id: arena
                 Layout.fillWidth: true
-                Layout.topMargin: 6
                 Layout.preferredHeight: 230
-                topLeftRadius: 20; topRightRadius: 20; bottomLeftRadius: 5; bottomRightRadius: 5
+                radius: 28
                 color: Colors.surfaceContainerLow
                 clip: true
 
                 readonly property var box: {
-                    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9
+                    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9
                     for (const m of root.mons) {
                         const r = root.logical(m)
                         x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y)
@@ -119,7 +133,7 @@ Item {
                         y: arena.oy + (mon.r.y - arena.box.y) * arena.s + 2
                         width: mon.r.w * arena.s - 4
                         height: mon.r.h * arena.s - 4
-                        radius: 12
+                        radius: 14
                         opacity: mon.modelData.disabled ? 0.45 : 1
                         color: mon.isSel ? Colors.primaryContainer : Colors.surfaceContainerHighest
                         border.width: mon.isSel ? 3 : 0
@@ -146,7 +160,7 @@ Item {
                                 CustomText {
                                     Layout.fillWidth: true
                                     elide: Text.ElideRight
-                                    content: /^eDP|^LVDS|^DSI/.test(mon.modelData.name) ? "Built-in display" : (mon.modelData.model || mon.modelData.name)
+                                    content: root.nameOf(mon.modelData)
                                     size: 12; weight: 600
                                     customColor: mon.isSel ? Colors.primaryContainerText : Colors.surfaceText
                                 }
@@ -166,8 +180,10 @@ Item {
                             drag.target: root.mons.length > 1 ? mon : null
                             drag.threshold: 6
                             onPressed: root.selected = mon.modelData.name
+                            onClicked: root.open(mon.modelData)
                             onReleased: {
-                                if (!drag.active) return
+                                if (!drag.active)
+                                    return
                                 const gx = (mon.x - 2 - arena.ox) / arena.s + arena.box.x
                                 const gy = (mon.y - 2 - arena.oy) / arena.s + arena.box.y
                                 const p = root.snapPosition(mon.modelData, gx, gy)
@@ -178,202 +194,128 @@ Item {
                 }
             }
 
-            CustomCard {
-                Layout.topMargin: 3
-                autoRadius: false; topRadius: 5; bottomRadius: 20
+            StageNote { content: "Drag a display to move it; edges snap together. Click one for its settings." }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    M3Button {
-                        variant: "tonal"
-                        icon: "refresh"
-                        label: "Detect"
-                        onClicked: ServiceHyprConfig.refresh()
-                    }
-                    Item { Layout.fillWidth: true }
-                    CustomText { content: "Drag a display to move it; edges snap together"; size: 12; customColor: Colors.outline }
+            Repeater {
+                model: root.mons
+
+                StageNavRow {
+                    required property var modelData
+                    icon: /^eDP|^LVDS|^DSI/.test(modelData.name) ? "laptop_chromebook" : "desktop_windows"
+                    tonal: modelData.name === (SettingsConfig.general.primaryMonitor ?? "")
+                    title: root.nameOf(modelData)
+                    subtitle: root.summaryOf(modelData)
+                    value: tonal ? "Main" : ""
+                    onClicked: root.open(modelData)
                 }
             }
 
-            CustomText {
-                visible: !!root.sel
-                Layout.topMargin: 16
-                content: /^eDP|^LVDS|^DSI/.test(root.sel?.name ?? "") ? "Built-in display" : ((root.sel?.description ?? "").replace(/\s+\S+$/, "") || (root.sel?.name ?? ""))
-                size: 13
-                customColor: Colors.primary
+            StageGap {}
+
+            StageNavRow {
+                icon: "tune"
+                title: "All displays"
+                subtitle: "Variable refresh rate mode"
+                target: "all"
             }
 
-            ColumnLayout {
-                visible: !!root.sel
-                Layout.fillWidth: true
-                Layout.topMargin: 6
-                spacing: 3
-
-                CustomCard {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 14
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 2
-                            CustomText { Layout.fillWidth: true; content: "Resolution"; size: 14 }
-                            CustomText { content: root.sel?.name ?? ""; size: 12; customColor: Colors.outline }
-                        }
-                        CustomListNew {
-                            Layout.preferredWidth: 180
-                            Layout.preferredHeight: 32
-                            color: Colors.surfaceContainerHighest
-                            currentVal: root.niceRes(root.selRes)
-                            list: Object.keys(root.selModes).map(r => ({ name: root.niceRes(r), res: r }))
-                            onListChildClicked: child => {
-                                const hz = root.selModes[child.res]?.[0] ?? root.selHz
-                                ServiceHyprConfig.setMonitor(root.sel.name, { mode: child.res + "@" + hz })
-                            }
-                        }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 14
-                        CustomText { Layout.fillWidth: true; content: "Refresh rate"; size: 14 }
-                        M3ButtonGroup {
-                            height: 32
-                            textSize: 12
-                            model: (root.selModes[root.selRes] ?? [root.selHz]).map(hz => ({ value: hz, label: Number(hz) + " Hz" }))
-                            activeCheck: function(value) { return value === root.selHz }
-                            onSegmentClicked: value => ServiceHyprConfig.setMonitor(root.sel.name, { mode: root.selRes + "@" + value })
-                        }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 14
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 2
-                            CustomText { Layout.fillWidth: true; content: "Scale"; size: 14 }
-                            CustomText {
-                                content: root.sel ? "Apps get " + Math.round(root.sel.width / root.sel.scale) + " × " + Math.round(root.sel.height / root.sel.scale) + " of room" : ""
-                                size: 12
-                                customColor: Colors.outline
-                            }
-                        }
-                        M3ButtonGroup {
-                            height: 32
-                            textSize: 12
-                            model: [1, 1.25, 1.5, 1.75, 2].map(v => ({ value: v, label: Math.round(v * 100) + "%" }))
-                            activeCheck: function(value) { return Math.abs((root.sel?.scale ?? 1) - value) < 0.01 }
-                            onSegmentClicked: value => ServiceHyprConfig.setMonitor(root.sel.name, { scale: value })
-                        }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 14
-                        CustomText { Layout.fillWidth: true; content: "Orientation"; size: 14 }
-                        M3ButtonGroup {
-                            height: 32
-                            textSize: 12
-                            model: [
-                                { value: 0, label: "Landscape", icon: "crop_landscape" },
-                                { value: 1, label: "Portrait", icon: "crop_portrait" },
-                                { value: 2, label: "Flipped", icon: "rotate_right" },
-                                { value: 3, label: "Portrait flipped", icon: "rotate_left" }
-                            ]
-                            activeCheck: function(value) { return (root.sel?.transform ?? 0) === value }
-                            onSegmentClicked: value => ServiceHyprConfig.setMonitor(root.sel.name, { transform: value })
-                        }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 14
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 2
-                            CustomText { Layout.fillWidth: true; content: "Variable refresh rate"; size: 14 }
-                            CustomText {
-                                Layout.fillWidth: true
-                                wrapMode: Text.WordWrap
-                                content: "Lets games and video set the refresh rate; some panels flicker with it"
-                                size: 12
-                                customColor: Colors.outline
-                            }
-                        }
-                        CustomToogle {
-                            isToggleOn: !!root.sel?.vrr
-                            onToggled: function(state) { ServiceHyprConfig.setMonitor(root.sel.name, { vrr: state ? 1 : 0 }) }
-                        }
-                    }
-                }
-
-                CustomCard {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 14
-                        CustomText { Layout.fillWidth: true; content: "Use this display"; size: 14 }
-                        M3ButtonGroup {
-                            height: 32
-                            textSize: 12
-                            readonly property string mode: root.sel?.disabled ? "off"
-                                : (root.sel?.mirrorOf && root.sel.mirrorOf !== "none") ? "mirror" : "extend"
-                            model: {
-                                const m = [{ value: "extend", label: "Extend" }]
-                                if (root.others.length) m.push({ value: "mirror", label: "Mirror " + root.others[0].name })
-                                if (root.enabledCount > 1 || root.sel?.disabled) m.push({ value: "off", label: "Off" })
-                                return m
-                            }
-                            activeCheck: function(value) { return value === mode }
-                            onSegmentClicked: value => {
-                                if (value === "extend") ServiceHyprConfig.setMonitor(root.sel.name, { disabled: false, mirror: "" })
-                                else if (value === "mirror") ServiceHyprConfig.setMonitor(root.sel.name, { disabled: false, mirror: root.others[0].name })
-                                else ServiceHyprConfig.setMonitor(root.sel.name, { disabled: true })
-                            }
-                        }
-                    }
-                }
+            StageNavRow {
+                icon: "screen_search_desktop"
+                title: "Detect displays"
+                subtitle: "Look again for screens that were plugged in"
+                onClicked: ServiceHyprConfig.refresh()
             }
+        }
 
-            CustomText { visible: !!root.sel; Layout.topMargin: 16; content: "Workspaces"; size: 13; customColor: Colors.primary }
+        StageLazy {
+            stageId: "display"
 
-            CustomCard {
-                visible: !!root.sel
-                Layout.topMargin: 6
-                autoRadius: false; topRadius: 20; bottomRadius: 20
+            StagePage {
+                stageId: "display"
+                title: root.nameOf(root.sel)
+                aside: root.sel?.name ?? ""
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 10
-
-                    ColumnLayout {
-                        spacing: 2
-                        CustomText { content: "Workspaces that open on this display"; size: 14 }
-                        CustomText { content: "Click a number to move it here; click again to let it go anywhere"; size: 12; customColor: Colors.outline }
+                StageChoiceRow {
+                    title: "Use this display"
+                    options: {
+                        const m = [{ value: "extend", label: "Extend" }]
+                        if (root.others.length)
+                            m.push({ value: "mirror", label: "Mirror " + root.others[0].name })
+                        if (root.enabledCount > 1 || root.sel?.disabled)
+                            m.push({ value: "off", label: "Off" })
+                        return m
                     }
+                    current: root.useMode
+                    onPicked: v => {
+                        if (v === "extend")
+                            ServiceHyprConfig.setMonitor(root.sel.name, { disabled: false, mirror: "" })
+                        else if (v === "mirror")
+                            ServiceHyprConfig.setMonitor(root.sel.name, { disabled: false, mirror: root.others[0].name })
+                        else
+                            ServiceHyprConfig.setMonitor(root.sel.name, { disabled: true })
+                    }
+                }
 
-                    RowLayout {
+                StageGap {}
+
+                StageDropdownRow {
+                    enabled: !root.sel?.disabled
+                    title: "Resolution"
+                    options: Object.keys(root.selModes).map(r => root.niceRes(r))
+                    current: root.niceRes(root.selRes)
+                    onPicked: name => {
+                        const res = name.replace(" × ", "x")
+                        const hz = root.selModes[res]?.[0] ?? root.selHz
+                        ServiceHyprConfig.setMonitor(root.sel.name, { mode: res + "@" + hz })
+                    }
+                }
+
+                StageChoiceRow {
+                    enabled: !root.sel?.disabled
+                    title: "Refresh rate"
+                    options: (root.selModes[root.selRes] ?? [root.selHz]).map(hz => ({ value: hz, label: Number(hz) + " Hz" }))
+                    current: root.selHz
+                    onPicked: v => ServiceHyprConfig.setMonitor(root.sel.name, { mode: root.selRes + "@" + v })
+                }
+
+                StageChoiceRow {
+                    enabled: !root.sel?.disabled
+                    title: "Scale"
+                    subtitle: root.sel ? "Apps get " + Math.round(root.sel.width / root.sel.scale) + " × " + Math.round(root.sel.height / root.sel.scale) + " of room" : ""
+                    options: [1, 1.25, 1.5, 1.75, 2].map(v => ({ value: v, label: Math.round(v * 100) + "%" }))
+                    current: [1, 1.25, 1.5, 1.75, 2].find(v => Math.abs((root.sel?.scale ?? 1) - v) < 0.01)
+                    onPicked: v => ServiceHyprConfig.setMonitor(root.sel.name, { scale: v })
+                }
+
+                StageChoiceRow {
+                    enabled: !root.sel?.disabled
+                    title: "Orientation"
+                    options: [
+                        { value: 0, label: "Landscape", icon: "crop_landscape" },
+                        { value: 1, label: "Portrait", icon: "crop_portrait" },
+                        { value: 2, label: "Flipped", icon: "rotate_right" },
+                        { value: 3, label: "Portrait flipped", icon: "rotate_left" }
+                    ]
+                    current: root.sel?.transform ?? 0
+                    onPicked: v => ServiceHyprConfig.setMonitor(root.sel.name, { transform: v })
+                }
+
+                StageSwitchRow {
+                    enabled: !root.sel?.disabled
+                    title: "Variable refresh rate"
+                    subtitle: "Lets games and video set the refresh rate; some panels flicker with it"
+                    checked: !!root.sel?.vrr
+                    onToggled: on => ServiceHyprConfig.setMonitor(root.sel.name, { vrr: on ? 1 : 0 })
+                }
+
+                StageHeading { text: "Workspaces that open here" }
+
+                StageRow {
+                    subtitle: "Click a number to pin it to this display; click again to let it open anywhere"
+
+                    below: RowLayout {
                         spacing: 6
+
                         Repeater {
                             model: 10
 
@@ -410,13 +352,14 @@ Item {
                     }
                 }
             }
+        }
 
-            CustomText { Layout.topMargin: 16; content: "All displays"; size: 13; customColor: Colors.primary }
+        StageLazy {
+            stageId: "all"
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 6
-                spacing: 3
+            StagePage {
+                stageId: "all"
+                title: "All displays"
 
                 HyprChoiceRow {
                     autoRadius: false; topRadius: 20; bottomRadius: 20
@@ -431,18 +374,10 @@ Item {
                     ]
                 }
             }
-
-            Item { Layout.preferredHeight: 20 }
         }
     }
 
-    ScrollFade {
-        anchors.fill: parent
-        flickable: pageFlick
-    }
-
     Rectangle {
-        id: revertBar
         visible: !!ServiceHyprConfig.pendingMonitor
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
@@ -469,6 +404,4 @@ Item {
             M3Button { variant: "filled"; label: "Keep"; onClicked: ServiceHyprConfig.keepMonitor() }
         }
     }
-
-    Component.onCompleted: ServiceHyprConfig.refreshMonitors()
 }

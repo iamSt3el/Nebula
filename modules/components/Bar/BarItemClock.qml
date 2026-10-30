@@ -187,10 +187,10 @@ Item {
             readonly property real px: Math.round(Math.max(16, (root.host ? root.host.barH : 40) * 0.74))
             readonly property real cutW: Math.max(1.5, stack.px * 0.07)
             readonly property real tuck: stack.px * 0.12
-            readonly property real capH: metrics.tightBoundingRect("0").height
+            readonly property real capH: { metrics.font; return metrics.tightBoundingRect("0").height }
             readonly property real pitch: Math.ceil(stack.capH + stack.cutW + 1)
             readonly property var d: root.clockDigits.split("")
-            readonly property var boxes: stack.d.map(c => metrics.tightBoundingRect(c))
+            readonly property var boxes: { metrics.font; return stack.d.map(c => metrics.tightBoundingRect(c)) }
             readonly property real rowTop: stack.boxes[0].width + stack.boxes[1].width - stack.tuck
             readonly property real rowBot: stack.boxes[2].width + stack.boxes[3].width - stack.tuck
             readonly property real inkW: Math.max(stack.rowTop, stack.rowBot)

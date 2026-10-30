@@ -40,7 +40,8 @@ Singleton {
         "note":               { name: "New note",          desc: "Sticky note on the screen edge",                icon: "sticky_note_2" },
         "lock":               { name: "Lock",              desc: "Lock the session",                              icon: "lock" },
         "shutdown":           { name: "Session menu",      desc: "Lock, sleep, log out, restart, power off",      icon: "power_settings_new" },
-        "barEdit":            { name: "Bar edit mode",     desc: "Move and restyle bar items in place",           icon: "edit_square" },
+        "barEdit":            { name: "Edit mode",         desc: "Rearrange and restyle the bar and widgets",     icon: "edit_square" },
+        "books":              { name: "Reading mode",      desc: "Library of free books and a two-page reader",   icon: "menu_book" },
         "brightnessIncrease": { name: "Brightness up",     desc: "Raise the screen brightness with the OSD",      icon: "brightness_high" },
         "brightnessDecrease": { name: "Brightness down",   desc: "Lower the screen brightness with the OSD",      icon: "brightness_low" }
     })

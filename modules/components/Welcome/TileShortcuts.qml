@@ -24,6 +24,7 @@ WelcomeTile {
         { what: "Untuck",       name: "untuck",            keys: ["Super", "Shift", "X"],     hypr: "SUPER SHIFT, X",     lua: "SUPER + SHIFT + X",     locked: false },
         { what: "Spotlight",    name: "spotlight",         keys: ["Super", "F1"],             hypr: "SUPER, F1",          lua: "SUPER + F1",            locked: false },
         { what: "New note",     name: "note",              keys: ["Super", "N"],              hypr: "SUPER, N",           lua: "SUPER + N",             locked: false },
+        { what: "Edit mode",    name: "barEdit",           keys: ["Super", "Shift", "E"],     hypr: "SUPER SHIFT, E",     lua: "SUPER + SHIFT + E",     locked: false },
         { what: "Settings",     name: "settingOpen",       keys: ["Super", "Ctrl", "S"],      hypr: "SUPER CTRL, S",      lua: "SUPER + CTRL + S",      locked: false },
         { what: "Cheat sheet",  name: "cheatsheet",        keys: ["Super", "/"],              hypr: "SUPER, Slash",       lua: "SUPER + SLASH",         locked: false },
         { what: "Lock screen",  name: "lock",              keys: ["Super", "L"],              hypr: "SUPER, L",           lua: "SUPER + L",             locked: true  },
@@ -61,6 +62,24 @@ WelcomeTile {
         size: 12
         customColor: Colors.outline
         wrapMode: Text.WordWrap
+    }
+
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: 8
+
+        MaterialIconSymbol {
+            content: "right_click"
+            iconSize: 18
+            customColor: Colors.primary
+        }
+
+        CustomText {
+            Layout.fillWidth: true
+            content: "No key needed for edit mode: right-click an empty part of the bar, or double-click a widget."
+            size: 12
+            wrapMode: Text.WordWrap
+        }
     }
 
     Flow {

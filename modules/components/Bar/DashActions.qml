@@ -28,6 +28,8 @@ QtObject {
           sub: ServiceIdleInhibit.active ? "On" : "Off", on: ServiceIdleInhibit.active },
         { key: "game", icon: "sports_esports", label: "Game mode",
           sub: ServiceGameMode.active ? "On" : "Off", on: ServiceGameMode.active },
+        { key: "reading", icon: "menu_book", label: "Reading",
+          sub: ServiceReading.active ? ServiceReading.filterName : "Off", on: ServiceReading.active },
         { key: "capture", icon: "screenshot_region", label: "Capture", sub: "Region", on: false }
     ]
 
@@ -43,6 +45,7 @@ QtObject {
         case "mic": ServicePipewire.toggleMicMute(); break
         case "caffeine": ServiceIdleInhibit.toggle(); break
         case "game": ServiceGameMode.toggle(); break
+        case "reading": ServiceReading.toggle(); break
         case "capture":
             if (root.closer) root.closer()
             GlobalStates.areaSelectMode = "screenshot"

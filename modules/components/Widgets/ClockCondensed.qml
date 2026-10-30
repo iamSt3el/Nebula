@@ -37,7 +37,7 @@ WidgetHost {
                 size: 13
                 weight: 600
                 font.letterSpacing: 2.4
-                customColor: Colors.surfaceVariantText
+                customColor: t.inkVariant
             }
         }
 
@@ -61,7 +61,7 @@ WidgetHost {
                     weight: 800
                     letterSpacing: -3
                     lineHeight: 0.8
-                    color: Colors.primary
+                    color: t.accent
                     travel: 90
                     animated: !root.preview
 
@@ -87,15 +87,15 @@ WidgetHost {
                 Column {
                     Text {
                         text: t.day
-                        color: Colors.surfaceText
+                        color: t.ink
                         font.family: root._display
                         font.pixelSize: 54
                         font.weight: 800
                         lineHeight: 0.9
                         renderType: Text.QtRendering
                     }
-                    CustomText { content: t.weekday; size: 14; weight: 600; customColor: Colors.surfaceVariantText }
-                    CustomText { content: t.month; size: 14; weight: 600; customColor: Colors.surfaceVariantText }
+                    CustomText { content: t.weekday; size: 14; weight: 600; customColor: t.inkVariant }
+                    CustomText { content: t.month; size: 14; weight: 600; customColor: t.inkVariant }
                 }
             }
         }

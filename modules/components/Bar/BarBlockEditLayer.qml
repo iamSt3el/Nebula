@@ -158,10 +158,8 @@ Item {
             if (!e)
                 return
             const id = edits.block.blockId
-            const open = e.gimbalBlock === id
             e.selectedItem = ""
-            e.selectedBlock = ""
-            e.gimbalBlock = open ? "" : id
+            e.selectedBlock = e.selectedBlock === id ? "" : id
         }
     }
 
@@ -179,12 +177,9 @@ Item {
         Rectangle {
             id: gripPill
             readonly property bool shown: edits.block.handlesIn && !edits.block.tabOpen && !BarLayout.isMore(edits.block.blockId)
-                && (!edits.block.editor || edits.block.editor.gimbalBlock !== edits.block.blockId)
                 && GlobalStates.panelPreview === "" && !GlobalStates.launcherPreview
-                && (edits.engaged || edits.lingering)
-            readonly property bool roomy: edits.block.vertical || edits.block.width + 8 >= 84
-            readonly property bool expanded: gripPill.roomy || gripHover.hovered || edits.block.blockSelected
-                || edits.block.hovering || edits.holdsSelection
+                && !edits.block.blockSelected && !edits.holdsSelection
+                && (edits.engaged || edits.lingering || gripArea.pressed)
             HoverHandler { id: gripHover }
             property real slide: gripPill.shown ? 1 : 0
             Behavior on slide { SpatialAnim { speed: "fast" } }
@@ -262,60 +257,6 @@ Item {
                     }
 
                     CustomToolTip { content: "Click to select · drag to move"; visible: gripArea.containsMouse && !gripArea.pressed }
-                }
-
-                Rectangle {
-                    visible: gripPill.expanded
-                    width: 24
-                    height: 24
-                    radius: 12
-                    color: edits.block.blockSelected ? Colors.secondaryContainer
-                        : tuneArea.containsMouse ? Qt.alpha(Colors.primary, 0.16) : "transparent"
-
-                    MaterialIconSymbol {
-                        anchors.centerIn: parent
-                        content: "tune"
-                        iconSize: 16
-                        customColor: edits.block.blockSelected ? Colors.secondaryContainerText : Colors.surfaceText
-                    }
-
-                    MouseArea {
-                        id: tuneArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: edits.block.editor.selectedBlock = edits.block.blockSelected ? "" : edits.block.blockId
-                    }
-
-                    CustomToolTip { content: "Block shape and tint"; visible: tuneArea.containsMouse }
-                }
-
-                Rectangle {
-                    visible: gripPill.expanded && BarLayout.allBlocks.length > 1
-                    width: 24
-                    height: 24
-                    radius: 12
-                    color: removeArea.containsMouse ? Qt.alpha(Colors.error, 0.16) : "transparent"
-
-                    MaterialIconSymbol {
-                        anchors.centerIn: parent
-                        content: "close"
-                        iconSize: 16
-                        customColor: removeArea.containsMouse ? Colors.error : Colors.surfaceText
-                    }
-
-                    MouseArea {
-                        id: removeArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            const id = edits.block.blockId
-                            Qt.callLater(() => BarLayout.removeBlock(id))
-                        }
-                    }
-
-                    CustomToolTip { content: "Remove block · its items go to the drawer"; visible: removeArea.containsMouse }
                 }
             }
         }

@@ -14,6 +14,7 @@ CustomCard {
     property var model: []
     property var fallback: ""
     property var emptyValue: undefined
+    property real dropdownWidth: 170
 
     readonly property var current: {
         const v = ServiceHyprConfig.value(row.path, row.fallback)
@@ -47,12 +48,20 @@ CustomCard {
 
         Item { Layout.fillWidth: true }
 
-        M3ButtonGroup {
-            height: 32
-            textSize: 12
-            model: row.model
-            activeCheck: function(value) { return String(row.current) === String(value) }
-            onSegmentClicked: value => ServiceHyprConfig.set(row.path, value)
+        CustomListNew {
+            Layout.preferredWidth: row.dropdownWidth
+            Layout.preferredHeight: 32
+            color: Colors.surfaceContainerHighest
+            currentVal: {
+                const o = row.model.find(o => String(o.value) === String(row.current))
+                return o ? (o.label ?? String(o.value)) : ""
+            }
+            list: row.model.map(o => ({ name: o.label ?? String(o.value) }))
+            onListChildClicked: child => {
+                const o = row.model.find(o => (o.label ?? String(o.value)) === child?.name)
+                if (o && String(o.value) !== String(row.current))
+                    ServiceHyprConfig.set(row.path, o.value)
+            }
         }
     }
 }

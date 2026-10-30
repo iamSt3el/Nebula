@@ -9,7 +9,7 @@ CustomText{
 
     font {
         hintingPreference: Font.PreferVerticalHinting
-        family: IconFont.family
+        family: root.fill >= 0.5 ? IconFont.filledFamily : IconFont.family
         pixelSize: Math.round(iconSize)
     }
 }

@@ -23,7 +23,7 @@ WidgetHost {
 
     component Row2: MotionEnter {
         property string value: ""
-        property color tone: Colors.surfaceText
+        property color tone: t.ink
         width: parent.width
         dx: (root.alignLeft ? -1 : 1) * 40
         dy: 0
@@ -55,7 +55,7 @@ WidgetHost {
             spacing: -40
 
             Row2 { value: t.hourPad; delay: 60 }
-            Row2 { value: t.minute; tone: Colors.primary; delay: 160 }
+            Row2 { value: t.minute; tone: t.accent; delay: 160 }
 
             MotionEnter {
                 visible: t.showDate
@@ -71,6 +71,7 @@ WidgetHost {
                         width: parent.width
                         horizontalAlignment: root._align
                         content: t.weekday
+                        customColor: t.ink
                         size: 16
                         weight: 600
                     }
@@ -80,7 +81,7 @@ WidgetHost {
                         content: t.day + " " + t.month
                         size: 16
                         weight: 500
-                        customColor: Colors.surfaceVariantText
+                        customColor: t.inkVariant
                     }
                 }
             }

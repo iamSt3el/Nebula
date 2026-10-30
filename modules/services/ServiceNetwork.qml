@@ -69,6 +69,62 @@ Singleton {
         return true
     }
 
+    function bucket(n) {
+        return Math.min(3, Math.floor((n?.signalStrength ?? 0) * 4))
+    }
+
+    function ordered(list) {
+        return list.slice().sort((a, b) => root.bucket(b) - root.bucket(a)
+            || (a.name || "").localeCompare(b.name || ""))
+    }
+
+    function strengthLabel(strength) {
+        const v = (strength ?? 0) * 100
+        if (v >= 75) return "Excellent"
+        if (v >= 50) return "Good"
+        if (v >= 25) return "Fair"
+        return "Weak"
+    }
+
+    function securityLabel(security) {
+        switch (security) {
+        case WifiSecurityType.Wpa3SuiteB192:
+        case WifiSecurityType.Sae: return "WPA3"
+        case WifiSecurityType.Wpa2Psk:
+        case WifiSecurityType.Wpa2Eap: return "WPA2"
+        case WifiSecurityType.WpaPsk:
+        case WifiSecurityType.WpaEap: return "WPA"
+        case WifiSecurityType.StaticWep:
+        case WifiSecurityType.DynamicWep: return "WEP"
+        case WifiSecurityType.Leap: return "LEAP"
+        case WifiSecurityType.Owe: return "Enhanced open"
+        case WifiSecurityType.Open: return "Open"
+        }
+        return ""
+    }
+
+    function isSecured(security) {
+        if (security === undefined || security === null) return false
+        return security !== WifiSecurityType.Open
+            && security !== WifiSecurityType.Owe
+            && security !== WifiSecurityType.Unknown
+    }
+
+    function band(mhz) {
+        if (mhz <= 0) return ""
+        if (mhz < 3000) return "2.4 GHz"
+        if (mhz < 5925) return "5 GHz"
+        return "6 GHz"
+    }
+
+    function signalIcon(n) {
+        const bars = Math.round((n?.signalStrength ?? 0) * 4)
+        const locked = root.isSecured(n?.security)
+        if (bars >= 4) return locked ? "wifi_lock" : "wifi"
+        if (bars >= 1) return "network_wifi_" + bars + "_bar" + (locked ? "_locked" : "")
+        return locked ? "wifi_lock" : "signal_wifi_off"
+    }
+
     Process {
         id: rescanProcess
         command: ["nmcli", "device", "wifi", "rescan"]

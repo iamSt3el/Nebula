@@ -102,6 +102,7 @@ Item {
             pins.groupsKey = json
             pins.groups = list
         }
+        pins.resolve()
     }
 
     Timer {
@@ -121,8 +122,41 @@ Item {
     }
 
     property var open: []
+    property var nudges: ({})
+    property string nudgeKey: ""
+
+    function resolve() {
+        const placed = []
+        const out = {}
+        for (let i = 0; i < groupRep.count; i++) {
+            const it = groupRep.itemAt(i)
+            if (!it || it.rw <= 0)
+                continue
+            const along = it.g.side === "left" || it.g.side === "right"
+            let x = it.baseX
+            let y = it.baseY
+            for (let n = 0; n < 8; n++) {
+                const hit = placed.find(r => x < r.x + r.w + 6 && x + it.rw + 6 > r.x && y < r.y + r.h + 6 && y + 30 + 6 > r.y)
+                if (!hit)
+                    break
+                if (along)
+                    y = hit.y + hit.h + 6
+                else
+                    x = hit.x + hit.w + 6
+            }
+            placed.push({ x: x, y: y, w: it.rw, h: 30 })
+            if (x !== it.baseX || y !== it.baseY)
+                out[it.g.key] = { dx: x - it.baseX, dy: y - it.baseY }
+        }
+        const json = JSON.stringify(out)
+        if (json !== pins.nudgeKey) {
+            pins.nudgeKey = json
+            pins.nudges = out
+        }
+    }
 
     Repeater {
+        id: groupRep
         model: pins.groups
 
         delegate: Item {
@@ -134,14 +168,17 @@ Item {
             readonly property real cx: group.g.x + group.g.w / 2
             readonly property real cy: group.g.y + group.g.h / 2
 
-            x: group.g.side === "left" ? group.g.x + group.g.w + 10
+            readonly property var nudge: pins.nudges[group.g.key] ?? null
+            readonly property real baseX: group.g.side === "left" ? group.g.x + group.g.w + 10
                 : group.g.side === "right" ? group.g.x - 10 - group.rw
                 : group.g.side === "corner" ? pins.width - group.rw - 24 - pins.host.insetRight
-                : Math.max(12, Math.min(pins.width - group.rw - 12, group.cx - group.rw / 2))
-            y: group.g.side === "top" ? group.g.y + group.g.h + 10
+                : Math.max(pins.host.insetLeft + 12, Math.min(pins.width - pins.host.insetRight - group.rw - 12, group.cx - group.rw / 2))
+            readonly property real baseY: group.g.side === "top" ? group.g.y + group.g.h + 10
                 : group.g.side === "bottom" ? group.g.y - 40
                 : group.g.side === "corner" ? pins.height - 30 - 24
                 : group.cy - 15
+            x: group.baseX + (group.nudge ? group.nudge.dx : 0)
+            y: group.baseY + (group.nudge ? group.nudge.dy : 0)
             width: group.rw
             height: 30
             readonly property bool covered: pins.open.some(r => group.x < r[0] + r[2] && group.x + group.width > r[0]

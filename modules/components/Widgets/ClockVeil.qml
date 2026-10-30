@@ -44,7 +44,7 @@ WidgetHost {
                     size: 15
                     weight: 500
                     font.letterSpacing: 3
-                    customColor: Colors.surfaceVariantText
+                    customColor: t.inkVariant
                 }
             }
 
@@ -58,6 +58,7 @@ WidgetHost {
 
                 RollText {
                     text: t.time
+                    color: t.ink
                     family: root._family
                     pixelSize: 124
                     weight: 600
@@ -80,19 +81,19 @@ WidgetHost {
                     Row {
                         visible: UPower.displayDevice?.isLaptopBattery ?? false
                         spacing: 6
-                        MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; content: ServiceUPower.isCharging ? "battery_android_bolt" : "battery_android_full"; iconSize: 18; customColor: Colors.primary }
-                        CustomText { anchors.verticalCenter: parent.verticalCenter; content: Math.round(ServiceUPower.powerLevel * 100) + "%"; size: 15; weight: 500; customColor: Colors.surfaceVariantText }
+                        MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; content: ServiceUPower.isCharging ? "battery_android_bolt" : "battery_android_full"; iconSize: 18; customColor: t.accent }
+                        CustomText { anchors.verticalCenter: parent.verticalCenter; content: Math.round(ServiceUPower.powerLevel * 100) + "%"; size: 15; weight: 500; customColor: t.inkVariant }
                     }
                     Row {
                         spacing: 6
-                        MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; content: ServiceNetwork.icon; iconSize: 18; customColor: Colors.primary }
-                        CustomText { anchors.verticalCenter: parent.verticalCenter; content: ServiceNetwork.connectionLabel !== "" ? ServiceNetwork.connectionLabel : "Offline"; size: 15; weight: 500; customColor: Colors.surfaceVariantText }
+                        MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; content: ServiceNetwork.icon; iconSize: 18; customColor: t.accent }
+                        CustomText { anchors.verticalCenter: parent.verticalCenter; content: ServiceNetwork.connectionLabel !== "" ? ServiceNetwork.connectionLabel : "Offline"; size: 15; weight: 500; customColor: t.inkVariant }
                     }
                     Row {
                         visible: ServiceWeather.currentCondition !== null
                         spacing: 6
-                        MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; content: ServiceWeather.weatherIconPath?.icon ?? "cloud"; iconSize: 18; customColor: Colors.primary }
-                        CustomText { anchors.verticalCenter: parent.verticalCenter; content: ServiceWeather.temperature; size: 15; weight: 500; customColor: Colors.surfaceVariantText }
+                        MaterialIconSymbol { anchors.verticalCenter: parent.verticalCenter; content: ServiceWeather.weatherIconPath?.icon ?? "cloud"; iconSize: 18; customColor: t.accent }
+                        CustomText { anchors.verticalCenter: parent.verticalCenter; content: ServiceWeather.temperature; size: 15; weight: 500; customColor: t.inkVariant }
                     }
                 }
             }

@@ -2,6 +2,7 @@
 //@ pragma Env QSG_ATLAS_WIDTH=512
 //@ pragma Env QSG_ATLAS_HEIGHT=512
 //@ pragma Env QSG_DISTANCEFIELD_ANTIALIASING=gray
+//@ pragma Env QS_NO_RELOAD_POPUP=1
 import Quickshell
 import QtQuick
 import Quickshell.Wayland
@@ -10,6 +11,7 @@ import qs.modules.components.LockScreen
 import qs.modules.components.AppLauncher
 import qs.modules.components.Clipboard
 import qs.modules.components.Setting
+import qs.modules.components.Books
 import qs.modules.components.Osd
 import qs.modules.components.WallpaperSelector
 import qs.modules.components.MusicVis
@@ -32,6 +34,8 @@ import qs.modules.services
 import qs.modules.settings
 
 ShellRoot{
+    readonly property bool soundFxOn: ServiceSoundFx.enabled
+
     DockServices{}
 
     LockSelector{}
@@ -56,21 +60,18 @@ ShellRoot{
         }
     }
 
+    BooksPanel{}
+
     AppLauncher{}
     ClipboardPocket{}
     SettingsPanel{}
+    QuickSettings{}
     ToolsWidget{}
 
     Shutdown{}
     Loader{
         active: SettingsConfig.general.musicVisOn && !ServiceGameMode.hideWidgets
-        sourceComponent:Vis{
-            anchors {
-                left: true
-                right: true
-                bottom: true
-            }
-        }
+        sourceComponent: Vis {}
     }
     
 
@@ -129,6 +130,7 @@ ShellRoot{
     property bool screenTimeOn: ServiceScreenTime.enabled
     property bool scenesReady: ServiceScenes.loaded
     property bool layoutsReady: ServiceLayouts.ready
+    property bool readingOn: ServiceReading.active
 
     // Lock screen - responds to `loginctl lock-session`
     LockScreen {}

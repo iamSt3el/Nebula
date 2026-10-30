@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls
 import qs.modules.utils
 import qs.modules.services
 import qs.modules.settings
@@ -9,153 +8,131 @@ import qs.modules.customComponents
 Item {
     id: root
     anchors.fill: parent
-    anchors.margins: 5
 
     readonly property string layout: String(ServiceHyprConfig.value("general.layout", "dwindle"))
     readonly property var gapsOut: {
         const g = ServiceHyprConfig.value("general.gaps_out", 20)
         return typeof g === "object" ? g : { top: g, right: g, bottom: g, left: g }
     }
+    readonly property string layoutName: ({ dwindle: "Dwindle", master: "Master", scrolling: "Scrolling", monocle: "Monocle" })[root.layout] ?? root.layout
 
-    Flickable {
-        id: pageFlick
-        ScrollBar.vertical: CustomScrollBar {}
-        anchors.fill: parent
-        contentHeight: column.implicitHeight
-        contentWidth: width
-        clip: true
-
-        ColumnLayout {
-            id: column
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.leftMargin: 5
-            anchors.rightMargin: 5
-            anchors.topMargin: 5
-            spacing: 0
-
-            CustomText {
-                Layout.topMargin: 6
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                content: "How Hyprland draws and arranges windows. Changes show up straight away and are saved to ~/.config/hypr/nebula/settings.lua."
-                size: 12
-                customColor: Colors.outline
-            }
+    StageView {
+        StagePage {
+            stageId: "front"
 
             WindowPreview {
                 Layout.fillWidth: true
-                Layout.topMargin: 14
                 Layout.preferredHeight: 200
             }
 
-            CustomText { Layout.topMargin: 24; content: "Gaps"; size: 13; customColor: Colors.primary }
+            StageNote { content: "Changes show up straight away and are saved to ~/.config/hypr/nebula/settings.lua." }
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 6
-                spacing: 3
+            HyprChoiceRow {
+                title: "Tiling"
+                subtitle: "How new windows share the screen"
+                path: "general.layout"
+                fallback: "dwindle"
+                model: [
+                    { value: "dwindle", label: "Dwindle", icon: "splitscreen_right" },
+                    { value: "master", label: "Master", icon: "view_quilt" },
+                    { value: "scrolling", label: "Scrolling", icon: "view_carousel" },
+                    { value: "monocle", label: "Monocle", icon: "crop_square" }
+                ]
+            }
+
+            StageGap {}
+
+            StageNavRow {
+                icon: "space_bar"
+                title: "Gaps"
+                subtitle: "Between windows, floating windows and the screen edges"
+                value: ServiceHyprConfig.value("general.gaps_in", 5) + " px"
+                target: "gaps"
+            }
+
+            StageNavRow {
+                icon: "view_quilt"
+                title: root.layoutName + " details"
+                subtitle: "Split direction, columns, snapping and resizing"
+                target: "layout"
+            }
+
+            StageNavRow {
+                icon: "rounded_corner"
+                title: "Borders and corners"
+                subtitle: "Border " + ServiceHyprConfig.value("general.border_size", 0) + " px · radius " + ServiceHyprConfig.value("decoration.rounding", 0) + " px"
+                target: "look"
+            }
+
+            StageNavRow {
+                icon: "blur_on"
+                title: "Effects"
+                subtitle: "Blur, shadows, glow, dimming and animations"
+                target: "effects"
+            }
+
+            StageNavRow {
+                icon: "ads_click"
+                title: "Focus"
+                subtitle: "Whether apps can pull focus to themselves"
+                target: "focus"
+            }
+        }
+
+        StageLazy {
+            stageId: "gaps"
+
+            StagePage {
+                stageId: "gaps"
+                title: "Gaps"
 
                 HyprSliderRow {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
                     title: "Between windows"
                     path: "general.gaps_in"
                     from: 0; to: 40; unit: " px"
                 }
 
                 HyprSliderRow {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
                     title: "Floating windows"
                     subtitle: "Gap kept from the screen edge when a floating window is moved"
                     path: "general.float_gaps"
                     from: 0; to: 40; unit: " px"
                 }
+
+                SidesEditor {
+                    barSide: ["right", "bottom", "left"].reduce((a, k) => (ServiceGaps.occupied[k] ?? 0) > (ServiceGaps.occupied[a] ?? 0) ? k : a, "top")
+                    maxValue: 40
+                    values: ({
+                        top: ServiceGaps.gapFor("top"),
+                        right: ServiceGaps.gapFor("right"),
+                        bottom: ServiceGaps.gapFor("bottom"),
+                        left: ServiceGaps.gapFor("left")
+                    })
+                    onChanged: patch => {
+                        const g = Object.assign({}, ServiceGaps.windowGaps, patch)
+                        SettingsConfig.general = Object.assign({}, SettingsConfig.general, { windowGaps: g })
+                    }
+                }
+
+                StageNote { content: "Gap between windows and the bar, the dock and the screen border. Sides you haven't changed follow the border thickness." }
             }
+        }
 
-            SidesEditor {
-                Layout.topMargin: 3
-                barSide: ["right", "bottom", "left"].reduce((a, k) => (ServiceGaps.occupied[k] ?? 0) > (ServiceGaps.occupied[a] ?? 0) ? k : a, "top")
-                maxValue: 40
-                values: ({
-                    top: ServiceGaps.gapFor("top"),
-                    right: ServiceGaps.gapFor("right"),
-                    bottom: ServiceGaps.gapFor("bottom"),
-                    left: ServiceGaps.gapFor("left")
-                })
-                onChanged: patch => {
-                    const g = Object.assign({}, ServiceGaps.windowGaps, patch)
-                    SettingsConfig.general = Object.assign({}, SettingsConfig.general, { windowGaps: g })
-                }
-            }
+        StageLazy {
+            stageId: "layout"
 
-            CustomText {
-                Layout.topMargin: 10
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                content: "Gap between windows and the bar, the dock and the screen border. Sides you haven't changed follow the border thickness."
-                size: 11
-                customColor: Colors.outline
-            }
+            StagePage {
+                stageId: "layout"
+                title: "Layout details"
 
-            CustomText { Layout.topMargin: 16; content: "Borders and corners"; size: 13; customColor: Colors.primary }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 6
-                spacing: 3
-
-                HyprSliderRow {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
-                    title: "Border width"
-                    path: "general.border_size"
-                    from: 0; to: 10; unit: " px"
-                }
-                HyprSliderRow {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
-                    title: "Corner radius"
-                    path: "decoration.rounding"
-                    from: 0; to: 20; unit: " px"
-                }
-                HyprSliderRow {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
-                    title: "Corner shape"
-                    subtitle: "2 is a circle; higher values give a softer squircle"
-                    path: "decoration.rounding_power"
-                    from: 2; to: 10; step: 0.5; decimals: 1
-                }
-            }
-
-            CustomText { Layout.topMargin: 16; content: "Layout"; size: 13; customColor: Colors.primary }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 6
-                spacing: 3
-
-                HyprChoiceRow {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
-                    title: "Tiling"
-                    subtitle: "How new windows share the screen"
-                    path: "general.layout"
-                    fallback: "dwindle"
-                    model: [
-                        { value: "dwindle", label: "Dwindle", icon: "splitscreen_right" },
-                        { value: "master", label: "Master", icon: "view_quilt" },
-                        { value: "scrolling", label: "Scrolling", icon: "view_carousel" },
-                        { value: "monocle", label: "Monocle", icon: "crop_square" }
-                    ]
-                }
                 HyprToggleRow {
                     visible: root.layout === "dwindle"
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Keep the split direction"
                     subtitle: "Splits stay put when windows close"
                     path: "dwindle.preserve_split"
                 }
                 HyprToggleRow {
                     visible: root.layout === "master"
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Focus the master on close"
                     subtitle: "Closing a window moves focus to the master window"
                     path: "master.focus_master_on_close"
@@ -163,7 +140,6 @@ Item {
                 }
                 HyprSliderRow {
                     visible: root.layout === "scrolling"
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Column width"
                     subtitle: "Share of the screen a new column takes"
                     path: "scrolling.column_width"
@@ -171,116 +147,127 @@ Item {
                 }
                 HyprToggleRow {
                     visible: root.layout === "scrolling"
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Scroll to the focused window"
                     path: "scrolling.follow_focus"
                 }
                 HyprToggleRow {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Snap floating windows"
                     subtitle: "Floating windows snap to each other and to the screen edges"
                     path: "general.snap.enabled"
                 }
                 HyprToggleRow {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
                     title: "Resize from borders and gaps"
                     path: "general.resize_on_border"
                 }
+
             }
+        }
 
-            CustomText { Layout.topMargin: 16; content: "Effects"; size: 13; customColor: Colors.primary }
+        StageLazy {
+            stageId: "look"
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 6
-                spacing: 3
+            StagePage {
+                stageId: "look"
+                title: "Borders and corners"
+
+                HyprSliderRow {
+                    title: "Border width"
+                    path: "general.border_size"
+                    from: 0; to: 10; unit: " px"
+                }
+                HyprSliderRow {
+                    title: "Corner radius"
+                    path: "decoration.rounding"
+                    from: 0; to: 20; unit: " px"
+                }
+                HyprSliderRow {
+                    title: "Corner shape"
+                    subtitle: "2 is a circle; higher values give a softer squircle"
+                    path: "decoration.rounding_power"
+                    from: 2; to: 10; step: 0.5; decimals: 1
+                }
+
+            }
+        }
+
+        StageLazy {
+            stageId: "effects"
+
+            StagePage {
+                stageId: "effects"
+                title: "Effects"
 
                 HyprToggleRow {
-                    autoRadius: false; topRadius: 20; bottomRadius: 5
                     title: "Blur behind see-through windows"
                     path: "decoration.blur.enabled"
                 }
                 HyprSliderRow {
                     visible: !!ServiceHyprConfig.value("decoration.blur.enabled", true)
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Blur strength"
                     path: "decoration.blur.size"
                     from: 1; to: 20
                 }
                 HyprSliderRow {
                     visible: !!ServiceHyprConfig.value("decoration.blur.enabled", true)
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Blur passes"
                     subtitle: "More passes look smoother and cost more GPU time"
                     path: "decoration.blur.passes"
                     from: 1; to: 4
                 }
                 HyprToggleRow {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Shadows"
                     path: "decoration.shadow.enabled"
                 }
                 HyprToggleRow {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Inner glow"
                     subtitle: "A soft glow along the inside edge of each window"
                     path: "decoration.glow.enabled"
                     isNew: true
                 }
                 HyprToggleRow {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Motion blur"
                     subtitle: "Blurs windows while they move or resize"
                     path: "decoration.motion_blur.enabled"
                     isNew: true
                 }
                 HyprSliderRow {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Inactive window opacity"
                     path: "decoration.inactive_opacity"
                     from: 0.3; to: 1; step: 0.05; displayScale: 100; unit: "%"
                 }
                 HyprToggleRow {
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Dim inactive windows"
                     path: "decoration.dim_inactive"
                 }
                 HyprSliderRow {
                     visible: !!ServiceHyprConfig.value("decoration.dim_inactive", false)
-                    autoRadius: false; topRadius: 5; bottomRadius: 5
                     title: "Dim strength"
                     path: "decoration.dim_strength"
                     from: 0; to: 1; step: 0.05; displayScale: 100; unit: "%"
                 }
                 HyprToggleRow {
-                    autoRadius: false; topRadius: 5; bottomRadius: 20
                     title: "Animations"
                     path: "animations.enabled"
                 }
+
             }
+        }
 
-            CustomText { Layout.topMargin: 16; content: "Focus"; size: 13; customColor: Colors.primary }
+        StageLazy {
+            stageId: "focus"
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 6
-                spacing: 3
+            StagePage {
+                stageId: "focus"
+                title: "Focus"
 
                 HyprToggleRow {
-                    autoRadius: false; topRadius: 20; bottomRadius: 20
                     title: "Let apps take focus"
                     subtitle: "Focus a window when its app asks for attention"
                     path: "misc.focus_on_activate"
                 }
+
             }
-
-            Item { Layout.preferredHeight: 20 }
         }
-    }
-
-    ScrollFade {
-        anchors.fill: parent
-        flickable: pageFlick
     }
 
     component WindowPreview: Rectangle {

@@ -12,8 +12,11 @@ PanelWindow {
 
     property var network: null
     property string errorText: ""
+    property bool askName: false
+    property bool working: false
 
     signal submitted(string psk)
+    signal submittedHidden(string ssid, string psk)
     signal dismissed
 
     anchors.top: true
@@ -27,15 +30,19 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
 
+    readonly property bool ready: promptWindow.askName ? nameField.text.trim().length > 0 && !promptWindow.working
+                                                       : pwField.text.length > 0
+
     function submit() {
-        if (pwField.text.length === 0) return
-        promptWindow.submitted(pwField.text)
+        if (!promptWindow.ready) return
+        if (promptWindow.askName) promptWindow.submittedHidden(nameField.text.trim(), pwField.text)
+        else promptWindow.submitted(pwField.text)
     }
 
     Timer {
         interval: 60
         running: true
-        onTriggered: pwField.forceActiveFocus()
+        onTriggered: promptWindow.askName ? nameField.forceActiveFocus() : pwField.forceActiveFocus()
     }
 
     Rectangle {
@@ -101,7 +108,7 @@ PanelWindow {
 
                         MaterialIconSymbol {
                             anchors.centerIn: parent
-                            content: promptWindow.errorText !== "" ? "error" : "wifi_lock"
+                            content: promptWindow.errorText !== "" ? "error" : promptWindow.askName ? "wifi_add" : "wifi_lock"
                             iconSize: 20
                             customColor: promptWindow.errorText !== "" ? Colors.errorContainerText
                                                                        : Colors.primaryContainerText
@@ -114,7 +121,7 @@ PanelWindow {
 
                         CustomText {
                             Layout.fillWidth: true
-                            content: promptWindow.network?.name ?? "Wi-Fi network"
+                            content: promptWindow.askName ? "Add network" : promptWindow.network?.name ?? "Wi-Fi network"
                             size: 16
                             weight: 700
                             elide: Text.ElideRight
@@ -123,7 +130,9 @@ PanelWindow {
                         CustomText {
                             Layout.fillWidth: true
                             content: promptWindow.errorText !== "" ? promptWindow.errorText
-                                                                   : "This network is password protected"
+                                   : promptWindow.working ? "Joining…"
+                                   : promptWindow.askName ? "Join a hidden network by its name"
+                                   : "This network is password protected"
                             size: 12
                             customColor: promptWindow.errorText !== "" ? Colors.error : Colors.outline
                             elide: Text.ElideRight
@@ -137,6 +146,38 @@ PanelWindow {
                         icon: "close"
                         iconSize: 18
                         onClicked: promptWindow.dismissed()
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 52
+                    visible: promptWindow.askName
+                    radius: 16
+                    color: Colors.surfaceContainerHighest
+                    border.width: 2
+                    border.color: nameField.activeFocus ? Colors.primary : Qt.alpha(Colors.primary, 0)
+
+                    Behavior on border.color { EffectsColorAnim {} }
+
+                    TextField {
+                        id: nameField
+                        anchors.fill: parent
+                        anchors.leftMargin: 16
+                        anchors.rightMargin: 16
+                        background: null
+                        padding: 0
+                        placeholderText: "Network name"
+                        placeholderTextColor: Colors.outline
+                        font.pixelSize: 15
+                        font.weight: 600
+                        font.family: SettingsConfig.general.defaultFont ?? "Rubik"
+                        color: Colors.surfaceText
+                        selectionColor: Qt.alpha(Colors.primary, 0.35)
+                        selectedTextColor: Colors.surfaceText
+                        verticalAlignment: TextInput.AlignVCenter
+                        onAccepted: pwField.forceActiveFocus()
+                        Keys.onEscapePressed: promptWindow.dismissed()
                     }
                 }
 
@@ -161,7 +202,7 @@ PanelWindow {
                             Layout.fillWidth: true
                             background: null
                             padding: 0
-                            placeholderText: "Password"
+                            placeholderText: promptWindow.askName ? "Password (leave empty if open)" : "Password"
                             placeholderTextColor: Colors.outline
                             echoMode: revealToggle.revealed ? TextInput.Normal : TextInput.Password
                             inputMethodHints: Qt.ImhSensitiveData
@@ -224,18 +265,17 @@ PanelWindow {
                         Layout.preferredHeight: 40
                         Layout.preferredWidth: connectLabel.implicitWidth + 44
                         radius: 20
-                        color: pwField.text.length > 0 ? Colors.primary
-                                                       : Colors.surfaceContainerHighest
+                        color: promptWindow.ready ? Colors.primary : Colors.surfaceContainerHighest
 
                         Behavior on color { EffectsColorAnim {} }
 
                         CustomText {
                             id: connectLabel
                             anchors.centerIn: parent
-                            content: "Connect"
+                            content: promptWindow.askName ? "Join" : "Connect"
                             size: 13
                             weight: 700
-                            customColor: pwField.text.length > 0 ? Colors.primaryText : Colors.outline
+                            customColor: promptWindow.ready ? Colors.primaryText : Colors.outline
                         }
 
                         RippleEffect {

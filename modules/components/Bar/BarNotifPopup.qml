@@ -2,12 +2,12 @@ import Quickshell
 import Quickshell.Widgets
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
 import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
 import qs.modules.components.Osd
+import qs.modules.components.NotifKit
 
 Item {
     id: root
@@ -191,6 +191,7 @@ Item {
         readonly property string imageSrc: IconUtil.imageSource(pc.lead?.image)
         readonly property bool hasImage: pc.imageSrc !== "" && !pc.imageSrc.startsWith("image://icon/")
         readonly property var acts: (pc.lead?.actions ?? []).slice(0, 3)
+        readonly property string kind: fileBlk.ok ? "file" : heroImg.ok ? "hero" : "plain"
         readonly property color bg: pc.critical ? Colors.errorContainer : Colors.surfaceContainerHigh
         readonly property color ink: pc.critical ? Colors.errorContainerText : Colors.surfaceText
         readonly property color subInk: pc.critical ? Qt.alpha(Colors.errorContainerText, 0.8) : Colors.surfaceVariantText
@@ -312,25 +313,20 @@ Item {
                 implicitWidth: 24
                 implicitHeight: 24
 
-                Shape {
+                Rectangle {
+                    anchors.centerIn: parent
+                    visible: pc.kind !== "plain"
+                    width: 32
+                    height: 32
+                    radius: 16
+                    color: Qt.alpha(Colors.surfaceContainerLowest, 0.72)
+                }
+
+                NotifRing {
                     anchors.fill: parent
                     visible: !pc.sticky
-                    preferredRendererType: Shape.CurveRenderer
-
-                    ShapePath {
-                        strokeColor: Qt.alpha(pc.ink, 0.14)
-                        strokeWidth: 2.5
-                        fillColor: "transparent"
-                        PathAngleArc { centerX: 12; centerY: 12; radiusX: 10; radiusY: 10; startAngle: 0; sweepAngle: 360 }
-                    }
-
-                    ShapePath {
-                        strokeColor: Colors.primary
-                        strokeWidth: 2.5
-                        fillColor: "transparent"
-                        capStyle: ShapePath.RoundCap
-                        PathAngleArc { centerX: 12; centerY: 12; radiusX: 10; radiusY: 10; startAngle: -90; sweepAngle: 360 * ringBox.remaining }
-                    }
+                    remaining: ringBox.remaining
+                    ink: pc.kind !== "plain" ? Colors.surfaceText : pc.ink
                 }
 
                 Rectangle {
@@ -361,11 +357,30 @@ Item {
 
             ColumnLayout {
                 id: body
-                anchors { left: parent.left; right: parent.right; top: parent.top; margins: 12; leftMargin: 14; rightMargin: 44 }
-                spacing: 8
+                anchors { left: parent.left; right: parent.right; top: parent.top; margins: 12
+                          leftMargin: pc.kind === "plain" ? 14 : 12; rightMargin: pc.kind === "plain" ? 44 : 12 }
+                spacing: pc.kind === "plain" ? 8 : 12
+
+                NotifHero {
+                    id: heroImg
+                    Layout.fillWidth: true
+                    visible: heroImg.ok && !fileBlk.ok
+                    notif: pc.multi ? null : pc.lead
+                }
+
+                NotifFile {
+                    id: fileBlk
+                    Layout.fillWidth: true
+                    notif: pc.multi ? null : pc.lead
+                    ink: pc.ink
+                    subInk: pc.subInk
+                    onOpened: root.dismissCard(pc.card)
+                }
 
                 RowLayout {
                     Layout.fillWidth: true
+                    Layout.leftMargin: pc.kind === "hero" ? 4 : 0
+                    visible: pc.kind !== "file"
                     spacing: 12
 
                     Item {
@@ -474,7 +489,7 @@ Item {
                     }
 
                     ClippingRectangle {
-                        visible: pc.hasImage && !pc.multi
+                        visible: pc.hasImage && !pc.multi && pc.kind === "plain"
                         Layout.preferredWidth: 44
                         Layout.preferredHeight: 44
                         Layout.alignment: Qt.AlignTop
@@ -492,9 +507,9 @@ Item {
                 }
 
                 Flow {
-                    visible: pc.isTop && pc.acts.length > 0
+                    visible: pc.isTop && pc.acts.length > 0 && !(fileBlk.ok && fileBlk.found !== "")
                     Layout.fillWidth: true
-                    Layout.leftMargin: 48
+                    Layout.leftMargin: pc.kind === "plain" ? 48 : 4
                     spacing: 6
 
                     Repeater {

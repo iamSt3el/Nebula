@@ -14,11 +14,13 @@ layout(std140, binding = 0) uniform buf {
     vec4 edgeColor;
     vec4 shadowColor;
     vec4 shadowInfo;
+    vec4 shadowMore;
     vec4 frameHole;
     vec4 frameRad;
     vec4 rect[16];
     vec4 radii[16];
     vec4 extra[16];
+    vec4 paint[16];
 };
 
 out gl_PerVertex { vec4 gl_Position; };

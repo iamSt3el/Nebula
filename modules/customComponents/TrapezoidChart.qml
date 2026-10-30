@@ -26,6 +26,8 @@ Item {
     property bool autoRange: false
 
     property color barColor: Colors.primary
+    property color barColorEnd: "transparent"
+    property bool gradientMirrored: false
     property color backColor: Qt.alpha(Colors.primary, 0.28)
     property color gridColor: Qt.alpha(Colors.outline, 0.35)
     property color labelColor: Colors.outline
@@ -82,6 +84,8 @@ Item {
     onLabelsChanged: canvas.requestPaint()
     onGridValuesChanged: canvas.requestPaint()
     onBarColorChanged: canvas.requestPaint()
+    onBarColorEndChanged: canvas.requestPaint()
+    onGradientMirroredChanged: canvas.requestPaint()
     onBackColorChanged: canvas.requestPaint()
     onGridColorChanged: canvas.requestPaint()
     onLabelColorChanged: canvas.requestPaint()
@@ -122,7 +126,7 @@ Item {
             ctx.fill()
         }
 
-        function drawSeries(ctx, series, lo, hi, plotW, bottom, top, color) {
+        function drawSeries(ctx, series, lo, hi, plotW, bottom, top, color, blend) {
             const n = series.length
             if (n < 2) return
             const span = Math.max(1e-6, hi - lo)
@@ -132,6 +136,18 @@ Item {
             const yAt = v => bottom - ((Math.max(lo, Math.min(hi, v)) - lo) / span) * usable
 
             ctx.fillStyle = color
+            if (blend && root.barColorEnd.a > 0) {
+                const grad = ctx.createLinearGradient(0, 0, plotW, 0)
+                if (root.gradientMirrored) {
+                    grad.addColorStop(0, root.barColorEnd)
+                    grad.addColorStop(0.5, root.barColor)
+                    grad.addColorStop(1, root.barColorEnd)
+                } else {
+                    grad.addColorStop(0, root.barColor)
+                    grad.addColorStop(1, root.barColorEnd)
+                }
+                ctx.fillStyle = grad
+            }
             for (var i = 0; i < slots; i++) {
                 const l = i * unit + root.slotInset
                 const r = (i + 1) * unit - root.slotInset
@@ -179,7 +195,7 @@ Item {
             }
 
             ctx.globalAlpha = root.barAlpha
-            canvas.drawSeries(ctx, v, lo, hi, plotW, bottom, top, root.barColor)
+            canvas.drawSeries(ctx, v, lo, hi, plotW, bottom, top, root.barColor, true)
             ctx.globalAlpha = 1
 
             // Drawn last: the main series fills most of the plot, so a second

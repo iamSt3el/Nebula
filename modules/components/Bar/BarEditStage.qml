@@ -20,7 +20,8 @@ EditKit.Card {
     readonly property var spec: stageCard.kind !== "" ? BarLayout.panelSpecs[stageCard.kind] ?? null : null
     readonly property var styleOpt: {
         const map = { launcher: ["launcher", "style"], wallpaper: ["wallpaper", "style"], clipboard: ["clipboard", "style"],
-                      calendar: ["clock", "panel"], osd: ["osd", "style"] }
+                      calendar: ["clock", "panel"], osd: ["osd", "style"], dashboard: ["dashboard", "style"],
+                      notifPopup: ["popups", "look"] }
         const m = map[stageCard.kind]
         if (!m) return null
         const s = BarLayout.specFor(m[0], m[1])
@@ -105,7 +106,7 @@ EditKit.Card {
     readonly property bool wanted: stageCard.host.editing && stageCard.host.stage && !stageCard.host.drawerShown
     readonly property var panelOpts: {
         const map = { launcher: ["launcher", ["sort", "calc", "run", "emoji", "windows", "radius", "iconSize"]],
-                      notifPopup: ["popups", ["timeout", "cards", "group", "sticky"]] }
+                      notifPopup: ["popups", ["look", "timeout", "cards", "group", "sticky"]] }
         const m = map[stageCard.kind]
         if (!m) return null
         const specs = m[1].map(k => BarLayout.specFor(m[0], k)).filter(s => !!s)
@@ -128,7 +129,25 @@ EditKit.Card {
     readonly property bool defaultLeft: stageCard.host.insetLeft !== stageCard.host.insetRight
         ? stageCard.host.insetLeft < stageCard.host.insetRight : stageCard.host.previewRight
     readonly property bool goalLeft: stageCard.host.stageSide !== "" ? stageCard.host.stageSide === "left" : stageCard.defaultLeft
-    readonly property real goalW: Math.min(400, Math.max(320, stageCard.host.stageRoom))
+    readonly property real minW: 300
+    readonly property real maxW: 340
+    readonly property real goalW: Math.min(stageCard.maxW, Math.max(stageCard.minW, stageCard.host.stageRoom))
+    property string sidePage: ""
+    property var sideSpec: null
+    property real sideY: 0
+    onKindChanged: stageCard.sidePage = ""
+    onWantedChanged: if (!stageCard.wanted) stageCard.sidePage = ""
+
+    function openSide(page, item, spec) {
+        const same = stageCard.sidePage === page && (page !== "opt" || (stageCard.sideSpec && spec && stageCard.sideSpec.key === spec.key))
+        if (same) {
+            stageCard.sidePage = ""
+            return
+        }
+        stageCard.sideSpec = spec
+        stageCard.sideY = item ? item.mapToItem(stageCard, 0, 0).y : 0
+        stageCard.sidePage = page
+    }
     property bool onLeft: true
     property real cardW: 400
     readonly property bool moving: stageCard.wanted && stageCard.onLeft !== stageCard.goalLeft
@@ -152,7 +171,7 @@ EditKit.Card {
     width: stageCard.cardW
     Behavior on width {
         enabled: stageCard.fade > 0.99
-        SpatialAnim { speed: "fast" }
+        SpatialAnim { speed: "move" }
     }
     readonly property real floorY: stageCard.host.height
         - (stageCard.host.surfBottom && stageCard.host.surfBottom.visible && stageCard.host.surfBottom.present
@@ -188,14 +207,14 @@ EditKit.Card {
                 spacing: 0
                 CustomText {
                     content: stageCard.panel ? stageCard.panel.label + " panel" : "Panels"
-                    size: 18
+                    size: 15
                     weight: 600
                 }
                 CustomText {
                     Layout.fillWidth: true
                     content: stageCard.hostMissing ? "Its bar item isn't placed, so there's nothing to preview"
                         : stageCard.momentary ? "Send a test to see where it appears"
-                        : stageCard.spec ? "Open live · drag its edges to resize" : "Open live"
+                        : stageCard.spec && !stageCard.spec.fitOnly ? "Open live · drag its edges to resize" : "Open live"
                     size: 12
                     weight: 400
                     customColor: Colors.surfaceVariantText
@@ -207,22 +226,19 @@ EditKit.Card {
             EditKit.Pill {
                 icon: "close"
                 box: 38
+                tip: "Close · Esc"
                 onClicked: stageCard.host.editor.panelStage = false
             }
         }
 
-        EditChoice {
+        ExpressiveIconRow {
             Layout.fillWidth: true
-            maxPerRow: 3
-            choices: stageCard.host.panelList.map(p => ({ value: p.item, label: p.label, icon: p.icon }))
-            isActive: function(v) { return stageCard.panel !== null && stageCard.panel.item === v }
-            onPicked: v => stageCard.host.openStage(v)
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: 1
-            color: Colors.outlineVariant
+            model: stageCard.host.panelList
+            minWidth: 30
+            rowHeight: 36
+            labelActive: true
+            activeCheck: function(i) { return stageCard.panel !== null && stageCard.host.panelList[i].item === stageCard.panel.item }
+            onTriggered: i => stageCard.host.openStage(stageCard.host.panelList[i].item)
         }
 
         ColumnLayout {
@@ -234,32 +250,38 @@ EditKit.Card {
 
             EditChoice {
                 Layout.fillWidth: true
+                maxPerRow: 2
+                rowHeight: 34
                 choices: stageCard.styleOpt ? stageCard.styleOpt.spec.choices : []
                 value: stageCard.styleOpt ? BarLayout.opt(stageCard.styleOpt.item, stageCard.styleOpt.key) : undefined
-                onPicked: v => BarLayout.setOption(stageCard.styleOpt.item, stageCard.styleOpt.key, v)
+                onPicked: v => {
+                    BarLayout.setOption(stageCard.styleOpt.item, stageCard.styleOpt.key, v)
+                    if (stageCard.kind === "dashboard" && BarLayout.panelW("dashboard") < 720)
+                        BarLayout.setPanelSize("dashboard", 980, -1)
+                }
+            }
+
+            CustomText {
+                Layout.fillWidth: true
+                visible: stageCard.kind === "dashboard"
+                wrapMode: Text.WordWrap
+                content: BarLayout.panelW("dashboard") >= 720 ? "Wide layouts, shown at the Wide size"
+                    : "Wide layouts. Picking one switches the panel to its Wide size"
+                size: 11
+                customColor: Colors.surfaceVariantText
             }
         }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 8
-            visible: stageCard.cornerEdge !== ""
-
-            EditKit.SectionLabel { content: "Corners" }
-
-            EditStepper {
-                Layout.fillWidth: true
-                value: stageCard.cornerOwn >= 0 ? stageCard.cornerOwn : stageCard.cornerEdgeR
-                from: 0
-                to: 40
-                stepSize: 1
-                canAuto: true
-                isAuto: stageCard.cornerOwn < 0
-                autoLabel: "Match bar"
-                autoText: "Bar"
-                onPicked: v => BarLayout.setPanelRadius(stageCard.kind, v)
-                onAutoPicked: BarLayout.setPanelRadius(stageCard.kind, -1)
-            }
+        EditSideRow {
+            id: sizeRow
+            visible: stageCard.spec !== null || stageCard.cornerEdge !== ""
+            icon: "aspect_ratio"
+            label: stageCard.spec !== null ? "Size and corners" : "Corners"
+            value: stageCard.spec !== null
+                ? BarLayout.panelW(stageCard.kind) + " × " + (BarLayout.panelH(stageCard.kind) < 0 ? "fit" : BarLayout.panelH(stageCard.kind))
+                : (stageCard.cornerOwn >= 0 ? Math.round(stageCard.cornerOwn) + " px" : "Like the bar")
+            lit: stageCard.sidePage === "size"
+            onClicked: stageCard.openSide("size", sizeRow, null)
         }
 
         ColumnLayout {
@@ -273,8 +295,12 @@ EditKit.Card {
                 model: stageCard.panelOpts ? stageCard.panelOpts.specs : []
 
                 EditOptionRow {
+                    id: stageOpt
                     required property var modelData
                     Layout.fillWidth: true
+                    compact: true
+                    listOpen: stageCard.sidePage === "opt" && !!stageCard.sideSpec && stageCard.sideSpec.key === stageOpt.modelData.key
+                    onOpenList: stageCard.openSide("opt", stageOpt, stageOpt.modelData)
                     instanceId: stageCard.panelOpts ? stageCard.panelOpts.item : ""
                     spec: modelData
                 }
@@ -303,37 +329,6 @@ EditKit.Card {
                         onClicked: BarLayout.setOption("dashboard", modelData.key, !isOn)
                     }
                 }
-            }
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 8
-            visible: stageCard.spec !== null
-
-            RowLayout {
-                Layout.fillWidth: true
-                EditKit.SectionLabel { content: "Size"; Layout.fillWidth: true }
-                CustomText {
-                    content: stageCard.spec
-                        ? BarLayout.panelW(stageCard.kind) + " × " + (BarLayout.panelH(stageCard.kind) < 0 ? "auto" : BarLayout.panelH(stageCard.kind))
-                        : ""
-                    size: 12
-                    weight: 700
-                    customColor: Colors.primary
-                }
-            }
-
-            EditChoice {
-                Layout.fillWidth: true
-                choices: BarLayout.panelPresets(stageCard.kind)
-                isActive: function(v) { return BarLayout.presetActive(stageCard.kind, v) }
-                onPicked: v => BarLayout.applyPreset(stageCard.kind, v)
-            }
-
-            PanelSizeSliders {
-                Layout.fillWidth: true
-                kind: stageCard.kind
             }
         }
 
@@ -377,31 +372,24 @@ EditKit.Card {
             Layout.fillWidth: true
             spacing: 10
 
-            Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: openCol.implicitHeight + 28
-                radius: 20
-                color: Colors.surfaceContainerHigh
+            MaterialIconSymbol {
+                Layout.leftMargin: 10
+                content: "ads_click"
+                iconSize: 18
+                customColor: Colors.surfaceVariantText
+            }
 
-                ColumnLayout {
-                    id: openCol
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 14
-                    spacing: 1
-                    CustomText { content: stageCard.opener; size: 13; weight: 500; Layout.fillWidth: true; wrapMode: Text.WordWrap }
-                    CustomText {
-                        Layout.fillWidth: true
-                        content: stageCard.hostMissing ? "Drag the handle onto a block to place it"
-                            : "Drag the handle onto any block to open it from there"
-                        size: 11
-                        weight: 400
-                        customColor: Colors.surfaceVariantText
-                        wrapMode: Text.WordWrap
-                        elide: Text.ElideNone
-                    }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+                CustomText { content: "Opens from"; size: 13; weight: 500; Layout.fillWidth: true }
+                CustomText {
+                    Layout.fillWidth: true
+                    content: stageCard.hostMissing ? "Drag the handle onto a block to place it" : stageCard.opener
+                    size: 11
+                    customColor: Colors.surfaceVariantText
+                    wrapMode: Text.WordWrap
+                    elide: Text.ElideNone
                 }
             }
 
@@ -474,14 +462,23 @@ EditKit.Card {
                 CustomToolTip { content: "Drag onto any block to open this panel from there"; visible: grabArea.containsMouse && !grabArea.pressed }
             }
 
-            EditKit.Pill {
-                id: stageMore
-                icon: "tune"
-                label: "More"
-                onClicked: {
-                    stageCard.host.editor.drawerFrom = stageMore.mapToItem(stageCard.host, 0, 0, stageMore.width, stageMore.height)
-                    stageCard.host.editor.drawerMode = "options"
-                }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 1
+            color: Colors.outlineVariant
+        }
+
+        EditSideRow {
+            id: stageMore
+            visible: stageCard.panel !== null && stageCard.host.sel !== ""
+            icon: "tune"
+            accent: true
+            label: (BarLayout.entry(stageCard.host.sel) ? BarLayout.entry(stageCard.host.sel).label + " item" : "Item") + " settings"
+            onClicked: {
+                stageCard.host.editor.drawerFrom = stageMore.mapToItem(stageCard.host, 0, 0, stageMore.width, stageMore.height)
+                stageCard.host.editor.drawerMode = "options"
             }
         }
     }

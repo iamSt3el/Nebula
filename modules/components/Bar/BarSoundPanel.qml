@@ -94,7 +94,10 @@ Item {
                             color: Colors.surfaceContainerHighest
                             currentVal: ServicePipewire.sink?.description ?? ""
                             list: root.sinkList
-                            onCurrentValChanged: root.pick(ServicePipewire.sinks, currentVal, n => ServicePipewire.setAudioSink(n))
+                            onListChildClicked: child => {
+                                const currentVal = child.name
+                                root.pick(ServicePipewire.sinks, currentVal, n => ServicePipewire.setAudioSink(n))
+                            }
                         }
 
                         M3IconButton {
@@ -126,6 +129,88 @@ Item {
                 }
             }
 
+            SectionTitle { content: "Sound effects" }
+
+            CustomCard {
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        MaterialIconSymbol {
+                            content: "equalizer"
+                            iconSize: 18
+                            customColor: ServiceSoundFx.enabled ? Colors.primary : Colors.outline
+                        }
+
+                        CustomText {
+                            Layout.fillWidth: true
+                            content: ServiceSoundFx.error !== "" ? ServiceSoundFx.error
+                                : ServiceSoundFx.enabled ? ServiceSoundFx.styleLabel + (ServiceSoundFx.detected !== "" ? " · " + ServiceSoundFx.detected : "")
+                                : "Off"
+                            size: 12
+                            weight: 600
+                            elide: Text.ElideRight
+                            customColor: ServiceSoundFx.error !== "" ? Colors.error : Colors.surfaceText
+                        }
+
+                        CustomToogle {
+                            isToggleOn: ServiceSoundFx.enabled
+                            onToggled: state => ServiceSoundFx.set({ soundFxOn: state })
+                        }
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        visible: ServiceSoundFx.enabled
+                        spacing: 6
+
+                        Repeater {
+                            model: ServiceSoundFx.styles
+
+                            Rectangle {
+                                id: fxChip
+                                required property var modelData
+                                readonly property bool on: ServiceSoundFx.style === fxChip.modelData.value
+                                implicitWidth: fxRow.implicitWidth + 20
+                                implicitHeight: 30
+                                radius: fxChip.on ? 15 : 8
+                                color: fxChip.on ? Colors.secondaryContainer : Colors.surfaceContainerHighest
+                                Behavior on radius { SpatialAnim { speed: "fast" } }
+                                Behavior on color { EffectsColorAnim {} }
+
+                                RowLayout {
+                                    id: fxRow
+                                    anchors.centerIn: parent
+                                    spacing: 5
+
+                                    MaterialIconSymbol {
+                                        content: fxChip.modelData.icon
+                                        iconSize: 15
+                                        customColor: fxChip.on ? Colors.secondaryContainerText : Colors.surfaceVariantText
+                                    }
+
+                                    CustomText {
+                                        content: fxChip.modelData.label
+                                        size: 12
+                                        weight: 600
+                                        customColor: fxChip.on ? Colors.secondaryContainerText : Colors.surfaceText
+                                    }
+                                }
+
+                                CustomMouseArea {
+                                    radius: fxChip.radius
+                                    onClicked: ServiceSoundFx.set({ soundFxStyle: fxChip.modelData.value })
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             SectionTitle { content: "Input" }
 
             CustomCard {
@@ -144,7 +229,10 @@ Item {
                             color: Colors.surfaceContainerHighest
                             currentVal: ServicePipewire.source?.description ?? ""
                             list: root.sourceList
-                            onCurrentValChanged: root.pick(ServicePipewire.sources, currentVal, n => ServicePipewire.setAudioSource(n))
+                            onListChildClicked: child => {
+                                const currentVal = child.name
+                                root.pick(ServicePipewire.sources, currentVal, n => ServicePipewire.setAudioSource(n))
+                            }
                         }
 
                         M3IconButton {

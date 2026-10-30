@@ -132,7 +132,7 @@ Scope {
 
             function begin() {
                 let t = root.transition
-                if (t === "none" || ServiceReveal.busy || ServiceLayouts.quiet) {
+                if (t === "none" || ServiceReveal.busy) {
                     win.finish()
                     return
                 }

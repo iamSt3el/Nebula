@@ -30,22 +30,44 @@ WidgetHost {
                 implicitHeight: 124
 
                 Shape {
+                    id: ring
                     anchors.fill: parent
                     preferredRendererType: Shape.CurveRenderer
+
+                    readonly property real frac: Math.max(0, Math.min(1, ServiceProfile.dayFrac))
+                    readonly property real gapDeg: ring.frac > 0.01 && ring.frac < 0.99 ? 16 : 0
 
                     ShapePath {
                         fillColor: "transparent"
                         strokeColor: Colors.surfaceContainerHighest
-                        strokeWidth: 5
-                        PathAngleArc { centerX: 62; centerY: 62; radiusX: 59; radiusY: 59; startAngle: 0; sweepAngle: 360 }
+                        strokeWidth: 6
+                        capStyle: ShapePath.RoundCap
+                        PathAngleArc {
+                            centerX: 62; centerY: 62; radiusX: 57; radiusY: 57
+                            startAngle: -90 + 360 * ring.frac + ring.gapDeg
+                            sweepAngle: Math.max(0, 360 * (1 - ring.frac) - ring.gapDeg * 2)
+                        }
                     }
 
                     ShapePath {
                         fillColor: "transparent"
                         strokeColor: Colors.primary
-                        strokeWidth: 5
+                        strokeWidth: 6
                         capStyle: ShapePath.RoundCap
-                        PathAngleArc { centerX: 62; centerY: 62; radiusX: 59; radiusY: 59; startAngle: -90; sweepAngle: 360 * ServiceProfile.dayFrac }
+                        joinStyle: ShapePath.RoundJoin
+                        PathPolyline {
+                            path: {
+                                const pts = []
+                                const n = Math.max(2, Math.round(180 * ring.frac))
+                                const span = Math.PI * 2 * ring.frac
+                                for (let i = 0; i <= n; i++) {
+                                    const t = span * i / n
+                                    const r = 57 + 2.4 * Math.sin(t * 14)
+                                    pts.push(Qt.point(62 + r * Math.cos(t - Math.PI / 2), 62 + r * Math.sin(t - Math.PI / 2)))
+                                }
+                                return pts
+                            }
+                        }
                     }
                 }
 
@@ -121,10 +143,10 @@ WidgetHost {
             CustomText {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 2
-                content: Math.round(ServiceProfile.dayFrac * 100) + "% of " + Qt.formatDate(new Date(ServiceProfile.now), "dddd") + " done"
+                content: Math.round(ServiceProfile.dayFrac * 100) + "% of " + Qt.formatDate(new Date(ServiceProfile.now), "dddd")
                 size: 11
-                weight: 400
-                customColor: Colors.outline
+                weight: 600
+                customColor: Colors.surfaceVariantText
             }
 
             Item { Layout.fillHeight: true }

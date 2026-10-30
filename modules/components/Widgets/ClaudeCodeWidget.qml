@@ -1,6 +1,7 @@
 import Quickshell
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import qs.modules.utils
 import qs.modules.services
 import qs.modules.settings
@@ -34,18 +35,15 @@ WidgetHost {
     readonly property bool live:  root.preview ? root.canned.live   : ServiceClaudeCode.live
     readonly property string project: root.preview ? root.canned.project : ServiceClaudeCode.project
     readonly property bool ready: root.preview || ServiceClaudeCode.ready
+    readonly property string display: SettingsConfig.general?.displayFont || "Titan One"
 
     readonly property bool limitsStale: !root.preview && ServiceClaudeCode.limitsStale
     readonly property string staleNote: root.limitsStale
         ? ServiceClaudeCode.formatSpan(ServiceClaudeCode.limitsAgeSec) + " old"
         : ""
 
-    readonly property var sessionLimit: root.preview
-        ? root.canned.limits[0]
-        : ServiceClaudeCode.limitFor("session")
-    readonly property var weeklyLimit: root.preview
-        ? root.canned.limits[1]
-        : ServiceClaudeCode.limitFor("weekly")
+    readonly property var sessionLimit: root.preview ? root.canned.limits[0] : ServiceClaudeCode.limitFor("session")
+    readonly property var weeklyLimit: root.preview ? root.canned.limits[1] : ServiceClaudeCode.limitFor("weekly")
 
     Component.onCompleted: if (!root.preview) ServiceClaudeCode.retain()
     Component.onDestruction: if (!root.preview) ServiceClaudeCode.release()
@@ -61,278 +59,287 @@ WidgetHost {
         return (limit !== null && limit !== undefined) ? (limit.percent ?? 0) : 0
     }
 
-    // Colors.error is wallpaper-derived and can land on top of Colors.primary
-    // (#ffb4ab vs #ffb4a6 under a warm theme), so severity carries its own hue.
     function tone(limit, fallback) {
         const sev = (limit !== null && limit !== undefined) ? (limit.severity ?? "normal") : "normal"
         if (sev === "normal") return fallback
-        if (sev === "warning") return Qt.hsla(0.09, 0.85, 0.55, 1)
-        return Qt.hsla(0.01, 0.78, 0.56, 1)
+        if (sev === "warning") return Colors.tertiary
+        return Colors.error
     }
 
     readonly property color sessionTone: root.tone(root.sessionLimit, Colors.primary)
-    readonly property color weeklyTone: root.tone(root.weeklyLimit, Qt.alpha(Colors.surfaceText, 0.8))
+    readonly property color weeklyTone: root.tone(root.weeklyLimit, Colors.primary)
 
-    readonly property var topModels: (root.today.models ?? []).slice(0, 2)
-    readonly property var dayMillions: (root.series ?? []).map(d => (d.tokens ?? 0) / 1000000)
-    readonly property real peakM: root.peak / 1000000
+    readonly property string modelSplit: {
+        const total = root.today.tokens ?? 0
+        const models = (root.today.models ?? []).slice(0, 2)
+        if (total <= 0 || models.length === 0) return ""
+        return models.map(m => ServiceClaudeCode.shortModel(m.name) + " " + Math.round((m.tokens ?? 0) / total * 100)).join(" · ")
+    }
 
-    // TrapezoidChart turns N values into N-1 sloping segments, so the first
-    // value is repeated to get a segment per day.
-    readonly property var chartValues: {
-        const v = root.dayMillions
-        if (v.length < 2) return []
-        return [v[0]].concat(v)
+    component WavyMeter: Item {
+        id: meter
+        property real progress: 0
+        property color tone: Colors.primary
+        readonly property real stroke: 4
+        readonly property real end: Math.max(meter.stroke, (meter.width - meter.stroke) * Math.max(0, Math.min(1, meter.progress)))
+        implicitHeight: 10
+
+        Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeColor: Colors.surfaceContainerHighest
+                strokeWidth: meter.stroke
+                fillColor: "transparent"
+                capStyle: ShapePath.RoundCap
+                startX: Math.min(meter.width - meter.stroke / 2, meter.end + 8)
+                startY: meter.height / 2
+                PathLine { x: meter.width - meter.stroke / 2; y: meter.height / 2 }
+            }
+            ShapePath {
+                strokeColor: meter.tone
+                strokeWidth: meter.stroke
+                fillColor: "transparent"
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+                PathPolyline {
+                    path: {
+                        const pts = []
+                        const cy = meter.height / 2
+                        for (let x = meter.stroke / 2; x <= meter.end; x += 2)
+                            pts.push(Qt.point(x, cy + 2.5 * Math.sin(x / 14 * Math.PI * 2)))
+                        if (pts.length < 2) pts.push(Qt.point(meter.end, cy))
+                        return pts
+                    }
+                }
+            }
+        }
+    }
+
+    component LimitRow: ColumnLayout {
+        id: lr
+        property string label: ""
+        property var limit: null
+        property color tone: Colors.primary
+        readonly property bool known: lr.limit !== null && lr.limit !== undefined
+        spacing: 3
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 4
+            CustomText { content: lr.label; size: 11; weight: 700 }
+            CustomText {
+                content: lr.known ? Math.round(lr.limit.percent ?? 0) + "%" : "—"
+                size: 11
+                weight: 800
+                customColor: lr.tone
+                opacity: root.limitsStale ? 0.45 : 1
+            }
+            Item { Layout.fillWidth: true }
+            CustomText {
+                content: lr.known ? "resets in " + ServiceClaudeCode.formatSpan(lr.limit.secondsLeft ?? 0) : "no data"
+                size: 10
+                weight: 500
+                customColor: Colors.surfaceVariantText
+            }
+        }
+        WavyMeter {
+            Layout.fillWidth: true
+            progress: root.pct(lr.limit) / 100
+            tone: lr.tone
+            opacity: root.limitsStale ? 0.45 : 1
+        }
     }
 
     WidgetCard {
+        id: card
         anchors.fill: parent
 
         RowLayout {
-            id: header
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.leftMargin: parent.pad
-            anchors.rightMargin: parent.pad
-            y: 13
-            spacing: 6
-
-            CustomText { content: "Claude Code"; size: 12; customColor: Colors.primary }
-
-            CustomText {
-                visible: root.limitsStale
-                content: "· " + root.staleNote
-                size: 10
-                customColor: Qt.hsla(0.09, 0.85, 0.55, 1)
-            }
-
-            Item { Layout.fillWidth: true }
-
-            Rectangle {
-                width: 6; height: 6; radius: 3
-                color: root.live ? Colors.primary : Colors.outline
-                opacity: root.live ? 1 : 0.5
-            }
-            CustomText {
-                content: root.live ? (root.project.length > 0 ? root.project : "active") : "idle"
-                size: 10
-                customColor: Colors.outline
-                elide: Text.ElideRight
-                Layout.maximumWidth: 96
-            }
-        }
-
-        Item {
-            id: rings
-            x: 18
-            y: 36
-            width: 96
-            height: 96
-            visible: root.ready
-            opacity: root.limitsStale ? 0.45 : 1
-            Behavior on opacity { NumberAnimation { duration: 200 } }
-
-            CustomCircularProgressBar {
-                anchors.fill: parent
-                progress: Math.min(1, root.pct(root.weeklyLimit) / 100)
-                radius: 44
-                thickness: 6
-                showText: false
-                baseColor: Qt.alpha(Colors.surfaceText, 0.10)
-                lineColor: root.weeklyTone
-            }
-
-            CustomCircularProgressBar {
-                anchors.fill: parent
-                progress: Math.min(1, root.pct(root.sessionLimit) / 100)
-                radius: 32
-                thickness: 6
-                showText: false
-                baseColor: Qt.alpha(Colors.surfaceText, 0.10)
-                lineColor: root.sessionTone
-            }
-
-            Column {
-                anchors.centerIn: parent
-                spacing: -2
-
-                CustomText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    content: Math.round(root.pct(root.sessionLimit)) + "%"
-                    size: 20
-                    weight: 700
-                    customColor: root.sessionTone
-                }
-
-                CustomText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    content: "5h"
-                    size: 9
-                    weight: 600
-                    font.letterSpacing: 1
-                    customColor: Colors.outline
-                }
-            }
-        }
-
-        component LimitLine: RowLayout {
-            id: line
-
-            property string label: ""
-            property var limit: null
-            property color tone: Colors.primary
-
-            spacing: 6
-
-            Rectangle {
-                Layout.alignment: Qt.AlignVCenter
-                width: 6; height: 6; radius: 3
-                color: line.tone
-            }
-
-            CustomText {
-                Layout.preferredWidth: 18
-                content: line.label
-                size: 10
-                weight: 600
-                customColor: Colors.outline
-            }
-
-            CustomText {
-                Layout.preferredWidth: 32
-                content: (line.limit !== null && line.limit !== undefined)
-                    ? Math.round(line.limit.percent ?? 0) + "%"
-                    : "—"
-                size: 11
-                weight: 700
-                customColor: line.tone
-                // Only the percentage goes stale; the countdown beside it is
-                // recomputed from the absolute reset time and stays correct.
-                opacity: root.limitsStale ? 0.45 : 1
-            }
-
-            CustomText {
-                Layout.fillWidth: true
-                content: (line.limit !== null && line.limit !== undefined)
-                    ? ServiceClaudeCode.formatSpan(line.limit.secondsLeft ?? 0)
-                    : "no data"
-                size: 10
-                customColor: Colors.outline
-            }
-        }
-
-        Column {
-            id: stats
-            x: 126
-            y: 38
-            width: parent.width - 126 - 18
-            spacing: 5
+            anchors.fill: parent
+            anchors.margins: 14
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
+            spacing: 16
             visible: root.ready
 
-            RowLayout {
-                width: parent.width
-                spacing: 5
-
-                CustomText {
-                    content: root.fmt(root.today.tokens ?? 0)
-                    size: 21
-                    weight: 700
-                    customColor: Colors.surfaceText
-                }
-                CustomText {
-                    Layout.alignment: Qt.AlignBottom
-                    Layout.bottomMargin: 4
-                    content: "today"
-                    size: 10
-                    customColor: Colors.outline
-                }
-                Item { Layout.fillWidth: true }
-            }
-
-            CustomText {
-                content: (root.today.sessions ?? 0) + " sessions · " + (root.today.messages ?? 0) + " msgs"
-                size: 10
-                customColor: Colors.outline
-            }
-
-            LimitLine {
-                width: parent.width
-                label: "5h"
-                limit: root.sessionLimit
-                tone: root.sessionTone
-            }
-
-            LimitLine {
-                width: parent.width
-                label: "7d"
-                limit: root.weeklyLimit
-                tone: root.weeklyTone
-            }
-
-            RowLayout {
-                width: parent.width
+            ColumnLayout {
+                Layout.preferredWidth: 112
+                Layout.fillHeight: true
                 spacing: 8
-                visible: root.topModels.length > 0
 
-                Repeater {
-                    model: root.topModels
+                Item {
+                    id: ring
+                    Layout.preferredWidth: 112
+                    Layout.preferredHeight: 112
+                    opacity: root.limitsStale ? 0.45 : 1
+                    Behavior on opacity { NumberAnimation { duration: 200 } }
 
-                    RowLayout {
-                        required property var modelData
+                    readonly property real p: Math.max(0, Math.min(1, root.pct(root.sessionLimit) / 100))
+                    readonly property real r: 46
+                    readonly property real c: ring.width / 2
+                    readonly property real startDeg: -90
+                    readonly property real sweepDeg: 360 * ring.p
+                    readonly property real gapDeg: 16
 
-                        readonly property real share: {
-                            const total = root.today.tokens ?? 0
-                            return total > 0 ? (modelData.tokens ?? 0) / total : 0
+                    Shape {
+                        anchors.fill: parent
+                        preferredRendererType: Shape.CurveRenderer
+                        ShapePath {
+                            strokeColor: Colors.surfaceContainerHighest
+                            strokeWidth: 8
+                            fillColor: "transparent"
+                            capStyle: ShapePath.RoundCap
+                            PathAngleArc {
+                                centerX: ring.c
+                                centerY: ring.c
+                                radiusX: ring.r
+                                radiusY: ring.r
+                                startAngle: ring.startDeg + ring.sweepDeg + (ring.p > 0 ? ring.gapDeg : 0)
+                                sweepAngle: Math.max(0, 360 - ring.sweepDeg - (ring.p > 0 ? ring.gapDeg * 2 : 0))
+                            }
                         }
+                        ShapePath {
+                            strokeColor: root.sessionTone
+                            strokeWidth: 8
+                            fillColor: "transparent"
+                            capStyle: ShapePath.RoundCap
+                            joinStyle: ShapePath.RoundJoin
+                            PathPolyline {
+                                path: {
+                                    const pts = []
+                                    const n = Math.max(2, Math.round(160 * ring.p))
+                                    const a0 = ring.startDeg * Math.PI / 180
+                                    const span = ring.sweepDeg * Math.PI / 180
+                                    for (let i = 0; i <= n; i++) {
+                                        const t = span * i / n
+                                        const rr = ring.r + 2.5 * Math.sin(t * 12)
+                                        pts.push(Qt.point(ring.c + rr * Math.cos(a0 + t), ring.c + rr * Math.sin(a0 + t)))
+                                    }
+                                    return pts
+                                }
+                            }
+                        }
+                    }
 
-                        spacing: 3
-
+                    Column {
+                        anchors.centerIn: parent
                         CustomText {
-                            content: ServiceClaudeCode.shortModel(modelData.name)
-                            size: 10
-                            customColor: Qt.alpha(Colors.surfaceText, 0.7)
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            content: Math.round(root.pct(root.sessionLimit)) + "%"
+                            family: root.display
+                            size: 26
+                            weight: 400
                         }
                         CustomText {
-                            content: Math.round(share * 100) + "%"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            content: "5 h window"
                             size: 10
-                            customColor: Colors.outline
+                            weight: 700
+                            customColor: Colors.surfaceVariantText
                         }
                     }
                 }
 
-                Item { Layout.fillWidth: true }
+                Rectangle {
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: root.modelSplit !== ""
+                    implicitWidth: Math.min(112, splitText.implicitWidth + 16)
+                    implicitHeight: 22
+                    radius: 11
+                    color: Colors.secondaryContainer
+                    CustomText {
+                        id: splitText
+                        anchors.centerIn: parent
+                        width: Math.min(implicitWidth, parent.width - 12)
+                        content: root.modelSplit
+                        size: 10
+                        weight: 700
+                        elide: Text.ElideRight
+                        customColor: Colors.secondaryContainerText
+                    }
+                }
             }
-        }
 
-        // The M3 trapezoid chart, furniture painted out rather than switched
-        // off: showAxis has to stay true or axisY collapses to `height` and the
-        // weekday labels are drawn below the canvas. A transparent gridColor
-        // plus a zero tick hides the axis while keeping the label band.
-        TrapezoidChart {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.leftMargin: 16
-            anchors.rightMargin: 16
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 10
-            anchors.top: parent.top
-            anchors.topMargin: 142
-            visible: root.ready && root.chartValues.length >= 2
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 6
 
-            values: root.chartValues
-            labels: (root.series ?? []).map(d => d.weekday ?? "")
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    CustomText {
+                        content: root.fmt(root.today.tokens ?? 0)
+                        family: root.display
+                        size: 24
+                        weight: 400
+                    }
+                    CustomText {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignBottom
+                        Layout.bottomMargin: 3
+                        content: "today · " + (root.today.sessions ?? 0) + " sessions"
+                        size: 11
+                        weight: 500
+                        elide: Text.ElideRight
+                        customColor: Colors.surfaceVariantText
+                    }
+                    Rectangle {
+                        width: 6; height: 6; radius: 3
+                        color: root.live ? Colors.tertiary : Colors.outline
+                    }
+                    CustomText {
+                        Layout.maximumWidth: 90
+                        content: root.limitsStale ? root.staleNote
+                               : root.live ? (root.project.length > 0 ? root.project : "active") : "idle"
+                        size: 10
+                        weight: 600
+                        elide: Text.ElideRight
+                        customColor: Colors.surfaceVariantText
+                    }
+                }
 
-            lo: 0
-            hi: root.peakM > 0 ? root.peakM * 1.08 : 1
+                LimitRow { Layout.fillWidth: true; label: "5 h"; limit: root.sessionLimit; tone: root.sessionTone }
+                LimitRow { Layout.fillWidth: true; label: "7 day"; limit: root.weeklyLimit; tone: root.weeklyTone }
 
-            barColor: Colors.primary
-            gridColor: "transparent"
-            gridValues: []
-            gridLabelWidth: 0
-            tickHeight: 0
-            bottomOffset: 0
-            labelHeight: 13
-            cornerRadius: 4
+                Item { Layout.fillHeight: true }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 40
+                    spacing: 6
+                    visible: (root.series ?? []).length > 0
+
+                    Repeater {
+                        model: root.series ?? []
+                        delegate: ColumnLayout {
+                            id: day
+                            required property var modelData
+                            required property int index
+                            readonly property bool isToday: day.index === (root.series ?? []).length - 1
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 40
+                            spacing: 3
+
+                            Item { Layout.fillHeight: true }
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: Math.max(4, 25 * (root.peak > 0 ? (day.modelData.tokens ?? 0) / root.peak : 0))
+                                radius: 6
+                                color: day.isToday ? Colors.tertiary : Colors.secondaryContainer
+                            }
+                            CustomText {
+                                Layout.alignment: Qt.AlignHCenter
+                                content: day.modelData.weekday ?? ""
+                                size: 9
+                                weight: 700
+                                customColor: day.isToday ? Colors.tertiary : Colors.surfaceVariantText
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         CustomText {

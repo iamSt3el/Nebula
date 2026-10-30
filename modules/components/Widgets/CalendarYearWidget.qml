@@ -15,7 +15,7 @@ WidgetHost {
     defaultPos: Qt.point(760, 440)
     tile: WidgetSizes.large
 
-    readonly property string _serif: "Noto Serif Display"
+    readonly property string display: SettingsConfig.general?.displayFont || "Titan One"
     readonly property bool showHolidays: SettingsConfig.widgets.calendarYearHolidays ?? true
 
     readonly property var now: {
@@ -47,7 +47,7 @@ WidgetHost {
 
     optionsComponent: Component {
         CalendarOptionList {
-            model: [{ key: "calendarYearHolidays", label: "Show holidays", sub: "Dots on the ring and the next one by name", def: true }]
+            model: [{ key: "calendarYearHolidays", label: "Show holidays", sub: "The next one by name under the count", def: true }]
         }
     }
 
@@ -60,8 +60,8 @@ WidgetHost {
 
             readonly property real cx: wheel.width / 2
             readonly property real cy: wheel.height / 2
-            readonly property real r: Math.min(wheel.width, wheel.height) / 2 - 39
-            readonly property real gap: 2.6
+            readonly property real r: Math.min(wheel.width, wheel.height) / 2 - 28
+            readonly property real gap: 7.5
 
             Repeater {
                 model: root.months
@@ -78,9 +78,9 @@ WidgetHost {
                     readonly property bool current: seg.modelData.m === root.now.getMonth()
 
                     ShapePath {
-                        strokeColor: seg.done ? Qt.alpha(Colors.primary, 0.55) : Colors.surfaceContainerHighest
-                        strokeWidth: 12
-                        capStyle: ShapePath.FlatCap
+                        strokeColor: seg.done ? Colors.primary : Colors.surfaceContainerHighest
+                        strokeWidth: 14
+                        capStyle: ShapePath.RoundCap
                         fillColor: "transparent"
                         PathAngleArc {
                             centerX: wheel.cx
@@ -94,8 +94,8 @@ WidgetHost {
 
                     ShapePath {
                         strokeColor: seg.current ? Colors.primary : "transparent"
-                        strokeWidth: 12
-                        capStyle: ShapePath.FlatCap
+                        strokeWidth: 14
+                        capStyle: ShapePath.RoundCap
                         fillColor: "transparent"
                         PathAngleArc {
                             centerX: wheel.cx
@@ -109,37 +109,6 @@ WidgetHost {
                 }
             }
 
-            Repeater {
-                model: root.months
-
-                CustomText {
-                    required property var modelData
-                    readonly property real a: (root.angleOf(modelData.start + modelData.days / 2)) * Math.PI / 180
-                    readonly property bool current: modelData.m === root.now.getMonth()
-                    x: wheel.cx + (wheel.r - 22) * Math.cos(a) - width / 2
-                    y: wheel.cy + (wheel.r - 22) * Math.sin(a) - height / 2
-                    content: modelData.letter
-                    size: 9
-                    weight: current ? 700 : 500
-                    customColor: current ? Colors.primary : Colors.outline
-                }
-            }
-
-            Repeater {
-                model: root.showHolidays ? root.upcoming : []
-
-                Rectangle {
-                    required property var modelData
-                    readonly property real a: root.angleOf(CalMath.dayOfYear(modelData.date) - 0.5) * Math.PI / 180
-                    x: wheel.cx + wheel.r * Math.cos(a) - width / 2
-                    y: wheel.cy + wheel.r * Math.sin(a) - height / 2
-                    width: 7
-                    height: 7
-                    radius: 3.5
-                    color: Colors.tertiary
-                }
-            }
-
             Item {
                 readonly property real a: root.angleOf(root.dayNum - 0.5) * Math.PI / 180
                 x: wheel.cx + wheel.r * Math.cos(a)
@@ -147,19 +116,12 @@ WidgetHost {
 
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 22
-                    height: 22
-                    radius: 11
-                    color: Qt.alpha(Colors.tertiary, 0.25)
-                }
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 13
-                    height: 13
-                    radius: 6.5
+                    width: 24
+                    height: 24
+                    radius: 12
                     color: Colors.tertiary
-                    border.width: 2
-                    border.color: Colors.surface
+                    border.width: 4
+                    border.color: WidgetSizes.cardColor
                 }
             }
 
@@ -169,27 +131,19 @@ WidgetHost {
 
                 CustomText {
                     Layout.alignment: Qt.AlignHCenter
-                    content: "DAY"
-                    size: 10
-                    weight: 600
-                    customColor: Colors.outline
-                    font.letterSpacing: 1.6
-                }
-                CustomText {
-                    Layout.alignment: Qt.AlignHCenter
                     content: String(root.dayNum)
-                    size: 56
-                    weight: 700
-                    family: root._serif
+                    size: 60
+                    weight: 400
+                    family: root.display
                     renderType: Text.QtRendering
                     lineHeightMode: Text.FixedHeight
-                    lineHeight: 58
+                    lineHeight: 62
                 }
                 CustomText {
                     Layout.alignment: Qt.AlignHCenter
                     content: "of " + root.year + " · " + (root.yearDays - root.dayNum) + " to go"
-                    size: 12
-                    weight: 400
+                    size: 13
+                    weight: 600
                     customColor: Colors.surfaceVariantText
                 }
                 CustomText {
@@ -202,17 +156,16 @@ WidgetHost {
                     elide: Text.ElideNone
                     maximumLineCount: 2
                     content: root.nextHoliday ? root.nextHoliday.name : ""
-                    size: 11
-                    weight: 500
-                    customColor: Colors.tertiary
+                    size: 12
+                    weight: 700
                 }
                 CustomText {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.showHolidays && root.nextHoliday !== null
                     content: root.nextHoliday ? (root.nextHoliday.days === 1 ? "tomorrow" : "in " + root.nextHoliday.days + " days") : ""
-                    size: 10
-                    weight: 400
-                    customColor: Colors.outline
+                    size: 11
+                    weight: 600
+                    customColor: Colors.surfaceVariantText
                 }
             }
         }

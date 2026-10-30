@@ -28,11 +28,13 @@ class ShapePainter : public QQuickPaintedItem
     Q_PROPERTY(bool polygonIsNormalized READ polygonIsNormalized WRITE setPolygonIsNormalized NOTIFY styleChanged)
     Q_PROPERTY(qreal strokeProgress READ strokeProgress WRITE setStrokeProgress NOTIFY styleChanged)
     Q_PROPERTY(qreal strokeWidth READ strokeWidth WRITE setStrokeWidth NOTIFY styleChanged)
+    Q_PROPERTY(qreal trackGap READ trackGap WRITE setTrackGap NOTIFY styleChanged)
     Q_PROPERTY(QColor strokeColor READ strokeColor WRITE setStrokeColor NOTIFY styleChanged)
     Q_PROPERTY(QColor strokeTrackColor READ strokeTrackColor WRITE setStrokeTrackColor NOTIFY styleChanged)
     Q_PROPERTY(qreal angle READ angle WRITE setAngle NOTIFY styleChanged)
     Q_PROPERTY(qreal fillLevel READ fillLevel WRITE setFillLevel NOTIFY styleChanged)
     Q_PROPERTY(QColor levelColor READ levelColor WRITE setLevelColor NOTIFY styleChanged)
+    Q_PROPERTY(qreal sweepLevel READ sweepLevel WRITE setSweepLevel NOTIFY styleChanged)
 
 public:
     explicit ShapePainter(QQuickItem *parent = nullptr);
@@ -63,7 +65,9 @@ public:
     qreal strokeProgress() const { return m_strokeProgress; }
     void setStrokeProgress(qreal v);
     qreal strokeWidth() const { return m_strokeWidth; }
+    qreal trackGap() const { return m_trackGap; }
     void setStrokeWidth(qreal v);
+    void setTrackGap(qreal v);
     QColor strokeColor() const { return m_strokeColor; }
     void setStrokeColor(const QColor &v);
     QColor strokeTrackColor() const { return m_strokeTrackColor; }
@@ -74,6 +78,8 @@ public:
     void setFillLevel(qreal v);
     QColor levelColor() const { return m_levelColor; }
     void setLevelColor(const QColor &v);
+    qreal sweepLevel() const { return m_sweepLevel; }
+    void setSweepLevel(qreal v);
 
     Q_INVOKABLE qreal progressAt(qreal px, qreal py) const;
     Q_INVOKABLE QVariant pointAtProgress(qreal p) const;
@@ -112,10 +118,12 @@ private:
     bool m_normalized = true;
     qreal m_strokeProgress = -1;
     qreal m_strokeWidth = 4;
+    qreal m_trackGap = 4;
     QColor m_strokeColor = QColor(0x68, 0x54, 0x96);
     QColor m_strokeTrackColor = Qt::transparent;
     qreal m_angle = 0;
     qreal m_fillLevel = -1;
     QColor m_levelColor = QColor(0x68, 0x54, 0x96);
+    qreal m_sweepLevel = -1;
     QTransform spin(const QPainterPath &shape, qreal pad) const;
 };
