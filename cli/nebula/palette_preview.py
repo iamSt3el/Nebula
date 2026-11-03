@@ -12,7 +12,7 @@ def main() -> None:
         sys.exit(1)
 
     original, thumb = sys.argv[1], sys.argv[2]
-    variant = sys.argv[3].removeprefix("scheme-")
+    variant = sys.argv[3].removeprefix("scheme-").replace("-", "")
     mode = sys.argv[4].lower()
 
     primary = None

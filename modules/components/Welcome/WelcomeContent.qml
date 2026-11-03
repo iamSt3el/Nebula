@@ -7,6 +7,8 @@ import qs.modules.utils
 import qs.modules.settings
 import qs.modules.services
 import qs.modules.customComponents
+import "../../MatrialShapes/" as MaterialShapes
+import "../../MatrialShapes/material-shapes.js" as MaterialShapeFn
 
 Item {
     id: root
@@ -18,8 +20,35 @@ Item {
     property bool appsVisited: false
     property string appliedKey: ""
 
-    readonly property bool multiMonitor: Quickshell.screens.length > 1
     readonly property int lastStep: root.steps.length - 1
+    readonly property bool done: root.step === root.lastStep
+    readonly property Item page: stack.children[root.step] ?? null
+
+    readonly property var steps: [
+        { shape: MaterialShapeFn.getCookie9Sided(), icon: "wallpaper",
+          title: "Which wallpaper feels like home?",
+          sub: "Every colour in Nebula comes from it, and you can swap it any time." },
+        { shape: MaterialShapeFn.getSunny(), icon: "contrast",
+          title: "Light or dark?",
+          sub: "The shell and the apps you pick next switch together." },
+        { shape: MaterialShapeFn.getFlower(), icon: "palette",
+          title: "How much colour?",
+          sub: "Calm keeps things mostly grey. Vivid lets the wallpaper's colour run through everything." },
+        { shape: MaterialShapeFn.getClover4Leaf(), icon: "apps",
+          title: "Which apps should match?",
+          sub: "Picked apps get new colours every time the wallpaper changes." },
+        { shape: MaterialShapeFn.getBurst(), icon: "interests",
+          title: "What do you do here most?",
+          sub: "Pick any. Each one turns on the parts of Nebula that help with it." },
+        { shape: MaterialShapeFn.getPuffy(), icon: "person",
+          title: "Who's this desktop for?",
+          sub: "A picture and name for the lock screen, and a city for the weather. All optional." },
+        { shape: MaterialShapeFn.getCookie6Sided(), icon: "keyboard",
+          title: "Last one: your shortcuts",
+          sub: "These four open the parts of Nebula you'll reach for every day." },
+        { shape: MaterialShapeFn.getCookie12Sided(), icon: "check",
+          title: "", sub: "" }
+    ]
 
     readonly property string prettyDir: {
         const home = Quickshell.env("HOME") ?? ""
@@ -27,64 +56,53 @@ Item {
         return home !== "" && dir.startsWith(home) ? "~" + dir.slice(home.length) : dir
     }
 
-    readonly property var steps: [
-        { label: "Wallpaper", title: "Pick a wallpaper",
-          sub: "Everything in Nebula colours itself from it." },
-        { label: "Colours",   title: "Tune the colours",
-          sub: "Light or dark, and how bold the palette is." },
-        { label: "Apps",      title: "Which apps follow your wallpaper?",
-          sub: "Nebula writes a colour file for each app you pick and rewrites it every time the wallpaper changes." },
-        { label: "You",       title: "Make it yours",
-          sub: "Your picture, font and weather." },
-        { label: "Features",  title: "Choose your features",
-          sub: "Anything you leave off never runs. You can change this later in Settings › Features." },
-        { label: "Shortcuts", title: "Bind your shortcuts",
-          sub: "Nebula registers these. Your Hyprland config stays yours." },
-        { label: "Finish",    title: "", sub: "" }
-    ]
+    readonly property string colourName: {
+        const s = SettingsConfig.theme.matugenScheme ?? "scheme-content"
+        const named = { "scheme-neutral": "Calm", "scheme-content": "Balanced", "scheme-vibrant": "Vivid" }
+        if (named[s])
+            return named[s]
+        const t = s.replace("scheme-", "").replace(/-/g, " ")
+        return t.charAt(0).toUpperCase() + t.slice(1)
+    }
 
     readonly property string finishTitle: {
-        if (!root.appsVisited)
+        if (!root.appsVisited || !themeApps.scanned)
             return "You're all set"
         if (themeApps.applying || !themeApps.applied)
-            return "Applying the palette"
-        const total = themeApps.resultList.length
-        const ok = themeApps.okCount
-        if (themeApps.failed.length > 0)
-            return ok + " of " + total + " apps follow your wallpaper"
-        return ok === 1 ? "1 app follows your wallpaper" : ok + " apps follow your wallpaper"
+            return "Applying your colours"
+        const n = themeApps.failed.length
+        if (n > 0)
+            return themeApps.okCount + " of " + themeApps.resultList.length + " apps follow your wallpaper"
+        return "You're all set"
     }
 
     readonly property string finishSub: {
-        if (!root.appsVisited)
-            return "Change anything later in Settings, or run nebula setup again."
-        if (themeApps.applying || !themeApps.applied)
+        if (root.appsVisited && themeApps.scanned && (themeApps.applying || !themeApps.applied))
             return "Writing a colour file for each app you picked."
         const n = themeApps.failed.length
-        if (n === 1)
-            return "One app needs a hand. Everything else is written and reloaded."
-        if (n > 1)
-            return n + " apps need a hand. Everything else is written and reloaded."
-        return "Everything is written and reloaded."
+        if (root.appsVisited && n > 0)
+            return (n === 1 ? "One app needs" : n + " apps need") + " a hand. Everything else is written and reloaded."
+        return "Change anything later in Settings, or run nebula setup to answer these again."
     }
 
-    readonly property string footerNote: {
-        switch (root.step) {
-        case 2: {
-            const n = themeApps.pickedApps.length
-            const r = themeApps.replaceCount
-            let s = n === 1 ? "1 app picked." : n + " apps picked."
-            if (r > 0)
-                s += " " + r + (r === 1 ? " replaces a file" : " replace files") + " you already have. Nebula keeps a .bak copy first."
-            return s
-        }
-        case 4:
-            return "Copy a block into your Hyprland config."
-        case 5:
-            return "Run nebula setup to open this again."
-        default:
-            return ""
-        }
+    readonly property var summary: {
+        const mode = SettingsConfig.theme.matugenTheme ?? "dark"
+        const on = Features.list.filter(f => Features.on(f.id)).length
+        return [
+            { icon: "wallpaper", text: root.fileName(Colors.sourceWallpaper || Colors.wallpaper) },
+            { icon: "contrast",  text: (mode === "light" ? "Light" : "Dark") + ", " + root.colourName.toLowerCase() + " colour" },
+            !root.appsVisited
+                ? { icon: "apps", text: "Apps left as they were", ok: false }
+                : themeApps.applied && themeApps.failed.length > 0
+                    ? { icon: "apps", text: themeApps.okCount + " of " + themeApps.resultList.length + " apps follow your colours", ok: false }
+                    : { icon: "apps", text: themeApps.pickedApps.length === 1 ? "1 app follows your colours" : themeApps.pickedApps.length + " apps follow your colours" },
+            { icon: "widgets", text: on + " of " + Features.list.length + " features on" },
+            keybindStore.active || keybindStore.coveredByUser
+                ? { icon: "keyboard", text: keybindStore.active ? "Nebula's shortcuts are on" : "Shortcuts come from your config" }
+                : keybindStore.adding
+                    ? { icon: "keyboard", text: "Adding Nebula's shortcuts", ok: false }
+                    : { icon: "keyboard", text: "Shortcuts left to your config", ok: false }
+        ]
     }
 
     function fileName(path) {
@@ -92,35 +110,18 @@ Item {
         return s.substring(s.lastIndexOf("/") + 1)
     }
 
-    function stepNote(i) {
-        switch (i) {
-        case 0:
-            return root.fileName(Colors.sourceWallpaper || Colors.wallpaper)
-        case 1: {
-            const scheme = String(SettingsConfig.theme.matugenScheme ?? "scheme-content").replace("scheme-", "").replace(/-/g, " ")
-            const mode = SettingsConfig.theme.matugenTheme ?? "dark"
-            return scheme.charAt(0).toUpperCase() + scheme.slice(1) + " · " + mode
-        }
-        case 2:
-            return themeApps.scanned ? themeApps.pickedApps.length + " picked" : "Detecting"
-        case 3:
-            return SettingsConfig.general.defaultFont ?? "Rubik"
-        case 4:
-            return "quickshell:<name>"
-        default:
-            return ""
-        }
-    }
-
     function go(i) {
         const next = Math.max(0, Math.min(root.lastStep, i))
         if (next === root.step)
             return
-        if (next === 2)
+        if (next === 3)
             root.appsVisited = true
         root.step = next
-        if (next === root.lastStep)
+        root.forceActiveFocus()
+        if (next === root.lastStep) {
             root.maybeApply()
+            keybindStore.apply()
+        }
     }
 
     function maybeApply() {
@@ -136,7 +137,7 @@ Item {
     Connections {
         target: themeApps
         function onScannedChanged() {
-            if (root.step === root.lastStep)
+            if (root.done)
                 root.maybeApply()
         }
     }
@@ -145,10 +146,43 @@ Item {
         id: themeApps
     }
 
-    Component.onCompleted: themeApps.scan()
+    SetupPalettes {
+        id: paletteStore
+    }
+
+    SetupKeybinds {
+        id: keybindStore
+    }
+
+    Component.onCompleted: {
+        themeApps.scan()
+        paletteStore.load()
+        root.forceActiveFocus()
+    }
 
     focus: true
-    Keys.onEscapePressed: root.closed()
+
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            if (root.done)
+                root.closed()
+            else
+                root.go(root.step + 1)
+            event.accepted = true
+            return
+        }
+        if (event.key === Qt.Key_Escape) {
+            if (root.step > 0 && !root.done)
+                root.go(root.step - 1)
+            else
+                root.closed()
+            event.accepted = true
+            return
+        }
+        const n = event.key - Qt.Key_0
+        if (n >= 1 && n <= 9 && root.page && root.page.pick && root.page.pick(n))
+            event.accepted = true
+    }
 
     onStepChanged: pageIn.restart()
 
@@ -173,217 +207,226 @@ Item {
         color: Colors.surface
         border.width: 1
         border.color: Colors.outlineVariant
+        Behavior on color { EffectsColorAnim {} }
 
         RowLayout {
             anchors.fill: parent
+            anchors.margins: 1
             spacing: 0
 
-            SetupRail {
+            Rectangle {
+                id: art
+
                 Layout.fillHeight: true
-                Layout.preferredWidth: 264
-                steps: root.steps
-                current: root.step
-                noteFor: i => root.stepNote(i)
-                onStepClicked: i => root.go(i)
-                onSkipClicked: root.closed()
+                Layout.preferredWidth: 380
+                color: Colors.surfaceContainerLow
+                topLeftRadius: 25
+                bottomLeftRadius: 25
+                Behavior on color { EffectsColorAnim {} }
+
+                RowLayout {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.leftMargin: 28
+                    anchors.topMargin: 26
+                    spacing: 10
+
+                    NebulaLogo {
+                        Layout.preferredWidth: 26
+                        Layout.preferredHeight: 26
+                        color: Colors.primary
+                    }
+
+                    CustomText {
+                        content: "Nebula"
+                        size: 19
+                        weight: Font.Normal
+                        family: SettingsConfig.general.displayFont ?? "Titan One"
+                    }
+                }
+
+                MaterialShapes.ShapeCanvas {
+                    id: shape
+                    anchors.centerIn: parent
+                    width: 280
+                    height: 280
+                    roundedPolygon: root.steps[root.step].shape
+                    color: Colors.primaryContainer
+                    rotation: root.step * 24
+                    animation: SpatialAnim { speed: "slow" }
+                    Behavior on rotation { SpatialAnim { speed: "slow" } }
+                }
+
+                MaterialIconSymbol {
+                    anchors.centerIn: shape
+                    content: root.steps[root.step].icon
+                    iconSize: 92
+                    fill: 1
+                    customColor: Colors.primaryContainerText
+                }
+
+                Row {
+                    anchors.left: parent.left
+                    anchors.bottom: parent.bottom
+                    anchors.leftMargin: 28
+                    anchors.bottomMargin: 26
+                    spacing: 6
+                    visible: !root.done
+
+                    KeyCap {
+                        visible: (root.page?.keyTo ?? 0) > 0
+                        key: (root.page?.keyFrom ?? 1) === (root.page?.keyTo ?? 1) ? String(root.page?.keyTo ?? 1) : (root.page?.keyFrom ?? 1) + "–" + (root.page?.keyTo ?? 1)
+                    }
+
+                    CustomText {
+                        visible: (root.page?.keyTo ?? 0) > 0
+                        anchors.verticalCenter: parent.verticalCenter
+                        content: "pick   "
+                        size: 12
+                        customColor: Colors.outline
+                    }
+
+                    KeyCap { key: "Enter" }
+
+                    CustomText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        content: "next   "
+                        size: 12
+                        customColor: Colors.outline
+                    }
+
+                    KeyCap { key: "Esc" }
+
+                    CustomText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        content: root.step === 0 ? "close" : "back"
+                        size: 12
+                        customColor: Colors.outline
+                    }
+                }
             }
 
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.topMargin: 28
+                Layout.bottomMargin: 24
+                Layout.leftMargin: 44
+                Layout.rightMargin: 32
                 spacing: 0
 
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.topMargin: 28
-                    Layout.leftMargin: 36
-                    Layout.rightMargin: 22
-                    spacing: 16
+                    spacing: 14
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        CustomText {
-                            content: "STEP " + (root.step + 1) + " OF " + root.steps.length
-                            size: 12
-                            weight: 700
-                            font.letterSpacing: 1.6
-                            customColor: Colors.tertiary
-                        }
-
-                        CustomText {
-                            Layout.fillWidth: true
-                            content: root.step === root.lastStep ? root.finishTitle : root.steps[root.step].title
-                            size: 32
-                            weight: Font.Normal
-                            family: SettingsConfig.general.displayFont ?? "Titan One"
-                            elide: Text.ElideRight
-                        }
-
-                        CustomText {
-                            Layout.fillWidth: true
-                            content: root.step === root.lastStep ? root.finishSub : root.steps[root.step].sub
-                            size: 14
-                            weight: 400
-                            customColor: Colors.surfaceVariantText
-                            wrapMode: Text.WordWrap
-                        }
+                    M3WavyProgressBar {
+                        Layout.preferredWidth: 300
+                        Layout.preferredHeight: 12
+                        progress: (root.step + 1) / (root.lastStep + 1)
+                        Behavior on progress { SpatialAnim {} }
                     }
 
-                    M3IconButton {
-                        Layout.alignment: Qt.AlignTop
-                        icon: "close"
-                        implicitWidth: 40
-                        implicitHeight: 40
-                        iconSize: 20
+                    CustomText {
+                        content: root.done ? "Done" : (root.step + 1) + " of " + root.lastStep
+                        size: 13
+                        weight: 400
+                        customColor: Colors.outline
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    M3Button {
+                        visible: !root.done
+                        size: "small"
+                        variant: "text"
+                        label: "Skip setup"
                         onClicked: root.closed()
                     }
                 }
 
-                Item {
+                ColumnLayout {
+                    id: pageColumn
+
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.topMargin: 20
-                    Layout.leftMargin: 36
-                    Layout.rightMargin: 28
-                    Layout.bottomMargin: 16
+                    Layout.topMargin: 26
+                    spacing: 8
+
+                    transform: Translate { id: shift }
+
+                    CustomText {
+                        Layout.fillWidth: true
+                        content: root.done ? root.finishTitle : root.steps[root.step].title
+                        size: 36
+                        weight: Font.Normal
+                        family: SettingsConfig.general.displayFont ?? "Titan One"
+                        renderType: Text.QtRendering
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
+                    }
+
+                    CustomText {
+                        Layout.fillWidth: true
+                        Layout.bottomMargin: 14
+                        content: root.done ? root.finishSub : root.steps[root.step].sub
+                        size: 15
+                        weight: 400
+                        customColor: Colors.surfaceVariantText
+                        wrapMode: Text.WordWrap
+                    }
 
                     StackLayout {
                         id: stack
-                        anchors.fill: parent
+
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
                         currentIndex: root.step
 
-                        transform: Translate { id: shift }
-
-                        ColumnLayout {
-                            spacing: 16
-
-                            WallpaperCarousel {
-                                id: carousel
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Math.round(Math.max(160, Math.min(340, carousel.tileSize * 9 / 16)))
-                                focalCount: 3
+                        QuestionWallpaper {
+                            folderLabel: root.prettyDir
+                            onFolderRequested: {
+                                GlobalStates.fileDialogOpen = true
+                                folderPicker.open()
                             }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 10
-
-                                M3Button {
-                                    size: "xsmall"
-                                    variant: "tonal"
-                                    icon: "folder_open"
-                                    label: "Folder"
-                                    onClicked: {
-                                        GlobalStates.fileDialogOpen = true
-                                        folderPicker.open()
-                                    }
-                                }
-
-                                CustomText {
-                                    Layout.fillWidth: true
-                                    content: root.prettyDir
-                                    size: 12
-                                    weight: 400
-                                    customColor: Colors.outline
-                                    elide: Text.ElideMiddle
-                                }
-
-                                CustomText {
-                                    content: ServiceWallpaper.wallpapers.length + " wallpapers"
-                                    size: 12
-                                    weight: 400
-                                    customColor: Colors.outline
-                                }
-                            }
-
-                            Item { Layout.fillHeight: true }
                         }
 
-                        SetupColoursPage {}
+                        QuestionMode {
+                            palettes: paletteStore
+                        }
 
-                        SetupAppsPage {
+                        QuestionColour {
+                            palettes: paletteStore
+                        }
+
+                        QuestionApps {
                             store: themeApps
                         }
 
-                        SetupScroll {
-                            id: youScroll
+                        QuestionInterests {}
 
-                            GridLayout {
-                                width: youScroll.contentWidthAvail
-                                columns: 2
-                                columnSpacing: 12
-                                rowSpacing: 12
+                        QuestionYou {}
 
-                                TileProfile {
-                                    Layout.fillWidth: true
-                                    Layout.preferredWidth: 1
-                                    Layout.alignment: Qt.AlignTop
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    Layout.preferredWidth: 1
-                                    Layout.alignment: Qt.AlignTop
-                                    spacing: 12
-
-                                    TileWeather {}
-
-                                    TileDisplays { visible: root.multiMonitor }
-                                }
-                            }
-                        }
-
-                        SetupFeaturesPage {}
-
-                        SetupScroll {
-                            id: keysScroll
-
-                            TileShortcuts {
-                                width: keysScroll.contentWidthAvail
-                            }
+                        QuestionShortcuts {
+                            keybinds: keybindStore
                         }
 
                         SetupFinishPage {
                             store: themeApps
                             appsVisited: root.appsVisited
+                            summary: root.summary
                         }
                     }
                 }
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 1
-                    color: Colors.outlineVariant
-                }
-
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 72
-                    Layout.leftMargin: 36
-                    Layout.rightMargin: 22
-                    spacing: 10
+                    Layout.topMargin: 14
+                    spacing: 8
 
-                    MaterialIconSymbol {
-                        visible: root.step === 2 && themeApps.replaceCount > 0
-                        content: "backup"
-                        iconSize: 20
-                        customColor: Colors.tertiary
-                    }
-
-                    CustomText {
-                        Layout.fillWidth: true
-                        content: root.footerNote
-                        size: 13
-                        weight: 400
-                        customColor: Colors.surfaceVariantText
-                        wrapMode: Text.WordWrap
-                        maximumLineCount: 2
-                    }
+                    Item { Layout.fillWidth: true }
 
                     M3Button {
-                        visible: root.step > 0
+                        visible: root.step > 0 && !root.done
                         size: "small"
                         variant: "outlined"
                         label: "Back"
@@ -391,16 +434,19 @@ Item {
                     }
 
                     M3Button {
+                        visible: root.done
                         size: "small"
+                        variant: "outlined"
+                        label: "Start over"
+                        onClicked: root.go(0)
+                    }
+
+                    M3Button {
+                        size: "medium"
                         variant: "filled"
-                        icon: root.step === root.lastStep ? "check" : "arrow_forward"
-                        label: root.step === root.lastStep ? "Finish" : "Continue"
-                        onClicked: {
-                            if (root.step === root.lastStep)
-                                root.closed()
-                            else
-                                root.go(root.step + 1)
-                        }
+                        icon: root.done ? "rocket_launch" : root.step === root.lastStep - 1 ? "check" : "arrow_forward"
+                        label: root.done ? "Open my desktop" : root.step === root.lastStep - 1 ? "Finish" : "Continue"
+                        onClicked: root.done ? root.closed() : root.go(root.step + 1)
                     }
                 }
             }
@@ -409,7 +455,7 @@ Item {
 
     ParallelAnimation {
         id: pageIn
-        NumberAnimation { target: stack; property: "opacity"; from: 0; to: 1; duration: M3Motion.effects.defaultDuration; easing.type: Easing.OutCubic }
-        NumberAnimation { target: shift; property: "y"; from: 14; to: 0; duration: M3Motion.effects.defaultDuration + 80; easing.type: Easing.OutCubic }
+        NumberAnimation { target: pageColumn; property: "opacity"; from: 0; to: 1; duration: M3Motion.effects.defaultDuration; easing.type: Easing.OutCubic }
+        NumberAnimation { target: shift; property: "y"; from: 16; to: 0; duration: M3Motion.effects.defaultDuration + 120; easing.type: Easing.OutCubic }
     }
 }

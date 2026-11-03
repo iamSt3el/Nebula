@@ -751,6 +751,8 @@ _KITTY_CUSTOM = _HOME / ".config" / "kitty" / "custom.conf"
 
 
 def _apply_fonts(enabled=None) -> None:
+    if enabled is not None and not enabled:
+        return
     try:
         settings = json.loads(_QS_SETTINGS.read_text())
     except Exception as e:
@@ -786,7 +788,6 @@ def _apply_fonts(enabled=None) -> None:
         except Exception as e:
             print(f"[gen_colors] font sync ERROR kitty: {e}", file=sys.stderr)
 
-    # Apply system font via gsettings
     gs_cmds = [
         f'gsettings set org.gnome.desktop.interface font-name "{body_font} {font_size}"',
         f'gsettings set org.gnome.desktop.interface monospace-font-name "{mono_font} {font_size}"',
@@ -921,7 +922,7 @@ def seed_primary(image_path: str, img_hash: str, idx: int):
 
 
 def seeds_report(image_path: str, variant: str, mode: str) -> dict:
-    variant = variant.removeprefix("scheme-")
+    variant = variant.removeprefix("scheme-").replace("-", "")
     img_hash = _image_hash(image_path)
     seeds = _seeds(image_path, img_hash)
     chosen = _chosen_seed(img_hash)
@@ -947,7 +948,7 @@ def _build_scheme(primary: Hct, variant: str, is_dark: bool) -> dict:
     fixed = _fixed_scheme(variant, is_dark)
     if fixed is not None:
         return fixed
-    SchemeClass = _SCHEMES.get(variant, SchemeVibrant)
+    SchemeClass = _SCHEMES.get(variant.replace("-", ""), SchemeVibrant)
     scheme = SchemeClass(source_color_hct=primary, is_dark=is_dark, contrast_level=0.0)
 
     dyn = MaterialDynamicColors()
@@ -1141,6 +1142,8 @@ def _write_colors_json(content: str) -> None:
     _EXTRA_COPY_PATHS (e.g. the file manager's own config dir)."""
     _atomic_write(OUTPUT_PATH, content)
     for path in _EXTRA_COPY_PATHS:
+        if not path.parent.is_dir():
+            continue
         try:
             _atomic_write(path, content)
             print(f"[gen_colors] copied colors.json → {path}", flush=True)
@@ -1193,7 +1196,7 @@ def main() -> None:
         sys.exit(1)
 
     image_path = sys.argv[1]
-    variant    = sys.argv[2].removeprefix("scheme-")
+    variant    = sys.argv[2].removeprefix("scheme-").replace("-", "")
     mode       = sys.argv[3].lower()
     is_dark    = mode != "light"
 
@@ -1285,7 +1288,7 @@ def main() -> None:
     if score_cache.exists():
         try:
             primary = Hct.from_int(int(score_cache.read_text()))
-            print(f"[gen_colors] score cache hit — skipping quantize", flush=True)
+            print("[gen_colors] score cache hit — skipping quantize", flush=True)
         except Exception:
             primary = None
 

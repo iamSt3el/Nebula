@@ -37,6 +37,7 @@ TOOLS = [
     ("ddcutil",       "ddcutil",        "Monitor brightness over DDC"),
     ("gowall",        "gowall",         "Gowall palettes"),
     ("easyeffects",   "easyeffects",    "Sound effects"),
+    ("qt6ct",         "qt6ct",          "Qt apps follow your colours"),
     ("grub-mkfont",   "grub",           "GRUB theme (nebula grub)"),
 ]
 

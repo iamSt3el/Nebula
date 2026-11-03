@@ -37,7 +37,15 @@ Singleton{
 
 
 
+    Timer {
+        interval: 4000
+        running: true
+        onTriggered: root._ready = true
+    }
+
     onIsChargingChanged: {
+        if (!root._ready || !UPower.displayDevice.isLaptopBattery)
+            return
         if (isCharging) {
             _lowNotified = false
             //Quickshell.execDetached(["notify-send", "-i", "battery_charging_full", "Battery", "Charging — " + Math.round(powerLevel) + "%"])
@@ -62,7 +70,7 @@ Singleton{
 
     Process {
         id: healthProcess
-        command: ["bash", "-c", "awk 'NR==1{full=$1} NR==2{design=$1} END{printf \"%.1f\", full/design*100}' /sys/class/power_supply/BAT1/charge_full /sys/class/power_supply/BAT1/charge_full_design"]
+        command: ["sh", "-c", "for b in /sys/class/power_supply/BAT*; do for k in charge energy; do [ -r \"$b/${k}_full\" ] && [ -r \"$b/${k}_full_design\" ] && awk 'NR==1{full=$1} NR==2{design=$1} END{if (design > 0) printf \"%.1f\", full/design*100}' \"$b/${k}_full\" \"$b/${k}_full_design\" && exit 0; done; done"]
         running: true
         stdout: SplitParser {
             onRead: data => root.health = parseFloat(data) / 100

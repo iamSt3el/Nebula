@@ -12,6 +12,7 @@ Item {
     property color innerColor: root.tonal ? Colors.secondary : root.color
     property color coreColor: root.tonal ? Colors.tertiary : root.color
     property real progress: 1
+    property int segments: 96
     readonly property bool playing: ignite.running
     readonly property real small: root.clamp((48 - Math.min(root.width, root.height)) / 32)
 
@@ -77,7 +78,7 @@ Item {
         const st = root.armState(i)
         const k = st.k
         if (k < 0.002) return ""
-        const n = 96
+        const n = root.segments
         const start = arm.a0 + st.rot
         const A = [], B = []
         for (let j = 0; j <= n; j++) {

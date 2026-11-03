@@ -8,6 +8,7 @@ Item {
 
     required property var context
     property bool ready: false
+    property real uiOpacity: 1
     focus: true
 
     Component.onCompleted: {
@@ -50,6 +51,7 @@ Item {
         active: root.ready
         visible: active
         variant: root.variantStyle
+        opacity: root.uiOpacity
         context: root.context
         greeter: true
         onLoaded: Qt.callLater(root.focusInput)

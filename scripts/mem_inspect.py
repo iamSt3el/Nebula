@@ -14,7 +14,6 @@ import time
 import os
 import subprocess
 from collections import defaultdict
-from pathlib import Path
 
 RESET  = "\033[0m"
 BOLD   = "\033[1m"
@@ -182,8 +181,9 @@ def print_qml_mappings(regions, pid):
         print(f"  {DIM}No QML files found in mappings (they may be in anonymous regions after compilation){RESET}")
     else:
         for pss, rss, name in rows:
-            short = name.replace("/home/steel/.config/quickshell/", "~/qs/")
-            short = short.replace("/home/steel/.cache/", "~/.cache/")
+            home = os.path.expanduser("~")
+            short = name.replace(home + "/.config/quickshell/", "~/qs/")
+            short = short.replace(home + "/.cache/", "~/.cache/")
             print(f"  {fmt_mb(rss):>8} RSS  {short}")
         print(f"\n  QML sources: {fmt_mb(qml_total)}  |  QML cache: {fmt_mb(cache_total)}")
 
@@ -243,7 +243,7 @@ def main():
         sys.exit(1)
 
     if diff:
-        print(f"Snapshot A taken. Open a panel or do something, then press Enter...")
+        print("Snapshot A taken. Open a panel or do something, then press Enter...")
         a = parse_smaps(pid)
         print_summary(a, pid, "A")
         input()

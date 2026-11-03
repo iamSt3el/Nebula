@@ -60,6 +60,7 @@ UNITQ=""
 WURL="https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,uv_index,is_day&hourly=temperature_2m,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=auto&forecast_days=3&format=csv$UNITQ"
 
 fetch_weather() {
+    [ "$LAT" = 0 ] && [ "$LON" = 0 ] && return 1
     if curl -fsS -m 30 -o "$CACHE/weather.part" "$WURL" 2>> "$LOG"; then
         mv "$CACHE/weather.part" "$CACHE/weather.csv"
         date +%H:%M > "$CACHE/weather.stamp"
@@ -105,6 +106,7 @@ parse_weather() {
 
 fetch_holidays() {
     [ "$(cat "$CACHE/holidays.day" 2>/dev/null)" = "$1" ] && [ -s "$CACHE/holidays.txt" ] && return 0
+    [ -n "$ICS" ] || return 1
     curl -fsS -m 40 -o "$CACHE/holidays.part" "$ICS" 2>> "$LOG" || { rm -f "$CACHE/holidays.part"; return 1; }
     tr -d '\r' < "$CACHE/holidays.part" | awk '
     /^[ \t]/ { line = line substr($0, 2); next }

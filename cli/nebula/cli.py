@@ -55,6 +55,7 @@ Shell
   nebula setup [--close]           open the setup window (wallpaper, colours, apps, shortcuts)
   nebula doctor                    check packages Nebula needs
   nebula migrate                   move settings from ~/.cache/quickshell to ~/.config/nebula
+  nebula uninstall [--purge]       remove Nebula from your session (--purge also deletes settings and code)
   nebula ipc <target> <function> [args]   call the running shell (qs ipc call)
 
 Layouts (~/.config/nebula/layouts/*.json)
@@ -406,11 +407,52 @@ def cmd_migrate(a) -> int:
     return 0
 
 
+def _starter_wallpaper() -> str:
+    from pathlib import Path
+    from nebula import settings
+    from nebula.wallpaper import IMAGE_EXTS
+    folder = Path(os.path.expanduser(settings.section("general").get("wallpaperDir") or str(HOME / "wallpaper")))
+    starter = folder / "nebula-default.jpg"
+    if starter.is_file():
+        return str(starter)
+    try:
+        images = sorted(p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_EXTS)
+    except OSError:
+        images = []
+    return str(images[0]) if images else str(SHELL_DIR / "assets" / "wallpapers" / "nebula-default.jpg")
+
+
+def _first_colors() -> bool:
+    if COLORS.exists():
+        return False
+    from nebula import wallpaper as wp
+    d = wp.defaults()
+    _run_scheme([_starter_wallpaper(), d["scheme"], d["mode"], "--apps", ""])
+    return True
+
+
+def _welcome_notice() -> None:
+    if not shutil.which("notify-send"):
+        return
+    script = ('sleep 8; a=$(notify-send -a Nebula -A "setup=Open setup" "Welcome to Nebula" '
+              '"Pick a wallpaper, colours and the features you want. It takes about a minute."); '
+              '[ "$a" = setup ] && exec "$0" setup')
+    _spawn(["sh", "-c", script, str(SHELL_DIR / "bin" / "nebula")])
+
+
 def cmd_start(a) -> int:
     qs = _qs_bin()
     if not qs:
         return 1
+    env = _shell_env()
+    splash = getattr(a, "splash", False) and not _shell_up(qs)
+    if splash:
+        _spawn([qs, "-n", "-p", str(SHELL_DIR / "splash.qml")], env)
+        env["NEBULA_SPLASH"] = "1"
     migrate()
+    first_run = not _shell_up(qs) and _first_colors()
+    if first_run:
+        _welcome_notice()
     from nebula import settings
     clipboard_on = settings.section("features").get("clipboard", True)
     if clipboard_on and shutil.which("wl-paste") and shutil.which("cliphist") and not _running("wl-paste --watch cliphist"):
@@ -418,7 +460,6 @@ def cmd_start(a) -> int:
     _block_notif_activation()
     _free_notif_name()
     config = str(SHELL_DIR / "shell.qml")
-    env = _shell_env()
     if a.foreground:
         os.execvpe(qs, [qs, "-n", "-p", config], env)
     code = subprocess.run([qs, "-n", "-d", "-p", config], env=env, stdin=subprocess.DEVNULL,
@@ -491,6 +532,11 @@ def _descendants(roots: list) -> set:
         found.add(pid)
         todo.extend(children.get(pid, []))
     return found
+
+
+def cmd_uninstall(a) -> int:
+    from nebula import uninstall
+    return uninstall.run(purge=a.purge, assume_yes=a.yes)
 
 
 def cmd_stop(a) -> int:
@@ -612,10 +658,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     st = sub.add_parser("start", help="start the shell")
     st.add_argument("--foreground", action="store_true", help="stay attached and print the log")
+    st.add_argument("--splash", action="store_true", help="play the login splash while the shell loads")
     sub.add_parser("stop", help="stop the shell")
     sub.add_parser("restart", help="restart the shell")
     mg = sub.add_parser("migrate", help="move settings out of ~/.cache/quickshell")
     mg.add_argument("--quiet", action="store_true")
+
+    un = sub.add_parser("uninstall", help="remove Nebula from your session")
+    un.add_argument("--purge", action="store_true", help="also delete settings, history, caches and the code")
+    un.add_argument("--yes", action="store_true", help="don't ask first")
 
     su = sub.add_parser("setup", help="open the setup window")
     su.add_argument("--close", action="store_true")
@@ -648,12 +699,12 @@ def main(argv=None) -> None:
         _shell_tool(argv[0], argv[1:])
 
     parser = build_parser()
-    if argv[0] not in ("wallpaper", "scheme", "apps", "doctor", "ipc", "setup", "start", "stop", "restart", "layout", "migrate"):
+    if argv[0] not in ("wallpaper", "scheme", "apps", "doctor", "ipc", "setup", "start", "stop", "restart", "layout", "migrate", "uninstall"):
         print(f"nebula: unknown command '{argv[0]}'. Run `nebula help`.", file=sys.stderr)
         sys.exit(2)
     a = parser.parse_args(argv)
     handler = {"wallpaper": cmd_wallpaper, "scheme": cmd_scheme, "apps": cmd_apps,
                "doctor": cmd_doctor, "ipc": cmd_ipc, "setup": cmd_setup,
                "start": cmd_start, "stop": cmd_stop, "restart": cmd_restart, "layout": cmd_layout,
-               "migrate": cmd_migrate}[a.command]
+               "migrate": cmd_migrate, "uninstall": cmd_uninstall}[a.command]
     sys.exit(handler(a) or 0)

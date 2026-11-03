@@ -158,6 +158,7 @@ Singleton{
     property bool toolsWidgetOpen: false
     property bool shutdownWindow: false
     property bool fileDialogOpen: false
+    property bool wallpaperShown: false
     property bool panelHold: false
     property bool areaSelectOpen: false
     property bool liveTextOpen: false

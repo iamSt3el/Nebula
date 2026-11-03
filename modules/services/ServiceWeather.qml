@@ -28,7 +28,7 @@ Singleton {
 
     // Convenient properties
     readonly property string temperature: currentCondition ?
-        (useMetric ? currentCondition.temp_C + "°" : currentCondition.temp_F + "°") : "0°"
+        (useMetric ? currentCondition.temp_C + "°" : currentCondition.temp_F + "°") : "--°"
     readonly property string feelsLike: currentCondition ?
         (useMetric ? currentCondition.FeelsLikeC + "°" : currentCondition.FeelsLikeF + "°") : "N/A"
     readonly property real humidity: currentCondition ? currentCondition.humidity : 0

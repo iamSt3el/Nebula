@@ -14,7 +14,7 @@ BOLD='\033[1m'; DIM='\033[2m'; RESET='\033[0m'
 RULE='──────────────────────────────────────────────────────────────'
 
 STEP_N=0
-TOTAL_STEPS=19
+TOTAL_STEPS=20
 WARNINGS=()
 START_TS=$SECONDS
 
@@ -163,9 +163,29 @@ echo ""
 has pacman || die "pacman not found — this installer is for Arch Linux only."
 
 HYPR_DIR="$XDG_CONFIG_HOME/hypr"
-if [[ -f "$HYPR_DIR/hyprland.conf" && ! -f "$HYPR_DIR/hyprland.lua" ]]; then
-  info "Found hyprland.conf but no hyprland.lua — the installer adds Nebula's hyprland.lua."
+
+echo -e "  ${BOLD}Nebula needs Hyprland 0.56+ with a Lua config${RESET} ${DIM}(~/.config/hypr/hyprland.lua).${RESET}"
+HYPR_VER=""
+has Hyprland && HYPR_VER="$(Hyprland --version 2>/dev/null | sed -n 's/^Hyprland \([0-9][0-9.]*\).*/\1/p' | head -n1)"
+if [[ -n "$HYPR_VER" && "$(printf '%s\n' 0.56 "$HYPR_VER" | sort -V | head -n1)" != "0.56" ]]; then
+  $SKIP_SYSUPDATE && die "Hyprland $HYPR_VER is older than 0.56 and --skip-sysupdate is set. Update Hyprland first, then re-run."
+  echo -e "  ${YELLOW}▲ Hyprland $HYPR_VER is older than 0.56.${RESET} ${DIM}The system update step upgrades it.${RESET}"
+elif [[ -n "$HYPR_VER" ]]; then
+  echo -e "  ${DIM}Found Hyprland $HYPR_VER.${RESET}"
 fi
+if [[ -f "$HYPR_DIR/hyprland.conf" && ! -f "$HYPR_DIR/hyprland.lua" ]]; then
+  echo ""
+  echo -e "  ${YELLOW}▲ You have hyprland.conf but no hyprland.lua.${RESET}"
+  echo -e "  ${DIM}  Nebula only works with the Lua config, so it adds a starter hyprland.lua next to it.${RESET}"
+  echo -e "  ${DIM}  Your hypr folder is backed up first. Move your own settings into Lua afterwards to keep them${RESET}"
+  echo -e "  ${DIM}  (Hyprland drops hyprland.conf support in 0.57 anyway).${RESET}"
+  if $ask; then
+    echo -e "  Continue? [y/N]"
+    read -rp "   ❯ " cont
+    [[ "${cont,,}" == "y" ]] || die "Stopped before changing anything."
+  fi
+fi
+echo ""
 
 # ── offer backup ──────────────────────────────────────────────────────────────
 step "Backup (optional)"
@@ -291,10 +311,10 @@ PACMAN_PKGS=(
   gcc cmake extra-cmake-modules
 )
 pacman -Qq quickshell-git &>/dev/null || PACMAN_PKGS+=(quickshell)
-PACMAN_PKGS_OPT=(ddcutil papirus-icon-theme yt-dlp easyeffects)
+PACMAN_PKGS_OPT=(ddcutil papirus-icon-theme yt-dlp easyeffects qt6ct adw-gtk-theme)
 v sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
 sudo pacman -S --needed --noconfirm "${PACMAN_PKGS_OPT[@]}" \
-  || warn "Optional packages failed (ddcutil, papirus-icon-theme, yt-dlp, easyeffects)"
+  || warn "Optional packages failed (${PACMAN_PKGS_OPT[*]})"
 
 # ── uv (fast Python package manager) ─────────────────────────────────────────
 step "uv (Python toolchain)"
@@ -412,7 +432,7 @@ if [[ -x "$NEBULA_BIN" ]] && cmp -s "$LAUNCHER_DIR/build/nebula" "$NEBULA_BIN"; 
 else
   mkdir -p "$HOME/.local/bin"
   ln -sfn "$INSTALL_DIR/bin/nebula" "$HOME/.local/bin/nebula"
-  NEBULA_CMD="~/.local/bin/nebula"
+  NEBULA_CMD="$HOME/.local/bin/nebula"
   warn "nebula was not installed to $NEBULA_BIN — linked ~/.local/bin/nebula instead"
 fi
 MIGRATED="$("$INSTALL_DIR/bin/nebula" migrate --quiet 2>/dev/null)"
@@ -517,13 +537,21 @@ else
 fi
 
 mkdir -p "$HYPR_DIR/nebula"
+NEBULA_KEYS=true
+if $HYPR_OWN && ! "$INSTALL_DIR/bin/nebula" hypr status "$HYPR_DIR/nebula/keybinds.lua" 2>/dev/null | grep -q '"required": true'; then
+  NEBULA_KEYS=false
+fi
 for f in "$INSTALL_DIR/config/hypr/nebula/"*.lua; do
+  [[ "$(basename "$f")" == "keybinds.lua" ]] && ! $NEBULA_KEYS && continue
   cp "$f" "$HYPR_DIR/nebula/"
 done
 [[ "$NEBULA_CMD" != "nebula" ]] && sed -i "s|\"nebula start\"|\"$NEBULA_CMD start\"|" "$HYPR_DIR/nebula/autostart.lua"
-for f in "$HYPR_DIR/nebula/"{environment,autostart,keybinds,rules}.lua; do
-  "$INSTALL_DIR/bin/nebula" hypr require "$f" >/dev/null || warn "Could not add $(basename "$f") to hyprland.lua"
+HYPR_FILES=(environment autostart rules)
+$NEBULA_KEYS && HYPR_FILES+=(keybinds)
+for name in "${HYPR_FILES[@]}"; do
+  "$INSTALL_DIR/bin/nebula" hypr require "$HYPR_DIR/nebula/$name.lua" >/dev/null || warn "Could not add $name.lua to hyprland.lua"
 done
+$NEBULA_KEYS || info "Nebula's shortcuts were not added, so they can't clash with yours. \`nebula setup\` checks them against your keys and can add them."
 if $HYPR_OWN; then
   ok "nebula/ → $HYPR_DIR (your hyprland.lua now requires it)"
 else
@@ -600,6 +628,7 @@ echo ""
 echo -e "  ${BOLD}launch${RESET}      ${CYAN}nebula start${RESET}"
 echo -e "  ${BOLD}wallpapers${RESET}  ${CYAN}~/wallpaper/${RESET}"
 echo -e "  ${BOLD}set up${RESET}      ${CYAN}nebula setup${RESET}  ${DIM}(once the shell is running)${RESET}"
+echo -e "  ${BOLD}remove${RESET}      ${CYAN}nebula uninstall${RESET}"
 echo ""
 echo -e "  ${DIM}Reload your shell (or log out and back in) to pick up NEBULA_VENV${RESET}"
 echo -e "  ${DIM}and QML_IMPORT_PATH.${RESET}"

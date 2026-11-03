@@ -17,19 +17,6 @@ Singleton{
     property string currentMatugenStyle: "default"
     property string matugenScheme: "scheme-content"
 
-    // Workspace configur ation per monitor
-    property var monitorWorkspaces: ({
-        "eDP-1": { // Your HDMI monitor name - adjust this
-            workspaces: [1, 2, 3, 4, 5],
-            type: "external"
-        }
-            //,
-        // "eDP-1": { // Your laptop display name - adjust this
-        //     workspaces: [6, 7, 8, 9, 10],
-        //     type: "laptop"
-        // }
-    })
-
     property string firstColor:"#833ab4"
     property string secondColor:"#fd1d1d"
     property string thirdColor:"#fcb045"
@@ -249,6 +236,9 @@ Singleton{
             name:"scheme-neutral"
         },
         {
+            name: "scheme-vibrant"
+        },
+        {
             name: "scheme-rainbow"
         },
         {
@@ -266,25 +256,5 @@ Singleton{
 
     function setMatugenSetting(type): void{
         settings.matugenSetting = type
-    }
-
-    // Get workspaces for a specific monitor
-    function getWorkspacesForMonitor(monitorName): var {
-        if (monitorWorkspaces[monitorName]) {
-            return monitorWorkspaces[monitorName].workspaces
-        }
-        // Fallback: return 1-5 if monitor not found
-        return [1, 2, 3, 4, 5]
-    }
-
-    // Get all workspaces NOT assigned to this monitor (for other screen indicator)
-    function getOtherScreenWorkspaces(monitorName): var {
-        var otherWorkspaces = []
-        for (var monitor in monitorWorkspaces) {
-            if (monitor !== monitorName) {
-                otherWorkspaces = otherWorkspaces.concat(monitorWorkspaces[monitor].workspaces)
-            }
-        }
-        return otherWorkspaces
     }
 }

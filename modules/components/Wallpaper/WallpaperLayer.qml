@@ -173,7 +173,10 @@ Scope {
                 fillMode: root.fillMode
                 asynchronous: true
                 cache: false
-                onStatusChanged: if (status === Image.Ready) win.ready(imgA)
+                onStatusChanged: if (status === Image.Ready) {
+                    GlobalStates.wallpaperShown = true
+                    win.ready(imgA)
+                }
             }
 
             Image {
@@ -185,7 +188,10 @@ Scope {
                 fillMode: root.fillMode
                 asynchronous: true
                 cache: false
-                onStatusChanged: if (status === Image.Ready) win.ready(imgB)
+                onStatusChanged: if (status === Image.Ready) {
+                    GlobalStates.wallpaperShown = true
+                    win.ready(imgB)
+                }
             }
 
             ShaderEffect {

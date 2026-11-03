@@ -43,7 +43,9 @@ The installer pulls the packages, builds the plugins, sets up Python, and compil
 `nebula` command and installs it to `/usr/local/bin`. For Hyprland it adds
 `~/.config/hypr/nebula/` with what the shell needs (its shortcuts, layer rules, environment
 and `nebula start`) and one `require` line per file in your `hyprland.lua`. If you have
-your own `hyprland.lua`, nothing else is touched. Without one, it copies a starter config
+your own `hyprland.lua`, nothing else is touched and Nebula's shortcuts are left out so they
+can't clash with yours; `nebula setup` checks them against your keys and can add them.
+Without one, it copies a starter config
 (`hyprland.lua` plus `lua/` with monitors, settings, animations, rules and keybinds),
 offering to back up the folder first.
 
@@ -77,6 +79,7 @@ nebula wallpaper set ~/wallpaper/forest.png
 nebula scheme set --mode light        # or --variant vibrant
 nebula apps                           # which apps follow the palette
 nebula doctor                         # anything missing?
+nebula uninstall                      # take Nebula out again (--purge deletes settings too)
 ```
 
 `nebula help` lists everything else.

@@ -1,4 +1,3 @@
-import html
 from math import pi
 from pathlib import Path
 

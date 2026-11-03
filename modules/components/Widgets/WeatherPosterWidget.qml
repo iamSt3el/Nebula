@@ -22,7 +22,7 @@ WidgetHost {
     readonly property string temp: root.preview ? "30°" : ServiceWeather.temperature
     readonly property string condition: root.preview ? "Sunny" : ServiceWeather.description.trim()
     readonly property string range: {
-        if (root.preview) return "31° / 20° · Chirawa"
+        if (root.preview) return "31° / 20° · Lisbon"
         const hi = root.today ? (root.metric ? root.today.maxtempC : root.today.maxtempF) : ""
         const lo = root.today ? (root.metric ? root.today.mintempC : root.today.mintempF) : ""
         const city = ServiceWeather.cityName

@@ -120,6 +120,7 @@ ShellRoot{
     CenterPanels {}
 
     WallpaperLayer {}
+    SplashCue {}
 
     LazyLoader { active: Features.notes; EdgeNotes {} }
 
