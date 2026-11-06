@@ -43,13 +43,20 @@ Item {
                     spacing: 10
 
                     Image {
+                        // Request the icon at the dock's larger source size:
+                        // icon themes serve different (padded, legacy) art at
+                        // 32px, which renders off-centre inside the tile.
                         width: 32; height: 32
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
                         source: IconUtil.themeIcon(
                             DesktopEntries.heuristicLookup(root.appEntry?.appId ?? "")?.icon,
                             "image-missing")
-                        sourceSize.width: 32
-                        sourceSize.height: 32
+                        sourceSize.width: 96
+                        sourceSize.height: 96
                         fillMode: Image.PreserveAspectFit
+                        smooth: true
+                        mipmap: true
                     }
 
                     ColumnLayout {
