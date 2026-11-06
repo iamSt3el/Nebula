@@ -101,7 +101,8 @@ def load_settings():
 def weather_data(settings):
     from nebula import weather as w
     cache = w.load_cache()
-    name = (settings.get("weather", {}).get("location") or cache.get("location") or "").strip()
+    wx = settings.get("weather", {})
+    name = ("auto" if wx.get("useGeoFile") else (wx.get("location") or cache.get("location") or "")).strip()
     try:
         age = time.time() - Path(w.CACHE).stat().st_mtime
     except OSError:
