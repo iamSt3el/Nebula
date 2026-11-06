@@ -68,6 +68,28 @@
    <a href="https://wallhaven.cc/settings/account" rel="noopener">Wallhaven API key</a>,
    set in the Theme panel. Local folders work without one.</p>
 
+<h2>System drop-ins and administrator locks</h2>
+
+<p>On declarative systems (such as NixOS) or managed deployments, system-wide defaults
+   and enforced policies can be placed in drop-in files under
+   <code>$XDG_CONFIG_DIRS/nebula/*.json</code> (defaulting to <code>/etc/xdg/nebula/*.json</code>)
+   and <code>/etc/nebula/config.json</code>. Drop-ins are merged beneath your personal
+   <code>settings.json</code>, so your personal settings take precedence unless a key is locked.</p>
+
+<p>Drop-ins can specify an admin lock list:</p>
+
+<div class="code"><span class="lang">json</span><pre>{
+  "locked": ["general.palette", "theme.themeApps"],
+  "general": {
+    "palette": "custom"
+  }
+}</pre></div>
+
+<p>Locked keys are strictly read from the highest-precedence system drop-in and cannot
+   be overwritten by user configuration or shell updates. Run
+   <code>nebula settings-source &lt;key&gt;</code> to inspect the origin and lock status
+   of any setting.</p>
+
   </main>
 
   <nav class="toc" aria-label="On this page"></nav>

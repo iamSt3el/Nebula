@@ -65,6 +65,14 @@ def check():
     templates = HOME / ".config" / "matugen" / "templates"
     rows.append({"kind": "file", "name": str(templates).replace(str(HOME), "~", 1),
                  "package": "", "what": "App colour templates", "ok": templates.is_dir()})
+    from nebula import settings
+    dropins = settings.dropin_files()
+    locks = settings.get_locks()
+    dropin_info = f"{len(dropins)} found"
+    if locks:
+        dropin_info += f", {len(locks)} locked"
+    rows.append({"kind": "config", "name": "system drop-ins", "package": "",
+                 "what": f"System drop-ins ({dropin_info})", "ok": True})
     return rows
 
 

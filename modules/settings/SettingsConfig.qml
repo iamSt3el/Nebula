@@ -27,6 +27,8 @@ Singleton {
     property alias hypr: settingsAdapter.hypr
     property alias features: settingsAdapter.features
 
+    // TODO: Mark UI controls for admin-locked keys ($XDG_CONFIG_DIRS/nebula/*.json, /etc/nebula/config.json)
+    // as read-only with a lock chip. Handled authoritatively by cli/nebula/settings.py.
     property bool settingsReady: false
 
     property bool greeterMode: false
@@ -53,6 +55,17 @@ Singleton {
             settingsAdapter.hypr = Object.assign({}, settingsAdapter.hypr ?? {}, { targets: {
                 displays: { mode: "off", file: "" }, windows: { mode: "off", file: "" },
                 input: { mode: "off", file: "" }, binds: { mode: "off", file: "" } } })
+            if (defaultsFile.text()) {
+                try {
+                    const defs = JSON.parse(defaultsFile.text())
+                    for (const sec in defs) {
+                        if (sec === "locked") continue
+                        if (typeof defs[sec] === "object" && defs[sec] !== null) {
+                            settingsAdapter[sec] = Object.assign({}, settingsAdapter[sec] ?? {}, defs[sec])
+                        }
+                    }
+                } catch (e) {}
+            }
         }
         root.settingsReady = true
         writeTimer.restart()
@@ -101,6 +114,35 @@ Singleton {
     }
 
     FileView {
+        id: defaultsFile
+        path: Paths.configDir + "/defaults.json"
+        watchChanges: true
+        onLoaded: root.applyDefaults()
+    }
+
+    function applyDefaults() {
+        if (!defaultsFile.text()) return
+        try {
+            const defs = JSON.parse(defaultsFile.text())
+            const locked = defs.locked ?? []
+            for (const key of locked) {
+                const parts = key.split(".")
+                if (parts.length === 2) {
+                    const sec = parts[0]
+                    const field = parts[1]
+                    if (defs[sec] && defs[sec][field] !== undefined) {
+                        const target = Object.assign({}, settingsAdapter[sec] ?? {})
+                        target[field] = defs[sec][field]
+                        settingsAdapter[sec] = target
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn("[SettingsConfig] Could not parse defaults.json:", e)
+        }
+    }
+
+    FileView {
         id: settingsFile
         path: Paths.configDir + "/settings.json"
         watchChanges: true
@@ -115,7 +157,10 @@ Singleton {
             reloadTimer.stop()
             writeTimer.restart()
         }
-        onLoaded: root.settingsReady = true
+        onLoaded: {
+            root.applyDefaults()
+            root.settingsReady = true
+        }
         onLoadFailed: error => {
             if (error != FileViewError.FileNotFound)
                 return

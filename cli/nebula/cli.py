@@ -53,6 +53,7 @@ Shell
   nebula start [--foreground]      start the shell (plus the clipboard watcher)
   nebula stop | restart            stop or restart the shell
   nebula setup [--close]           open the setup window (wallpaper, colours, apps, shortcuts)
+  nebula settings-source [<key>]   origin (user/drop-in/default) and lock status of settings
   nebula doctor                    check packages Nebula needs
   nebula migrate                   move settings from ~/.cache/quickshell to ~/.config/nebula
   nebula uninstall [--purge]       remove Nebula from your session (--purge also deletes settings and code)
@@ -398,6 +399,55 @@ def _free_notif_name() -> None:
         pass
 
 
+def cmd_settings_source(a) -> int:
+    from nebula import settings
+    if a.key:
+        info = settings.get_source(a.key)
+        if a.json:
+            print(json.dumps(info, indent=2))
+            return 0
+        status = "yes" if info["locked"] else "no"
+        print(f"key:        {info['key']}")
+        print(f"value:      {info['value']}")
+        print(f"source:     {info['source']} ({info['sourceType']})")
+        print(f"locked:     {status}")
+        return 0
+
+    all_data = settings.get_all_sources()
+    if a.json:
+        print(json.dumps(all_data, indent=2))
+        return 0
+
+    dropins = all_data["dropinFiles"]
+    locks = all_data["locked"]
+    print("Drop-in files:")
+    if dropins:
+        for f in dropins:
+            print(f"  {f}")
+    else:
+        print("  none found")
+
+    print("\nAdmin locks:")
+    if locks:
+        for k in locks:
+            print(f"  {k}")
+    else:
+        print("  none")
+
+    print("\nSettings:")
+    if all_data["settings"]:
+        print(f"  {'KEY':<32} {'VALUE':<20} {'LOCKED':<8} {'SOURCE'}")
+        for s in all_data["settings"]:
+            val_str = str(s["value"])
+            if len(val_str) > 18:
+                val_str = val_str[:15] + "..."
+            lock_str = "yes" if s["locked"] else "no"
+            print(f"  {s['key']:<32} {val_str:<20} {lock_str:<8} {s['source']}")
+    else:
+        print("  none")
+    return 0
+
+
 def cmd_migrate(a) -> int:
     moved = migrate()
     for src, dst in moved:
@@ -680,6 +730,10 @@ def build_parser() -> argparse.ArgumentParser:
     lo.add_argument("--json", action="store_true")
     lo.add_argument("--emit", action="store_true", help=argparse.SUPPRESS)
 
+    src = sub.add_parser("settings-source", help="show setting source (user/drop-in) and lock status")
+    src.add_argument("key", nargs="?", help="dotted key, e.g. general.palette")
+    src.add_argument("--json", action="store_true", help="output as JSON")
+
     i = sub.add_parser("ipc", help="call the running shell")
     i.add_argument("args", nargs=argparse.REMAINDER)
     return p
@@ -699,12 +753,12 @@ def main(argv=None) -> None:
         _shell_tool(argv[0], argv[1:])
 
     parser = build_parser()
-    if argv[0] not in ("wallpaper", "scheme", "apps", "doctor", "ipc", "setup", "start", "stop", "restart", "layout", "migrate", "uninstall"):
+    if argv[0] not in ("wallpaper", "scheme", "apps", "doctor", "ipc", "setup", "start", "stop", "restart", "layout", "migrate", "uninstall", "settings-source"):
         print(f"nebula: unknown command '{argv[0]}'. Run `nebula help`.", file=sys.stderr)
         sys.exit(2)
     a = parser.parse_args(argv)
     handler = {"wallpaper": cmd_wallpaper, "scheme": cmd_scheme, "apps": cmd_apps,
                "doctor": cmd_doctor, "ipc": cmd_ipc, "setup": cmd_setup,
                "start": cmd_start, "stop": cmd_stop, "restart": cmd_restart, "layout": cmd_layout,
-               "migrate": cmd_migrate, "uninstall": cmd_uninstall}[a.command]
+               "migrate": cmd_migrate, "uninstall": cmd_uninstall, "settings-source": cmd_settings_source}[a.command]
     sys.exit(handler(a) or 0)

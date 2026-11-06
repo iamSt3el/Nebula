@@ -78,6 +78,7 @@ nebula setup                          # wallpaper, colours and apps, step by ste
 nebula wallpaper set ~/wallpaper/forest.png
 nebula scheme set --mode light        # or --variant vibrant
 nebula apps                           # which apps follow the palette
+nebula settings-source                # check settings origin and admin locks
 nebula doctor                         # anything missing?
 nebula uninstall                      # take Nebula out again (--purge deletes settings too)
 ```
