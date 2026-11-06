@@ -14,6 +14,41 @@ STATE_DIR = Path(os.environ.get("XDG_STATE_HOME") or HOME / ".local" / "state") 
 SETTINGS = CONFIG_DIR / "settings.json"
 COLORS = CACHE_DIR / "colors.json"
 
+
+def dropin_dirs() -> list[Path]:
+    raw = os.environ.get("XDG_CONFIG_DIRS") or "/etc/xdg"
+    return [Path(p.strip()) for p in raw.split(":") if p.strip()]
+
+
+def dropin_files() -> list[Path]:
+    files: list[Path] = []
+    seen: set[Path] = set()
+
+    for d in reversed(dropin_dirs()):
+        nebula_dir = d / "nebula"
+        if nebula_dir.is_dir():
+            for p in sorted(nebula_dir.glob("*.json")):
+                resolved = p.resolve()
+                if resolved not in seen and p.is_file():
+                    seen.add(resolved)
+                    files.append(p)
+
+    etc_nebula = Path("/etc/nebula")
+    if etc_nebula.is_dir():
+        for p in sorted(etc_nebula.glob("*.json")):
+            resolved = p.resolve()
+            if resolved not in seen and p.is_file():
+                seen.add(resolved)
+                files.append(p)
+    elif Path("/etc/nebula/config.json").is_file():
+        p = Path("/etc/nebula/config.json")
+        resolved = p.resolve()
+        if resolved not in seen:
+            seen.add(resolved)
+            files.append(p)
+
+    return files
+
 MOVED = [
     (CACHE_DIR / "settings.json", SETTINGS),
     (CACHE_DIR / "notes.json", CONFIG_DIR / "notes.json"),
