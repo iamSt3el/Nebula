@@ -906,12 +906,65 @@ Item {
             }
 
             Flickable {
+                id: chipFlick
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
                 clip: true
                 contentWidth: chipRow.implicitWidth
                 contentHeight: 34
                 flickableDirection: Flickable.HorizontalFlick
+                // A vertical mouse wheel doesn't move a horizontal Flickable —
+                // translate it so the strips scroll without a drag.
+                WheelHandler {
+                    onWheel: event => {
+                        const d = event.angleDelta.y || event.angleDelta.x
+                        if (d === 0)
+                            return
+                        const f = parent
+                        f.contentX = Math.max(0, Math.min(f.contentWidth - f.width, f.contentX - d))
+                        event.accepted = true
+                    }
+                }
+
+                property real glideX: contentX
+                readonly property real maxX: Math.max(0, contentWidth - width)
+
+                function scroll(delta) {
+                    if (maxX <= 0) return
+                    if (!chipGlide.running) {
+                        chipFlick.cancelFlick()
+                        chipFlick.glideX = chipFlick.contentX
+                        chipGlide.goal = chipFlick.contentX
+                    }
+                    chipGlide.goal = Math.max(0, Math.min(chipFlick.maxX, chipGlide.goal - delta))
+                    chipGlide.start()
+                }
+
+                FrameAnimation {
+                    id: chipGlide
+                    property real goal: 0
+                    onTriggered: {
+                        const d = chipGlide.goal - chipFlick.glideX
+                        if (Math.abs(d) < 0.5) {
+                            chipFlick.contentX = Math.round(chipGlide.goal)
+                            chipGlide.stop()
+                            return
+                        }
+                        chipFlick.glideX += d * (1 - Math.exp(-Math.min(frameTime, 0.05) * 14))
+                        chipFlick.contentX = Math.round(chipFlick.glideX)
+                    }
+                }
+
+                onMovementStarted: chipGlide.stop()
+
+                WheelHandler {
+                    target: null
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: event => {
+                        const d = (event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x) / 120 * 100
+                        chipFlick.scroll(d)
+                    }
+                }
 
                 RowLayout {
                     id: chipRow
@@ -959,6 +1012,11 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
+                                onWheel: event => {
+                                    const d = (event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x) / 120 * 100
+                                    chipFlick.scroll(d)
+                                    event.accepted = true
+                                }
                                 onClicked: {
                                     GlobalStates.editAddQuery = ""
                                     GlobalStates.widgetSection = sectionChip.index
@@ -977,6 +1035,56 @@ Item {
                 contentWidth: strip.implicitWidth
                 contentHeight: height
                 flickableDirection: Flickable.HorizontalFlick
+                WheelHandler {
+                    onWheel: event => {
+                        const d = event.angleDelta.y || event.angleDelta.x
+                        if (d === 0)
+                            return
+                        const f = parent
+                        f.contentX = Math.max(0, Math.min(f.contentWidth - f.width, f.contentX - d))
+                        event.accepted = true
+                    }
+                }
+
+                property real glideX: contentX
+                readonly property real maxX: Math.max(0, contentWidth - width)
+
+                function scroll(delta) {
+                    if (maxX <= 0) return
+                    if (!stripGlide.running) {
+                        stripFlick.cancelFlick()
+                        stripFlick.glideX = stripFlick.contentX
+                        stripGlide.goal = stripFlick.contentX
+                    }
+                    stripGlide.goal = Math.max(0, Math.min(stripFlick.maxX, stripGlide.goal - delta))
+                    stripGlide.start()
+                }
+
+                FrameAnimation {
+                    id: stripGlide
+                    property real goal: 0
+                    onTriggered: {
+                        const d = stripGlide.goal - stripFlick.glideX
+                        if (Math.abs(d) < 0.5) {
+                            stripFlick.contentX = Math.round(stripGlide.goal)
+                            stripGlide.stop()
+                            return
+                        }
+                        stripFlick.glideX += d * (1 - Math.exp(-Math.min(frameTime, 0.05) * 14))
+                        stripFlick.contentX = Math.round(stripFlick.glideX)
+                    }
+                }
+
+                onMovementStarted: stripGlide.stop()
+
+                WheelHandler {
+                    target: null
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: event => {
+                        const d = (event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x) / 120 * 160
+                        stripFlick.scroll(d)
+                    }
+                }
 
                 RowLayout {
                     id: strip
@@ -1080,6 +1188,11 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
+                                onWheel: event => {
+                                    const d = (event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x) / 120 * 160
+                                    stripFlick.scroll(d)
+                                    event.accepted = true
+                                }
                                 onClicked: {
                                     const size = (cardPreview.item && cardPreview.item.implicitWidth > 0)
                                         ? Qt.size(cardPreview.item.implicitWidth, cardPreview.item.implicitHeight)
