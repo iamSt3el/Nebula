@@ -325,7 +325,7 @@ Item {
                 subtitle: (root.weather.useGeoFile || root.weather.location === "auto")
                     ? "External coordinates file"
                     : "City name or coordinates"
-                value: (root.weather.useGeoFile || root.weather.location === "auto")
+                value: (root.weather.useGeoFile ?? false)
                     ? "Auto" + ((root.weather.geoFile ?? "") !== "" ? " · " + root.weather.geoFile : "")
                     : (root.weather.location ?? "")
                 target: "location"
@@ -423,13 +423,13 @@ Item {
                 StageSwitchRow {
                     icon: "my_location"
                     title: "External geolocation"
-                    subtitle: "Read coordinates from a file (e.g. Wi-Fi positioning or geoclue)"
-                    checked: root.weather.useGeoFile ?? (root.weather.location === "auto")
-                    onToggled: on => root.patch({ useGeoFile: on, location: on ? "auto" : "" })
+                    subtitle: "Read coordinates from an external file (e.g. Wi-Fi positioning or geoclue)"
+                    checked: root.weather.useGeoFile ?? false
+                    onToggled: on => root.patch({ useGeoFile: on })
                 }
 
                 StageFieldRow {
-                    visible: root.weather.useGeoFile ?? (root.weather.location === "auto")
+                    visible: root.weather.useGeoFile ?? false
                     icon: "folder"
                     title: "Coordinates file"
                     subtitle: "Path to a file containing \"lat lon\""
@@ -441,12 +441,12 @@ Item {
                 }
 
                 StageFieldRow {
-                    visible: !(root.weather.useGeoFile ?? (root.weather.location === "auto"))
+                    visible: !(root.weather.useGeoFile ?? false)
                     icon: "search"
                     title: "City"
-                    subtitle: "Name or coordinates, e.g. 51.5,-0.1 (leave blank for timezone city)"
+                    subtitle: "Name, coordinates, or \"auto\" (leave blank for timezone city)"
                     fieldIcon: "location_on"
-                    text: (root.weather.location === "auto") ? "" : (root.weather.location ?? "")
+                    text: root.weather.location ?? ""
                     placeholder: "City"
                     allowEmpty: true
                     onSubmitted: t => root.patch({ location: t })
