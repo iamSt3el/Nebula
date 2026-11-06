@@ -73,7 +73,10 @@ Scope {
             HyprlandFocusGrab {
                 windows: [win]
                 active: root.open && !GlobalStates.panelHold && !GlobalStates.fileDialogOpen && !GlobalStates.capturing
-                onCleared: if (root.open && !GlobalStates.capturing) root.dismissed()
+                // Clicks on controls that don't take focus (e.g. inline choice
+                // groups) clear the grab while the pointer stays inside the
+                // card — don't dismiss for those.
+                onCleared: if (root.open && !GlobalStates.capturing && !cardHover.hovered) root.dismissed()
             }
 
             Item {
@@ -85,6 +88,10 @@ Scope {
                 scale: 0.94 + 0.06 * root.t
                 focus: true
                 Keys.onEscapePressed: root.dismissed()
+
+                HoverHandler {
+                    id: cardHover
+                }
 
                 RectangularShadow {
                     visible: !KindleMode.outlines
