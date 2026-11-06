@@ -67,6 +67,14 @@
 <tr><td><code>pywalfox-colors.json</code></td><td><code>~/.cache/wal/colors.json</code></td></tr>
 </tbody></table></div>
 
+<h3>Read-only and NixOS configs</h3>
+
+<p>If an output file or its symlink resolves into the Nix store (<code>/nix/store</code>),
+   is marked read-only, or is an existing symlink pointing elsewhere, Nebula skips it
+   without writing or creating a backup. This keeps declarative system configurations
+   (such as NixOS or Home Manager symlinks) intact while letting you preview palettes
+   in Nebula and port the values into your configuration by hand.</p>
+
 <h2>Including the generated file</h2>
 
 <p>Writing the file is only half of it — the application has to include it from its
