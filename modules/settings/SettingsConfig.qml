@@ -27,6 +27,8 @@ Singleton {
     property alias hypr: settingsAdapter.hypr
     property alias features: settingsAdapter.features
 
+    // TODO: Mark UI controls for admin-locked keys ($XDG_CONFIG_DIRS/nebula/*.json, /etc/nebula/config.json)
+    // as read-only with a lock chip. Handled authoritatively by cli/nebula/settings.py.
     property bool settingsReady: false
 
     property bool greeterMode: false
