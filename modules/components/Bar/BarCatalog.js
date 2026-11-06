@@ -239,7 +239,7 @@ function build(env) {
           options: [showLabelOpt,
                     { key: "hWindow", label: "Window", type: "heading" },
                     { key: "position", label: "Opens", type: "choice", setting: "launcherPosition", default: "item",
-                      choices: [{ value: "item", label: "From item" }, { value: "center", label: "Centre" }] },
+                      choices: [{ value: "item", label: "From item" }, { value: "block", label: "Widget" }, { value: "center", label: "Centre" }] },
                     { key: "radius", label: "Corner radius", type: "slider", setting: "launcherRadius", min: 0, max: 40, step: 2, default: -1,
                       auto: "Match bar", onlyIf: { key: "position", values: ["center"] } },
                     { key: "hLayout", label: "Layout", type: "heading" },
