@@ -780,9 +780,10 @@ Item {
                                         grid.forceActiveFocus()
                                     }
                                 }
-                                Keys.onEscapePressed: {
+                                Keys.onEscapePressed: event => {
                                     if (root.filterOpen || root.colourOpen) root.closeOverlays()
-                                    else text = ""
+                                    else if (text !== "") text = ""
+                                    else event.accepted = false
                                 }
                                 Keys.onDownPressed: {
                                     grid.forceActiveFocus()
