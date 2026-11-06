@@ -34,8 +34,10 @@ def _scheme(args) -> None:
 
 def defaults() -> dict:
     t = settings.section("theme")
+    g = settings.section("general")
+    scheme = "scheme-custom" if g.get("palette") == "custom" else t.get("matugenScheme", "scheme-content")
     return {
-        "scheme": t.get("matugenScheme", "scheme-content"),
+        "scheme": scheme,
         "mode": t.get("matugenTheme", "dark"),
         "gowall": t.get("gowallTheme", "off"),
         "icons": "on" if t.get("gowallIcons") else "off",

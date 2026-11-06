@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 import sys
+from pathlib import Path
 
 from nebula.paths import HOME
 
@@ -65,6 +66,48 @@ def check():
     templates = HOME / ".config" / "matugen" / "templates"
     rows.append({"kind": "file", "name": str(templates).replace(str(HOME), "~", 1),
                  "package": "", "what": "App colour templates", "ok": templates.is_dir()})
+
+    from nebula import settings
+    from nebula.paths import CUSTOM_COLORS
+    theme_sec = settings.section("theme")
+    gen_sec = settings.section("general")
+    custom_active = (theme_sec.get("matugenScheme") == "scheme-custom" or gen_sec.get("palette") == "custom")
+    custom_path_str = gen_sec.get("palettePath")
+    custom_file = Path(os.path.expanduser(custom_path_str)) if custom_path_str else CUSTOM_COLORS
+    disp_name = str(custom_file).replace(str(HOME), "~", 1)
+    if custom_file.is_file():
+        try:
+            json.loads(custom_file.read_text())
+            valid_json = True
+        except Exception:
+            valid_json = False
+    else:
+        valid_json = False
+
+    if custom_active:
+        rows.append({
+            "kind": "file",
+            "name": disp_name,
+            "package": "",
+            "what": "Custom palette (active)" if valid_json else ("Custom palette (invalid JSON)" if custom_file.is_file() else "Custom palette (active, missing)"),
+            "ok": custom_file.is_file() and valid_json,
+        })
+    elif custom_file.is_file():
+        rows.append({
+            "kind": "file",
+            "name": disp_name,
+            "package": "",
+            "what": "Custom palette (available)" if valid_json else "Custom palette (invalid JSON)",
+            "ok": valid_json,
+        })
+    else:
+        rows.append({
+            "kind": "file",
+            "name": disp_name,
+            "package": "",
+            "what": "Custom palette (optional)",
+            "ok": True,
+        })
     return rows
 
 
