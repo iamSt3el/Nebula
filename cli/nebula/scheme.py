@@ -545,6 +545,7 @@ def _apply_app_templates(our_colors: dict, wallpaper: str, enabled=None) -> None
     explicit = enabled is not None
     mode = "dark" if "surface" not in our_colors or _is_dark(our_colors) else "light"
     hook_env = {**os.environ, "NEBULA_MODE": mode}
+    total_targets, total_written, total_skipped = 0, 0, 0
 
     for app in theme_apps.APPS:
         name = app["id"]
@@ -556,7 +557,7 @@ def _apply_app_templates(our_colors: dict, wallpaper: str, enabled=None) -> None
             _report(name, "missing", "Not installed")
             continue
 
-        written, backups, errors = 0, 0, []
+        written, backups, errors, skipped = 0, 0, [], []
         for input_path, output_path in theme_apps.targets(app):
             if not input_path.exists():
                 print(f"[gen_colors] skip {name}: template not found ({input_path})", flush=True)
@@ -565,14 +566,21 @@ def _apply_app_templates(our_colors: dict, wallpaper: str, enabled=None) -> None
             if not output_path.parent.exists() and not explicit:
                 print(f"[gen_colors] skip {name}: output dir missing ({output_path.parent})", flush=True)
                 continue
+            total_targets += 1
             try:
                 rendered = _render_template(input_path.read_text(), matugen, wallpaper)
-                if theme_apps.backup_if_user_file(app, output_path, manifest):
+                res = theme_apps.render(app, output_path, rendered, manifest)
+                if res["status"] == "skipped":
+                    reason = res["reason"]
+                    print(f"[gen_colors] skip {name}: {output_path.name}: {reason}, skipped", flush=True)
+                    skipped.append((output_path, reason))
+                    total_skipped += 1
+                    continue
+                if res.get("backed_up"):
                     backups += 1
                     print(f"[gen_colors] backup {name}: {output_path}.bak", flush=True)
-                _atomic_write(output_path, rendered)
-                theme_apps.record(output_path, rendered, manifest)
                 written += 1
+                total_written += 1
                 print(f"[gen_colors] wrote {name} → {output_path}", flush=True)
             except Exception as e:
                 print(f"[gen_colors] ERROR {name}: {e}", file=sys.stderr)
@@ -594,10 +602,18 @@ def _apply_app_templates(our_colors: dict, wallpaper: str, enabled=None) -> None
                 _report(name, "error", errors[0], backups)
             elif written:
                 _report(name, "ok", f"{written} file{'s' if written != 1 else ''} written", backups)
+            elif skipped:
+                reasons = ", ".join(f"{p.name}: {r}" for p, r in skipped)
+                _report(name, "skipped", f"{reasons}, skipped", backups)
             else:
                 _report(name, "skipped", "Nothing to write")
 
     theme_apps.save_manifest(manifest)
+    if total_targets > 0 and total_written == 0 and total_skipped > 0:
+        hint = f"{total_skipped} file{'s' if total_skipped != 1 else ''} managed by your system config, port palette values there manually"
+        print(f"[gen_colors] {hint}", flush=True)
+        if explicit:
+            print(hint)
     print(f"[gen_colors] app templates done in {(time.time()-t0)*1000:.0f}ms", flush=True)
 
 
@@ -1140,9 +1156,16 @@ def _atomic_write(path: Path, content: str) -> None:
 def _write_colors_json(content: str) -> None:
     """Writes colors.json to OUTPUT_PATH plus every plain-copy target in
     _EXTRA_COPY_PATHS (e.g. the file manager's own config dir)."""
-    _atomic_write(OUTPUT_PATH, content)
+    if theme_apps.target_state(OUTPUT_PATH) == "ok":
+        _atomic_write(OUTPUT_PATH, content)
+    else:
+        print(f"[gen_colors] skip colors.json: {theme_apps.target_state(OUTPUT_PATH)}, skipped", flush=True)
     for path in _EXTRA_COPY_PATHS:
         if not path.parent.is_dir():
+            continue
+        st = theme_apps.target_state(path)
+        if st != "ok":
+            print(f"[gen_colors] skip {path.name}: {st}, skipped", flush=True)
             continue
         try:
             _atomic_write(path, content)
