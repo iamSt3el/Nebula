@@ -29,6 +29,7 @@ import qs.modules.components.Wallpaper
 import qs.modules.components.EdgeNotes
 import qs.modules.components.Tuck
 import qs.modules.components.Spotlight
+import qs.modules.components.Bar
 import qs.modules.customComponents
 import qs.modules.services
 import qs.modules.settings
@@ -109,6 +110,9 @@ ShellRoot{
 
     // Keybinding cheat sheet — hyprctl dispatch global quickshell:cheatsheet
     CheatSheet {}
+
+    // Fullscreen bar/widget editor overlay
+    BarEditOverlay {}
 
     // Workspace manager with live previews — hyprctl dispatch global quickshell:overview
     Overview {}

@@ -285,6 +285,53 @@ ColumnLayout {
         }
     }
 
+    EditHeading {
+        Layout.fillWidth: true
+        Layout.topMargin: 10
+        visible: true
+        content: "Editor mode"
+        size: 13
+        customColor: Colors.primary
+    }
+    ColumnLayout {
+        id: drawerGroupEditMode
+        Layout.fillWidth: true
+        visible: true
+        spacing: 8
+        EditRow {
+            visible: true
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                CustomText {
+                    Layout.fillWidth: true
+                    content: "Choose how the bar and widget editor opens"
+                    size: 11
+                    customColor: Colors.outline
+                }
+
+                M3ButtonGroup {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 38
+                    fillWidth: true
+                    iconSize: 16
+                    textSize: 12
+                    activeColor: Colors.secondaryContainer
+                    activeTextColor: Colors.secondaryContainerText
+                    model: [
+                        { value: "panel",   label: "In-bar panel",        icon: "dock_to_bottom" },
+                        { value: "overlay", label: "Fullscreen overlay",  icon: "fullscreen" }
+                    ]
+                    activeCheck: function(value) { return (SettingsConfig.general.editMode ?? "panel") === value }
+                    onSegmentClicked: function(value) {
+                        SettingsConfig.general = Object.assign({}, SettingsConfig.general, { editMode: value })
+                    }
+                }
+            }
+        }
+    }
+
     BarEditDrawerPins {
         host: generalPage.host
     }

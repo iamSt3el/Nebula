@@ -31,7 +31,8 @@ PanelWindow{
 
     property bool isPrimary: true
 
-    readonly property bool barEditing: GlobalStates.barEditMode && isPrimary
+    readonly property bool isOverlay: (SettingsConfig.general.editMode ?? "panel") === "overlay"
+    readonly property bool barEditing: GlobalStates.barEditMode && isPrimary && !layout.isOverlay
     property bool editorsLive: false
     property Item editChrome: null
     property Item drawerHost: null
