@@ -93,6 +93,10 @@ write it into kitty, tmux, Starship, btop, Hyprland, GTK, Qt, Papirus folders, F
 `nebula apps enable|disable <id>`. If a file is one you wrote yourself, Nebula keeps
 it as `<file>.bak` before replacing it the first time.
 
+### Custom static palette
+
+If you use an external theming system (such as NixOS Stylix, pywal, or base16) and want fixed colors instead of wallpaper-derived generation, set the scheme variant to `custom` (or configure `general.palette = "custom"`) and place your palette at `~/.config/nebula/colors.json`. Nebula will read colors directly from this file and skip Material You generation on wallpaper changes, while still rendering your app templates. You can also inspect or set the file with `nebula palette path` and `nebula palette set <file>`.
+
 ## Credits
 
 [end_4](https://github.com/end-4) for inspiration, Quickshell patterns and

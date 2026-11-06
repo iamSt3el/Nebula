@@ -26,7 +26,7 @@ Singleton {
     property string cacheDir: StandardPaths.writableLocation(StandardPaths.CacheLocation).toString().replace("file://", "") + "/wallpaper-thumbs"
     property int thumbSize: 256
     readonly property string cli: Quickshell.shellDir + "/bin/nebula"
-    property string scheme: SettingsConfig.theme.matugenScheme
+    property string scheme: (SettingsConfig.general.palette === "custom") ? "scheme-custom" : SettingsConfig.theme.matugenScheme
     property string theme: SettingsConfig.theme.matugenTheme
     property string gowallTheme: SettingsConfig.theme.gowallTheme ?? "off"
     property bool gowallIcons: SettingsConfig.theme.gowallIcons ?? false

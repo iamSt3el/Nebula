@@ -189,6 +189,7 @@ Singleton {
                 motionScheme: "expressive",
                 holidayCountry: "",
                 editTipSeen: false,
+                palette: "default",
             })
 
             property var general: ({
@@ -249,6 +250,7 @@ Singleton {
                 motionScheme: "expressive",
                 holidayCountry: "",
                 editTipSeen: false,
+                palette: "default",
             })
 
             onGeneralChanged: {

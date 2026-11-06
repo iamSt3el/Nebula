@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 from nebula import __version__
 from nebula.paths import COLORS, HOME, SH_DIR, SHELL_DIR, migrate
@@ -45,6 +46,8 @@ Colours and wallpaper
   nebula scheme seeds [image]      list a wallpaper's candidate seed colours
   nebula scheme seed <image> <n>   use candidate n for that wallpaper (0 = auto)
   nebula scheme apply              re-write app colour files from the current palette
+  nebula palette set <file>        set custom palette from a colors.json file and activate it
+  nebula palette path              print the custom palette file path
   nebula apps                      list apps Nebula can theme and which are picked
   nebula apps enable|disable <id>...   choose which apps follow the palette
   nebula apps reset                go back to theming every detected app
@@ -162,8 +165,6 @@ def cmd_scheme(a) -> int:
         return _show_palette(a.json)
 
     if a.action in ("seeds", "seed"):
-        import json
-        import os
         from nebula import scheme, wallpaper as wp
         image = a.image or wp.current()
         if not image or not os.path.isfile(image):
@@ -183,17 +184,67 @@ def cmd_scheme(a) -> int:
             patch["matugenTheme"] = a.mode
         if a.variant:
             patch["matugenScheme"] = a.variant if a.variant.startswith("scheme-") else "scheme-" + a.variant
+            if a.variant.removeprefix("scheme-") == "custom":
+                settings.update("general", {"palette": "custom"})
+            else:
+                gen = settings.section("general")
+                if gen.get("palette") == "custom":
+                    settings.update("general", {"palette": None})
         if not patch:
             print("nebula: give --mode and/or --variant", file=sys.stderr)
             return 2
         settings.update("theme", patch)
         image = wp.current()
-        if not image:
-            print("nebula: saved; no wallpaper to recolour yet", file=sys.stderr)
-            return 0
+        if not image or not os.path.isfile(image):
+            image = _starter_wallpaper()
         d = wp.defaults()
         return wp.apply(image, d["scheme"], d["mode"], d["gowall"],
                         d["icons"], d["invert"], d["shell"])
+    return 2
+
+
+def cmd_palette(a) -> int:
+    from nebula import settings, wallpaper as wp
+    from nebula.paths import CUSTOM_COLORS
+    custom_path_str = settings.section("general").get("palettePath")
+    custom_file = Path(os.path.expanduser(custom_path_str)) if custom_path_str else CUSTOM_COLORS
+
+    if a.action == "path":
+        print(custom_file)
+        return 0
+
+    if a.action == "get":
+        if not custom_file.is_file():
+            print(f"nebula: no custom palette found at {custom_file}", file=sys.stderr)
+            return 1
+        print(custom_file.read_text().rstrip())
+        return 0
+
+    if a.action == "set":
+        src = Path(os.path.expanduser(a.file))
+        if not src.is_file():
+            print(f"nebula: palette file not found: {src}", file=sys.stderr)
+            return 1
+        try:
+            data = json.loads(src.read_text())
+            if not isinstance(data, dict):
+                raise ValueError("JSON root must be an object")
+        except Exception as e:
+            print(f"nebula: invalid JSON in palette file {src}: {e}", file=sys.stderr)
+            return 1
+
+        CUSTOM_COLORS.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, CUSTOM_COLORS)
+        settings.update("theme", {"matugenScheme": "scheme-custom"})
+        settings.update("general", {"palette": "custom"})
+        image = wp.current()
+        if not image or not os.path.isfile(image):
+            image = _starter_wallpaper()
+        d = wp.defaults()
+        return wp.apply(image, "scheme-custom", d["mode"], d["gowall"],
+                        d["icons"], d["invert"], d["shell"])
+
+    print("nebula: give set <file>, get, or path", file=sys.stderr)
     return 2
 
 
@@ -639,7 +690,14 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("index", type=int)
     st = ss.add_parser("set")
     st.add_argument("--mode", choices=["dark", "light"])
-    st.add_argument("--variant", help="content, tonalspot, vibrant, expressive, fidelity, fruitsalad, rainbow, neutral, monochrome, kindle")
+    st.add_argument("--variant", help="content, tonalspot, vibrant, expressive, fidelity, fruitsalad, rainbow, neutral, monochrome, kindle, custom")
+
+    pal = sub.add_parser("palette", help="custom static palette")
+    pals = pal.add_subparsers(dest="action", required=True)
+    p_set = pals.add_parser("set", help="set custom palette from a file and activate it")
+    p_set.add_argument("file", help="path to custom colors.json")
+    pals.add_parser("get", help="show custom palette contents")
+    pals.add_parser("path", help="print the custom palette file path")
 
     a = sub.add_parser("apps", help="which apps follow the palette")
     as_ = a.add_subparsers(dest="action")
@@ -699,11 +757,11 @@ def main(argv=None) -> None:
         _shell_tool(argv[0], argv[1:])
 
     parser = build_parser()
-    if argv[0] not in ("wallpaper", "scheme", "apps", "doctor", "ipc", "setup", "start", "stop", "restart", "layout", "migrate", "uninstall"):
+    if argv[0] not in ("wallpaper", "scheme", "palette", "apps", "doctor", "ipc", "setup", "start", "stop", "restart", "layout", "migrate", "uninstall"):
         print(f"nebula: unknown command '{argv[0]}'. Run `nebula help`.", file=sys.stderr)
         sys.exit(2)
     a = parser.parse_args(argv)
-    handler = {"wallpaper": cmd_wallpaper, "scheme": cmd_scheme, "apps": cmd_apps,
+    handler = {"wallpaper": cmd_wallpaper, "scheme": cmd_scheme, "palette": cmd_palette, "apps": cmd_apps,
                "doctor": cmd_doctor, "ipc": cmd_ipc, "setup": cmd_setup,
                "start": cmd_start, "stop": cmd_stop, "restart": cmd_restart, "layout": cmd_layout,
                "migrate": cmd_migrate, "uninstall": cmd_uninstall}[a.command]

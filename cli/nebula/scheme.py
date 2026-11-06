@@ -8,7 +8,7 @@ Caching layers:
 
 Usage: gen_colors.py <image> <scheme-variant> <mode> [--source P] [--display P]
   scheme-variant  content | expressive | fidelity | fruitsalad | monochrome |
-                  neutral | rainbow | tonalspot | vibrant | kindle
+                  neutral | rainbow | tonalspot | vibrant | kindle | custom
   mode            dark | light
   --source        the untouched wallpaper behind <image>, recorded as
                   "sourceWallpaper" so re-applies never feed a gowall-recolored
@@ -50,7 +50,7 @@ from materialyoucolor.scheme.scheme_vibrant import SchemeVibrant
 from materialyoucolor.utils.math_utils import sanitize_degrees_int
 
 from nebula import apps as theme_apps
-from nebula.paths import SETTINGS
+from nebula.paths import CUSTOM_COLORS, SETTINGS
 
 _HOME       = Path.home()
 CACHE_DIR   = Path.home() / ".cache" / "quickshell"
@@ -139,9 +139,69 @@ def _build_kindle_scheme(is_dark: bool) -> dict:
     return out
 
 
+def _build_custom_scheme(is_dark: bool) -> dict:
+    from nebula import settings
+
+    path = None
+    custom = settings.section("general").get("palettePath")
+    if not custom:
+        pal = settings.section("general").get("palette")
+        if pal and pal != "custom" and (os.path.isabs(pal) or pal.startswith("~") or pal.startswith(".")):
+            custom = pal
+    if custom:
+        path = Path(os.path.expanduser(str(custom)))
+    else:
+        path = CUSTOM_COLORS
+
+    fallback = _build_kindle_scheme(is_dark)
+    fallback["scheme"] = "custom"
+
+    if not path.is_file():
+        print(f"[gen_colors] WARNING: custom palette file not found: {path} — falling back to fixed scheme",
+              file=sys.stderr)
+        return fallback
+
+    try:
+        raw = json.loads(path.read_text())
+    except Exception as e:
+        print(f"[gen_colors] ERROR: failed to parse custom palette {path}: {e} — falling back to fixed scheme",
+              file=sys.stderr)
+        return fallback
+
+    if not isinstance(raw, dict):
+        print(f"[gen_colors] ERROR: custom palette {path} must contain a JSON object — falling back to fixed scheme",
+              file=sys.stderr)
+        return fallback
+
+    data = raw
+    if is_dark and "dark" in raw and isinstance(raw["dark"], dict):
+        data = raw["dark"]
+    elif not is_dark and "light" in raw and isinstance(raw["light"], dict):
+        data = raw["light"]
+
+    out = dict(fallback)
+    matugen_to_key = {v: k for k, v in _KEY_TO_MATUGEN.items()}
+    for k, v in data.items():
+        if not isinstance(v, str):
+            continue
+        if k in _COLOR_MAP.values():
+            out[k] = v
+        elif k in matugen_to_key:
+            out[matugen_to_key[k]] = v
+        elif k in _COLOR_MAP:
+            out[_COLOR_MAP[k]] = v
+        elif k.startswith(_DERIVED_PREFIXES) or k in _KEY_TO_MATUGEN.values():
+            out[k] = v
+
+    out["scheme"] = "custom"
+    return out
+
+
 def _fixed_scheme(variant: str, is_dark: bool):
     if variant == "kindle":
         return _build_kindle_scheme(is_dark)
+    if variant == "custom":
+        return _build_custom_scheme(is_dark)
     return None
 
 
@@ -297,6 +357,9 @@ def _build_matugen_dict(our_colors: dict) -> dict:
         result["on_background"] = our_colors["surfaceText"]
     if all(k in our_colors for k in _DERIVED_NEEDS):
         result.update(_derived_colors(our_colors))
+    for k, v in our_colors.items():
+        if isinstance(v, str) and (k.startswith(_DERIVED_PREFIXES) or k in _KEY_TO_MATUGEN.values()):
+            result[k] = v
     return dict(sorted(result.items()))
 
 
@@ -1211,17 +1274,22 @@ def main() -> None:
     if enabled is None:
         enabled = theme_apps.enabled_ids()
 
-    if variant == "kindle":
+    from nebula import settings
+    gen_palette = settings.section("general").get("palette")
+    if gen_palette == "custom" and variant not in ("kindle", "custom"):
+        variant = "custom"
+
+    if variant in ("kindle", "custom"):
         t_start = time.time()
-        our_colors = _fixed_scheme(variant, is_dark)
+        our_colors = _fixed_scheme(variant, is_dark) or _build_kindle_scheme(is_dark)
         our_colors["wallpaper"]       = display_path
         our_colors["sourceWallpaper"] = source_path
         _write_colors_json(json.dumps(our_colors, indent=4))
         print(f"[gen_colors] {variant} {mode} ({(time.time()-t_start)*1000:.0f}ms)")
         _apply_app_templates(our_colors, display_path, enabled)
         _apply_fonts(enabled)
-        _sync_papirus_colors(our_colors["primary"], mode,
-                             keep_icons or _kindle_setting("kindleGreyIcons", True), enabled)
+        _sync_papirus_colors(our_colors.get("primary", "#000000"), mode,
+                             keep_icons or (variant == "kindle" and _kindle_setting("kindleGreyIcons", True)), enabled)
         return
 
     palette = None
