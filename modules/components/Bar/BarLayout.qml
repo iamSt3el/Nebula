@@ -394,7 +394,7 @@ Singleton {
         function onApplying() { root.settled = false }
     }
 
-    readonly property bool launcherItemHost: ServiceLauncher.position === "item"
+    readonly property bool launcherItemHost: (ServiceLauncher.position === "item" || ServiceLauncher.position === "block")
         && root.allBlocks.some(b => b.items.indexOf("launcher") >= 0 && !root.edge(b.edge).hidden)
     readonly property bool clipboardItemHost: root.allBlocks.some(b => b.items.indexOf("clipboard") >= 0)
     readonly property bool wallpaperItemHost: root.allBlocks.some(b => b.items.indexOf("wallpaper") >= 0)

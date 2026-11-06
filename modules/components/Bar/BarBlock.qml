@@ -403,7 +403,7 @@ Item {
         return k === "clipboard" || k === "wallpaper" || k === "osd"
     }
     readonly property bool launchHost: layout.isPrimary && !barBlock.leaving
-        && ServiceLauncher.position === "item" && barBlock.hasItem("launcher")
+        && (ServiceLauncher.position === "item" || ServiceLauncher.position === "block") && barBlock.hasItem("launcher")
     function previewOpener(k) {
         return BarLayout.panelHostItem(k)
     }
@@ -587,6 +587,25 @@ Item {
             barBlock.tabSnap = false
             return
         }
+        if (k === "launcher") {
+            if (ServiceLauncher.position === "block") {
+                barBlock.tabSnap = snap
+                barBlock.plateFrom(null)
+                barBlock.srcX = 0
+                barBlock.srcW = barBlock.width
+                barBlock.flushSource("launcher")
+                barBlock.tabSnap = false
+                return
+            }
+            const it = barBlock.itemFor("launcher")
+            if (snap) {
+                barBlock.snapSource(it, "launcher")
+            } else {
+                barBlock.sourceFrom(it)
+                barBlock.flushSource("launcher")
+            }
+            return
+        }
         const item = BarLayout.panelItemHost(k) && barBlock.hasItem(k) ? barBlock.itemFor(k) : null
         if (snap) {
             barBlock.snapSource(item, k)
@@ -597,8 +616,8 @@ Item {
     }
 
     readonly property bool dockRevealing: !!barBlock.frame && (barBlock.frame.reveal ?? 1) < 0.999
-    onWidthChanged: if (barBlock.isSys(barBlock.panelKind) && !barBlock.dockRevealing) barBlock.resyncSource()
-    onDockRevealingChanged: if (!barBlock.dockRevealing && barBlock.isSys(barBlock.panelKind)) barBlock.resyncSource()
+    onWidthChanged: if ((barBlock.isSys(barBlock.panelKind) || barBlock.panelKind === "launcher") && !barBlock.dockRevealing) barBlock.resyncSource()
+    onDockRevealingChanged: if (!barBlock.dockRevealing && (barBlock.isSys(barBlock.panelKind) || barBlock.panelKind === "launcher")) barBlock.resyncSource()
 
     function beginOpen(kind, item, clicked) {
         if (barBlock.editMode)
@@ -1519,8 +1538,8 @@ Item {
             barBlock.closedAt = Date.now()
         const opening = k !== "" && !barBlock.tabOpen
         barBlock.motionClosing = k === ""
-        if (k === "launcher" && barBlock.tabH <= barBlock.barH + 0.5) {
-            barBlock.snapSource(barBlock.itemFor("launcher"), "launcher")
+        if (k === "launcher") {
+            barBlock.resyncSource()
             barBlock.openerId = ""
         } else if (barBlock.previewHost && k === GlobalStates.panelPreview) {
             const opener = barBlock.itemFor(barBlock.previewOpener(k))
