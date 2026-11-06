@@ -14,7 +14,7 @@ Item {
     anchors.fill: parent
 
     readonly property var theme: SettingsConfig.theme ?? ({})
-    readonly property string scheme: root.theme.matugenScheme ?? "scheme-content"
+    readonly property string scheme: (SettingsConfig.general.palette === "custom") ? "scheme-custom" : (root.theme.matugenScheme ?? "scheme-content")
     readonly property string schemeLabel: root.prettyScheme(root.scheme)
     readonly property string palette: root.theme.gowallTheme ?? "off"
     readonly property bool gowallOn: root.palette !== "off"
@@ -600,7 +600,9 @@ Item {
                         spacing: 2
                         CustomText { content: "Colour scheme"; size: 14 }
                         CustomText {
-                            content: KindleMode.active ? "Kindle ignores the wallpaper and uses fixed greys" : "How colours are pulled from your wallpaper"
+                            content: KindleMode.active ? "Kindle ignores the wallpaper and uses fixed greys"
+                                   : root.scheme === "scheme-custom" ? "Custom static palette from ~/.config/nebula/colors.json"
+                                   : "How colours are pulled from your wallpaper"
                             size: 12; customColor: Colors.outline
                         }
                     }
