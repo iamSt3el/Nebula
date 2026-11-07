@@ -238,8 +238,8 @@ Item {
     EditSidePanel {
         id: sidePanel
         z: 3
-        readonly property real hostW: drawer.parent ? drawer.parent.width : 1920
-        readonly property real hostH: drawer.parent ? drawer.parent.height : 1080
+        readonly property real hostW: drawer.parent ? drawer.parent.width : (Quickshell.screens[0]?.width ?? 1920)
+        readonly property real hostH: drawer.parent ? drawer.parent.height : (Quickshell.screens[0]?.height ?? 1080)
         readonly property var spec: drawer.sideSpec
         readonly property var spot: drawer.chrome
             ? drawer.chrome.placeBeside(Qt.rect(drawer.x, drawer.y, drawer.width, drawer.height), sidePanel.width, sidePanel.height,
