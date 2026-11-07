@@ -511,11 +511,11 @@ Item {
                 contentHeight: body.implicitHeight + 16
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
-                ScrollBar.vertical: CustomScrollBar {}
+                ScrollBar.vertical: CustomScrollBar { id: scrollBar }
 
                 ColumnLayout {
                     id: body
-                    width: flick.width
+                    width: flick.width - (scrollBar.size < 1.0 ? 14 : 0)
                     spacing: 2
 
                     GroupRow {

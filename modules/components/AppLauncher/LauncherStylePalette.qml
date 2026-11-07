@@ -255,7 +255,10 @@ Item {
         readonly property int count: nav.navCount
         readonly property int columns: 1
 
-        onActiveIndexChanged: root.chipIndex = -1
+        onActiveIndexChanged: {
+            root.chipIndex = -1
+            nav.reveal(nav.activeIndex)
+        }
 
         function activateIndex(i) {
             const it = root.rows[i]
@@ -340,11 +343,11 @@ Item {
                 contentHeight: list.implicitHeight
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
-                ScrollBar.vertical: CustomScrollBar {}
+                ScrollBar.vertical: CustomScrollBar { id: scrollBar }
 
                 Column {
                     id: list
-                    width: flick.width
+                    width: flick.width - (scrollBar.size < 1.0 ? 14 : 0)
                     spacing: 2
 
                     Repeater {
