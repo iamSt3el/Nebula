@@ -267,11 +267,11 @@ Item {
                 interactive: devFlick.contentHeight > devFlick.height + 1
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
-                ScrollBar.vertical: CustomScrollBar {}
+                ScrollBar.vertical: CustomScrollBar { id: scrollBar }
 
                 GridLayout {
                     id: grid
-                    width: devFlick.width
+                    width: devFlick.width - (scrollBar.size < 1.0 ? 14 : 0)
                     columns: root.columns
                     columnSpacing: 8
                     rowSpacing: 8

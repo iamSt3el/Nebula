@@ -74,11 +74,11 @@ Item {
         contentHeight: col.implicitHeight
         interactive: contentHeight > height
         fadeEdges: false
-        ScrollBar.vertical: CustomScrollBar {}
+        ScrollBar.vertical: CustomScrollBar { id: scrollBar }
 
         ColumnLayout {
             id: col
-            width: flick.width
+            width: flick.width - (scrollBar.size < 1.0 ? 14 : 0)
             spacing: 12
 
             ColumnLayout {

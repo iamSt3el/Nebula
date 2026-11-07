@@ -69,11 +69,11 @@ Item {
         interactive: contentHeight > height
         boundsBehavior: Flickable.StopAtBounds
         clip: true
-        ScrollBar.vertical: CustomScrollBar {}
+        ScrollBar.vertical: CustomScrollBar { id: scrollBar }
 
         ColumnLayout {
             id: column
-            width: parent.width
+            width: flick.width - (scrollBar.size < 1.0 ? 14 : 0)
             spacing: 3
 
             SectionTitle { Layout.topMargin: 0; content: "Output" }

@@ -41,6 +41,7 @@ Item {
     }
 
     Flickable {
+        id: flick
         anchors.fill: parent
         anchors.margins: 12
         contentWidth: width
@@ -48,11 +49,11 @@ Item {
         interactive: contentHeight > height
         boundsBehavior: Flickable.StopAtBounds
         clip: true
-        ScrollBar.vertical: CustomScrollBar {}
+        ScrollBar.vertical: CustomScrollBar { id: scrollBar }
 
         ColumnLayout {
             id: column
-            width: parent.width
+            width: flick.width - (scrollBar.size < 1.0 ? 14 : 0)
             spacing: 3
 
             CustomCard {
