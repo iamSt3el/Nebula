@@ -758,7 +758,9 @@ Item {
                                 topRightRadius: entry.modelData.first ? 18 : 6
                                 bottomLeftRadius: entry.modelData.last ? 18 : 6
                                 bottomRightRadius: entry.modelData.last ? 18 : 6
-                                color: entry.active ? Colors.secondaryContainer : Colors.surfaceContainerHigh
+                                color: entry.active ? Colors.primaryContainer : Colors.surfaceContainerHigh
+                                border.width: entry.active ? 1.5 : 0
+                                border.color: Colors.primary
                                 Behavior on color { EffectsColorAnim { speed: "fast" } }
 
                                 RippleEffect {
@@ -816,7 +818,7 @@ Item {
                                             size: 14
                                             weight: 500
                                             elide: Text.ElideRight
-                                            customColor: entry.active ? Colors.secondaryContainerText : Colors.surfaceText
+                                            customColor: entry.active ? Colors.primaryContainerText : Colors.surfaceText
                                         }
                                         CustomText {
                                             Layout.fillWidth: true
@@ -825,7 +827,7 @@ Item {
                                             size: 12
                                             weight: 400
                                             elide: Text.ElideRight
-                                            customColor: entry.active ? Qt.alpha(Colors.secondaryContainerText, 0.8) : Colors.surfaceVariantText
+                                            customColor: entry.active ? Qt.alpha(Colors.primaryContainerText, 0.8) : Colors.surfaceVariantText
                                         }
                                     }
 
@@ -834,7 +836,7 @@ Item {
                                         content: entry.modelData.label ?? ""
                                         size: 12
                                         weight: 400
-                                        customColor: entry.active ? Colors.secondaryContainerText : Colors.surfaceVariantText
+                                        customColor: entry.active ? Colors.primaryContainerText : Colors.surfaceVariantText
                                     }
                                 }
                             }
