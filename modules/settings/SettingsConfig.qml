@@ -530,7 +530,9 @@ Singleton {
             property var weather: ({
                 location: "",
                 useMetric: true,
-                refreshInterval: 15
+                refreshInterval: 15,
+                useGeoFile: false,
+                geoFile: "~/.cache/quickshell/geo"
             })
 
             property var notifications: ({

@@ -39,7 +39,7 @@
 <tr><td>Networking</td><td>Wi-Fi and connection management</td></tr>
 <tr><td>Bluetooth</td><td>Pairing and connected devices</td></tr>
 <tr><td>Notifications</td><td>Grouping, sounds, do not disturb</td></tr>
-<tr><td>Weather</td><td>Location and units</td></tr>
+<tr><td>Weather</td><td>Location, units and external geolocation</td></tr>
 <tr><td>Widgets</td><td>Which widgets are on the canvas</td></tr>
 <tr><td>Sleep</td><td>Idle and lock behaviour</td></tr>
 <tr><td>Storage</td><td>The live disk treemap</td></tr>
@@ -67,6 +67,15 @@
 <p>Wallpaper search needs a free
    <a href="https://wallhaven.cc/settings/account" rel="noopener">Wallhaven API key</a>,
    set in the Theme panel. Local folders work without one.</p>
+
+<h2>Weather geolocation</h2>
+
+<p>Weather can read coordinates from an external file updated by a Wi-Fi positioning
+   service or <code>geoclue</code>. In <strong>Settings › Weather</strong>, enable
+   <strong>External geolocation</strong> and optionally set the coordinates file path
+   (defaults to <code>~/.cache/quickshell/geo</code>, formatted as
+   <code>latitude longitude</code>). If the file is missing or invalid, Nebula falls
+   back to your timezone city.</p>
 
   </main>
 

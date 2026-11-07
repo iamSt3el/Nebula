@@ -9,7 +9,9 @@ import urllib.request
 from datetime import datetime, timezone
 
 CACHE = os.path.expanduser("~/.cache/quickshell/weather.json")
+DEFAULT_GEO_FILE = os.path.expanduser("~/.cache/quickshell/geo")
 GEO_URL = "https://geocoding-api.open-meteo.com/v1/search?"
+REVERSE_GEO_URL = "https://api.bigdatacloud.net/data/reverse-geocode-client?"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast?"
 TIMEOUT = 15
 
@@ -69,7 +71,119 @@ def save_cache(obj):
     os.replace(tmp, CACHE)
 
 
-def geocode(name, cache):
+def load_settings():
+    try:
+        from nebula import settings as s
+        return s.section("weather")
+    except Exception:
+        return {}
+
+
+def get_geo_file(settings=None):
+    if settings is None:
+        settings = load_settings()
+    f = settings.get("geoFile") if isinstance(settings, dict) else None
+    if f:
+        return os.path.expanduser(str(f))
+    return os.environ.get("NEBULA_GEO_FILE") or DEFAULT_GEO_FILE
+
+
+def parse_coords(text):
+    if not text:
+        return None
+    text = text.strip()
+    if text.startswith("{"):
+        try:
+            d = json.loads(text)
+            lat_v = d.get("lat") if "lat" in d else d.get("latitude")
+            lon_v = d.get("lon") if "lon" in d else d.get("longitude")
+            if lat_v is not None and lon_v is not None:
+                lat = float(lat_v)
+                lon = float(lon_v)
+                label = str(d.get("city") or d.get("name") or d.get("area") or "")
+                if -90 <= lat <= 90 and -180 <= lon <= 180:
+                    return lat, lon, label
+        except (ValueError, TypeError, json.JSONDecodeError):
+            pass
+    parts = text.replace(",", " ").split()
+    if len(parts) >= 2:
+        try:
+            lat = float(parts[0])
+            lon = float(parts[1])
+            if -90 <= lat <= 90 and -180 <= lon <= 180:
+                label = " ".join(parts[2:]).strip()
+                return lat, lon, label
+        except ValueError:
+            pass
+    return None
+
+
+def read_geo_file(path=None):
+    path = path or get_geo_file()
+    path = os.path.expanduser(str(path))
+    try:
+        with open(path) as f:
+            content = f.read()
+    except OSError:
+        return None
+    return parse_coords(content)
+
+
+def reverse_geocode(lat, lon):
+    try:
+        data = get(REVERSE_GEO_URL, {"latitude": lat, "longitude": lon, "localityLanguage": "en"})
+        city = data.get("city") or data.get("locality") or data.get("principalSubdivision")
+        country = data.get("countryName") or ""
+        region = data.get("principalSubdivision") or ""
+        return city or "", country, region
+    except Exception:
+        return "", "", ""
+
+
+def geocode(name, cache, geo_file=None):
+    if name == "auto":
+        parsed = read_geo_file(geo_file)
+        if parsed:
+            lat, lon, label = parsed
+            if not label:
+                label, country, region = reverse_geocode(lat, lon)
+                area = {"country": country, "region": region}
+            else:
+                area = {"country": "", "region": ""}
+            if label:
+                area["name"] = label
+            return lat, lon, area
+        fallback = timezone_city()
+        if fallback and fallback != "auto":
+            return geocode(fallback, cache, geo_file=geo_file)
+        raise LookupError("auto")
+
+    coords = parse_coords(name)
+    if coords:
+        lat, lon, label = coords
+        if not label:
+            label, country, region = reverse_geocode(lat, lon)
+            area = {"country": country, "region": region}
+        else:
+            area = {"country": "", "region": ""}
+        if label:
+            area["name"] = label
+        return lat, lon, area
+
+    expanded = os.path.expanduser(name)
+    if os.path.isfile(expanded):
+        parsed = read_geo_file(expanded)
+        if parsed:
+            lat, lon, label = parsed
+            if not label:
+                label, country, region = reverse_geocode(lat, lon)
+                area = {"country": country, "region": region}
+            else:
+                area = {"country": "", "region": ""}
+            if label:
+                area["name"] = label
+            return lat, lon, area
+
     if cache.get("location") == name and "lat" in cache and "lon" in cache:
         return cache["lat"], cache["lon"], cache.get("area", {})
     query = name.split(",")[0].strip()
@@ -198,10 +312,12 @@ def build(name, lat, lon, area):
         "chanceofrain": whole(rain_now),
     }
 
+    display_name = area.get("name") or (name.split(",")[0].strip() if name != "auto" else timezone_city() or "Auto")
+
     return {
         "current_condition": [current],
         "nearest_area": [{
-            "areaName": [{"value": name.split(",")[0].strip()}],
+            "areaName": [{"value": display_name}],
             "country": [{"value": area.get("country", "")}],
             "region": [{"value": area.get("region", "")}],
             "latitude": str(lat),
@@ -223,12 +339,52 @@ def timezone_city():
 
 
 def main():
-    name = (sys.argv[1] if len(sys.argv) > 1 else "").strip() or timezone_city()
+    geo_file = None
+    args = sys.argv[1:]
+    name = ""
+    i = 0
+    clean_args = []
+    while i < len(args):
+        arg = args[i]
+        if arg in ("-h", "--help"):
+            print("usage: nebula weather [<place> | auto | <coords> | <geo-file>] [--geo-file <path>]")
+            sys.exit(0)
+        elif arg == "--geo-file" and i + 1 < len(args):
+            geo_file = args[i + 1]
+            i += 2
+            continue
+        elif arg.startswith("--geo-file="):
+            geo_file = arg.split("=", 1)[1]
+            i += 1
+            continue
+        clean_args.append(arg)
+        i += 1
+
+    if clean_args:
+        name = clean_args[0].strip()
+
+    settings = load_settings()
+    if not geo_file:
+        geo_file = get_geo_file(settings)
+
+    if geo_file and not name and ("--geo-file" in sys.argv[1:] or any(a.startswith("--geo-file=") for a in sys.argv[1:])):
+        name = "auto"
+
     if not name:
-        sys.exit(1)
+        if settings.get("useGeoFile") or settings.get("location") == "auto":
+            name = "auto"
+        elif settings.get("location"):
+            name = str(settings.get("location")).strip()
+
+    if not name:
+        name = timezone_city()
+
+    if not name:
+        name = "auto"
+
     cache = load_cache()
     try:
-        lat, lon, area = geocode(name, cache)
+        lat, lon, area = geocode(name, cache, geo_file=geo_file)
         data = build(name, lat, lon, area)
     except (OSError, ValueError, KeyError, LookupError, TypeError, IndexError):
         sys.exit(1)

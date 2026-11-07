@@ -10,7 +10,7 @@ from nebula import __version__
 from nebula.paths import COLORS, HOME, SH_DIR, SHELL_DIR, migrate
 
 PASSTHROUGH = {
-    "weather":       ("nebula.weather",       "<place>", "weather for a place, wttr j1 JSON"),
+    "weather":       ("nebula.weather",       "[<place>|auto]", "weather for a place, wttr j1 JSON"),
     "holidays":      ("nebula.holidays",      "<year> <country>", "public holidays as JSON"),
     "events":        ("nebula.events",        "<ical-url>...", "calendar events from iCal feeds"),
     "stats":         ("nebula.personal",      "", "personal stats for the desk widgets"),

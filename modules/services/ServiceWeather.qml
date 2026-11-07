@@ -8,8 +8,11 @@ import qs.modules.settings
 Singleton {
     id: root
 
-    property string location: SettingsConfig.weather.location
+    property string location: (SettingsConfig.weather.useGeoFile || SettingsConfig.weather.location === "auto")
+        ? "auto" : (SettingsConfig.weather.location ?? "")
     onLocationChanged: Qt.callLater(root.fetchWeather)
+    property string geoFile: SettingsConfig.weather.geoFile ?? ""
+    onGeoFileChanged: Qt.callLater(root.fetchWeather)
     property bool useMetric: SettingsConfig.weather.useMetric ?? true
     property int refreshInterval: Math.max(5, SettingsConfig.weather.refreshInterval ?? 15) * 60000
     property bool isLoading: false
@@ -161,7 +164,11 @@ Singleton {
         }
         root.isLoading = true
         root.hasError = false
-        weatherProcess.command = [root.cli, "weather", root.location]
+        const cmd = [root.cli, "weather", root.location]
+        if (root.location === "auto" && SettingsConfig.weather.geoFile) {
+            cmd.push("--geo-file", SettingsConfig.weather.geoFile)
+        }
+        weatherProcess.command = cmd
         weatherProcess.running = true
     }
 
@@ -193,7 +200,7 @@ Singleton {
             if (root.currentCondition) return
             try {
                 const cached = JSON.parse(text())
-                if (cached.data && cached.location === root.location) root.applyData(cached.data)
+                if (cached.data && (cached.location === root.location || (root.location === "auto" && cached.location))) root.applyData(cached.data)
             } catch (e) {
                 console.warn("Weather cache unreadable:", e.message)
             }
