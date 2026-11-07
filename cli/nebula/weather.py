@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 CACHE = os.path.expanduser("~/.cache/quickshell/weather.json")
 DEFAULT_GEO_FILE = os.path.expanduser("~/.cache/quickshell/geo")
 GEO_URL = "https://geocoding-api.open-meteo.com/v1/search?"
+REVERSE_GEO_URL = "https://api.bigdatacloud.net/data/reverse-geocode-client?"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast?"
 TIMEOUT = 15
 
@@ -128,12 +129,27 @@ def read_geo_file(path=None):
     return parse_coords(content)
 
 
+def reverse_geocode(lat, lon):
+    try:
+        data = get(REVERSE_GEO_URL, {"latitude": lat, "longitude": lon, "localityLanguage": "en"})
+        city = data.get("city") or data.get("locality") or data.get("principalSubdivision")
+        country = data.get("countryName") or ""
+        region = data.get("principalSubdivision") or ""
+        return city or "", country, region
+    except Exception:
+        return "", "", ""
+
+
 def geocode(name, cache, geo_file=None):
     if name == "auto":
         parsed = read_geo_file(geo_file)
         if parsed:
             lat, lon, label = parsed
-            area = {"country": "", "region": ""}
+            if not label:
+                label, country, region = reverse_geocode(lat, lon)
+                area = {"country": country, "region": region}
+            else:
+                area = {"country": "", "region": ""}
             if label:
                 area["name"] = label
             return lat, lon, area
@@ -145,7 +161,11 @@ def geocode(name, cache, geo_file=None):
     coords = parse_coords(name)
     if coords:
         lat, lon, label = coords
-        area = {"country": "", "region": ""}
+        if not label:
+            label, country, region = reverse_geocode(lat, lon)
+            area = {"country": country, "region": region}
+        else:
+            area = {"country": "", "region": ""}
         if label:
             area["name"] = label
         return lat, lon, area
@@ -155,7 +175,11 @@ def geocode(name, cache, geo_file=None):
         parsed = read_geo_file(expanded)
         if parsed:
             lat, lon, label = parsed
-            area = {"country": "", "region": ""}
+            if not label:
+                label, country, region = reverse_geocode(lat, lon)
+                area = {"country": country, "region": region}
+            else:
+                area = {"country": "", "region": ""}
             if label:
                 area["name"] = label
             return lat, lon, area
@@ -288,7 +312,7 @@ def build(name, lat, lon, area):
         "chanceofrain": whole(rain_now),
     }
 
-    display_name = area.get("name") or (timezone_city() if name == "auto" else "") or (name.split(",")[0].strip() if name != "auto" else "Auto")
+    display_name = area.get("name") or (name.split(",")[0].strip() if name != "auto" else timezone_city() or "Auto")
 
     return {
         "current_condition": [current],
