@@ -50,7 +50,8 @@ Scope {
             }
             readonly property real edgeW: 20
             readonly property real chipH: 46
-            readonly property real stackH: win.ordered.length * win.chipH + Math.max(0, win.ordered.length - 1) * scope.gap
+            readonly property real effectiveGap: win.ordered.length <= 1 ? 0 : Math.min(scope.gap, Math.max(2, (win.usableHeight - win.ordered.length * win.chipH) / (win.ordered.length - 1)))
+            readonly property real stackH: win.ordered.length * win.chipH + Math.max(0, win.ordered.length - 1) * win.effectiveGap
             readonly property real safeTop: Math.max(12, (GlobalStates.editTopInset ?? 0) + 12)
             readonly property real safeBottom: Math.max(12, (GlobalStates.editBottomInset ?? 0) + 12)
             readonly property real usableHeight: Math.max(100, win.height - win.safeTop - win.safeBottom)
@@ -108,7 +109,7 @@ Scope {
                 if (!scope.stacked)
                     return n.y * win.height
                 const i = win.ordered.findIndex(o => o.id === n.id)
-                return win.stackTop + Math.max(0, i) * (win.chipH + scope.gap) + win.chipH / 2
+                return win.stackTop + Math.max(0, i) * (win.chipH + win.effectiveGap) + win.chipH / 2
             }
 
             Item {
@@ -923,6 +924,7 @@ Scope {
 
             NoteCard {
                 id: full
+                win: win
                 note: ServiceNotes.find(win.fullShownId)
                 visible: win.fullShownId !== ""
                 opacity: 0
@@ -932,7 +934,6 @@ Scope {
                 width: scope.cardWidth
                 x: win.inwardX(width)
                 y: full.note ? win.clampY(win.centerY(full.note) - 44, height) : 0
-                maxHeight: win.height - 80
             }
         }
     }
