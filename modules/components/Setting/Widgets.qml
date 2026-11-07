@@ -418,22 +418,29 @@ Item {
 
                 StageDropdownRow {
                     visible: root.stacked
-                    icon: root.anchorAt === "bottom" ? "vertical_align_bottom" : root.anchorAt === "middle" ? "vertical_align_center" : "vertical_align_top"
+                    icon: root.anchorAt === "bottom" ? "vertical_align_bottom"
+                        : (root.anchorAt === "middle" || root.anchorAt === "center") ? "vertical_align_center"
+                        : root.anchorAt === "custom" ? "tune"
+                        : "vertical_align_top"
                     title: "Position"
-                    options: ["Top", "Middle", "Bottom"]
-                    current: root.anchorAt.charAt(0).toUpperCase() + root.anchorAt.slice(1)
+                    options: ["Top", "Center", "Bottom", "Custom"]
+                    current: root.anchorAt === "middle" || root.anchorAt === "center" ? "Center"
+                           : root.anchorAt.charAt(0).toUpperCase() + root.anchorAt.slice(1)
                     dropdownWidth: 160
                     onPicked: name => root.set("notesAnchor", name.toLowerCase())
                 }
 
                 StageSpinRow {
-                    visible: root.stacked && root.anchorAt !== "middle"
+                    visible: root.stacked && (root.anchorAt !== "middle" && root.anchorAt !== "center")
                     icon: "height"
-                    title: "Distance from the " + root.anchorAt
-                    subtitle: "From the screen " + root.anchorAt
+                    title: root.anchorAt === "custom" ? "Position along edge"
+                         : root.anchorAt === "bottom" ? "Distance above dock"
+                         : "Distance below top bar"
+                    subtitle: root.anchorAt === "custom" ? "From top of work area"
+                            : "From the " + (root.anchorAt === "bottom" ? "bottom edge or dock" : "top bar")
                     from: 0
                     to: 800
-                    step: 20
+                    step: 10
                     suffix: " px"
                     current: root.offset
                     onStepped: v => root.set("notesOffset", v)

@@ -51,11 +51,16 @@ Scope {
             readonly property real edgeW: 20
             readonly property real chipH: 46
             readonly property real stackH: win.ordered.length * win.chipH + Math.max(0, win.ordered.length - 1) * scope.gap
+            readonly property real safeTop: Math.max(12, (GlobalStates.editTopInset ?? 0) + 12)
+            readonly property real safeBottom: Math.max(12, (GlobalStates.editBottomInset ?? 0) + 12)
+            readonly property real usableHeight: Math.max(100, win.height - win.safeTop - win.safeBottom)
             readonly property real stackTop: {
-                const want = scope.anchorAt === "bottom" ? win.height - scope.offset - win.stackH
-                    : scope.anchorAt === "middle" ? (win.height - win.stackH) / 2
-                    : scope.offset
-                return Math.max(52, Math.min(win.height - 12 - win.stackH, want))
+                const maxTop = Math.max(win.safeTop, win.height - win.safeBottom - win.stackH)
+                const want = scope.anchorAt === "bottom" ? win.height - win.safeBottom - scope.offset - win.stackH
+                    : (scope.anchorAt === "middle" || scope.anchorAt === "center") ? win.safeTop + (win.usableHeight - win.stackH) / 2
+                    : (scope.anchorAt === "custom") ? win.safeTop + scope.offset
+                    : win.safeTop + scope.offset
+                return Math.max(win.safeTop, Math.min(maxTop, want))
             }
             property string peekId: ""
             property string hoverId: ""
@@ -95,7 +100,7 @@ Scope {
                 return win.onRight ? win.width - win.edgeW - 12 - w : win.edgeW + 12
             }
             function clampY(y, h) {
-                return Math.max(52, Math.min(win.height - h - 12, y))
+                return Math.max(win.safeTop, Math.min(win.height - win.safeBottom - h, y))
             }
             function centerY(n) {
                 if (!n)
@@ -109,8 +114,8 @@ Scope {
             Item {
                 id: chipBox
                 readonly property var ys: win.ordered.map(n => win.centerY(n))
-                readonly property real topY: win.ordered.length ? Math.min(...chipBox.ys) - 34 : win.height * 0.22 - 14
-                readonly property real bottomY: win.ordered.length ? Math.max(...chipBox.ys) + 60 : win.height * 0.22 + 34
+                readonly property real topY: win.ordered.length ? Math.min(...chipBox.ys) - 34 : win.stackTop - 14
+                readonly property real bottomY: win.ordered.length ? Math.max(...chipBox.ys) + 60 : win.stackTop + 34
                 x: win.edgeX(win.edgeW + 10)
                 y: chipBox.topY
                 width: win.edgeW + 10
@@ -257,25 +262,235 @@ Scope {
             }
 
             Rectangle {
+                id: addBtn
                 width: 24
                 height: 24
                 radius: 12
                 x: win.onRight ? win.width - 28 : 4
                 y: chipBox.bottomY - 28
-                visible: win.stripHover || addArea.containsMouse
-                color: addArea.containsMouse ? Colors.primary : Colors.surfaceContainerHigh
+                readonly property bool editActive: GlobalStates.widgetEditMode || GlobalStates.barEditMode
+                visible: win.stripHover || addArea.containsMouse || addBtn.editActive
+                color: (addArea.containsMouse || (addArea.dragging && addBtn.editActive)) ? Colors.primary : Colors.surfaceContainerHigh
+                border.width: addBtn.editActive ? 1.5 : 0
+                border.color: Colors.primary
+                Behavior on color { EffectsColorAnim { speed: "fast" } }
+
                 MaterialIconSymbol {
                     anchors.centerIn: parent
-                    content: "add"
+                    content: addBtn.editActive ? "open_with" : "add"
                     iconSize: 16
-                    customColor: addArea.containsMouse ? Colors.primaryText : Colors.surfaceVariantText
+                    customColor: (addArea.containsMouse || (addArea.dragging && addBtn.editActive)) ? Colors.primaryText : Colors.surfaceVariantText
                 }
+
                 MouseArea {
                     id: addArea
                     anchors.fill: parent
                     hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: ServiceNotes.openId = ServiceNotes.add(win.side)
+                    preventStealing: true
+                    cursorShape: addBtn.editActive ? Qt.SizeAllCursor : Qt.PointingHandCursor
+
+                    property real pressX: 0
+                    property real pressY: 0
+                    property bool dragging: false
+                    property string dragTip: ""
+
+                    onPressed: mouse => {
+                        pressX = mouse.x
+                        pressY = mouse.y
+                        dragging = false
+                    }
+
+                    onPositionChanged: mouse => {
+                        if (!pressed || !addBtn.editActive)
+                            return
+                        if (!dragging && Math.hypot(mouse.x - pressX, mouse.y - pressY) > 4)
+                            dragging = true
+                        if (dragging) {
+                            const p = mapToItem(win.contentItem, mouse.x, mouse.y)
+                            const curY = p.y
+                            const snapDist = 20
+                            const topSnap = win.safeTop + 16
+                            const midSnap = win.safeTop + win.usableHeight / 2
+                            const botSnap = win.height - win.safeBottom - 16
+
+                            let targetAnchor = "custom"
+                            let targetOffset = Math.round(curY - win.safeTop)
+                            let tip = ""
+
+                            if (Math.abs(curY - topSnap) < snapDist) {
+                                targetAnchor = "top"
+                                targetOffset = 16
+                                tip = "Snapped below top bar"
+                            } else if (Math.abs(curY - midSnap) < snapDist) {
+                                targetAnchor = "center"
+                                targetOffset = 0
+                                tip = "Centered between bars"
+                            } else if (Math.abs(curY - botSnap) < snapDist) {
+                                targetAnchor = "bottom"
+                                targetOffset = 16
+                                tip = "Snapped above dock"
+                            } else if (curY < midSnap - 40) {
+                                targetAnchor = "top"
+                                targetOffset = Math.max(0, Math.round(curY - win.safeTop))
+                                tip = targetOffset + " px below top bar"
+                            } else if (curY > midSnap + 40) {
+                                targetAnchor = "bottom"
+                                targetOffset = Math.max(0, Math.round(win.height - win.safeBottom - curY))
+                                tip = targetOffset + " px above dock"
+                            } else {
+                                targetAnchor = "custom"
+                                targetOffset = Math.max(0, Math.min(Math.round(win.usableHeight), Math.round(curY - win.safeTop)))
+                                tip = "Position " + targetOffset + " px"
+                            }
+
+                            dragTip = tip
+                            SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                                notesAnchor: targetAnchor,
+                                notesOffset: targetOffset
+                            })
+
+                            const winLeft = win.onRight ? (win.screen?.width ?? 1920) - win.width : 0
+                            const gx = winLeft + p.x
+                            const half = (win.screen?.width ?? 1920) / 2
+                            const targetSide = gx < half ? "L" : "R"
+                            if (targetSide !== win.side) {
+                                SettingsConfig.general = Object.assign({}, SettingsConfig.general, {
+                                    notesSide: targetSide
+                                })
+                                ServiceNotes.moveAll(targetSide)
+                            }
+                        }
+                    }
+
+                    onReleased: {
+                        if (dragging) {
+                            dragging = false
+                            dragTip = ""
+                            return
+                        }
+                        if (addBtn.editActive)
+                            return
+                        ServiceNotes.openId = ServiceNotes.add(win.side)
+                    }
+                }
+            }
+
+            readonly property bool showCalipers: (GlobalStates.showGaps || addArea.dragging)
+                && (GlobalStates.widgetEditMode || GlobalStates.barEditMode)
+                && !EditSession.peek
+
+            readonly property real visualTop: win.ordered.length > 0
+                ? (win.centerY(win.ordered[0]) - win.chipH / 2)
+                : addBtn.y
+            readonly property real visualBottom: addBtn.y + addBtn.height
+
+            readonly property real caliperX: Math.round(addBtn.x + addBtn.width / 2)
+            readonly property real topGapVal: Math.max(0, Math.round(win.visualTop - win.safeTop))
+            readonly property real botGapVal: Math.max(0, Math.round(win.height - win.safeBottom - win.visualBottom))
+
+            // Top caliper (distance from top bar to notes)
+            Item {
+                visible: win.showCalipers && win.topGapVal >= 4
+                z: 210
+                anchors.fill: parent
+
+                Rectangle {
+                    x: win.caliperX - 1
+                    y: win.safeTop
+                    width: 2
+                    height: Math.max(0, win.visualTop - win.safeTop)
+                    radius: 1
+                    color: Colors.tertiary
+                }
+
+                Rectangle {
+                    x: win.caliperX - 12
+                    y: win.safeTop - 1
+                    width: 24
+                    height: 2
+                    radius: 1
+                    color: Colors.tertiary
+                }
+
+                Rectangle {
+                    x: win.caliperX - 12
+                    y: win.visualTop - 1
+                    width: 24
+                    height: 2
+                    radius: 1
+                    color: Colors.tertiary
+                }
+
+                Rectangle {
+                    readonly property real midY: (win.safeTop + win.visualTop) / 2
+                    x: win.onRight ? win.caliperX - width - 10 : win.caliperX + 10
+                    y: midY - height / 2
+                    width: topLabel.implicitWidth + 14
+                    height: 20
+                    radius: 10
+                    color: Colors.tertiary
+
+                    CustomText {
+                        id: topLabel
+                        anchors.centerIn: parent
+                        content: win.topGapVal + ""
+                        size: 11
+                        weight: 600
+                        customColor: Colors.tertiaryText
+                    }
+                }
+            }
+
+            // Bottom caliper (distance from notes to dock)
+            Item {
+                visible: win.showCalipers && win.botGapVal >= 4
+                z: 210
+                anchors.fill: parent
+
+                Rectangle {
+                    x: win.caliperX - 1
+                    y: win.visualBottom
+                    width: 2
+                    height: Math.max(0, win.height - win.safeBottom - win.visualBottom)
+                    radius: 1
+                    color: Colors.tertiary
+                }
+
+                Rectangle {
+                    x: win.caliperX - 12
+                    y: win.visualBottom - 1
+                    width: 24
+                    height: 2
+                    radius: 1
+                    color: Colors.tertiary
+                }
+
+                Rectangle {
+                    x: win.caliperX - 12
+                    y: win.height - win.safeBottom - 1
+                    width: 24
+                    height: 2
+                    radius: 1
+                    color: Colors.tertiary
+                }
+
+                Rectangle {
+                    readonly property real midY: (win.visualBottom + win.height - win.safeBottom) / 2
+                    x: win.onRight ? win.caliperX - width - 10 : win.caliperX + 10
+                    y: midY - height / 2
+                    width: botLabel.implicitWidth + 14
+                    height: 20
+                    radius: 10
+                    color: Colors.tertiary
+
+                    CustomText {
+                        id: botLabel
+                        anchors.centerIn: parent
+                        content: win.botGapVal + ""
+                        size: 11
+                        weight: 600
+                        customColor: Colors.tertiaryText
+                    }
                 }
             }
 

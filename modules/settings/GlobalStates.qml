@@ -64,6 +64,7 @@ Singleton{
     property string editEdgeScreen: ""
     property real editTopInset: 0
     property real editBottomInset: 0
+    property bool showGaps: false
 
     function openEdit(layer) {
         if (layer)
@@ -72,6 +73,7 @@ Singleton{
     }
 
     function closeEdit() {
+        root.showGaps = false
         root.editMode = false
     }
 
