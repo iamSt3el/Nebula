@@ -1091,9 +1091,10 @@ Item {
                 : bridge + (top + surface.barH + (b.lineUp ?? 0) - bridge) * surface.blockP(b)
             const pr = Math.min(b.pillRadius, half)
             const sc = b.screenCorners
+            const blockRad = b.gaps && typeof b.gaps.radius === "number" && b.gaps.radius >= 0 ? Math.min(b.gaps.radius, half) : steppedR
             items.push({ b: b, x: surface.blockX(b), w: b.width, top: b.isPill ? top : top - surface.disX, bot: bot,
-                         rad: !b.isPill ? steppedR
-                              : sc && sc.custom ? { tl: Math.min(sc.tl, half), tr: Math.min(sc.tr, half), bl: Math.min(sc.bl, half), br: Math.min(sc.br, half) }
+                         rad: sc && sc.custom ? { tl: Math.min(sc.tl, half), tr: Math.min(sc.tr, half), bl: Math.min(sc.bl, half), br: Math.min(sc.br, half) }
+                              : !b.isPill ? blockRad
                               : pr })
         }
         const fill = surface.gaps ? Math.max(0, Math.min(1, surface.fillShown)) : 0
