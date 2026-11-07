@@ -99,15 +99,18 @@ FocusScope {
     }
 
     ListView {
+        id: listView
         anchors.left: parent.left
+        anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        width: parent.width
         height: 30
         orientation: Qt.Horizontal
         spacing: 5
-        clip: false
+        clip: true
         interactive: false
         model: shapesModel
+
+        onCountChanged: Qt.callLater(positionViewAtEnd)
 
         delegate: Item {
             width: 30
@@ -136,23 +139,27 @@ FocusScope {
                 }
             }
         }
-    }
 
-    Rectangle {
-        anchors.left: parent.left
-        anchors.leftMargin: shapesModel.count * 35
-        anchors.verticalCenter: parent.verticalCenter
-        width: 2
-        height: 30
-        radius: 1
-        color: root.accentColor
-        visible: textInput.activeFocus
+        footer: Item {
+            width: 8
+            height: 30
 
-        SequentialAnimation on opacity {
-            running: textInput.activeFocus
-            loops: Animation.Infinite
-            NumberAnimation { to: 0; duration: 500; easing.type: Easing.InOutSine }
-            NumberAnimation { to: 1; duration: 500; easing.type: Easing.InOutSine }
+            Rectangle {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                width: 2
+                height: 24
+                radius: 1
+                color: root.accentColor
+                visible: textInput.activeFocus
+
+                SequentialAnimation on opacity {
+                    running: textInput.activeFocus
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0; duration: 500; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1; duration: 500; easing.type: Easing.InOutSine }
+                }
+            }
         }
     }
 }
