@@ -10,7 +10,8 @@ Item {
     id: card
 
     property var note: null
-    property real maxHeight: 600
+    property var win: null
+    property real maxHeight: Math.min(600, Math.max(200, card.win ? card.win.usableHeight - 24 : 600))
     property string shownId: ""
     property real contentOpacity: 1
     readonly property color paper: card.note ? (ServiceNotes.colors[card.note.c] ?? ServiceNotes.colors.butter) : "transparent"

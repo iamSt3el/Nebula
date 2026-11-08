@@ -442,12 +442,17 @@ PanelWindow{
             else GlobalStates.closeEdit()
         }
         Keys.onReleased: event => {
-            if (event.key === Qt.Key_Space && !event.isAutoRepeat) {
+            if (event.key === Qt.Key_Alt && !event.isAutoRepeat) {
+                GlobalStates.showGaps = false
+            } else if (event.key === Qt.Key_Space && !event.isAutoRepeat) {
                 EditSession.peek = false
                 event.accepted = true
             }
         }
         Keys.onPressed: event => {
+            if (event.key === Qt.Key_Alt && !event.isAutoRepeat) {
+                GlobalStates.showGaps = true
+            }
             const ctrl = event.modifiers & Qt.ControlModifier
             const alt = event.modifiers & Qt.AltModifier
             const shift = event.modifiers & Qt.ShiftModifier
