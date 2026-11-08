@@ -62,6 +62,8 @@ GridView {
             radius: 16
             color: cell.active ? Colors.primaryContainer
                  : area.containsMouse ? Qt.alpha(Colors.primary, 0.08) : "transparent"
+            border.width: cell.active ? 2 : 0
+            border.color: Colors.primary
             Behavior on color { ColorAnimation { duration: 100 } }
         }
 

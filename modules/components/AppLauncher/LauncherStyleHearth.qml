@@ -250,6 +250,8 @@ Item {
                     radius: 22
                     color: card.active ? Colors.primaryContainer
                         : cardArea.containsMouse ? Colors.surfaceContainerHighest : Colors.surfaceContainerHigh
+                    border.width: card.active ? 2 : 0
+                    border.color: Colors.primary
                     Behavior on color { EffectsColorAnim {} }
 
                     ColumnLayout {

@@ -675,7 +675,7 @@ Item {
                                 topRightRadius: entry.morphing ? root.lerp(entry.fromR[1], entry.tgtR[1], entry.mp) : entry.tgtR[1]
                                 bottomRightRadius: entry.morphing ? root.lerp(entry.fromR[2], entry.tgtR[2], entry.mp) : entry.tgtR[2]
                                 bottomLeftRadius: entry.morphing ? root.lerp(entry.fromR[3], entry.tgtR[3], entry.mp) : entry.tgtR[3]
-                                border.width: entry.isTop && entry.active && root.chipIndex < 0 && !entry.morphing ? 2 : 0
+                                border.width: entry.active && root.chipIndex < 0 && !entry.morphing ? 2 : 0
                                 border.color: Colors.primary
                                 clip: entry.morphing
                                 Behavior on color {
