@@ -76,8 +76,12 @@ Item {
         focus: true
 
         Keys.onPressed: event => {
-            if (event.key === Qt.Key_Escape && (root.sliding || root.firmwareAsk)) {
-                root.resetAll()
+            if (event.key === Qt.Key_Escape) {
+                if (root.sliding || root.firmwareAsk) {
+                    root.resetAll()
+                } else {
+                    root.closeRequested()
+                }
                 event.accepted = true
                 return
             }
