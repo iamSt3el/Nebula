@@ -17,7 +17,7 @@ ColumnLayout {
     property bool moveMode: false
     property var draggingToplevel: null
 
-    property rect screenRect: Qt.rect(0, 0, 1920, 1080)
+    property rect screenRect: Quickshell.screens[0] ? Qt.rect(0, 0, Quickshell.screens[0].width, Quickshell.screens[0].height) : Qt.rect(0, 0, 1920, 1080)
     property bool hideTiles: false
 
     function tileRectFor(tl, sr, target) {

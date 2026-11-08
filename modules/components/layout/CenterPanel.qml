@@ -62,8 +62,8 @@ Scope {
             readonly property int margin: 40
 
             screen: root.targetScreen
-            implicitWidth: Math.min(root.panelWidth, (win.screen ? win.screen.width : 1920) - 2 * win.margin) + 2 * win.margin
-            implicitHeight: Math.min(root.panelHeight, (win.screen ? win.screen.height : 1080) - 2 * win.margin) + 2 * win.margin
+            implicitWidth: Math.min(root.panelWidth, (win.screen ? win.screen.width : (Quickshell.screens[0]?.width ?? 1920)) - 2 * win.margin) + 2 * win.margin
+            implicitHeight: Math.min(root.panelHeight, (win.screen ? win.screen.height : (Quickshell.screens[0]?.height ?? 1080)) - 2 * win.margin) + 2 * win.margin
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Top

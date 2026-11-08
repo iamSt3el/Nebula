@@ -110,7 +110,7 @@ Scope {
 
             function screenRectFor(id) {
                 const name = ServiceWorkspaces.getWorkspace(id)?.monitor?.name ?? ""
-                const s = Quickshell.screens.find(sc => sc.name === name) ?? win.screen
+                const s = Quickshell.screens.find(sc => sc.name === name) ?? win.screen ?? Quickshell.screens[0]
                 if (!s) return Qt.rect(0, 0, 1920, 1080)
                 return Qt.rect(s.x, s.y, s.width, s.height)
             }
