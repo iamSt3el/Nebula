@@ -18,6 +18,7 @@ ColumnLayout {
     id: root
 
     property var context: null
+    readonly property Item fieldBox: root._split ? splitField : classicField
     readonly property Item input: classicField.item ? classicField.item.input
         : splitField.item ? splitField.item.input : null
     property real fieldWidth: 460

@@ -197,8 +197,10 @@ Item {
         if (!n)
             return
         const d = (n.notification?.actions ?? []).find(a => a.identifier === "default")
-        if (d)
+        if (d) {
+            if (Features.genie) ServiceGenie.armNotif(root, n)
             d.invoke()
+        }
         root.dismiss(n)
     }
 
@@ -500,6 +502,7 @@ Item {
                             onClicked: {
                                 const a = actBtn.modelData
                                 const n = root.lead
+                                if (Features.genie) ServiceGenie.armNotif(actBtn, n)
                                 a.invoke()
                                 root.dismiss(n)
                             }

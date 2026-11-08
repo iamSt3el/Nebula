@@ -147,6 +147,8 @@ Rectangle {
         }
     }
 
+    HeroTag { key: "battery"; item: battRow; owner: root }
+
     MouseArea {
         id: hov
         anchors.fill: parent

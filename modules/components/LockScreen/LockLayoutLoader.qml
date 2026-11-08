@@ -26,6 +26,7 @@ Loader {
         case "tessera":  return cTessera
         case "window":   return cWindow
         case "snapshot": return cSnapshot
+        case "ring":     return cRing
         default:         return cVeil
         }
     }
@@ -35,5 +36,6 @@ Loader {
     Component { id: cDeck;     LockLayoutDeck     { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg } }
     Component { id: cTessera;  LockLayoutTessera  { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg } }
     Component { id: cWindow;   LockLayoutWindow   { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg; handoff: root.handoff; handoffReveal: root.handoffReveal; handoffDate: root.handoffDate } }
+    Component { id: cRing;     LockLayoutRing     { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg; handoff: root.handoff; handoffReveal: root.handoffReveal; handoffDate: root.handoffDate } }
     Component { id: cSnapshot; LockLayoutSnapshot { context: root.context; preview: root.preview; exiting: root.exiting; greeter: root.greeter; cfg: root.cfg; sources: root.sources; desk: root.desk } }
 }

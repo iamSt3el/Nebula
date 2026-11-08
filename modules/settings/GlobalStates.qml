@@ -38,6 +38,31 @@ Singleton{
         root.dockIconsVersion++
     }
 
+    property var wsItems: []
+    property var heroTags: []
+
+    function registerHero(tag) {
+        if (root.heroTags.indexOf(tag) < 0)
+            root.heroTags.push(tag)
+    }
+
+    function unregisterHero(tag) {
+        const i = root.heroTags.indexOf(tag)
+        if (i >= 0)
+            root.heroTags.splice(i, 1)
+    }
+
+    function registerWsItem(item) {
+        if (root.wsItems.indexOf(item) < 0)
+            root.wsItems = root.wsItems.concat([item])
+        root.dockIconsVersion++
+    }
+
+    function unregisterWsItem(item) {
+        root.wsItems = root.wsItems.filter(i => i !== item)
+        root.dockIconsVersion++
+    }
+
     function dockIconIn(key, near) {
         const list = root.dockIconItems[key] ?? []
         const win = near ? near.Window.window : null

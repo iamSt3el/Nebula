@@ -186,7 +186,10 @@ Item {
                 width: parent.width - 32
                 spacing: 16
 
+                HeroTag { key: "battery"; item: batteryHero; target: true }
+
                 LiquidShape {
+                    id: batteryHero
                     Layout.preferredWidth: 112
                     Layout.preferredHeight: 112
                     shape: "cookie12"

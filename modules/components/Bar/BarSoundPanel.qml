@@ -100,7 +100,10 @@ Item {
                             }
                         }
 
+                        HeroTag { key: "volume"; item: volHero; target: true }
+
                         M3IconButton {
+                            id: volHero
                             Layout.preferredWidth: 30
                             Layout.preferredHeight: 30
                             icon: ServicePipewire.muted ? "volume_off" : "volume_up"

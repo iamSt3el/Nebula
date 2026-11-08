@@ -42,6 +42,8 @@ Item {
                 strokeTrackColor: Colors.surfaceContainerHighest
             }
 
+            HeroTag { key: "art"; item: art; target: true }
+
             MusicShapeArt {
                 id: art
                 anchors.centerIn: parent
@@ -65,7 +67,10 @@ Item {
             Layout.fillHeight: true
             spacing: 0
 
+            HeroTag { key: "title"; item: shapeTitle; target: true }
+
             Text {
+                id: shapeTitle
                 Layout.fillWidth: true
                 text: ServiceMusic.activeTrack?.title ?? ""
                 font.family: root.displayFamily

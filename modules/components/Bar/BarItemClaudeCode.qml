@@ -40,6 +40,8 @@ Rectangle {
     color: root.plateless ? Qt.alpha(Colors.primaryContainer, 0) : hov.containsMouse ? Colors.primaryContainer : Qt.alpha(Colors.primaryContainer, 0)
     Behavior on color { ColorAnimation { duration: 150 } }
 
+    HeroTag { key: "claude"; item: face; owner: root }
+
     Grid {
         id: face
         anchors.centerIn: parent

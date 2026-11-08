@@ -14,6 +14,7 @@ Item {
 
     readonly property string showMode: BarLayout.opt(root.itemId, "show") ?? "all"
     readonly property bool dimmed: BarLayout.opt(root.itemId, "dim") === true
+    readonly property bool windowList: BarLayout.opt(root.itemId, "windowList") !== false
 
     readonly property var model: {
         const all = ServiceApps.dockModel
@@ -40,6 +41,23 @@ Item {
         x: root.gripW + i * root.stride,
         w: root.cell
     }))
+
+    function genieClick(dockItem) {
+        const tls = Array.from(dockItem.modelData.toplevels)
+        const shown = tls.filter(t => !ServiceGenie.isMinimized(t))
+        const hidden = tls.filter(t => ServiceGenie.isMinimized(t))
+        if (shown.length > 0) {
+            const focused = shown.find(t => t.activated)
+            if (focused && ((SettingsConfig.general ?? {}).genieClickMinimize ?? true))
+                ServiceGenie.minimize(focused)
+            else
+                shown[0].activate()
+        } else if (hidden.length > 0) {
+            ServiceGenie.restore(hidden[hidden.length - 1])
+        } else {
+            ServiceGenie.launch(dockItem.modelData.appId, dockItem)
+        }
+    }
 
     readonly property QtObject editor: root.host && root.host.editor ? root.host.editor : null
     readonly property bool appDrag: !!root.editor && root.editor.mode === "app"
@@ -102,6 +120,8 @@ Item {
 
             readonly property bool isRunning: dockItem.modelData.toplevels.length > 0
             readonly property bool isActive: dockItem.modelData.toplevels.some(t => t.activated)
+            readonly property bool allMinimized: Features.genie && dockItem.isRunning
+                && dockItem.modelData.toplevels.every(t => ServiceGenie.isMinimized(t))
             readonly property int winCount: Math.min(dockItem.modelData.toplevels.length, 3)
             readonly property bool pinned: !!dockItem.modelData.pinned
             readonly property bool offer: root.editing && !dockItem.pinned
@@ -206,7 +226,7 @@ Item {
                 width: root.vertical ? 4 : len
                 height: root.vertical ? len : 4
                 radius: 2
-                color: dockItem.isActive ? Colors.primary : Qt.alpha(Colors.primary, 0.45)
+                color: dockItem.isActive ? Colors.primary : Qt.alpha(Colors.primary, dockItem.allMinimized ? 0.2 : 0.45)
 
                 Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                 Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
@@ -220,12 +240,14 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 hoverEnabled: true
 
-                onEntered: if (root.host && root.host.appEntered) root.host.appEntered(dockItem.modelData, dockItem)
+                onEntered: if (root.windowList && root.host && root.host.appEntered) root.host.appEntered(dockItem.modelData, dockItem)
                 onExited: if (root.host && root.host.appExited) root.host.appExited()
 
                 onClicked: mouse => {
                     if (mouse.button === Qt.LeftButton) {
-                        if (dockItem.modelData.toplevels.length > 0)
+                        if (Features.genie)
+                            root.genieClick(dockItem)
+                        else if (dockItem.modelData.toplevels.length > 0)
                             dockItem.modelData.toplevels[0].activate()
                         else
                             ServiceApps.launch(dockItem.modelData.appId)

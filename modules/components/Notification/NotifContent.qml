@@ -27,7 +27,10 @@ ColumnLayout {
     }
 
     function openDefault() {
-        if (root.defaultAction) root.defaultAction.invoke()
+        if (root.defaultAction) {
+            if (Features.genie) ServiceGenie.armNotif(root, root.notif)
+            root.defaultAction.invoke()
+        }
         root.dismiss()
     }
 
@@ -205,6 +208,7 @@ ColumnLayout {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         const n = root.notif
+                        if (Features.genie) ServiceGenie.armNotif(root, n)
                         act.modelData.invoke()
                         if (n) n.popup = false
                     }

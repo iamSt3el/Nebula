@@ -27,14 +27,24 @@ def fetch(url):
             os.makedirs(CACHE, exist_ok=True)
             with open(path, "w") as f:
                 f.write(body)
-            return body
+            return body, "ok"
+        failure = "notCalendar"
     except Exception:
-        pass
+        failure = "unreachable"
     try:
         with open(path) as f:
-            return f.read()
+            return f.read(), "cached"
     except OSError:
-        return ""
+        return "", failure
+
+
+def calendar_name(text):
+    for line in unfold(text):
+        if line.startswith("X-WR-CALNAME:"):
+            return line.split(":", 1)[1].replace("\\,", ",").replace("\\;", ";").strip()
+        if line == "BEGIN:VEVENT":
+            break
+    return ""
 
 
 def unfold(text):
@@ -169,8 +179,11 @@ def main():
     lo = today - timedelta(days=PAST)
     hi = today + timedelta(days=AHEAD)
     out = []
+    feeds = []
     for ci, url in enumerate(urls):
-        for ev in events_of(fetch(url), local):
+        text, status = fetch(url)
+        before = len(out)
+        for ev in events_of(text, local):
             start = ev["start"]
             end = ev.get("end")
             if end is None:
@@ -178,6 +191,8 @@ def main():
             dur = end - start
             for s in occurrences(ev, lo, hi):
                 e = s + dur
+                if as_date(e) < lo or as_date(s) > hi:
+                    continue
                 if ev["allDay"]:
                     out.append({"title": ev.get("title", "(no title)"), "allDay": True, "calendar": ci,
                                 "start": s.isoformat(), "end": e.isoformat(),
@@ -186,10 +201,11 @@ def main():
                     out.append({"title": ev.get("title", "(no title)"), "allDay": False, "calendar": ci,
                                 "start": int(s.timestamp() * 1000), "end": int(e.timestamp() * 1000),
                                 "location": ev.get("location", "")})
+        feeds.append({"url": url, "name": calendar_name(text), "status": status, "count": len(out) - before})
     def key(e):
         return e["start"] if not e["allDay"] else int(datetime.fromisoformat(e["start"]).timestamp() * 1000)
     out.sort(key=key)
-    print(json.dumps(out))
+    print(json.dumps({"events": out, "calendars": feeds}))
 
 
 if __name__ == "__main__":

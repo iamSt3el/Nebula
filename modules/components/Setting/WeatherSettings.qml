@@ -75,7 +75,42 @@ Item {
     readonly property var clips: root.captures.filter(c => c.kind === "video")
     readonly property var shotTiles: root.shots.length > 4 ? root.shots.slice(0, 3) : root.shots.slice(0, 4)
 
+    readonly property var feeds: Features.events ? ServiceEvents.feeds : []
+    readonly property int feedsOn: root.feeds.filter(f => f.on).length
+    property string editUrl: ""
+    readonly property var editFeed: root.feeds.find(f => f.url === root.editUrl) ?? null
+    property string addError: ""
+    property string armedRemove: ""
+
+    Timer {
+        id: disarmRemove
+        interval: 3000
+        onTriggered: root.armedRemove = ""
+    }
+
+    function feedStatus(f) {
+        if (!f)
+            return ""
+        if (!f.on)
+            return "Hidden"
+        const i = ServiceEvents.info[f.url]
+        if (!i)
+            return ServiceEvents.loading ? "Loading…" : "Not loaded yet"
+        switch (i.status) {
+        case "ok":
+            return i.count === 1 ? "1 event" : i.count + " events"
+        case "cached":
+            return "Offline · showing the last copy"
+        case "notCalendar":
+            return "This link isn't an iCal calendar"
+        default:
+            return "Couldn't reach this link"
+        }
+    }
+
     StageView {
+        id: stages
+
         StagePage {
             stageId: "front"
 
@@ -328,6 +363,16 @@ Item {
             }
 
             StageNavRow {
+                visible: Features.events
+                tag: "Calendar"; tagIcon: "event"; tagColor: Colors.surfaceContainerHighest; tagInk: Colors.primary; tagWidth: 118
+                title: "Online calendars"
+                subtitle: "Google, Outlook, iCloud or any iCal link"
+                value: root.feeds.length === 0 ? "None"
+                    : root.feeds.length === 1 ? "1 calendar" : root.feeds.length + " calendars"
+                target: "calendars"
+            }
+
+            StageNavRow {
                 tag: "Screenshots"; tagIcon: "screenshot_region"; tagColor: Colors.primaryContainer; tagInk: Colors.primaryContainerText; tagWidth: 118
                 title: "Save to"
                 subtitle: "Area, window and full screen"
@@ -405,6 +450,158 @@ Item {
                 CustomToogle {
                     isToggleOn: root.shot.soundEnabled ?? false
                     onToggled: state => root.patchShot({ soundEnabled: state })
+                }
+            }
+        }
+
+        StageLazy {
+            stageId: "calendars"
+
+            StagePage {
+                stageId: "calendars"
+                title: "Online calendars"
+
+                Component.onCompleted: if (Features.events) ServiceEvents.retain()
+                Component.onDestruction: if (Features.events) ServiceEvents.release()
+
+                StageFieldRow {
+                    id: addField
+
+                    function add() {
+                        const err = ServiceEvents.addFeed(addField.typed)
+                        root.addError = err
+                        if (err === "")
+                            addField.clear()
+                    }
+
+                    icon: "add_link"
+                    title: "Add a calendar"
+                    subtitle: root.addError !== "" ? root.addError : "Paste its iCal or webcal:// link"
+                    fieldIcon: "link"
+                    fieldWidth: 240
+                    placeholder: "https://…/basic.ics"
+                    onTypedChanged: root.addError = ""
+                    onAccepted: addField.add()
+
+                    M3Button {
+                        label: "Add"
+                        enabled: addField.typed.trim() !== ""
+                        onClicked: addField.add()
+                    }
+                }
+
+                StageHeading {
+                    text: "Your calendars"
+                    aside: root.feeds.length === 0 ? "" : root.feedsOn + " of " + root.feeds.length + " shown"
+
+                    M3IconButton {
+                        visible: root.feeds.length > 0
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        icon: "refresh"
+                        iconSize: 18
+                        tip: ServiceEvents.loading ? "Refreshing" : "Refresh now"
+                        enabled: !ServiceEvents.loading
+                        onClicked: ServiceEvents.refresh()
+                    }
+                }
+
+                Repeater {
+                    model: root.feeds
+
+                    StageRow {
+                        id: feedRow
+
+                        required property var modelData
+
+                        icon: feedRow.modelData.on ? "event" : "event_busy"
+                        title: ServiceEvents.nameOf(feedRow.modelData)
+                        subtitle: root.feedStatus(feedRow.modelData)
+                        target: "calendar"
+                        onClicked: root.editUrl = feedRow.modelData.url
+
+                        CustomToogle {
+                            isToggleOn: feedRow.modelData.on
+                            onToggled: state => ServiceEvents.setFeed(feedRow.modelData.url, { on: state })
+                        }
+                    }
+                }
+
+                StageRow {
+                    visible: root.feeds.length === 0
+                    icon: "calendar_month"
+                    title: "No calendars yet"
+                    subtitle: "Add one above and its events show in the calendar panel and dashboard"
+                }
+
+                StageHeading { text: "Getting the link" }
+
+                StageNote {
+                    content: "Google: Settings → your calendar → Integrate calendar → Secret address in iCal format.\n"
+                        + "Outlook: Settings → Calendar → Shared calendars → Publish a calendar → ICS.\n"
+                        + "iCloud: share the calendar as a Public Calendar and copy its webcal:// link.\n\n"
+                        + "Keep the link private, anyone who has it can read the calendar. Events refresh every 15 minutes "
+                        + "and show in the Day sheet, Weeks and Shapes calendar panels and on the dashboard."
+                }
+            }
+        }
+
+        StageLazy {
+            stageId: "calendar"
+
+            StagePage {
+                stageId: "calendar"
+                title: root.editFeed ? ServiceEvents.nameOf(root.editFeed) : "Calendar"
+
+                StageFieldRow {
+                    icon: "edit"
+                    title: "Name"
+                    subtitle: "Leave empty to use the calendar's own name"
+                    text: root.editFeed?.name ?? ""
+                    placeholder: root.editFeed ? (ServiceEvents.info[root.editUrl]?.name || ServiceEvents.hostOf(root.editUrl)) : ""
+                    allowEmpty: true
+                    onSubmitted: t => ServiceEvents.setFeed(root.editUrl, { name: t })
+                }
+
+                StageSwitchRow {
+                    icon: "visibility"
+                    title: "Show events"
+                    subtitle: "In the calendar panel and on the dashboard"
+                    checked: root.editFeed?.on ?? false
+                    onToggled: on => ServiceEvents.setFeed(root.editUrl, { on: on })
+                }
+
+                StageGap {}
+
+                StageInfoRow {
+                    title: "Status"
+                    value: root.feedStatus(root.editFeed)
+                }
+
+                StageInfoRow {
+                    title: "Link"
+                    value: root.editUrl
+                }
+
+                StageGap {}
+
+                StageRow {
+                    icon: "delete"
+                    danger: true
+                    clickable: true
+                    title: root.armedRemove === root.editUrl ? "Click again to remove" : "Remove this calendar"
+                    subtitle: "You'll need the link to add it back"
+                    onClicked: {
+                        const url = root.editUrl
+                        if (root.armedRemove !== url) {
+                            root.armedRemove = url
+                            disarmRemove.restart()
+                            return
+                        }
+                        root.armedRemove = ""
+                        stages.back()
+                        ServiceEvents.removeFeed(url)
+                    }
                 }
             }
         }

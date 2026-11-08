@@ -57,6 +57,8 @@ Item {
         color: root.plateless || root.cookie ? Qt.alpha(root.plateColor, 0) : root.plateColor
         Behavior on color { ColorAnimation { duration: 150 } }
 
+        HeroTag { key: "volume"; item: volRow; owner: root }
+
         GridLayout {
             id: volRow
             anchors.centerIn: parent

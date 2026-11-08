@@ -1,5 +1,6 @@
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import QtQuick
 import qs.modules.settings
 import qs.modules.customComponents
@@ -72,5 +73,12 @@ Scope {
     GlobalShortcut {
         name: "settingOpen"
         onPressed: GlobalStates.settingsOpen = !GlobalStates.settingsOpen
+    }
+
+    IpcHandler {
+        target: "settings"
+        function open(): void { GlobalStates.settingsOpen = true }
+        function close(): void { GlobalStates.settingsOpen = false }
+        function toggle(): void { GlobalStates.settingsOpen = !GlobalStates.settingsOpen }
     }
 }

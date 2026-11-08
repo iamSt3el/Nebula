@@ -33,7 +33,10 @@ Item {
         spacing: 2
         visible: root.hasTrack
 
+        HeroTag { key: "title"; item: dialTitle; target: true }
+
         CustomText {
+            id: dialTitle
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
             content: ServiceMusic.activeTrack?.title ?? ""
@@ -135,7 +138,10 @@ Item {
             Behavior on width { SpatialAnim { speed: "fast" } }
         }
 
+        HeroTag { key: "art"; item: dialArt; target: true }
+
         MusicShapeArt {
+            id: dialArt
             anchors.centerIn: parent
             width: 208
             height: 208

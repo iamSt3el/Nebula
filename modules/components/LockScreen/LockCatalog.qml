@@ -11,6 +11,7 @@ QtObject {
         { value: "deck",     label: "Deck",     role: "Music",      blurb: "Album art in a cookie with the progress on its edge",  backdrop: "deck" },
         { value: "tessera",  label: "Tessera",  role: "Tiles",      blurb: "A mosaic of Material tone tiles",                      backdrop: "tessera" },
         { value: "window",   label: "Window",   role: "Shape",      blurb: "Your wallpaper gathers into a Material cookie",        backdrop: "window", deskBlur: false, clear: true, handoff: true, flight: "glide", flyDelay: 100, flyIn: 900, flyOut: 700, handBack: 0, clearBack: 440, deskFade: 700, deskBack: 0 },
+        { value: "ring",     label: "Day ring", role: "Time",       blurb: "Your whole day on a 24-hour ring that closes in from the border", backdrop: "ring", deskBlur: false, clear: true, handoff: true, flight: "glide", flyDelay: 240, flyIn: 900, flyOut: 700, handBack: 0, clearBack: 440, deskFade: 900, deskBack: 0 },
         { value: "snapshot", label: "Snapshot", role: "Desktop",    blurb: "Your desktop shrinks into a card of where you left off", backdrop: "carry", carry: true, deskBlur: false, deskFade: 360, deskBack: 560 }
     ]
 

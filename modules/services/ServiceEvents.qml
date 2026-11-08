@@ -11,7 +11,7 @@ Singleton {
 
     readonly property string cli: Quickshell.shellDir + "/bin/nebula"
 
-    readonly property var urls: {
+    readonly property var legacyUrls: {
         const opts = SettingsConfig.dashboard?.options ?? {}
         const seen = []
         for (const k in opts) {
@@ -19,16 +19,84 @@ Singleton {
             if (typeof raw !== "string")
                 continue
             for (const u of raw.split(/[\s,]+/))
-                if (/^(https?|webcal):\/\//.test(u) && seen.indexOf(u) < 0)
+                if (root.isUrl(u) && seen.indexOf(u) < 0)
                     seen.push(u)
         }
         return seen
     }
 
+    readonly property var feeds: {
+        const saved = SettingsConfig.calendars?.feeds
+        const out = (saved && typeof saved.length === "number" ? Array.from(saved) : [])
+            .filter(f => f && root.isUrl(f.url))
+            .map(f => ({ url: f.url, name: f.name ?? "", on: f.on !== false }))
+        for (const u of root.legacyUrls)
+            if (!out.some(f => f.url === u))
+                out.push({ url: u, name: "", on: true })
+        return out
+    }
+
+    readonly property var urls: root.feeds.filter(f => f.on).map(f => f.url)
+
+    property var info: ({})
     property var events: []
     property bool loading: false
+    property bool pending: false
     property int _users: 0
     property var now: new Date()
+
+    function isUrl(u) {
+        return typeof u === "string" && /^(https?|webcal):\/\/\S+$/i.test(u)
+    }
+
+    function hostOf(url) {
+        const m = /^[a-z]+:\/\/([^\/?#]+)/i.exec(url)
+        return m ? m[1].replace(/^www\./, "") : url
+    }
+
+    function nameOf(feed) {
+        if (!feed)
+            return ""
+        if (feed.name)
+            return feed.name
+        const n = root.info[feed.url]?.name ?? ""
+        return n !== "" ? n : root.hostOf(feed.url)
+    }
+
+    function saveFeeds(list) {
+        SettingsConfig.calendars = Object.assign({}, SettingsConfig.calendars, {
+            feeds: list.map(f => ({ url: f.url, name: f.name ?? "", on: f.on !== false }))
+        })
+        if (root.legacyUrls.length === 0)
+            return
+        const opts = Object.assign({}, SettingsConfig.dashboard?.options ?? {})
+        for (const k in opts) {
+            if (opts[k] && opts[k].calendars !== undefined) {
+                const o = Object.assign({}, opts[k])
+                delete o.calendars
+                opts[k] = o
+            }
+        }
+        SettingsConfig.dashboard = Object.assign({}, SettingsConfig.dashboard, { options: opts })
+    }
+
+    function addFeed(raw) {
+        const url = (raw ?? "").trim()
+        if (!root.isUrl(url))
+            return "That isn't a calendar link. It should start with https:// or webcal://"
+        if (root.feeds.some(f => f.url === url))
+            return "That calendar is already added"
+        root.saveFeeds(root.feeds.concat([{ url: url, name: "", on: true }]))
+        return ""
+    }
+
+    function removeFeed(url) {
+        root.saveFeeds(root.feeds.filter(f => f.url !== url))
+    }
+
+    function setFeed(url, patch) {
+        root.saveFeeds(root.feeds.map(f => f.url === url ? Object.assign({}, f, patch) : f))
+    }
 
     function retain() {
         if (root._users++ === 0)
@@ -45,8 +113,10 @@ Singleton {
             root.events = []
             return
         }
-        if (proc.running)
+        if (proc.running) {
+            root.pending = true
             return
+        }
         root.loading = true
         proc.command = [root.cli, "events"].concat(root.urls)
         proc.running = true
@@ -94,15 +164,27 @@ Singleton {
         id: proc
         stdout: StdioCollector {
             onStreamFinished: {
-                root.loading = false
                 try {
                     const parsed = JSON.parse(text)
-                    if (Array.isArray(parsed))
+                    if (Array.isArray(parsed)) {
                         root.events = parsed
+                    } else if (parsed && Array.isArray(parsed.events)) {
+                        root.events = parsed.events
+                        const next = Object.assign({}, root.info)
+                        for (const c of parsed.calendars ?? [])
+                            next[c.url] = { name: c.name ?? "", status: c.status ?? "", count: c.count ?? 0 }
+                        root.info = next
+                    }
                 } catch (e) {}
             }
         }
-        onExited: root.loading = false
+        onExited: {
+            root.loading = false
+            if (root.pending) {
+                root.pending = false
+                Qt.callLater(root.refresh)
+            }
+        }
     }
 
     Timer {

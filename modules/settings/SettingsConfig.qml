@@ -14,6 +14,7 @@ Singleton {
     property alias screenshot: settingsAdapter.screenshot
     property alias widgets: settingsAdapter.widgets
     property alias weather: settingsAdapter.weather
+    property alias calendars: settingsAdapter.calendars
     property alias notifications: settingsAdapter.notifications
     property alias gameMode: settingsAdapter.gameMode
     property alias reading: settingsAdapter.reading
@@ -499,6 +500,30 @@ Singleton {
                 showWeatherWind: false,
                 weatherWindX: 1025,
                 weatherWindY: 165,
+                showWeatherTileHourly: false,
+                weatherTileHourlyX: 475,
+                weatherTileHourlyY: 165,
+                showWeatherTileThermo: false,
+                weatherTileThermoX: 475,
+                weatherTileThermoY: 330,
+                showWeatherTileDays: false,
+                weatherTileDaysX: 805,
+                weatherTileDaysY: 165,
+                showWeatherTileWeek: false,
+                weatherTileWeekX: 805,
+                weatherTileWeekY: 330,
+                showWeatherTileStats: false,
+                weatherTileStatsX: 1245,
+                weatherTileStatsY: 165,
+                showWeatherTileMini: false,
+                weatherTileMiniX: 1245,
+                weatherTileMiniY: 385,
+                showWeatherTileSky: false,
+                weatherTileSkyX: 475,
+                weatherTileSkyY: 495,
+                showWeatherTileList: false,
+                weatherTileListX: 1245,
+                weatherTileListY: 495,
                 showWorldClock: false,
                 worldClockX: 880,
                 worldClockY: 440,
@@ -531,6 +556,10 @@ Singleton {
                 location: "",
                 useMetric: true,
                 refreshInterval: 15
+            })
+
+            property var calendars: ({
+                feeds: []
             })
 
             property var notifications: ({

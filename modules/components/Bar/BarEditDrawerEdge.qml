@@ -353,6 +353,24 @@ ColumnLayout {
                     current: host.edgePanels
                     onPicked: v => BarLayout.setEdgePanels(host.edgeSide, v)
                 }
+                CustomText {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 6
+                    content: "Panel motion (all edges)"
+                    size: 13
+                    weight: 600
+                    customColor: Colors.surfaceVariantText
+                }
+                EditTextChoice {
+                    Layout.fillWidth: true
+                    cols: 2
+                    model: [
+                        { value: "default", label: "Grow", desc: "Panels grow out of the bar" },
+                        { value: "shared", label: "Shared elements", desc: "The item turns into the panel" }
+                    ]
+                    current: SettingsConfig.general.panelMorph ?? "default"
+                    onPicked: v => SettingsConfig.general = Object.assign({}, SettingsConfig.general, { panelMorph: v })
+                }
                 M3Button {
                     Layout.alignment: Qt.AlignRight
                     visible: host.panelOverrides > 0

@@ -22,7 +22,7 @@ GridView {
     readonly property int navCount: grid.count
 
     function activateIndex(i) {
-        grid.launcher.launch(grid.apps[i])
+        grid.launcher.launch(grid.apps[i], grid.itemAtIndex(i))
     }
 
     onAppsChanged: Qt.callLater(() => {
@@ -123,7 +123,7 @@ GridView {
                 if (event.button === Qt.RightButton)
                     grid.launcher.openMenu(area, event.x, event.y, cell.modelData)
                 else
-                    grid.launcher.launch(cell.modelData)
+                    grid.launcher.launch(cell.modelData, cell)
             }
         }
 

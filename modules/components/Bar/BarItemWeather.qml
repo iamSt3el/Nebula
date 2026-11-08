@@ -37,6 +37,8 @@ Item {
         color: root.plateless ? Qt.alpha(Colors.primaryContainer, 0) : weatherHov.containsMouse ? Colors.primaryContainer : Qt.alpha(Colors.primaryContainer, 0)
         Behavior on color { ColorAnimation { duration: 150 } }
 
+        HeroTag { key: "weather"; item: weatherRow; owner: root }
+
         GridLayout {
             id: weatherRow
             anchors.centerIn: parent

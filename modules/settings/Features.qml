@@ -26,7 +26,9 @@ Singleton {
           description: "Forecast in the bar, on the lock screen and in weather widgets",
           bar: ["weather", "sun"],
           widgets: ["showWeatherHourly", "showSunArc", "showWeatherPoster", "showWeatherHours",
-                    "showWeatherDayClock", "showWeatherWind"] },
+                    "showWeatherDayClock", "showWeatherWind",
+                    "showWeatherTileHourly", "showWeatherTileThermo", "showWeatherTileDays", "showWeatherTileWeek",
+                    "showWeatherTileStats", "showWeatherTileMini", "showWeatherTileSky", "showWeatherTileList"] },
         { id: "events", name: "Calendar events", icon: "event", group: "Information", fresh: true,
           description: "Events from your online calendars in the calendar and dashboard",
           bar: [], widgets: [] },
@@ -80,7 +82,10 @@ Singleton {
           bar: [], widgets: [] },
         { id: "scenes", name: "Desk scenes", icon: "view_quilt", group: "Desktop", fresh: false,
           description: "Save and restore which apps are open and where they sit",
-          bar: ["scenes"], widgets: [] }
+          bar: ["scenes"], widgets: [] },
+        { id: "genie", name: "Dock genie", icon: "auto_awesome", group: "Desktop", fresh: false, optIn: true,
+          description: "Apps pour out of their dock icon when they open and back into it when they close. Loads the genie Hyprland plugin",
+          bar: [], widgets: [] }
     ]
 
     readonly property var groups: {
@@ -127,7 +132,7 @@ Singleton {
             } else if (f.key)
                 out[f.id] = (SettingsConfig[f.key[0]] ?? {})[f.key[1]] ?? true
             else
-                out[f.id] = saved[f.id] ?? true
+                out[f.id] = saved[f.id] ?? !f.optIn
         }
         return out
     }
@@ -150,6 +155,7 @@ Singleton {
     readonly property bool notes: root.states.notes
     readonly property bool tuck: root.states.tuck
     readonly property bool scenes: root.states.scenes
+    readonly property bool genie: root.states.genie
     readonly property bool hyprDisplays: root.states.hyprDisplays
     readonly property bool hyprWindows: root.states.hyprWindows
     readonly property bool hyprInput: root.states.hyprInput
@@ -240,6 +246,8 @@ Singleton {
             SettingsConfig.reading = Object.assign({}, SettingsConfig.reading, { enabled: false })
         if (id === "soundFx" && (SettingsConfig.general ?? {}).soundFxOn)
             SettingsConfig.general = Object.assign({}, SettingsConfig.general, { soundFxOn: false })
+        if (id === "genie")
+            Quickshell.execDetached([Quickshell.shellDir + "/plugins/HyprGenie/genie-ctl.sh", "unload"])
         root.reloadPending = true
         root._maybeReload()
     }

@@ -59,7 +59,7 @@ Item {
         case "phoneCall": return phoneCallComp
         case "dockPreview": return dockPreviewComp
         case "dockMenu":  return dockMenuComp
-        case "weather":   return weatherComp
+        case "weather":   return BarLayout.opt("weather", "panel") === "daynight" ? weatherDayNightComp : weatherComp
         case "clipboard": return (SettingsConfig.general.clipboardStyle ?? "list") === "fan" ? clipFanComp
             : (SettingsConfig.general.clipboardStyle ?? "list") === "board" ? clipBoardComp : clipComp
         case "wallpaper": return wallComp
@@ -187,6 +187,7 @@ Item {
             closer: () => panels.block.closePanel()
             room: panels.block.heightRoom
             fixedH: BarLayout.panelH("dashboard")
+            far: panels.block.far && !panels.block.vertical
         }
     }
     Component { id: phoneStatusComp; BarPhoneStatusPanel { onClosed: panels.block.closePanel() } }
@@ -233,6 +234,16 @@ Item {
     Component {
         id: weatherComp
         WeatherPanel {
+            topLeftRadius: panels.block.contentCorner("tl", 20)
+            topRightRadius: panels.block.contentCorner("tr", 20)
+            bottomLeftRadius: panels.block.contentCorner("bl", 20)
+            bottomRightRadius: panels.block.contentCorner("br", 20)
+            onClosed: panels.block.closePanel()
+        }
+    }
+    Component {
+        id: weatherDayNightComp
+        WeatherPanelDayNight {
             topLeftRadius: panels.block.contentCorner("tl", 20)
             topRightRadius: panels.block.contentCorner("tr", 20)
             bottomLeftRadius: panels.block.contentCorner("bl", 20)

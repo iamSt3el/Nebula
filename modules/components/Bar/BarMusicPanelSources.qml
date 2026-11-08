@@ -131,7 +131,11 @@ Item {
             Layout.fillHeight: true
             spacing: 0
 
+            HeroTag { key: "art"; item: srcArt; target: true }
+            HeroTag { key: "title"; item: srcTitle; target: true }
+
             MusicShapeArt {
+                id: srcArt
                 Layout.preferredWidth: 146
                 Layout.preferredHeight: 146
                 Layout.alignment: Qt.AlignHCenter
@@ -142,6 +146,7 @@ Item {
             }
 
             CustomText {
+                id: srcTitle
                 Layout.fillWidth: true
                 Layout.topMargin: 12
                 horizontalAlignment: Text.AlignHCenter

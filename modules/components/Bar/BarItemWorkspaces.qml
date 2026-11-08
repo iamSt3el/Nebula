@@ -67,6 +67,11 @@ Item {
     readonly property bool rotatesWithBar: root.vertical && root.turningStyles.indexOf(root.style) >= 0
     readonly property bool verticalReady: root.vertical && !root.rotatesWithBar && root.cozyStyles.indexOf(root.style) < 0
 
+    Component.onCompleted: GlobalStates.registerWsItem(root)
+    Component.onDestruction: GlobalStates.unregisterWsItem(root)
+    onWidthChanged: GlobalStates.dockIconsVersion++
+    onHeightChanged: GlobalStates.dockIconsVersion++
+
     implicitWidth: face.item ? face.item.implicitWidth : 0
     implicitHeight: root.verticalReady && face.item ? face.item.implicitHeight : 30 * root.k
 

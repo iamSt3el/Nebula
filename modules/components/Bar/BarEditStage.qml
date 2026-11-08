@@ -20,7 +20,7 @@ EditKit.Card {
     readonly property var spec: stageCard.kind !== "" ? BarLayout.panelSpecs[stageCard.kind] ?? null : null
     readonly property var styleOpt: {
         const map = { launcher: ["launcher", "style"], wallpaper: ["wallpaper", "style"], clipboard: ["clipboard", "style"],
-                      calendar: ["clock", "panel"], osd: ["osd", "style"], dashboard: ["dashboard", "style"],
+                      calendar: ["clock", "panel"], weather: ["weather", "panel"], osd: ["osd", "style"], dashboard: ["dashboard", "style"],
                       notifPopup: ["popups", "look"] }
         const m = map[stageCard.kind]
         if (!m) return null

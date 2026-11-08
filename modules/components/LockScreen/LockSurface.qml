@@ -115,6 +115,11 @@ Item {
     readonly property var _standard: [0.2, 0.0, 0.0, 1.0, 1, 1]
 
     function focusInput() {
+        const lay = layoutLoader.item
+        if (lay && lay.fieldGate === true && !lay.fieldOpen) {
+            root.forceActiveFocus()
+            return
+        }
         const f = layoutLoader.authField
         if (f && f.input)
             f.input.forceActiveFocus()
@@ -134,6 +139,16 @@ Item {
         }
         if (root.context)
             root.context.pokeClock()
+        const gate = layoutLoader.item
+        if (gate && gate.fieldGate === true) {
+            if (event.key === Qt.Key_Escape && gate.fieldOpen) {
+                gate.foldField()
+                event.accepted = true
+                return
+            }
+            if (!gate.fieldOpen)
+                gate.wakeField()
+        }
         if (printable && root.context) {
             if (layoutLoader.authField)
                 root.context.currentText = root.context.currentText + event.text
@@ -537,6 +552,16 @@ Item {
                 root.focusInput()
                 root.flushPending()
             })
+        }
+    }
+
+    Connections {
+        target: layoutLoader.item
+        ignoreUnknownSignals: true
+        function onFieldOpenChanged() {
+            const lay = layoutLoader.item
+            if (lay && lay.fieldGate === true && !lay.fieldOpen)
+                root.forceActiveFocus()
         }
     }
 

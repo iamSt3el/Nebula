@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Shapes
 import Nebula
 import qs.modules.utils
 import qs.modules.settings
@@ -23,6 +24,140 @@ Item {
     property bool handoffDate: false
 
     readonly property Item authField: auth
+    readonly property bool fieldGate: !root.preview
+    property bool fieldOpen: root.preview
+    property real gateT: root.preview ? 1 : 0
+    property var gatePts: []
+    property rect gateFrom: Qt.rect(0, 0, 1, 1)
+    property rect gateTo: Qt.rect(0, 0, 1, 1)
+    readonly property bool _gateMoving: gateOpenAnim.running || gateCloseAnim.running
+    readonly property real fieldReveal: root.fieldGate ? root.ramp(0.86, 1.0, root.gateT) : 1
+
+    function ramp(a, b, v) {
+        const t = Math.max(0, Math.min(1, (v - a) / (b - a)))
+        return t * t * (3 - 2 * t)
+    }
+
+    function wakeField() {
+        gateIdle.restart()
+        if (root.fieldOpen)
+            return
+        root.fieldOpen = true
+        gateCloseAnim.stop()
+        gateOpenAnim.start()
+        Qt.callLater(() => { if (auth.input) auth.input.forceActiveFocus() })
+    }
+
+    function foldField() {
+        if (!root.fieldGate || !root.fieldOpen || root._busy || (root.context?.currentText ?? "") !== "")
+            return
+        root.fieldOpen = false
+        gateOpenAnim.stop()
+        gateCloseAnim.start()
+    }
+
+    function gateMeasure() {
+        if (lockBtn.width > 0)
+            root.gateFrom = lockBtn.mapToItem(root, 0, 0, lockBtn.width, lockBtn.height)
+        const f = auth.fieldBox
+        if (f && f.width > 0)
+            root.gateTo = f.mapToItem(root, 0, 0, f.width, f.height)
+        root.gatePts = root.gateShape()
+    }
+
+    function bezAt(x1, y1, x2, y2, x) {
+        if (x <= 0)
+            return 0
+        if (x >= 1)
+            return 1
+        let lo = 0, hi = 1, t = x
+        for (let i = 0; i < 18; i++) {
+            const bx = 3 * (1 - t) * (1 - t) * t * x1 + 3 * (1 - t) * t * t * x2 + t * t * t
+            if (bx < x)
+                lo = t
+            else
+                hi = t
+            t = (lo + hi) / 2
+        }
+        return 3 * (1 - t) * (1 - t) * t * y1 + 3 * (1 - t) * t * t * y2 + t * t * t
+    }
+
+    readonly property real gateTravel: root.bezAt(0.38, 1.21, 0.22, 1.0, Math.min(1, root.gateT / 0.6))
+    readonly property real gateUnfurl: root.bezAt(0.05, 0.7, 0.1, 1.0, Math.max(0, (root.gateT - 0.3) / 0.7))
+    readonly property real _gk: root.gateTo.height / 64
+    readonly property real _btnW: Math.round(76 * root._gk)
+    readonly property real _gap: Math.max(2, Math.round(3 * root._gk))
+    readonly property rect gateBtn: Qt.rect(root.gateTo.x + root.gateTo.width - root._btnW, root.gateTo.y, root._btnW, root.gateTo.height)
+    readonly property bool _hasText: (root.context?.currentText ?? "") !== ""
+    readonly property color gateBtnColor: root._hasText || root._busy ? Colors.primary : Colors.secondaryContainer
+    readonly property color gateIconColor: root._hasText || root._busy ? Colors.primaryText : Colors.secondaryContainerText
+
+    function gateShape() {
+        const t = root.gateTravel
+        const m = root.ramp(0, 1, Math.min(1, Math.max(0, t)))
+        const B = root.gateFrom, F = root.gateBtn
+        const cx0 = B.x + B.width / 2, cy0 = B.y + B.height / 2
+        const cx1 = F.x + F.width / 2, cy1 = F.y + F.height / 2
+        const ccx = cx0 + (cx1 - cx0) * t, ccy = cy0 + (cy1 - cy0) * t
+        const w = B.width + (F.width - B.width) * t, h = B.height + (F.height - B.height) * t
+        const rl = Math.min(h / 2, w / 2) + (Math.min(Math.round(8 * root._gk), h / 2) - Math.min(h / 2, w / 2)) * m
+        const rr = Math.min(h / 2, w / 2)
+        const amp = 0.09 * (1 - m)
+        const rot = -m * 0.9
+        const R = B.width / 2 + (Math.min(w, h) / 2 - B.width / 2) * m
+        const n = 120
+        const out = []
+        for (let i = 0; i < n; i++) {
+            const th = i / n * Math.PI * 2
+            const dx = Math.cos(th), dy = Math.sin(th)
+            const cr = R * (1 + amp * Math.cos(9 * (th + rot)))
+            const ax = ccx + dx * cr, ay = ccy + dy * cr
+            const r = dx < 0 ? rl : rr
+            let lo = 0, hi = Math.hypot(w, h)
+            for (let k = 0; k < 18; k++) {
+                const md = (lo + hi) / 2
+                const qx = Math.abs(dx * md) - (w / 2 - r), qy = Math.abs(dy * md) - (h / 2 - r)
+                const d = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r
+                if (d < 0)
+                    lo = md
+                else
+                    hi = md
+            }
+            const bx = ccx + dx * lo, by = ccy + dy * lo
+            out.push(Qt.point(ax + (bx - ax) * m, ay + (by - ay) * m))
+        }
+        out.push(out[0])
+        return out
+    }
+
+    NumberAnimation { id: gateOpenAnim; target: root; property: "gateT"; to: 1; duration: 680; onStopped: root.gateMeasure() }
+    NumberAnimation { id: gateCloseAnim; target: root; property: "gateT"; to: 0; duration: 420; onStopped: root.gateMeasure() }
+    FrameAnimation {
+        running: root.fieldGate && root.gateT < 0.999 && (root._gateMoving || whoEnter.p < 0.999 || root.exiting)
+        onTriggered: root.gateMeasure()
+    }
+    onWidthChanged: if (root.fieldGate) Qt.callLater(root.gateMeasure)
+    onHeightChanged: if (root.fieldGate) Qt.callLater(root.gateMeasure)
+    Timer {
+        id: gateIdle
+        interval: 20000
+        onTriggered: root.foldField()
+    }
+    Connections {
+        target: root.context
+        ignoreUnknownSignals: true
+        function onCurrentTextChanged() {
+            if ((root.context?.currentText ?? "") !== "")
+                root.wakeField()
+            else
+                gateIdle.restart()
+        }
+    }
+    Shortcut {
+        sequence: "Escape"
+        enabled: root.fieldGate && root.fieldOpen
+        onActivated: root.foldField()
+    }
     readonly property var handoffTargets: ({ restyle: false, clock: cutClock, date: root.handoffDate && root.cfg.showDate !== false ? dateText : null })
     readonly property int _lead: root.handoff ? 300 : 0
     readonly property bool _animated: !root.preview
@@ -88,7 +223,12 @@ Item {
         }
     }
 
-    Component.onCompleted: if (root._animated) enterAnim.start()
+    Component.onCompleted: {
+        if (root._animated)
+            enterAnim.start()
+        if (root.fieldGate)
+            Qt.callLater(root.gateMeasure)
+    }
 
     ClockParts { id: clock }
     LockStatusModel { id: status }
@@ -417,6 +557,7 @@ Item {
         spacing: 24 * root.u
 
         MotionEnter {
+            id: whoEnter
             delay: 440 + root._lead
             dx: -40 * root.u
             dy: 0
@@ -452,6 +593,21 @@ Item {
                         customColor: Colors.surfaceVariantText
                     }
                 }
+
+                Item {
+                    id: lockBtn
+                    visible: root.fieldGate
+                    Layout.leftMargin: 18 * root.u
+                    Layout.preferredWidth: 64 * root.u
+                    Layout.preferredHeight: 64 * root.u
+
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: !root.fieldOpen
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.wakeField()
+                    }
+                }
             }
         }
 
@@ -469,6 +625,8 @@ Item {
 
                 LockAuthField {
                     id: auth
+                    opacity: root.fieldReveal
+                    enabled: !root.fieldGate || root.fieldOpen
                     context: root.context
                     variant: "filled"
                     fieldWidth: 560 * root.u
@@ -568,6 +726,63 @@ Item {
                     onClicked: ServiceMusic.togglePlaying()
                 }
             }
+        }
+    }
+
+    Item {
+        id: gateLayer
+        anchors.fill: parent
+        visible: root.fieldGate && root.gateT < 0.999 && root.gatePts.length > 2
+        opacity: whoEnter.opacity
+
+        Rectangle {
+            readonly property real fullW: Math.max(0, root.gateTo.width - root._btnW - root._gap)
+            readonly property real w: fullW * root.gateUnfurl
+            visible: w > 1
+            x: root.gateBtn.x - root._gap - w
+            y: root.gateTo.y
+            width: w
+            height: root.gateTo.height
+            topLeftRadius: Math.min(height / 2, w / 2)
+            bottomLeftRadius: Math.min(height / 2, w / 2)
+            topRightRadius: Math.round(8 * root._gk)
+            bottomRightRadius: Math.round(8 * root._gk)
+            color: Colors.surfaceContainerHigh
+        }
+
+        Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                strokeWidth: 0
+                strokeColor: "transparent"
+                fillColor: Qt.tint(Colors.primary, Qt.alpha(root.gateBtnColor, root.ramp(0.1, 0.7, root.gateT)))
+                PathPolyline { path: root.gatePts }
+            }
+        }
+
+        MaterialIconSymbol {
+            readonly property real cx: root.gateFrom.x + root.gateFrom.width / 2 + (root.gateBtn.x + root.gateBtn.width / 2 - root.gateFrom.x - root.gateFrom.width / 2) * root.gateTravel
+            readonly property real cy: root.gateFrom.y + root.gateFrom.height / 2 + (root.gateBtn.y + root.gateBtn.height / 2 - root.gateFrom.y - root.gateFrom.height / 2) * root.gateTravel
+            x: cx - width / 2
+            y: cy - height / 2
+            content: "lock"
+            iconSize: Math.round(24 * root._gk)
+            fill: 1
+            opacity: 1 - root.ramp(0.25, 0.55, root.gateT)
+            customColor: Colors.primaryText
+        }
+
+        MaterialIconSymbol {
+            readonly property real cx: root.gateFrom.x + root.gateFrom.width / 2 + (root.gateBtn.x + root.gateBtn.width / 2 - root.gateFrom.x - root.gateFrom.width / 2) * root.gateTravel
+            readonly property real cy: root.gateFrom.y + root.gateFrom.height / 2 + (root.gateBtn.y + root.gateBtn.height / 2 - root.gateFrom.y - root.gateFrom.height / 2) * root.gateTravel
+            x: cx - width / 2
+            y: cy - height / 2
+            content: "arrow_forward"
+            iconSize: Math.round(24 * root._gk)
+            opacity: root.ramp(0.3, 0.6, root.gateT)
+            customColor: root.gateIconColor
         }
     }
 }

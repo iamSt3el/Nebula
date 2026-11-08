@@ -152,7 +152,10 @@ Item {
             Layout.fillWidth: true
             spacing: 8
 
+            HeroTag { key: "app"; item: winIcon; target: true }
+
             IconImage {
+                id: winIcon
                 visible: root.iconSrc !== ""
                 implicitSize: 20
                 source: root.iconSrc

@@ -594,6 +594,54 @@ PanelWindow{
         }
 
         Loader {
+            active: Features.widgetOn("showWeatherTileHourly") && (SettingsConfig.widgets.showWeatherTileHourly ?? false)
+            visible: active
+            sourceComponent: WeatherTileHourly {}
+        }
+
+        Loader {
+            active: Features.widgetOn("showWeatherTileThermo") && (SettingsConfig.widgets.showWeatherTileThermo ?? false)
+            visible: active
+            sourceComponent: WeatherTileThermo {}
+        }
+
+        Loader {
+            active: Features.widgetOn("showWeatherTileDays") && (SettingsConfig.widgets.showWeatherTileDays ?? false)
+            visible: active
+            sourceComponent: WeatherTileDays {}
+        }
+
+        Loader {
+            active: Features.widgetOn("showWeatherTileWeek") && (SettingsConfig.widgets.showWeatherTileWeek ?? false)
+            visible: active
+            sourceComponent: WeatherTileWeek {}
+        }
+
+        Loader {
+            active: Features.widgetOn("showWeatherTileStats") && (SettingsConfig.widgets.showWeatherTileStats ?? false)
+            visible: active
+            sourceComponent: WeatherTileStats {}
+        }
+
+        Loader {
+            active: Features.widgetOn("showWeatherTileMini") && (SettingsConfig.widgets.showWeatherTileMini ?? false)
+            visible: active
+            sourceComponent: WeatherTileMini {}
+        }
+
+        Loader {
+            active: Features.widgetOn("showWeatherTileSky") && (SettingsConfig.widgets.showWeatherTileSky ?? false)
+            visible: active
+            sourceComponent: WeatherTileSky {}
+        }
+
+        Loader {
+            active: Features.widgetOn("showWeatherTileList") && (SettingsConfig.widgets.showWeatherTileList ?? false)
+            visible: active
+            sourceComponent: WeatherTileList {}
+        }
+
+        Loader {
             active: Features.widgetOn("showClaudeCode") && (SettingsConfig.widgets.showClaudeCode ?? false)
             visible: active
             sourceComponent: ClaudeCodeWidget {}

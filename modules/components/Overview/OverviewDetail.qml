@@ -18,6 +18,18 @@ ColumnLayout {
     property var draggingToplevel: null
 
     property rect screenRect: Qt.rect(0, 0, 1920, 1080)
+    property bool hideTiles: false
+
+    function tileRectFor(tl, sr, target) {
+        const geo = tl?.lastIpcObject
+        if (!geo || !geo.size || !geo.at || geo.size[0] <= 0 || geo.size[1] <= 0)
+            return null
+        const s = Math.min(stage.width / Math.max(1, sr.width), stage.height / Math.max(1, sr.height))
+        const ox = (stage.width - sr.width * s) / 2
+        const oy = (stage.height - sr.height * s) / 2
+        return stage.mapToItem(target, ox + (geo.at[0] - sr.x) * s, oy + (geo.at[1] - sr.y) * s,
+                               Math.max(40, geo.size[0] * s), Math.max(30, geo.size[1] * s))
+    }
 
     signal activateRequested()
     signal renamed(string name)
@@ -210,7 +222,7 @@ ColumnLayout {
                 toplevel: modelData
                 visible: tile.placed
                 dragging: root.draggingToplevel === modelData
-                opacity: root.matches(modelData) ? (dragging ? 0.35 : 1) : 0.25
+                opacity: root.hideTiles ? 0 : (root.matches(modelData) ? (dragging ? 0.35 : 1) : 0.25)
 
                 x: tile.placed ? stage.offsetX + (tile.geo.at[0] - root.screenRect.x) * stage.scaleFactor : 0
                 y: tile.placed ? stage.offsetY + (tile.geo.at[1] - root.screenRect.y) * stage.scaleFactor : 0

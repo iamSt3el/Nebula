@@ -46,8 +46,10 @@ Item {
             copiedTimer.restart()
             return
         }
-        if (entry.kind !== "dismiss")
+        if (entry.kind !== "dismiss") {
+            if (Features.genie) ServiceGenie.armNotif(row, item)
             entry.act.invoke()
+        }
         ServiceNotification.removeNotification(item)
     }
 

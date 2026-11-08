@@ -92,10 +92,11 @@ Singleton{
         }
 
         for (const toplevel of ToplevelManager.toplevels.values) {
-            const appId = toplevel.appId?.toLowerCase() ?? ""
+            const rawId = root.toplevelAppId(toplevel)
+            const appId = rawId.toLowerCase()
             if (!appId) continue
             if (!map.has(appId))
-                map.set(appId, { appId: toplevel.appId, pinned: false, toplevels: [] })
+                map.set(appId, { appId: rawId, pinned: false, toplevels: [] })
             map.get(appId).toplevels.push(toplevel)
         }
 
@@ -160,6 +161,13 @@ Singleton{
         if (direct) return direct
         const lower = appId.toLowerCase()
         return root.list.find(a => (a.id ?? "").toLowerCase() === lower) ?? null
+    }
+
+    function toplevelAppId(toplevel): string {
+        const id = toplevel?.appId ?? ""
+        if (id === "org.quickshell" && (toplevel.title ?? "") === "Settings")
+            return "nebula-settings"
+        return id
     }
 
     function launch(appId: string): bool {

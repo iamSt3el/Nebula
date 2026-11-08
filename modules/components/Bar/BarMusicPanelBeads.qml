@@ -31,7 +31,11 @@ Item {
             Layout.fillWidth: true
             spacing: 16
 
+            HeroTag { key: "art"; item: beadsArt; target: true }
+            HeroTag { key: "title"; item: beadsTitle; target: true }
+
             MusicShapeArt {
+                id: beadsArt
                 Layout.preferredWidth: 74
                 Layout.preferredHeight: 74
                 decode: 160
@@ -44,6 +48,7 @@ Item {
                 spacing: 4
 
                 Text {
+                    id: beadsTitle
                     Layout.fillWidth: true
                     text: ServiceMusic.activeTrack?.title ?? ""
                     font.family: root.displayFamily

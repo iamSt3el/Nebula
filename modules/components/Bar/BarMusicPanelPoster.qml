@@ -74,6 +74,9 @@ Item {
             }
         }
 
+        HeroTag { key: "art"; item: art; target: true; clip: card; clipRadius: Math.max(root.bottomRightRadius, root.topRightRadius) }
+        HeroTag { key: "title"; item: posterTitle; target: true }
+
         MusicShapeArt {
             id: art
             x: card.width - 236
@@ -176,6 +179,7 @@ Item {
                 customColor: Qt.alpha(root.ink, 0.72)
             }
             Text {
+                id: posterTitle
                 Layout.fillWidth: true
                 Layout.topMargin: 8
                 text: ServiceMusic.activeTrack?.title ?? ""

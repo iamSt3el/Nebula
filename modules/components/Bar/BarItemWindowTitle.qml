@@ -45,7 +45,10 @@ Item {
         color: Colors.secondaryContainer
     }
 
+    HeroTag { key: "app"; item: appPlate; owner: root }
+
     Rectangle {
+        id: appPlate
         x: root.vertical ? (parent.width - width) / 2 : root.tint ? 4 : 0
         anchors.verticalCenter: parent.verticalCenter
         width: root.tint ? 24 : 32

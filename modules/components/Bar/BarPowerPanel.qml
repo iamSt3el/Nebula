@@ -176,6 +176,8 @@ Item {
             thumbInk: Colors.primaryText
             textColor: Colors.surfaceVariantText
         }
+        HeroTag { key: "power"; item: shutdownTrack.thumbItem; target: true }
+
         SlideTrack {
             id: shutdownTrack
             action: "shutdown"
@@ -352,6 +354,7 @@ Item {
 
         property real progress: 0
         property bool fired: false
+        readonly property Item thumbItem: thumb
         readonly property bool auto: autoAnim.running
         readonly property bool done: st.progress >= 0.92
         readonly property real travel: st.width - 64

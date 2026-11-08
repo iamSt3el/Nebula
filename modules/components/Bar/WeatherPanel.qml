@@ -459,6 +459,8 @@ Item {
                     Layout.fillWidth: true
                     spacing: 14
 
+                    HeroTag { key: "weather"; item: badge; target: true }
+
                     Item {
                         id: badge
                         Layout.preferredWidth: root.shapeSize

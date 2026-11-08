@@ -24,6 +24,9 @@ Item {
         spacing: 20
         visible: root.hasTrack
 
+        HeroTag { key: "art"; item: cover; target: true }
+        HeroTag { key: "title"; item: devTitle; target: true }
+
         Item {
             id: cover
             Layout.preferredWidth: 194
@@ -108,6 +111,7 @@ Item {
             spacing: 0
 
             Text {
+                id: devTitle
                 Layout.fillWidth: true
                 text: ServiceMusic.activeTrack?.title ?? ""
                 font.family: root.displayFamily

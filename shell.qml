@@ -35,6 +35,7 @@ import qs.modules.settings
 
 ShellRoot{
     readonly property bool soundFxOn: Features.soundFx && ServiceSoundFx.enabled
+    readonly property bool genieOn: Features.genie && ServiceGenie.ready
 
     DockServices{}
 

@@ -201,14 +201,37 @@ Item {
     readonly property real floatGap: barBlock.floating ? barBlock.panelGapSetting
         : barBlock.fusedHost ? 0
         : barBlock.merged ? Math.max(barBlock.panelGapSetting, barBlock.crowded || barBlock.fusedAttach ? 8 : 0) * Math.max(0, Math.min(1, (barBlock.tabH - barBlock.barH) / 24)) : 0
+    readonly property bool sharedMotion: (SettingsConfig.general.panelMorph ?? "default") === "shared"
+    readonly property bool morphFloat: barBlock.sharedMotion && barBlock.floating && !barBlock.quickMotion && !barBlock.vertical
+    function bezAt(x1, y1, x2, y2, x) {
+        if (x <= 0)
+            return 0
+        if (x >= 1)
+            return 1
+        let lo = 0, hi = 1, t = x
+        for (let i = 0; i < 18; i++) {
+            const bx = 3 * (1 - t) * (1 - t) * t * x1 + 3 * (1 - t) * t * t * x2 + t * t * t
+            if (bx < x)
+                lo = t
+            else
+                hi = t
+            t = (lo + hi) / 2
+        }
+        return 3 * (1 - t) * (1 - t) * t * y1 + 3 * (1 - t) * t * t * y2 + t * t * t
+    }
+    function emph(x) {
+        return barBlock.bezAt(0.2, 0, 0, 1, x)
+    }
     property real goo: { barBlock.snapKick; return barBlock.floating && barBlock.shownKind !== "" ? 1 : 0 }
     Behavior on goo {
         enabled: barBlock.floating && !barBlock.gooSnap
         NumberAnimation {
             id: gooAnim
-            duration: barBlock.quickMotion ? (barBlock.shownKind !== "" ? 380 : 260)
+            duration: barBlock.morphFloat ? (barBlock.shownKind !== "" ? 500 : 420)
+                : barBlock.quickMotion ? (barBlock.shownKind !== "" ? 380 : 260)
                 : barBlock.shownKind !== "" ? 520 : 400
-            easing.type: barBlock.quickMotion && barBlock.shownKind === "" ? Easing.OutCubic : Easing.InOutCubic
+            easing.type: barBlock.morphFloat ? Easing.Linear
+                : barBlock.quickMotion && barBlock.shownKind === "" ? Easing.OutCubic : Easing.InOutCubic
         }
     }
     property real gooX: 0
@@ -222,7 +245,71 @@ Item {
         barBlock.gooH = Math.max(0, barBlock.tabH - barBlock.barH)
     }
     property int openSeq: 0
+    property real heroT: 0
+    property var heroPairs: []
+    property string heroOwner: ""
+    property string heroKind: ""
+    readonly property bool heroFlying: heroAnim.running
+    onHeroFlyingChanged: if (!barBlock.heroFlying) barBlock.heroPairs = []
+
+    NumberAnimation {
+        id: heroAnim
+        target: barBlock
+        property: "heroT"
+        easing.type: Easing.Linear
+    }
+
+    function heroUnder(item, anc) {
+        for (let p = item; p; p = p.parent) {
+            if (p === anc)
+                return true
+        }
+        return false
+    }
+
+    function heroFly(opening) {
+        const to = opening ? 1 : 0
+        heroAnim.stop()
+        if (!barBlock.sharedMotion || barBlock.quickMotion || barBlock.panelSwap || barBlock.vertical) {
+            barBlock.heroT = to
+            barBlock.heroPairs = []
+            return
+        }
+        const pairs = []
+        const slot = [slotA, slotB].find(s => s.kind === barBlock.heroKind && s.item)
+        if (slot) {
+            const tags = GlobalStates.heroTags
+            for (const s of tags) {
+                if (s.target || !s.item || !s.owner || s.owner.host !== barBlock || s.owner.itemId !== barBlock.heroOwner)
+                    continue
+                const d = tags.find(t => t.target && t.key === s.key && t.item && t.item.visible && barBlock.heroUnder(t.item, slot))
+                if (d && s.item.width > 0 && d.item.width > 0)
+                    pairs.push({ src: s.item, dst: d.item, clip: d.clip ?? null, clipR: d.clipRadius ?? 0 })
+            }
+        }
+        if (pairs.length === 0) {
+            barBlock.heroT = to
+            barBlock.heroPairs = []
+            return
+        }
+        barBlock.heroPairs = pairs
+        heroAnim.from = barBlock.heroT
+        heroAnim.to = to
+        heroAnim.duration = Math.max(1, (opening ? 500 : 420) * Math.abs(to - barBlock.heroT))
+        heroAnim.start()
+    }
+
     onShownKindChanged: {
+        if (barBlock.shownKind !== "") {
+            barBlock.heroOwner = barBlock.openerId
+            barBlock.heroKind = barBlock.shownKind
+        }
+        if (barBlock.shownKind !== "" && !barBlock.panelSwap) {
+            barBlock.heroT = 0
+            Qt.callLater(() => barBlock.heroFly(true))
+        } else if (barBlock.shownKind === "" && barBlock.heroKind !== "") {
+            barBlock.heroFly(false)
+        }
         if (barBlock.shownKind !== "") {
             barBlock.heldX = barBlock.tabTargetX
             barBlock.heldW = barBlock.tabTargetW
@@ -266,10 +353,23 @@ Item {
             h: barBlock.plateH, r: barBlock.plateR }
         : { x: 0, w: barBlock.width, y: 0, h: barBlock.barH, r: barBlock.pillRadius }
     readonly property real contentT: !barBlock.floating ? 1
+        : barBlock.morphFloat ? barBlock.bezAt(0, 0, 0.6, 1, Math.max(0, Math.min(1, (barBlock.goo * 500 - 60) / 200)))
         : barBlock.quickMotion ? Math.max(0, Math.min(1, (barBlock.goo - 0.55) / 0.35))
         : Math.max(0, Math.min(1, (barBlock.goo - 0.75) / 0.25))
     readonly property var gooShape: {
         const g = barBlock.goo
+        if (barBlock.morphFloat) {
+            const p = barBlock.emph(g)
+            const x0 = barBlock.srcX, w0 = Math.max(2, barBlock.srcW)
+            const fx = barBlock.gooX, fw = barBlock.gooW, fy = barBlock.barH + barBlock.floatGap, fh = barBlock.gooH
+            return {
+                x: x0 + (fx - x0) * p,
+                y: fy * p,
+                w: w0 + (fw - w0) * p,
+                h: barBlock.barH + (fh - barBlock.barH) * p,
+                k: 18 * (1 - p)
+            }
+        }
         const s1 = Math.min(1, g / 0.45)
         const s2 = Math.max(0, (g - 0.45) / 0.55)
         const fw = barBlock.gooW
@@ -1177,13 +1277,16 @@ Item {
         barBlock.tabSnap = false
     }
 
+    readonly property bool morphHold: barBlock.morphFloat && barBlock.shownKind === "" && barBlock.goo > 0.001 && barBlock.gooW > 0
     property real tabX: { barBlock.snapKick; return barBlock.handHold ? barBlock.handX
         : barBlock.shownKind !== "" ? barBlock.tabTargetX
+        : barBlock.morphHold ? barBlock.gooX
         : barBlock.caeStyle && barBlock.revealMode === "" && barBlock.heldW > 0 ? barBlock.heldX
         : barBlock.revealMode === "" ? barBlock.srcEdgeX
         : barBlock.revealMode === "end" ? barBlock.revealX + barBlock.revealW : barBlock.revealX }
     property real tabW: { barBlock.snapKick; return barBlock.handHold ? barBlock.handW
         : barBlock.shownKind !== "" ? barBlock.tabTargetW
+        : barBlock.morphHold ? barBlock.gooW
         : barBlock.caeStyle && barBlock.revealMode === "" && barBlock.heldW > 0 ? barBlock.heldW
         : barBlock.revealMode === "" ? barBlock.srcEdgeW
         : barBlock.revealMode === "across" ? barBlock.revealW : 0 }
@@ -1256,6 +1359,10 @@ Item {
             const now = Date.now()
             const moving = now - barBlock.followMoved < 120
             barBlock.followSeen = live
+            if (Math.abs(step) > 120 && !moving && Math.abs(barBlock.followVel) < 2) {
+                barBlock.stopFollow()
+                return
+            }
             let x = barBlock.followAcross
             let v = barBlock.followVel
             if (Math.abs(step) > 0.01) {
@@ -1285,9 +1392,11 @@ Item {
     readonly property real tabH: Math.max(barBlock.barH, barBlock.tabHRaw)
     property real tabHRaw: { barBlock.snapKick; return barBlock.handHold ? barBlock.handH
         : barBlock.shownKind !== "" ? barBlock.barH + (barBlock.heightFollow ? barBlock.followAcross : barBlock.acrossOf(barBlock.shownKind) + barBlock.tuckShown)
+        : barBlock.morphHold ? barBlock.barH + barBlock.gooH
         : barBlock.revealMode === "start" || barBlock.revealMode === "end" ? barBlock.revealH : barBlock.barH }
+    readonly property bool morphSnap: barBlock.morphFloat && (barBlock.goo < 0.999 || barBlock.shownKind === "")
     Behavior on tabX {
-        enabled: !barBlock.tabSnap && !barBlock.spanSnap && !barBlock.resizing
+        enabled: !barBlock.tabSnap && !barBlock.spanSnap && !barBlock.resizing && !barBlock.morphSnap
         NumberAnimation {
             id: tabXAnim
             duration: barBlock.spanDuration
@@ -1297,7 +1406,7 @@ Item {
         }
     }
     Behavior on tabW {
-        enabled: !barBlock.tabSnap && !barBlock.spanSnap && !barBlock.resizing
+        enabled: !barBlock.tabSnap && !barBlock.spanSnap && !barBlock.resizing && !barBlock.morphSnap
         NumberAnimation {
             id: tabWAnim
             duration: barBlock.spanDuration
@@ -1307,7 +1416,7 @@ Item {
         }
     }
     Behavior on tabHRaw {
-        enabled: !barBlock.tabSnap && !barBlock.resizing && !barBlock.followLock
+        enabled: !barBlock.tabSnap && !barBlock.resizing && !barBlock.followLock && !barBlock.morphSnap
         NumberAnimation {
             id: tabHAnim
             duration: barBlock.dropDuration
@@ -1779,13 +1888,33 @@ Item {
 
         Item {
             id: panelClip
-            x: 0
-            y: barBlock.far ? 0 : barBlock.barH + barBlock.floatGap
+            readonly property real areaY: barBlock.far ? 0 : barBlock.barH + barBlock.floatGap
+            readonly property real areaH: Math.max(0, tabHost.height - barBlock.barH - barBlock.floatGap)
+            readonly property bool morphing: barBlock.morphFloat && barBlock.goo < 0.999
+            readonly property var box: {
+                if (!panelClip.morphing)
+                    return null
+                const g = barBlock.gooShape
+                const by = barBlock.far ? barBlock.barH - g.y - g.h : g.y
+                const x0 = Math.max(0, g.x - tabHost.x), x1 = Math.min(tabHost.width, g.x + g.w - tabHost.x)
+                const y0 = Math.max(panelClip.areaY, by - tabHost.y), y1 = Math.min(panelClip.areaY + panelClip.areaH, by + g.h - tabHost.y)
+                return { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0) }
+            }
+            readonly property real morphS: panelClip.box ? panelClip.box.w / Math.max(1, tabHost.width) : 1
+            readonly property real areaTop: panelClip.areaY - panelClip.y
+            function morphShift(sx, sy) {
+                const tx = panelClip.morphS * (sx + panelClip.x) - sx
+                const ty = barBlock.far ? panelClip.height - panelClip.morphS * (panelClip.areaTop + panelClip.areaH - sy) - sy
+                                        : panelClip.morphS * (sy - panelClip.areaTop) - sy
+                return Qt.point(tx, ty)
+            }
+            x: panelClip.box ? panelClip.box.x : 0
+            y: panelClip.box ? panelClip.box.y : panelClip.areaY
             opacity: barBlock.contentT
-            width: tabHost.width
-            height: Math.max(0, tabHost.height - barBlock.barH - barBlock.floatGap)
+            width: panelClip.box ? panelClip.box.w : tabHost.width
+            height: panelClip.box ? panelClip.box.h : panelClip.areaH
             clip: true
-            layer.enabled: barBlock.tabMoving && barBlock.panelCorner > 0
+            layer.enabled: (barBlock.tabMoving || panelClip.morphing) && barBlock.panelCorner > 0
             layer.smooth: true
             layer.effect: GE.OpacityMask { maskSource: panelCornerMask }
 
@@ -2308,18 +2437,20 @@ Item {
         property string kind: ""
         property bool shown: false
         property real homeX: 0
-        readonly property real clipX: tabHost.x
-        readonly property real clipY: tabHost.y + panelClip.y
+        readonly property real clipX: tabHost.x + panelClip.x
+        readonly property real clipY: tabHost.y + panelClip.areaY
+        readonly property real clipShift: panelClip.y - panelClip.areaY
         readonly property real fw: barBlock.vertical ? slot.height : slot.width
         readonly property real fh: barBlock.vertical ? slot.width : slot.height
-        readonly property real slideY: barBlock.far ? Math.max(0, panelClip.height - slot.fh)
-                                                    : Math.min(0, panelClip.height - slot.fh)
-        readonly property real pinY: barBlock.far ? panelClip.height - slot.fh - barBlock.tuckShown : barBlock.tuckShown
+        readonly property real slideY: barBlock.far ? Math.max(0, panelClip.areaH - slot.fh)
+                                                    : Math.min(0, panelClip.areaH - slot.fh)
+        readonly property real pinY: barBlock.far ? panelClip.areaH - slot.fh - barBlock.tuckShown : barBlock.tuckShown
         property real reveal: 1
         property real drift: 0
         property bool quiet: false
         property bool ride: false
-        readonly property real rideY: barBlock.far ? Math.max(0, slot.pinY) : Math.min(slot.pinY, panelClip.height - slot.fh)
+        readonly property bool morphKeep: barBlock.morphHold && slot.kind === barBlock.heroKind
+        readonly property real rideY: barBlock.far ? Math.max(0, slot.pinY) : Math.min(slot.pinY, panelClip.areaH - slot.fh)
 
         function enter() {
             if (!slot.shown)
@@ -2389,14 +2520,19 @@ Item {
                 }
             }
         }
-        transform: barBlock.vertical ? [slotFlip] : []
+        transform: barBlock.vertical ? [slotFlip] : panelClip.morphing ? [slotMorph] : []
 
         Matrix4x4 { id: slotFlip; matrix: Qt.matrix4x4(0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1) }
+        Matrix4x4 {
+            id: slotMorph
+            readonly property point shift: panelClip.morphShift(slot.x, slot.y)
+            matrix: Qt.matrix4x4(panelClip.morphS, 0, 0, slotMorph.shift.x, 0, panelClip.morphS, 0, slotMorph.shift.y, 0, 0, 1, 0, 0, 0, 0, 1)
+        }
 
         onShownChanged: {
             if (slot.shown) {
                 slotCache.stop()
-                slot.quiet = barBlock.panelSwap || barBlock.caeStyle
+                slot.quiet = barBlock.panelSwap || barBlock.caeStyle || barBlock.morphFloat
                 slot.ride = barBlock.caeStyle && !barBlock.panelSwap
                 slot.homeX = Qt.binding(() => barBlock.tabX + (barBlock.tabW - slot.fw) / 2)
                 slot.enter()
@@ -2412,9 +2548,9 @@ Item {
 
         x: Math.round(barBlock.absX + slot.homeX) - barBlock.absX - slot.clipX
         y: Math.round(slot.clipY + (slot.ride ? slot.rideY
-            : slot.shown ? slot.pinY + (barBlock.far ? slot.drift : -slot.drift) : slot.slideY)) - slot.clipY
+            : slot.shown || slot.morphKeep ? slot.pinY + (barBlock.far ? slot.drift : -slot.drift) : slot.slideY)) - slot.clipY - slot.clipShift
         active: slot.kind !== ""
-        opacity: slot.shown ? 1 : 0
+        opacity: slot.shown || slot.morphKeep ? 1 : 0
         visible: slot.opacity > 0.01
         z: slot.shown ? 1 : 0
 
@@ -2436,6 +2572,120 @@ Item {
     BarBlockPanels {
         id: panels
         block: barBlock
+    }
+
+    Item {
+        id: heroLayer
+        z: 60
+        width: barBlock.width
+        height: barBlock.height
+        visible: barBlock.heroFlying
+
+        Repeater {
+            model: barBlock.heroFlying ? barBlock.heroPairs : []
+
+            delegate: Item {
+                id: flight
+                required property var modelData
+                property rect sr: Qt.rect(0, 0, 1, 1)
+                property rect dr: Qt.rect(0, 0, 1, 1)
+                property rect cr: Qt.rect(0, 0, 0, 0)
+                property rect sLocal: Qt.rect(0, 0, 0, 0)
+                property rect dLocal: Qt.rect(0, 0, 0, 0)
+
+                function tight(item) {
+                    const cw = item.contentWidth
+                    if (cw === undefined || cw <= 0 || cw >= item.width - 1)
+                        return Qt.rect(0, 0, 0, 0)
+                    const ha = item.horizontalAlignment
+                    const ox = ha === Text.AlignHCenter ? (item.width - cw) / 2 : ha === Text.AlignRight ? item.width - cw : 0
+                    return Qt.rect(ox, 0, cw, item.height)
+                }
+
+                function mapped(item, local) {
+                    return local.width > 0 ? heroLayer.mapFromItem(item, local.x, local.y, local.width, local.height)
+                                           : heroLayer.mapFromItem(item, 0, 0, item.width, item.height)
+                }
+                property real cornerR: 0
+                readonly property bool clipped: !!flight.modelData.clip && flight.cr.width > 0
+                readonly property real p: barBlock.emph(barBlock.heroT)
+                readonly property real k: Math.max(0, Math.min(1, (flight.p - 0.1) / 0.5))
+                function fit(r) {
+                    const a = r.width / Math.max(1, r.height)
+                    const w = Math.min(flight.width, flight.height * a)
+                    const h = w / Math.max(0.001, a)
+                    return Qt.rect((flight.width - w) / 2, (flight.height - h) / 2, w, h)
+                }
+                readonly property rect srcBox: flight.fit(flight.sr)
+                readonly property rect dstBox: flight.fit(flight.dr)
+
+                function measure() {
+                    const s = flight.modelData.src, d = flight.modelData.dst
+                    if (!s || !d)
+                        return
+                    flight.sLocal = flight.tight(s)
+                    flight.dLocal = flight.tight(d)
+                    flight.sr = flight.mapped(s, flight.sLocal)
+                    flight.dr = flight.mapped(d, flight.dLocal)
+                    const c = flight.modelData.clip
+                    if (!c)
+                        return
+                    flight.cr = heroLayer.mapFromItem(c, 0, 0, c.width, c.height)
+                    flight.cornerR = flight.modelData.clipR * heroLayer.mapFromItem(d, 0, 0, d.width, 1).width / Math.max(0.001, d.width)
+                }
+
+                Component.onCompleted: flight.measure()
+
+                FrameAnimation {
+                    running: barBlock.heroFlying
+                    onTriggered: flight.measure()
+                }
+
+                x: flight.sr.x + (flight.dr.x - flight.sr.x) * flight.p
+                y: flight.sr.y + (flight.dr.y - flight.sr.y) * flight.p
+                width: flight.sr.width + (flight.dr.width - flight.sr.width) * flight.p
+                height: flight.sr.height + (flight.dr.height - flight.sr.height) * flight.p
+
+                ShaderEffectSource {
+                    x: flight.srcBox.x
+                    y: flight.srcBox.y
+                    width: flight.srcBox.width
+                    height: flight.srcBox.height
+                    sourceItem: flight.modelData.src
+                    sourceRect: flight.sLocal
+                    hideSource: true
+                    live: true
+                    smooth: true
+                    mipmap: true
+                    textureSize: Qt.size(Math.ceil(flight.dr.width * 1.2), Math.ceil(flight.dr.width * 1.2 * flight.sr.height / Math.max(1, flight.sr.width)))
+                    opacity: 1 - flight.k
+                }
+
+                ClippingRectangle {
+                    id: dstClip
+                    x: flight.clipped ? flight.cr.x - flight.x : flight.dstBox.x
+                    y: flight.clipped ? flight.cr.y - flight.y : flight.dstBox.y
+                    width: flight.clipped ? flight.cr.width : flight.dstBox.width
+                    height: flight.clipped ? flight.cr.height : flight.dstBox.height
+                    color: "transparent"
+                    radius: flight.clipped ? flight.cornerR : 0
+                    opacity: flight.k
+
+                    ShaderEffectSource {
+                        x: flight.dstBox.x - dstClip.x
+                        y: flight.dstBox.y - dstClip.y
+                        width: flight.dstBox.width
+                        height: flight.dstBox.height
+                        sourceItem: flight.modelData.dst
+                        sourceRect: flight.dLocal
+                        hideSource: true
+                        live: true
+                        smooth: true
+                        mipmap: true
+                    }
+                }
+            }
+        }
     }
 
     Shape {

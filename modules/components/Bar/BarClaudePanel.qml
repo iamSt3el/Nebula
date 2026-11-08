@@ -46,7 +46,10 @@ Item {
             Layout.fillWidth: true
             spacing: 12
 
+            HeroTag { key: "claude"; item: claudeTile; target: true }
+
             Rectangle {
+                id: claudeTile
                 Layout.preferredWidth: 40
                 Layout.preferredHeight: 40
                 radius: 12

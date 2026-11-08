@@ -1,4 +1,5 @@
 import QtQuick
+import qs.modules.customComponents
 
 BarButtonItem {
     id: root
@@ -8,4 +9,6 @@ BarButtonItem {
     tip: "Power menu"
     active: !!root.host && root.host.panelKind === "power"
     onActivated: if (root.host) root.host.openPanel("power", root)
+
+    HeroTag { key: "power"; item: root; owner: root }
 }

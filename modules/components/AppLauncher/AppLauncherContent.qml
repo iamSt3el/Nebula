@@ -140,8 +140,10 @@ Item {
         return IconUtil.getDesktopIconPath(app?.icon ?? "")
     }
 
-    function launch(app) {
+    function launch(app, from) {
         if (!app) return
+        if (Features.genie)
+            ServiceGenie.armFrom(from, appLauncher, app.id, app)
         ServiceApps.run(app)
         appLauncher.closed()
     }
@@ -463,6 +465,8 @@ Item {
                         RippleEffect {
                             anchors.fill: parent
                             onClicked: {
+                                if (Features.genie)
+                                    ServiceGenie.armFrom(null, appLauncher, ctxMenu.targetApp?.id, ctxMenu.targetApp)
                                 ServiceApps.run(ctxMenu.targetApp)
                                 ctxMenu.targetApp = null
                                 appLauncher.closed()

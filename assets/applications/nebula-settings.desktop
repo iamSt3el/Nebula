@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Nebula Settings
+GenericName=Shell settings
+Comment=Change how your Nebula desktop looks and works
+Exec=nebula ipc settings open
+Icon=nebula-settings
+Terminal=false
+Categories=Settings;DesktopSettings;
+Keywords=nebula;settings;preferences;shell;bar;dock;theme;wallpaper;
+StartupNotify=false

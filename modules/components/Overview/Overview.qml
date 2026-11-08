@@ -121,8 +121,67 @@ Scope {
                 Hyprland.refreshToplevels()
             }
 
+            property int flewWsId: -1
+            property int targetWsId: -1
+            property bool hideFlyTiles: false
+            readonly property bool genieFly: Features.genie && ((SettingsConfig.general ?? {}).genieOverview ?? true)
+
+            function flyItems(wsId) {
+                const list = ServiceWorkspaces.getWorkspace(wsId)?.toplevels?.values ?? []
+                const sr = win.screenRectFor(wsId)
+                const sx = win.screen?.x ?? 0, sy = win.screen?.y ?? 0
+                const out = []
+                for (const tl of list) {
+                    const r = detail.tileRectFor(tl, sr, card)
+                    if (r && tl.address)
+                        out.push({ address: tl.address, rect: [Math.round(sx + card.x + r.x), Math.round(sy + card.y + r.y), Math.round(r.width), Math.round(r.height)] })
+                }
+                return out
+            }
+
+            function flyIn() {
+                if (!win.shouldOpen || !win.genieFly)
+                    return
+                const id = Hyprland.focusedMonitor?.activeWorkspace?.id ?? -1
+                const items = win.flyItems(id)
+                if (items.length === 0)
+                    return
+                win.flewWsId = id
+                win.hideFlyTiles = true
+                ServiceGenie.flyTo(items)
+                flyTilesTimer.interval = Math.max(60, ServiceGenie.flyMs + ServiceGenie.flyStagger * (items.length - 1) - 30)
+                flyTilesTimer.restart()
+            }
+
+            function flyOut() {
+                const flew = win.flewWsId
+                win.flewWsId = -1
+                if (flew < 0)
+                    return
+                const target = win.targetWsId >= 0 ? win.targetWsId : flew
+                ServiceGenie.flyFrom(win.flyItems(target), target !== flew)
+            }
+
+            Timer { id: flyInTimer; interval: 40; onTriggered: win.flyIn() }
+            Timer { id: flyTilesTimer; onTriggered: win.hideFlyTiles = false }
+            Timer { id: flyOutTimer; interval: 60; onTriggered: win.flyOut() }
+
             onShouldOpenChanged: {
-                if (!win.shouldOpen) return
+                if (!win.shouldOpen) {
+                    flyInTimer.stop()
+                    flyTilesTimer.stop()
+                    if (win.flewWsId >= 0) {
+                        win.hideFlyTiles = true
+                        const target = win.targetWsId >= 0 ? win.targetWsId : win.flewWsId
+                        if (target === win.flewWsId) win.flyOut()
+                        else flyOutTimer.restart()
+                    }
+                    return
+                }
+                win.flewWsId = -1
+                win.targetWsId = -1
+                win.hideFlyTiles = false
+                if (win.genieFly) flyInTimer.restart()
                 Hyprland.refreshWorkspaces()
                 Hyprland.refreshToplevels()
                 win.search = ""
@@ -134,11 +193,13 @@ Scope {
             function dismiss() { GlobalStates.overviewOpen = false }
 
             function activateWorkspace(id) {
+                win.targetWsId = id
                 ServiceWorkspaces.activateWorkspaceId(id)
                 win.dismiss()
             }
 
             function activateWindow(toplevel) {
+                win.targetWsId = toplevel?.workspace?.id ?? -1
                 toplevel?.wayland?.activate()
                 win.dismiss()
             }
@@ -338,6 +399,7 @@ Scope {
                         moveMode: win.moveMode
                         draggingToplevel: ghost.toplevel
                         screenRect: win.screenRectFor(win.selectedWsId)
+                        hideTiles: win.hideFlyTiles
 
                         onActivateRequested: win.activateWorkspace(win.selectedWsId)
                         onRenamed: name => win.setWsLabel(win.selectedWsId, name)

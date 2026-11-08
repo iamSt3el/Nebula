@@ -278,7 +278,11 @@ Item {
                 x: 2
                 spacing: 9
 
+                HeroTag { key: "art"; item: shapeArt; owner: root }
+                HeroTag { key: "title"; item: shapeTitle; owner: root }
+
                 MusicShapeArt {
+                    id: shapeArt
                     Layout.preferredWidth: root.h - 10
                     Layout.preferredHeight: root.h - 10
                     decode: 96
@@ -286,6 +290,7 @@ Item {
                     dim: root.playing ? 0 : 1
                 }
                 CustomText {
+                    id: shapeTitle
                     Layout.maximumWidth: 140
                     content: root.title
                     size: 12

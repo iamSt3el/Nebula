@@ -13,6 +13,7 @@ Item {
     property real room: 900
     property real fixedH: -1
     property string page: "home"
+    property bool far: false
 
     readonly property DashActions actions: DashActions { closer: root.closer }
     readonly property bool passwordPrompt: sub.item ? (sub.item.passwordPrompt ?? false) : false
@@ -67,6 +68,7 @@ Item {
     Item {
         id: home
         x: Math.round((root.width - width) / 2)
+        y: root.far ? root.height - height : 0
         width: root.inPage && root.homeW > 0 ? root.homeW : root.width
         height: root.inPage && root.homeHt > 0 ? root.homeHt : root.height
         opacity: root.page === "home" ? 1 : 0

@@ -24,7 +24,7 @@ Item {
     readonly property bool _bloom: root.style === "bloom"
     readonly property bool _deck: root.style === "deck"
     readonly property bool _tessera: root.style === "tessera"
-    readonly property bool _window: root.style === "window"
+    readonly property bool _window: root.style === "window" || root.style === "ring"
     readonly property bool _carry: root.style === "carry"
 
     readonly property string _rawArt: root._deck && !LockSession.greeter && !root.preview

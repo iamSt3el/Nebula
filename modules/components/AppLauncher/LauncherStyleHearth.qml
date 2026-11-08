@@ -293,7 +293,7 @@ Item {
                             if (event.button === Qt.RightButton)
                                 root.launcher.openMenu(cardArea, event.x, event.y, card.modelData)
                             else
-                                root.launcher.launch(card.modelData)
+                                root.launcher.launch(card.modelData, card)
                         }
                     }
                 }

@@ -53,6 +53,14 @@ Singleton {
     readonly property Component cWeatherHours:    Component { WeatherHoursWidget    { preview: true } }
     readonly property Component cWeatherDayClock: Component { WeatherDayClockWidget { preview: true } }
     readonly property Component cWeatherWind:     Component { WeatherWindWidget     { preview: true } }
+    readonly property Component cWeatherTileHourly: Component { WeatherTileHourly { preview: true } }
+    readonly property Component cWeatherTileThermo: Component { WeatherTileThermo { preview: true } }
+    readonly property Component cWeatherTileDays: Component { WeatherTileDays { preview: true } }
+    readonly property Component cWeatherTileWeek: Component { WeatherTileWeek { preview: true } }
+    readonly property Component cWeatherTileStats: Component { WeatherTileStats { preview: true } }
+    readonly property Component cWeatherTileMini: Component { WeatherTileMini { preview: true } }
+    readonly property Component cWeatherTileSky: Component { WeatherTileSky { preview: true } }
+    readonly property Component cWeatherTileList: Component { WeatherTileList { preview: true } }
     readonly property Component cSunArc:        Component { SunArcWidget           { preview: true } }
     readonly property Component cClaudeCode:    Component { ClaudeCodeWidget       { preview: true } }
     readonly property Component cYearAgo: Component { YearAgoWidget { preview: true } }
@@ -134,7 +142,15 @@ Singleton {
             { label: "Poster",   key: "weatherPoster",    comp: root.cWeatherPoster, show: "showWeatherPoster" },
             { label: "Hours",    key: "weatherHours",     comp: root.cWeatherHours,  show: "showWeatherHours" },
             { label: "Day Clock", key: "weatherDayClock", comp: root.cWeatherDayClock, show: "showWeatherDayClock" },
-            { label: "Wind",     key: "weatherWind",      comp: root.cWeatherWind,   show: "showWeatherWind" }
+            { label: "Wind",     key: "weatherWind",      comp: root.cWeatherWind,   show: "showWeatherWind" },
+            { label: "Tiles: hourly", key: "weatherTileHourly", comp: root.cWeatherTileHourly, show: "showWeatherTileHourly" },
+            { label: "Tiles: thermometer", key: "weatherTileThermo", comp: root.cWeatherTileThermo, show: "showWeatherTileThermo" },
+            { label: "Tiles: 5 days", key: "weatherTileDays", comp: root.cWeatherTileDays, show: "showWeatherTileDays" },
+            { label: "Tiles: week", key: "weatherTileWeek", comp: root.cWeatherTileWeek, show: "showWeatherTileWeek" },
+            { label: "Tiles: conditions", key: "weatherTileStats", comp: root.cWeatherTileStats, show: "showWeatherTileStats" },
+            { label: "Tiles: mini", key: "weatherTileMini", comp: root.cWeatherTileMini, show: "showWeatherTileMini" },
+            { label: "Tiles: sun and sky", key: "weatherTileSky", comp: root.cWeatherTileSky, show: "showWeatherTileSky" },
+            { label: "Tiles: hourly list", key: "weatherTileList", comp: root.cWeatherTileList, show: "showWeatherTileList" }
         ]},
         { section: "Calendar", icon: "calendar_month", items: [
             { label: "Mini",    key: "calendarMini",    comp: root.cCalendarMini, show: "showCalendarMini" },
