@@ -83,6 +83,35 @@ Scope {
                             asynchronous: true
                             sourceSize.width: 576
                         }
+
+                        Rectangle {
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            anchors.margins: 6
+                            width: 24
+                            height: 24
+                            radius: 12
+                            color: closeMa.containsMouse ? Qt.alpha(Colors.surface, 0.9) : Qt.alpha(Colors.surface, 0.65)
+                            z: 2
+
+                            MaterialIconSymbol {
+                                anchors.centerIn: parent
+                                content: "close"
+                                iconSize: 14
+                                customColor: Colors.surfaceText
+                            }
+
+                            MouseArea {
+                                id: closeMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    scope.shown = false
+                                    dismiss.stop()
+                                }
+                            }
+                        }
                     }
 
                     RowLayout {
