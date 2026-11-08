@@ -906,12 +906,57 @@ Item {
             }
 
             Flickable {
+                id: chipFlick
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
                 clip: true
                 contentWidth: chipRow.implicitWidth
                 contentHeight: 34
                 flickableDirection: Flickable.HorizontalFlick
+                property real glideX: 0
+                readonly property real maxX: Math.max(0, contentWidth - width)
+
+                function scroll(event) {
+                    if (chipFlick.maxX <= 0)
+                        return
+                    if ((event.phase ?? 0) > 0 && (event.pixelDelta.x !== 0 || event.pixelDelta.y !== 0)) {
+                        chipGlide.stop()
+                        const p = event.pixelDelta.x !== 0 ? event.pixelDelta.x : event.pixelDelta.y
+                        chipFlick.contentX = Math.max(0, Math.min(chipFlick.maxX, chipFlick.contentX - p))
+                        return
+                    }
+                    const a = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x
+                    if (!chipGlide.running) {
+                        chipFlick.cancelFlick()
+                        chipFlick.glideX = chipFlick.contentX
+                        chipGlide.goal = chipFlick.contentX
+                    }
+                    chipGlide.goal = Math.max(0, Math.min(chipFlick.maxX, chipGlide.goal - a / 120 * 100))
+                    chipGlide.start()
+                }
+
+                FrameAnimation {
+                    id: chipGlide
+                    property real goal: 0
+                    onTriggered: {
+                        const d = chipGlide.goal - chipFlick.glideX
+                        if (Math.abs(d) < 0.5) {
+                            chipFlick.contentX = Math.round(chipGlide.goal)
+                            chipGlide.stop()
+                            return
+                        }
+                        chipFlick.glideX += d * (1 - Math.exp(-Math.min(frameTime, 0.05) * 14))
+                        chipFlick.contentX = Math.round(chipFlick.glideX)
+                    }
+                }
+
+                onMovementStarted: chipGlide.stop()
+
+                WheelHandler {
+                    target: null
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: event => chipFlick.scroll(event)
+                }
 
                 RowLayout {
                     id: chipRow
@@ -959,6 +1004,10 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
+                                onWheel: event => {
+                                    chipFlick.scroll(event)
+                                    event.accepted = true
+                                }
                                 onClicked: {
                                     GlobalStates.editAddQuery = ""
                                     GlobalStates.widgetSection = sectionChip.index
@@ -977,6 +1026,50 @@ Item {
                 contentWidth: strip.implicitWidth
                 contentHeight: height
                 flickableDirection: Flickable.HorizontalFlick
+                property real glideX: 0
+                readonly property real maxX: Math.max(0, contentWidth - width)
+
+                function scroll(event) {
+                    if (stripFlick.maxX <= 0)
+                        return
+                    if ((event.phase ?? 0) > 0 && (event.pixelDelta.x !== 0 || event.pixelDelta.y !== 0)) {
+                        stripGlide.stop()
+                        const p = event.pixelDelta.x !== 0 ? event.pixelDelta.x : event.pixelDelta.y
+                        stripFlick.contentX = Math.max(0, Math.min(stripFlick.maxX, stripFlick.contentX - p))
+                        return
+                    }
+                    const a = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x
+                    if (!stripGlide.running) {
+                        stripFlick.cancelFlick()
+                        stripFlick.glideX = stripFlick.contentX
+                        stripGlide.goal = stripFlick.contentX
+                    }
+                    stripGlide.goal = Math.max(0, Math.min(stripFlick.maxX, stripGlide.goal - a / 120 * 160))
+                    stripGlide.start()
+                }
+
+                FrameAnimation {
+                    id: stripGlide
+                    property real goal: 0
+                    onTriggered: {
+                        const d = stripGlide.goal - stripFlick.glideX
+                        if (Math.abs(d) < 0.5) {
+                            stripFlick.contentX = Math.round(stripGlide.goal)
+                            stripGlide.stop()
+                            return
+                        }
+                        stripFlick.glideX += d * (1 - Math.exp(-Math.min(frameTime, 0.05) * 14))
+                        stripFlick.contentX = Math.round(stripFlick.glideX)
+                    }
+                }
+
+                onMovementStarted: stripGlide.stop()
+
+                WheelHandler {
+                    target: null
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: event => stripFlick.scroll(event)
+                }
 
                 RowLayout {
                     id: strip
@@ -1080,6 +1173,10 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
+                                onWheel: event => {
+                                    stripFlick.scroll(event)
+                                    event.accepted = true
+                                }
                                 onClicked: {
                                     const size = (cardPreview.item && cardPreview.item.implicitWidth > 0)
                                         ? Qt.size(cardPreview.item.implicitWidth, cardPreview.item.implicitHeight)
