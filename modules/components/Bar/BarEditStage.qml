@@ -34,7 +34,8 @@ EditKit.Card {
     readonly property var placeChoices: {
         switch (stageCard.kind) {
         case "launcher":
-            return [{ value: "item", label: "Apps item", icon: "apps" }, { value: "center", label: "Centre", icon: "center_focus_strong" }]
+            return [{ value: "item", label: "Apps item", icon: "apps" }, { value: "block", label: "Apps widget", icon: "view_column" },
+                    { value: "center", label: "Centre", icon: "center_focus_strong" }]
         case "wallpaper":
         case "clipboard":
             return [{ value: "dock", label: "Item or edge", icon: "dock_to_bottom" }, { value: "center", label: "Centre panel", icon: "center_focus_strong" }]
@@ -50,7 +51,7 @@ EditKit.Card {
     readonly property string placeValue: {
         const gen = SettingsConfig.general ?? {}
         switch (stageCard.kind) {
-        case "launcher": return ServiceLauncher.position === "center" ? "center" : "item"
+        case "launcher": return ServiceLauncher.position
         case "wallpaper": return (gen.wallpaperPanelMode ?? "dock") === "center" ? "center" : "dock"
         case "clipboard": return (gen.clipboardPanelMode ?? "dock") === "center" ? "center" : "dock"
         case "notifPopup":
@@ -74,7 +75,7 @@ EditKit.Card {
         switch (stageCard.kind) {
         case "launcher":
             BarLayout.setOption("launcher", "position", v)
-            if (v === "item" && !BarLayout.isPlaced("launcher"))
+            if (v !== "center" && !BarLayout.isPlaced("launcher"))
                 stageCard.placeNear("launcher", "dockApps")
             return
         case "wallpaper":

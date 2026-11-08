@@ -191,7 +191,7 @@ PanelWindow{
     }
     readonly property bool previewRight: layout.dashPreview
         ? layout.dashAnchor !== "left"
-        : ServiceLauncher.position === "item"
+        : ServiceLauncher.position !== "center"
           && BarLayout.allBlocks.some(b => b.anchor === "right" && b.items.indexOf("launcher") >= 0)
     readonly property real popupY: surfTop.present ? surfTop.rowItem.y + surfTop.maxDrop + surfTop.barH + (surfTop.anyPill ? 8 : 4) : 8
 
