@@ -1169,6 +1169,12 @@ Item {
         const x = cx - w / 2
         const sl = barBlock.spanL - barBlock.absX + barBlock.sideInset
         const sr = barBlock.spanR - barBlock.absX - w - barBlock.sideInset
+        if (w <= barBlock.width) {
+            const bl = Math.max(0, sl)
+            const br = Math.min(barBlock.width - w, sr)
+            if (bl <= br)
+                return Math.max(bl, Math.min(br, x))
+        }
         if (sr < sl)
             return Math.max(Math.min(sl, barBlock.spanF - barBlock.absX), sr)
         return Math.max(sl, Math.min(sr, x))
