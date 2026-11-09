@@ -102,6 +102,35 @@ Rectangle {
             }
         }
 
+        Rectangle {
+            visible: Boolean(row.app.skipped && row.app.skipped.length > 0)
+            Layout.preferredHeight: 24
+            Layout.preferredWidth: roChipRow.implicitWidth + 18
+            radius: 12
+            color: Colors.surfaceVariant
+
+            Row {
+                id: roChipRow
+                anchors.centerIn: parent
+                spacing: 4
+
+                MaterialIconSymbol {
+                    anchors.verticalCenter: parent.verticalCenter
+                    content: "lock"
+                    iconSize: 15
+                    customColor: Colors.surfaceVariantText
+                }
+
+                CustomText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    content: "Read-only"
+                    size: 11
+                    weight: 500
+                    customColor: Colors.surfaceVariantText
+                }
+            }
+        }
+
         CustomToogle {
             id: toggle
             Layout.preferredWidth: 52

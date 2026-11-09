@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 from nebula.paths import SETTINGS, STATE_DIR
@@ -167,7 +168,80 @@ def save_manifest(m: dict) -> None:
         print(f"[theme_apps] manifest ERROR: {e}", file=sys.stderr)
 
 
+def is_nix_managed(path: Path) -> bool:
+    prefixes = ["/nix/store"]
+    env_prefix = os.environ.get("NEBULA_STORE_PREFIX")
+    if env_prefix:
+        prefixes.append(env_prefix.rstrip("/"))
+
+    def _matches(p_str: str) -> bool:
+        return any(p_str == pref or p_str.startswith(pref + "/") for pref in prefixes)
+
+    p_str = os.fspath(path)
+    if _matches(p_str):
+        return True
+
+    try:
+        if _matches(os.path.realpath(p_str)):
+            return True
+    except OSError:
+        pass
+
+    try:
+        if os.path.islink(p_str) and _matches(os.readlink(p_str)):
+            return True
+    except OSError:
+        pass
+
+    try:
+        parent = path.parent
+        if _matches(os.fspath(parent)) or _matches(os.path.realpath(os.fspath(parent))):
+            return True
+    except OSError:
+        pass
+
+    return False
+
+
+def target_state(path: Path | str) -> str:
+    path = Path(path)
+    if is_nix_managed(path):
+        return "nix-managed"
+
+    p_str = os.fspath(path)
+    if os.path.islink(p_str):
+        return "symlink"
+
+    parent = path.parent
+    if not parent.exists() or not os.access(parent, os.W_OK):
+        return "missing-parent"
+
+    if os.path.lexists(p_str):
+        if not os.access(p_str, os.W_OK):
+            return "readonly"
+
+    return "ok"
+
+
+def atomic_write(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(content)
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def is_user_file(path: Path, manifest: dict) -> bool:
+    if target_state(path) != "ok":
+        return False
     if path.is_symlink():
         return True
     if not path.is_file():
@@ -188,10 +262,20 @@ def _free_backup(path: Path) -> Path:
 
 
 def backup_if_user_file(app, path: Path, manifest: dict) -> bool:
-    if not app.get("whole") or not is_user_file(path, manifest):
+    if not app.get("whole") or target_state(path) != "ok" or not is_user_file(path, manifest):
         return False
     shutil.copy2(path, _free_backup(path), follow_symlinks=True)
     return True
+
+
+def render(app, output_path: Path, content: str, manifest):
+    state = target_state(output_path)
+    if state != "ok":
+        return {"status": "skipped", "reason": state}
+    backed_up = bool(backup_if_user_file(app, output_path, manifest))
+    atomic_write(output_path, content)
+    record(output_path, content, manifest)
+    return {"status": "ok", "backed_up": backed_up}
 
 
 def record(path: Path, content: str, manifest: dict) -> None:
@@ -230,6 +314,7 @@ def detect_one(app, manifest):
     note = app.get("note") or (pretty(paths[0]) if len(paths) == 1 else
                                f"{len(paths)} vaults" if app.get("vaults") and paths else
                                ", ".join(pretty(p) for p in paths))
+    skipped = [f"{p.name}: {target_state(p)}, skipped" for p in paths if target_state(p) != "ok"]
     return {
         "id": app["id"],
         "name": app["name"],
@@ -239,7 +324,8 @@ def detect_one(app, manifest):
         "hint": hint,
         "note": note,
         "targets": [pretty(p) for p in paths],
-        "replacesFile": bool(app.get("whole")) and any(is_user_file(p, manifest) for p in paths),
+        "skipped": skipped,
+        "replacesFile": bool(app.get("whole")) and any(is_user_file(p, manifest) and target_state(p) == "ok" for p in paths),
     }
 
 
@@ -284,11 +370,20 @@ def print_list(as_json: bool) -> int:
             if a["group"] != g:
                 continue
             mark = (on if a["id"] in picked else off) if a["installed"] else " - "
-            extra = a["note"] if a["installed"] else (a["hint"] or "not installed")
-            if a["installed"] and a["replacesFile"]:
+            extra = str(a["note"] if a["installed"] else (a["hint"] or "not installed"))
+            skipped = a.get("skipped")
+            if a["installed"] and isinstance(skipped, list) and skipped:
+                extra += f"  ({', '.join(skipped)})"
+            elif a["installed"] and a.get("replacesFile"):
                 extra += "  (replaces your file, keeps a .bak)"
             print(f"  {mark} {a['id']:<10} {a['name']:<18} {extra}")
-    if auto:
+    targets_list = [a.get("targets") for a in detected if a["installed"]]
+    skipped_list = [a.get("skipped") for a in detected if a["installed"]]
+    total_targets = sum(len(t) for t in targets_list if isinstance(t, list))
+    total_skipped = sum(len(s) for s in skipped_list if isinstance(s, list))
+    if total_targets > 0 and total_skipped == total_targets:
+        print(f"\n{total_skipped} file{'s' if total_skipped != 1 else ''} managed by your system config, port palette values there manually.")
+    elif auto:
         print("\nNo choice saved yet: every detected app is themed. `nebula apps disable <id>` to opt out.")
     return 0
 
