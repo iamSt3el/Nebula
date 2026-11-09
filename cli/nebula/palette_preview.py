@@ -15,6 +15,11 @@ def main() -> None:
     variant = sys.argv[3].removeprefix("scheme-").replace("-", "")
     mode = sys.argv[4].lower()
 
+    fixed = g._fixed_scheme(variant, mode != "light")
+    if fixed is not None:
+        print(json.dumps(fixed))
+        return
+
     primary = None
     if os.path.isfile(original):
         img_hash = g._image_hash(original)

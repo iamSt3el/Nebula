@@ -33,6 +33,14 @@
    instant. Anything that can read JSON — an editor plugin, your own script — can
    read this file directly and needs no template at all.</p>
 
+<h2>Custom static palette</h2>
+
+<p>If you prefer an external theming system (such as NixOS Stylix, pywal, or a base16 scheme) to drive the shell's colors instead of deriving them from the wallpaper, you can provide a static palette file at:</p>
+
+<div class="code"><span class="lang">path</span><pre>~/.config/nebula/colors.json</pre></div>
+
+<p>Activate it by selecting <strong>Custom</strong> under Colour scheme in Settings, or via the CLI with <code>nebula scheme set --variant custom</code> (or <code>nebula palette set &lt;file&gt;</code>). When active, Nebula skips Material You generation entirely on wallpaper changes, reads colors directly from this file, and still renders your app templates.</p>
+
 <h2>Rendering into other apps</h2>
 
 <p>Nebula can also render the palette into other applications&rsquo; config files. Each

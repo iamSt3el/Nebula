@@ -13,6 +13,7 @@ CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME") or HOME / ".config") / "nebu
 STATE_DIR = Path(os.environ.get("XDG_STATE_HOME") or HOME / ".local" / "state") / "nebula"
 SETTINGS = CONFIG_DIR / "settings.json"
 COLORS = CACHE_DIR / "colors.json"
+CUSTOM_COLORS = CONFIG_DIR / "colors.json"
 
 MOVED = [
     (CACHE_DIR / "settings.json", SETTINGS),
@@ -42,6 +43,8 @@ def _share_with_greeter() -> None:
         subprocess.run(["setfacl", *args, str(CONFIG_DIR)], capture_output=True, timeout=5)
     if SETTINGS.exists():
         subprocess.run(["setfacl", "-m", "u:greeter:r", str(SETTINGS)], capture_output=True, timeout=5)
+    if CUSTOM_COLORS.exists():
+        subprocess.run(["setfacl", "-m", "u:greeter:r", str(CUSTOM_COLORS)], capture_output=True, timeout=5)
 
 
 def migrate() -> list[tuple[Path, Path]]:

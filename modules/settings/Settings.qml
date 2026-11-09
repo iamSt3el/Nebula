@@ -243,6 +243,9 @@ Singleton{
         },
         {
             name: "scheme-kindle"
+        },
+        {
+            name: "scheme-custom"
         }
     ]
 
